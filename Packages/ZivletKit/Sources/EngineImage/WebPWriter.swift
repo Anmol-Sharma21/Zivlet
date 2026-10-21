@@ -14,7 +14,7 @@ enum WebPWriter {
     struct Job {
         let count: Int
         let canvas: PixelSize
-        let timing: WebPTiming
+        let timing: AnimationTiming
         let metadata: WebPMetadata
         let options: WebPOptions
     }

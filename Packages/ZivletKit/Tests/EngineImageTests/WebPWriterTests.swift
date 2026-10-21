@@ -150,9 +150,9 @@ struct WebPWriterTests {
     @Test func framesWithoutTimingGetTheDefaultDuration() throws {
         let dir = try ImageFixture.directory()
         let source = try AnimationFixture.source(try ImageFixture.pagedTIFF(2, in: dir))
-        let timing = WebPTiming.read(source, frames: [0, 1])
-        #expect(timing == WebPTiming(durations: [100, 100], loopCount: 0))
-        #expect(timing.duration(at: 5) == WebPTiming.defaultMillis)
+        let timing = AnimationTiming.read(source, frames: [0, 1])
+        #expect(timing == AnimationTiming(durations: [100, 100], loopCount: 0))
+        #expect(timing.duration(at: 5) == AnimationTiming.defaultMillis)
     }
 
     static func spec(_ source: URL, alpha: Bool? = nil) throws -> ImagePipelineSpec {

@@ -39,6 +39,31 @@ enum AnimationFixture {
         return url
     }
 
+    /// A HEIC image sequence (`public.heics`) of `frames` frames, `delay` seconds each.
+    static func heicSequence(frames: Int, delay: Double = 0.1, in dir: URL) throws -> URL {
+        let url = dir.appending(path: "sequence.heic")
+        let destination = try #require(
+            CGImageDestinationCreateWithURL(url as CFURL, "public.heics" as CFString, frames, nil))
+        CGImageDestinationSetProperties(
+            destination, [kCGImagePropertyHEICSDictionary: [kCGImagePropertyHEICSLoopCount: 0]] as CFDictionary)
+        let each = [kCGImagePropertyHEICSDictionary: [kCGImagePropertyHEICSDelayTime: delay]]
+        for index in 0..<frames {
+            CGImageDestinationAddImage(destination, try frame(index, size: ImageFixture.size), each as CFDictionary)
+        }
+        try #require(CGImageDestinationFinalize(destination), "could not write the HEIC sequence")
+        return url
+    }
+
+    /// Per-frame delays from one ImageIO family dictionary (PNG or HEICS), in seconds rounded to milliseconds.
+    static func delays(_ url: URL, family: CFString, key: CFString) throws -> [Double] {
+        let image = try source(url)
+        return (0..<CGImageSourceGetCount(image)).map { index in
+            let properties = CGImageSourceCopyPropertiesAtIndex(image, index, nil) as? [CFString: Any] ?? [:]
+            let delay = (properties[family] as? [CFString: Any])?[key] as? Double ?? -1
+            return (delay * 1000).rounded() / 1000
+        }
+    }
+
     static func source(_ url: URL) throws -> CGImageSource {
         try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
     }

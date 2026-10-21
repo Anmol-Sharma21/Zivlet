@@ -72,7 +72,12 @@ struct ImagePlannerTests {
 
     @Test(arguments: [(FormatID.tiff, FormatID.png), (.webp, .jpg), (.png, .pdf), (.heic, .tiff)])
     func otherMultiFrameSourcesKeepTheFirstFrameAndSaySo(source: FormatID, target: FormatID) throws {
-        let plan = try Self.plan(source, target, Self.probe(frames: 4))
+        let type = FormatRegistry.standard.format(source).contentTypes[0]
+        let plan = try Self.plan(
+            source, target,
+            ImageProbe(
+                typeIdentifier: type, frameCount: 4, pixelSize: PixelSize(width: 40, height: 20), orientation: 1,
+                hasAlpha: false))
         #expect(try Self.spec(plan).frames == [0])
         #expect(plan.notes == [.firstFrameOnly])
     }

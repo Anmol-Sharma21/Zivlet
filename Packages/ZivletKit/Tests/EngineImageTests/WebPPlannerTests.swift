@@ -71,7 +71,9 @@ struct WebPPlannerTests {
     }
 
     @Test func animationIsCappedAtAThousandFrames() {
-        #expect(WebPPlanner.frames(probe: Self.probe(frames: 5_000), animated: true).count == 1_000)
+        #expect(
+            WebPPlanner.frames(probe: Self.probe(frames: 5_000), animated: true).count
+                == ImagePlanner.maxAnimationFrames)
         #expect(WebPPlanner.frames(probe: Self.probe(frames: 5_000), animated: false) == [0])
     }
 

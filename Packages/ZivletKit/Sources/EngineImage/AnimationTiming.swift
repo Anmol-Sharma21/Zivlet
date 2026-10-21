@@ -1,13 +1,14 @@
 import Foundation
 import ImageIO
 
-/// Frame durations and loop count of an animated source (APNG, HEIC sequence, GIF dictionaries), for the WebP
-/// animation. Durations are milliseconds, the source's unclamped delay when it names one; 100 ms when it names none.
-struct WebPTiming: Sendable, Equatable {
+/// Frame durations and loop count of an animated source (APNG, HEIC sequence, GIF dictionaries), for an animated
+/// WebP, APNG or HEIC sequence. Durations are milliseconds, the source's unclamped delay when it names one; 100 ms
+/// when it names none.
+struct AnimationTiming: Sendable, Equatable {
     static let defaultMillis = 100
     /// Upper bound per frame, so 1,000 frames cannot overflow libwebp's 32-bit timestamps.
     static let maxMillis = 65_535
-    static let still = WebPTiming(durations: [defaultMillis], loopCount: 0)
+    static let still = AnimationTiming(durations: [defaultMillis], loopCount: 0)
 
     let durations: [Int]
     /// 0 repeats forever.
@@ -36,8 +37,27 @@ struct WebPTiming: Sendable, Equatable {
         ]
     }
 
-    static func read(_ source: CGImageSource, frames: [Int]) -> WebPTiming {
-        WebPTiming(durations: frames.map { millis(source, $0) }, loopCount: loopCount(source))
+    /// ImageIO destination properties for an APNG or HEIC sequence: the file's loop count, and one frame's delay.
+    static func fileProperties(_ destinationType: String, loopCount: Int) -> [CFString: Any] {
+        guard let (dictionary, _, _, loop) = family(of: destinationType) else { return [:] }
+        return [dictionary: [loop: loopCount]]
+    }
+
+    func frameProperties(_ destinationType: String, position: Int) -> [CFString: Any] {
+        guard let (dictionary, _, delay, _) = Self.family(of: destinationType) else { return [:] }
+        return [dictionary: [delay: Double(duration(at: position)) / 1000]]
+    }
+
+    private static func family(of destinationType: String) -> (CFString, CFString, CFString, CFString)? {
+        switch destinationType {
+        case "public.png": families[0]
+        case "public.heics": families[1]
+        default: nil
+        }
+    }
+
+    static func read(_ source: CGImageSource, frames: [Int]) -> AnimationTiming {
+        AnimationTiming(durations: frames.map { millis(source, $0) }, loopCount: loopCount(source))
     }
 
     private static func millis(_ source: CGImageSource, _ index: Int) -> Int {

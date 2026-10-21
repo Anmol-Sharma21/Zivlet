@@ -8,9 +8,6 @@ import ZivletEngineKit
 /// HEIC sequence stays animated; every other multi-frame source keeps its first frame. Pure.
 public enum WebPPlanner {
     static let method = 4
-    static let animatedTypes: Set<String> = ["public.png", "public.heics"]
-    /// Most frames one animated WebP carries; the job pixel budget can lower it further.
-    static let maxFrames = 1_000
     /// libwebp's largest width or height (`WEBP_MAX_DIMENSION`).
     static let maxEdge = 16_383
 
@@ -27,7 +24,7 @@ public enum WebPPlanner {
         do {
             return try WebPOptions(
                 quality: quality(tier), method: method, sharpYUV: true, exactAlpha: probe.hasAlpha, lossless: false,
-                animated: isAnimated(probe), keepICC: true, keepEXIF: true, keepXMP: true)
+                animated: ImagePlanner.isAnimated(probe), keepICC: true, keepEXIF: true, keepXMP: true)
         } catch {
             preconditionFailure("the WebP ladder and method are inside libwebp's ranges")
         }
@@ -36,16 +33,8 @@ public enum WebPPlanner {
     /// False when a side is past `maxEdge`; such sources are refused before any decode.
     static func fits(_ size: PixelSize) -> Bool { max(size.width, size.height) <= maxEdge }
 
-    static func isAnimated(_ probe: ImageProbe) -> Bool {
-        probe.frameCount > 1 && animatedTypes.contains(probe.typeIdentifier)
-    }
-
-    /// Every frame of an animation, at most `maxFrames` and as many as `ImagePlanner.maxPixelsPerJob` admits;
-    /// otherwise frame 0.
+    /// Every frame of an animation (`ImagePlanner.animationFrames`), otherwise frame 0.
     static func frames(probe: ImageProbe, animated: Bool) -> [Int] {
-        guard animated else { return [0] }
-        let pixels = max(probe.pixelSize.width * probe.pixelSize.height, 1)
-        let budget = max(ImagePlanner.maxPixelsPerJob / pixels, 1)
-        return Array(0..<min(probe.frameCount, maxFrames, budget))
+        animated ? ImagePlanner.animationFrames(probe) : [0]
     }
 }

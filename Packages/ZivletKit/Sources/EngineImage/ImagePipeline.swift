@@ -4,7 +4,8 @@ import ImageIO
 import ZivletCore
 import ZivletEngineKit
 
-/// Executes an `ImagePipelineSpec` with ImageIO and Quartz (03b §6.1); PDF pages are `ImagePDFWriter`'s. Untouched frames go through
+/// Executes an `ImagePipelineSpec` with ImageIO and Quartz (03b §6.1); PDF pages are `ImagePDFWriter`'s, WebP is
+/// `WebPWriter`'s and SVG sources are `SVGPipeline`'s. An APNG or HEIC sequence keeps its delays and loop count. Untouched frames go through
 /// `CGImageDestinationAddImageFromSource`, which keeps ICC profile, bit depth (where the target allows it), EXIF, XMP
 /// and the orientation tag, and converts CMYK for targets without it. Frames that need pixels changed (alpha
 /// flattened, or an orientation the target's readers would ignore, see `OrientationPolicy`) are decoded once with the
@@ -35,11 +36,17 @@ enum ImagePipeline {
             let destination = CGImageDestinationCreateWithURL(
                 staged as CFURL, spec.destinationType as CFString, spec.frames.count, nil)
         else { throw ImageWriteFailure.error(at: staged) }
+        let timing = spec.frames.count > 1 ? AnimationTiming.read(source, frames: spec.frames) : nil
+        if let timing {
+            let file = AnimationTiming.fileProperties(spec.destinationType, loopCount: timing.loopCount)
+            CGImageDestinationSetProperties(destination, file as CFDictionary)
+        }
         var budget = start
-        for index in spec.frames {
+        for (position, index) in spec.frames.enumerated() {
             if cancel.isCancelled { throw .cancelled }
             budget = try budget.admitting(source, index)
-            try addFrame(index, of: source, to: destination, spec)
+            let delay = timing?.frameProperties(spec.destinationType, position: position) ?? [:]
+            try addFrame(index, of: source, to: destination, spec, extra: delay)
         }
         guard CGImageDestinationFinalize(destination) else { throw ImageWriteFailure.error(at: staged) }
     }
@@ -51,7 +58,8 @@ enum ImagePipeline {
     ) throws(JobError) {
         guard let options = spec.webp else { throw .internalInvariant("WebP output without WebP options") }
         let job = WebPWriter.Job(
-            count: spec.frames.count, canvas: spec.expectedSize, timing: WebPTiming.read(source, frames: spec.frames),
+            count: spec.frames.count, canvas: spec.expectedSize,
+            timing: AnimationTiming.read(source, frames: spec.frames),
             metadata: WebPMetadata.read(source, index: spec.frames[0], output: spec.expectedSize, options: options),
             options: options)
         var budget = start
@@ -63,11 +71,13 @@ enum ImagePipeline {
     }
 
     /// Copies the frame as stored (tag kept) unless it needs flattening or its orientation baked in
-    /// (`OrientationPolicy`); then it is decoded upright once and written with orientation 1.
+    /// (`OrientationPolicy`); then it is decoded upright once and written with orientation 1. `extra` (an animation
+    /// frame's delay) is added to the encoder properties.
     private static func addFrame(
-        _ index: Int, of source: CGImageSource, to destination: CGImageDestination, _ spec: ImagePipelineSpec
+        _ index: Int, of source: CGImageSource, to destination: CGImageDestination, _ spec: ImagePipelineSpec,
+        extra: [CFString: Any]
     ) throws(JobError) {
-        let encode = encodeProperties(spec)
+        let encode = encodeProperties(spec).merging(extra) { _, new in new }
         let metadata = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any] ?? [:]
         let orientation = metadata[kCGImagePropertyOrientation] as? Int ?? 1
         guard spec.flattenAlpha || OrientationPolicy.bakes(orientation, into: spec.destinationType) else {

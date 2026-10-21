@@ -86,14 +86,14 @@ public enum ImagePlanner {
         guard !pixels.overflow, pixels.partialValue <= maxPixels else { throw .unsupportedInput(.tooLarge) }
         let webp = target == .webp ? WebPPlanner.options(tier: options.tier, probe: probe) : nil
         if webp != nil, !WebPPlanner.fits(probe.displaySize) { throw .unsupportedInput(.tooLarge) }
-        let frames =
-            webp.map { WebPPlanner.frames(probe: probe, animated: $0.animated) }
-            ?? frames(source: source, target: target, probe: probe)
+        let layout = layout(
+            source: source, target: target, probe: probe, writableTypes: writableTypes, registry: registry)
+        let frames = webp.map { WebPPlanner.frames(probe: probe, animated: $0.animated) } ?? layout.frames
         let flatten = opaqueTargets.contains(target) && probe.hasAlpha
         let notes = notes(target: target, probe: probe, frames: frames, flatten: flatten)
         do {
             let spec = try ImagePipelineSpec(
-                source: request.input.url, destinationType: registry.format(target).contentTypes[0],
+                source: request.input.url, destinationType: layout.type,
                 output: target == .pdf ? .pdf : .raster, frames: frames, flattenAlpha: flatten,
                 quality: lossy.contains(target) ? quality(options.tier) : nil, tiffLZW: target == .tiff,
                 expectedSize: target == .pdf ? probe.pageSize : probe.displaySize, webp: webp,
@@ -110,12 +110,6 @@ public enum ImagePlanner {
     static func notes(target: FormatID, probe: ImageProbe, frames: [Int], flatten: Bool) -> [PlanNote] {
         (flatten ? [.alphaFlattened] : []) + (frames.count < probe.frameCount ? [.firstFrameOnly] : [])
             + (probe.svg != nil && target == .pdf ? [.svgRasterizedInPDF] : [])
-    }
-
-    /// Every page of a TIFF into a PDF; otherwise the first frame (03b §6.2: animation flattened to the first frame).
-    static func frames(source: FormatID, target: FormatID, probe: ImageProbe) -> [Int] {
-        guard target == .pdf, source == .tiff else { return [0] }
-        return Array(0..<min(max(probe.frameCount, 1), maxPDFPages))
     }
 }
 
