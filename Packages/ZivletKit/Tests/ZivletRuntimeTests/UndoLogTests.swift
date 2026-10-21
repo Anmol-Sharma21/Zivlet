@@ -19,6 +19,15 @@ struct UndoLogTests {
         UndoEntry(batch: batch, date: date, outputs: outputs.map(UndoOutput.init))
     }
 
+    @Test func recentListsTheUndoableEntriesNewestFirst() async throws {
+        let box = try Sandbox()
+        let history = UndoHistory(store: UndoStore(file: box.dir.appending(path: "undo.json")), now: { Self.start })
+        let (a, b) = (BatchID(), BatchID())
+        await history.record(a, outputs: [Self.output("/x/a.png")])
+        await history.record(b, outputs: [Self.output("/x/b.png")])
+        #expect(await history.recent().map(\.batch) == [b, a])
+    }
+
     @Test func publishStampsTheOutputWithItsInodeSizeAndModificationTime() throws {
         let box = try Sandbox()
         let request = try box.request("a.png", .png, to: .jpg)

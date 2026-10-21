@@ -16,6 +16,11 @@ public struct RequestRejection: Sendable, Equatable {
 public struct RequestPlan: Sendable, Equatable {
     public let requests: [JobRequest]
     public let rejections: [RequestRejection]
+
+    public init(requests: [JobRequest], rejections: [RequestRejection]) {
+        self.requests = requests
+        self.rejections = rejections
+    }
 }
 
 /// Dropped URLs → validated job requests (P1-33, 03a §4.3 location rule). The boundary check for drops: each URL

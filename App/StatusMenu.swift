@@ -1,38 +1,67 @@
 import AppKit
 import ZivletCore
-import ZivletTrigger
+import ZivletUI
 import ZivletWheel
 
-/// Status item and menu (14 §3.1). M2: catalog counts, the bindings line, a DEBUG demo submenu, Quit.
-final class StatusMenu: NSObject {
+/// Status item and menu (14 §3.1, 03b §8.3). The menu is rebuilt from `MenuModel` each time it opens, so it always
+/// shows the current state; each item's action goes to `perform`.
+final class StatusMenu: NSObject, NSMenuDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    private let menu = NSMenu()
+    private let state: () -> MenuState
+    private let perform: (MenuAction) -> Void
     private weak var wheel: WheelController?
 
-    init(bindings: TriggerBindings, wheel: WheelController) {
+    init(wheel: WheelController, state: @escaping () -> MenuState, perform: @escaping (MenuAction) -> Void) {
         self.wheel = wheel
+        self.state = state
+        self.perform = perform
         super.init()
-        item.button?.image = NSImage(systemSymbolName: "circle.hexagongrid", accessibilityDescription: "Zivlet")
-        item.menu = makeMenu(bindings)
+        menu.delegate = self
+        menu.autoenablesItems = false
+        item.menu = menu
+        showPaused(false)
     }
 
-    private func makeMenu(_ bindings: TriggerBindings) -> NSMenu {
-        let menu = NSMenu()
-        menu.addItem(Self.info(StatusSummary.text))
-        menu.addItem(Self.info(bindings.menuSummary))
+    /// A paused Zivlet shows a paused symbol in the menu bar.
+    func showPaused(_ paused: Bool) {
+        let symbol = paused ? "pause.circle" : "circle.hexagongrid"
+        item.button?.image = NSImage(
+            systemSymbolName: symbol, accessibilityDescription: paused ? "Zivlet, paused" : "Zivlet")
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let entries = MenuModel.make(state: state())
+        entries.forEach { menu.addItem(makeItem($0)) }
         #if DEBUG
-            menu.addItem(.separator())
-            menu.addItem(demoItem())
+            let quitIndex = menu.items.count - 1
+            menu.insertItem(demoItem(), at: quitIndex)
         #endif
-        menu.addItem(.separator())
-        menu.addItem(
-            NSMenuItem(title: "Quit Zivlet", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        return menu
     }
 
-    private static func info(_ title: String) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        item.isEnabled = false
+    private func makeItem(_ entry: MenuEntry) -> NSMenuItem {
+        if entry.isSeparator { return .separator() }
+        let item = NSMenuItem(title: entry.title, action: nil, keyEquivalent: entry.keyEquivalent)
+        item.isEnabled = entry.isEnabled
+        item.subtitle = entry.subtitle
+        if let action = entry.action {
+            item.action = #selector(choose(_:))
+            item.target = self
+            item.representedObject = ActionBox(action)
+        }
+        if !entry.children.isEmpty {
+            let submenu = NSMenu()
+            submenu.autoenablesItems = false
+            entry.children.forEach { submenu.addItem(makeItem($0)) }
+            item.submenu = submenu
+        }
         return item
+    }
+
+    @objc private func choose(_ sender: NSMenuItem) {
+        guard let box = sender.representedObject as? ActionBox else { return }
+        perform(box.action)
     }
 
     #if DEBUG
@@ -63,8 +92,8 @@ final class StatusMenu: NSObject {
     #endif
 }
 
-enum StatusSummary {
-    static var text: String {
-        "\(ConversionCatalog.standard.pairs.count) conversions · \(ToolID.allCases.count) tools"
-    }
+/// `representedObject` needs an object.
+private final class ActionBox {
+    let action: MenuAction
+    init(_ action: MenuAction) { self.action = action }
 }

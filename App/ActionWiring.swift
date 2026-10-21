@@ -12,6 +12,8 @@ final class ActionWiring {
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "actions")
     private let service: ActionService
     private let hud = ActionHUD()
+    /// After every action (a Move adds to the undo history).
+    var onFinished: () -> Void = {}
 
     init(
         undoHistory: UndoHistory, terminalID: @escaping () -> String, undo: @escaping (BatchID) async -> UndoReply
@@ -23,12 +25,18 @@ final class ActionWiring {
     /// Runs the action and shows its result near `point`; the task's value is the result (for the DEBUG demo).
     @discardableResult
     func run(_ action: ActionID, urls: [URL], optionHeld: Bool, near point: CGPoint?) -> Task<ActionResult, Never> {
-        Task { [service, hud, logger] in
+        Task { [service, hud, logger, onFinished] in
             let result = await service.perform(action, urls: urls, optionHeld: optionHeld)
             hud.show(result, near: point)
             Self.log(result, action: action, logger: logger)
+            onFinished()
             return result
         }
+    }
+
+    /// A sentence from elsewhere (an undo from the status menu) as a toast at the centre of the main screen.
+    func announce(_ message: String) {
+        hud.show(.done(toast: message, undo: nil), near: nil)
     }
 
     /// Toasts hold counts and app names only, so they are public; card titles may name files, so they are private.

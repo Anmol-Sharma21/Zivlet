@@ -77,6 +77,9 @@ public actor UndoHistory {
         update(log.recording(UndoEntry(batch: batch, date: date, moves: moves), now: date))
     }
 
+    /// The entries that can still be undone, newest first (the status menu's Recent Results).
+    public func recent() -> [UndoEntry] { log.pruned(now: now()).entries }
+
     /// Nil when the batch is not (or no longer) undoable. Outputs the Trash refused (or items that could not be moved
     /// back) stay in the entry so Undo can be retried; the rest leave it, and an entry with nothing left is removed.
     public func undo(_ batch: BatchID) -> UndoResult? {

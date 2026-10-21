@@ -32,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     private var trigger: TriggerHost?
     private var wheel: WheelController?
-    private var statusMenu: StatusMenu?
+    private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory)
     #if DEBUG
         private let debugHUD = DebugHUD()
     #endif
@@ -53,7 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         trigger.onWheelEffect = { [weak wheel] effect in wheel?.apply(effect) }
         wheel.onDragEnded = { [weak trigger] in trigger?.receive(.dropHandled) }
         wheel.delegate = self
-        statusMenu = StatusMenu(bindings: config.bindings, wheel: wheel)
+        wireMenu(wheel)
         self.wheel = wheel
         self.trigger = trigger
         settings.attach(trigger)
@@ -111,6 +111,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func wireMenu(_ wheel: WheelController) {
+        menu.handlers = MenuHandlers(
+            cancel: { [conversions] batch in Task { await conversions.cancel(batch) } },
+            undo: { [weak self] batch in
+                Task {
+                    guard let self else { return }
+                    self.actions.announce(await self.undo(batch).message)
+                }
+            },
+            settings: { [weak self] in self?.settingsWindow.show() })
+        menu.install(wheel: wheel)
+        actions.onFinished = { [menu] in menu.refreshRecent() }
+    }
+
     /// Undo for conversions and Moves alike; the reply is the sentence the HUD shows.
     private func undo(_ batch: BatchID) async -> UndoReply {
         guard let result = await undoHistory.undo(batch) else {
@@ -119,6 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logger.notice(
             "Undo: \(result.trashed.count) trashed, \(result.restored.count) moved back, \(result.skipped.count) left in place"
         )
+        menu.refreshRecent()
         return UndoReply(message: result.message, canRetry: result.canRetry)
     }
 
@@ -131,6 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func present(_ snapshot: BatchSnapshot) {
         hud.show(snapshot)
+        menu.track(snapshot)
         guard snapshot.isFinished else { return }
         logger.notice("Conversion finished: \(BatchPresentation.logLine(snapshot), privacy: .public)")
         for failure in snapshot.failures {
@@ -141,7 +157,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let published = snapshot.outputs
         if !published.isEmpty {
-            Task { [undoHistory] in await undoHistory.record(snapshot.batch, outputs: published) }
+            Task { [undoHistory, menu] in
+                await undoHistory.record(snapshot.batch, outputs: published)
+                menu.refreshRecent()
+            }
         }
         let outputs = published.map(\.url)
         if !outputs.isEmpty, settings.revealsResults {
