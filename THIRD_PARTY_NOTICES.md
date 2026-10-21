@@ -29,6 +29,13 @@ Besides these, the app links only Apple system frameworks and the Swift runtime 
 | libwebp (+ mux, demux, sharpyuv) | 1.6.0 | BSD-3-Clause | static library linked into the app (`CWebP`) and inside libavcodec | WebP output (the in-app writer lands in M4 stream B) |
 | resvg / usvg / tiny-skia and their crates | 0.47.0 | resvg Apache-2.0 OR MIT; tiny-skia BSD-3-Clause; the other crates MIT, Apache-2.0, Zlib or BSD (the full list is in `rust-crates.txt` in the app) | static library linked into the app (`CZivletSVG`, through Zivlet's own `zivlet-svg` crate, GPL-3.0-or-later) | SVG input (used from M4 stream B); only `data:` image references are loaded |
 
+Sounds and images that are Zivlet's own, so no third-party licence applies:
+
+- Highlight tick: synthesized at runtime by Zivlet's own code (`ToneSynth`); no recorded sample is bundled.
+- Onboarding practice file: drawn at first use by Zivlet's own code (`OnboardingSample`, a gradient and the word
+  "Practice"); no image is bundled.
+- Menu bar, Settings and HUD symbols: SF Symbols from the system, used under Apple's terms for apps on its platforms.
+
 Tools used during development, not distributed with Zivlet:
 
 | Component | Licence (SPDX) | Use |
