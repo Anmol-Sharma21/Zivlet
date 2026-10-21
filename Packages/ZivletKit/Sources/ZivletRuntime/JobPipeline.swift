@@ -84,12 +84,16 @@ struct JobPipeline: Sendable {
         let plan = try await services.gates.preparation.withPermit { () async throws(JobError) in
             try await engine.prepare(request, workspace: workspace)
         }
-        await noted(admissionNotes + plan.notes)
+        let planned = admissionNotes + plan.notes
+        if !planned.isEmpty { await noted(planned) }
         let lane = plan.lanes.first ?? .cpu
         let output = try await services.gates.semaphore(for: lane).withPermit { () async throws(JobError) in
             try await JobSignposts.interval("execute") { () async throws(JobError) in
                 try await execute(engine, plan: plan, record: record)
             }
+        }
+        if !output.withdrawnNotes.isEmpty {  // what the run found replaces what the plan expected
+            await noted(planned.filter { !output.withdrawnNotes.contains($0) })
         }
         await report(.verifying)
         try await JobSignposts.interval("verify") { () async throws(JobError) in

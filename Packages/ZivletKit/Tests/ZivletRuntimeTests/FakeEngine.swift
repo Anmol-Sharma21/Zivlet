@@ -14,6 +14,8 @@ struct FakeEngine: Engine {
     var prepareError: JobError?
     var verifyError: JobError?
     var notes: [PlanNote] = []
+    /// Plan notes `execute` takes back (what the run found differs from what the plan expected).
+    var withdrawn: [PlanNote] = []
     var body: Body = { _, _ throws(JobError) in }
     /// After `body` so trailing closures still bind to `body`.
     var onPrepare: @Sendable () async -> Void = {}
@@ -42,7 +44,7 @@ struct FakeEngine: Engine {
         } catch {
             throw .diskFull
         }
-        return StagedOutput(format: plan.outputFormat, url: plan.stagedFile, byteCount: 3)
+        return StagedOutput(format: plan.outputFormat, url: plan.stagedFile, byteCount: 3, withdrawnNotes: withdrawn)
     }
 
     func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {

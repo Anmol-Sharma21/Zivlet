@@ -100,7 +100,7 @@ struct ImageOrientationTests {
             source: input, destinationType: "com.compuserve.gif", output: .raster, frames: [0], flattenAlpha: false,
             quality: nil, tiffLZW: false, expectedSize: Self.displayed)
         let staged = dir.appending(path: "out.gif")
-        try await offPool { try ImagePipeline.run(spec, to: staged, cancel: CancellationFlag()) }
+        _ = try await offPool { try ImagePipeline.run(spec, to: staged, cancel: CancellationFlag()) }
         try Self.expectBaked(staged, "gif o\(orientation)")
     }
 

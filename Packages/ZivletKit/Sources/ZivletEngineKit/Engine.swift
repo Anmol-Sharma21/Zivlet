@@ -18,11 +18,25 @@ public struct StagedOutput: Sendable, Equatable, Codable {
     public let format: FormatID
     public let url: URL
     public let byteCount: Int64
+    /// Plan notes the run took back: what it found differs from what the plan expected (an alpha channel with no
+    /// transparent pixel had nothing to flatten).
+    public let withdrawnNotes: [PlanNote]
 
-    public init(format: FormatID, url: URL, byteCount: Int64) {
+    public init(format: FormatID, url: URL, byteCount: Int64, withdrawnNotes: [PlanNote] = []) {
         self.format = format
         self.url = url
         self.byteCount = byteCount
+        self.withdrawnNotes = withdrawnNotes
+    }
+
+    private enum CodingKeys: String, CodingKey { case format, url, byteCount, withdrawnNotes }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            format: try c.decode(FormatID.self, forKey: .format), url: try c.decode(URL.self, forKey: .url),
+            byteCount: try c.decode(Int64.self, forKey: .byteCount),
+            withdrawnNotes: try c.decodeIfPresent([PlanNote].self, forKey: .withdrawnNotes) ?? [])
     }
 }
 

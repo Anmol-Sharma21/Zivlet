@@ -24,10 +24,28 @@ struct ImageEngineTests {
         let dir = try ImageFixture.directory()
         let (plan, output) = try await run.convert(
             try await offPool { try ImageFixture.alphaPNG(in: dir) }, .png, to: target, in: dir)
-        #expect(plan.notes == [.alphaFlattened])
+        #expect(plan.notes == [.alphaFlattened] && output.withdrawnNotes.isEmpty)
         #expect(try ImageFixture.properties(output.url)[kCGImagePropertyHasAlpha] as? Bool != true)
         #expect(try ImageFixture.pixel(output.url, x: 5, y: 10).allSatisfy { $0 > 245 })
         #expect(try ImageFixture.pixel(output.url, x: 35, y: 10)[2] > 200)
+    }
+
+    /// Screenshots are RGBA with every pixel opaque: flattening changes nothing, so the card must not say it did.
+    @Test(arguments: [FormatID.jpg, .bmp])
+    func anOpaqueImageWithAnAlphaChannelHasNoTransparencyNote(target: FormatID) async throws {
+        let dir = try ImageFixture.directory()
+        let source = try await offPool { try ImageFixture.opaqueRGBAPNG(in: dir) }
+        #expect(try ImageReader.probe(source).hasAlpha)
+        let (plan, output) = try await run.convert(source, .png, to: target, in: dir)
+        #expect(plan.notes == [.alphaFlattened] && output.withdrawnNotes == [.alphaFlattened])
+    }
+
+    @Test func transparencyIsFoundInTheDecodedPixels() throws {
+        let opaque = try ImageFixture.draw(space: try #require(ImageFixture.srgb), alpha: true, opaque: true)
+        let holed = try ImageFixture.draw(space: try #require(ImageFixture.srgb), alpha: true)
+        let plain = try ImageFixture.draw(space: try #require(ImageFixture.srgb))
+        #expect(!ImagePipeline.hasTransparency(opaque) && ImagePipeline.hasTransparency(holed))
+        #expect(!ImagePipeline.hasTransparency(plain))
     }
 
     @Test func transparencyIsKeptWhereTheTargetHasIt() async throws {

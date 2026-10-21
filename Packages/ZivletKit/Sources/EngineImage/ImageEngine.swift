@@ -78,20 +78,25 @@ public struct ImageEngine: Engine {
         return try result.get()
     }
 
+    /// A planned "transparency flattened" note is taken back when no flattened frame had a transparent pixel.
     private func run(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
+        var flattenedTransparency = false
         for (index, stage) in plan.stages.enumerated() {
             guard let spec = stage.image else { throw .internalInvariant("image engine got a non-image stage") }
             let (staged, sink, frames) = (plan.stagedFile, context.progress, max(1, spec.frames.count))
-            try await BlockingWork.run { flag throws(JobError) in
+            let transparent = try await BlockingWork.run { flag throws(JobError) in
                 try ImagePipeline.run(spec, to: staged, cancel: flag) { done in
                     sink.report(Self.progress(frames: done, of: frames, stage: index, plan: plan))
                 }
             }
+            flattenedTransparency = flattenedTransparency || transparent
             context.progress.report(Self.progress(frames: frames, of: frames, stage: index, plan: plan))
         }
         var info = stat()
         let size = stat(plan.stagedFile.path, &info) == 0 ? Int64(info.st_size) : 0
-        return StagedOutput(format: plan.outputFormat, url: plan.stagedFile, byteCount: size)
+        let withdrawn = plan.notes.contains(.alphaFlattened) && !flattenedTransparency ? [PlanNote.alphaFlattened] : []
+        return StagedOutput(
+            format: plan.outputFormat, url: plan.stagedFile, byteCount: size, withdrawnNotes: withdrawn)
     }
 
     /// Frames done of the stage's frames, as plan-wide progress (P1-40: images report frames done / total).

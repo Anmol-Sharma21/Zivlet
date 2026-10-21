@@ -12,11 +12,13 @@ import ZivletEngineKit
 /// orientation applied (so it is applied exactly once) and written with orientation 1. Callers run it
 /// through `BlockingWork` (index D-M3-10); `cancel` is polled between frames.
 enum ImagePipeline {
-    /// `framesDone` hears each finished frame (raster and WebP outputs), for frame-based progress.
+    /// `framesDone` hears each finished frame (raster and WebP outputs), for frame-based progress. Returns true when
+    /// a frame that was flattened had a transparent pixel (an alpha channel alone does not count).
+    @discardableResult
     static func run(
         _ spec: ImagePipelineSpec, to staged: URL, cancel: CancellationFlag, limits: PixelLimits = .standard,
         framesDone: (Int) -> Void = { _ in }
-    ) throws(JobError) {
+    ) throws(JobError) -> Bool {
         if let svg = spec.svg { return try SVGPipeline.run(spec, svg, to: staged, cancel: cancel) }
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithURL(spec.source as CFURL, options) else {
@@ -26,15 +28,20 @@ enum ImagePipeline {
         switch spec.output {
         case .raster where spec.webp != nil:
             try writeWebP(source, spec, to: staged, cancel: cancel, budget: budget, framesDone: framesDone)
-        case .raster: try writeRaster(source, spec, to: staged, cancel: cancel, budget: budget, framesDone: framesDone)
-        case .pdf: try ImagePDFWriter.write(source, spec, to: staged, cancel: cancel, budget: budget)
+            return false
+        case .raster:
+            return try writeRaster(
+                source, spec, to: staged, cancel: cancel, budget: budget, framesDone: framesDone)
+        case .pdf:
+            try ImagePDFWriter.write(source, spec, to: staged, cancel: cancel, budget: budget)
+            return false
         }
     }
 
     private static func writeRaster(
         _ source: CGImageSource, _ spec: ImagePipelineSpec, to staged: URL, cancel: CancellationFlag,
         budget start: PixelBudget, framesDone: (Int) -> Void
-    ) throws(JobError) {
+    ) throws(JobError) -> Bool {
         guard
             let destination = CGImageDestinationCreateWithURL(
                 staged as CFURL, spec.destinationType as CFString, spec.frames.count, nil)
@@ -45,14 +52,16 @@ enum ImagePipeline {
             CGImageDestinationSetProperties(destination, file as CFDictionary)
         }
         var budget = start
+        var transparent = false
         for (position, index) in spec.frames.enumerated() {
             if cancel.isCancelled { throw .cancelled }
             budget = try budget.admitting(source, index)
             let delay = timing?.frameProperties(spec.destinationType, position: position) ?? [:]
-            try addFrame(index, of: source, to: destination, spec, extra: delay)
+            transparent = try addFrame(index, of: source, to: destination, spec, extra: delay) || transparent
             framesDone(position + 1)
         }
         guard CGImageDestinationFinalize(destination) else { throw ImageWriteFailure.error(at: staged) }
+        return transparent
     }
 
     /// libwebp instead of ImageIO (D-M4-8): every planned frame decoded upright, within the pixel budget.
@@ -78,11 +87,11 @@ enum ImagePipeline {
 
     /// Copies the frame as stored (tag kept) unless it needs flattening or its orientation baked in
     /// (`OrientationPolicy`); then it is decoded upright once and written with orientation 1. `extra` (an animation
-    /// frame's delay) is added to the encoder properties.
+    /// frame's delay) is added to the encoder properties. True when the frame was flattened and had transparency.
     private static func addFrame(
         _ index: Int, of source: CGImageSource, to destination: CGImageDestination, _ spec: ImagePipelineSpec,
         extra: [CFString: Any]
-    ) throws(JobError) {
+    ) throws(JobError) -> Bool {
         let encode = encodeProperties(spec).merging(extra) { _, new in new }
         let metadata = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any] ?? [:]
         let orientation = metadata[kCGImagePropertyOrientation] as? Int ?? 1
@@ -90,9 +99,10 @@ enum ImagePipeline {
         let decodes = converts || spec.decodeToSDR || spec.flattenAlpha
         guard decodes || OrientationPolicy.bakes(orientation, into: spec.destinationType) else {
             CGImageDestinationAddImageFromSource(destination, source, index, encode as CFDictionary)
-            return
+            return false
         }
         let upright = try oriented(source, index, standardRange: spec.decodeToSDR)
+        let transparent = spec.flattenAlpha && hasTransparency(upright)
         let image =
             converts
             ? try redrawn(upright, into: RGBAFrame.srgb, flatten: spec.flattenAlpha)
@@ -100,6 +110,7 @@ enum ImagePipeline {
         var properties = OrientationPolicy.upright(metadata).merging(encode) { _, new in new }
         if converts { properties[kCGImagePropertyProfileName] = nil }
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)
+        return transparent
     }
 
     /// LZW in strips (03b §6.2). A source that carries tile sizes in its TIFF dictionary (HEIC, some cameras) makes
@@ -134,6 +145,27 @@ enum ImagePipeline {
         return image
     }
 
+    /// True when a pixel of `image` is not fully opaque. The alpha is drawn into an 8-bit alpha-only context (one
+    /// byte per pixel) and scanned eight bytes at a time. If the context cannot be made, the answer is true, which
+    /// keeps the card's note.
+    static func hasTransparency(_ image: CGImage) -> Bool {
+        let opaque: Set<CGImageAlphaInfo> = [.none, .noneSkipLast, .noneSkipFirst]
+        guard !opaque.contains(image.alphaInfo) else { return false }
+        let (width, height) = (image.width, image.height)
+        guard
+            let context = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceGray(),
+                bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue),
+            let data = context.data
+        else { return true }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let rowBytes = context.bytesPerRow
+        return (0..<height).contains { row in
+            AlphaScan.hasTransparency(UnsafeRawPointer(data.advanced(by: row * rowBytes)), count: width)
+        }
+    }
+
     /// Draws `image` over white into an opaque 8-bit context in its own RGB space (sRGB for other models).
     static func flattened(_ image: CGImage) throws(JobError) -> CGImage {
         let rgb = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
@@ -158,6 +190,17 @@ enum ImagePipeline {
         context.draw(image, in: bounds)
         guard let drawn = context.makeImage() else { throw .internalInvariant("cannot redraw the image") }
         return drawn
+    }
+}
+
+/// Any alpha byte below 255 in a row: eight at a time, then the rest.
+enum AlphaScan {
+    static func hasTransparency(_ bytes: UnsafeRawPointer, count: Int) -> Bool {
+        let words = count / 8
+        for word in 0..<words where bytes.loadUnaligned(fromByteOffset: word * 8, as: UInt64.self) != .max {
+            return true
+        }
+        return (words * 8..<count).contains { bytes.load(fromByteOffset: $0, as: UInt8.self) != .max }
     }
 }
 

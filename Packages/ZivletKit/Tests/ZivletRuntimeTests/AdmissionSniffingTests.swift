@@ -79,6 +79,18 @@ struct AdmissionSniffingTests {
         #expect(BatchPresentation.make(last).notes == ["This file is really a PNG; converted as PNG."])
     }
 
+    /// The plan expects transparency to flatten; the engine found none, so the card does not mention it.
+    @Test func aNoteTheEngineWithdrawsIsNotShown() async throws {
+        let box = try Sandbox()
+        let url = try Signature.file("shot.png", Signature.png, in: box)
+        let engine = FakeEngine(notes: [.alphaFlattened], withdrawn: [.alphaFlattened])
+        let scheduler = JobScheduler(engines: [engine], lanes: .standard(performanceCores: 2), records: nil)
+        let service = ConversionService(scheduler: scheduler, factory: JobRequestFactory(fallbackFolder: box.dir))
+        let batch = await service.convert([url], to: .jpg)
+        let last = try #require(await service.snapshots(until: batch).last)
+        #expect(last.items.first?.notes == [] && BatchPresentation.make(last).notes.isEmpty)
+    }
+
     @Test(arguments: [
         (FormatID.png, "a PNG"), (.mp3, "an MP3"), (.avif, "an AVIF"), (.heic, "a HEIC"), (.mkv, "an MKV"),
     ])

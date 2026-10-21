@@ -21,7 +21,9 @@ enum ImageFixture {
     }
 
     /// Left half: opaque red, or fully transparent when `alpha`. Right half: opaque blue.
-    static func draw(space: CGColorSpace, bits: Int = 8, alpha: Bool = false) throws -> CGImage {
+    /// Blue on the right; red on the left unless `alpha` (then transparent there), or `opaque` (an alpha channel
+    /// with every pixel opaque, like a screenshot).
+    static func draw(space: CGColorSpace, bits: Int = 8, alpha: Bool = false, opaque: Bool = false) throws -> CGImage {
         let info: UInt32 =
             space.model == .cmyk
             ? CGImageAlphaInfo.none.rawValue
@@ -35,7 +37,7 @@ enum ImageFixture {
         let blue = space.model == .cmyk ? [1, 1, 0, 0, 1] : [0, 0, 1, 1]
         context.setFillColor(try #require(CGColor(colorSpace: space, components: blue.map { CGFloat($0) })))
         context.fill(CGRect(x: 20, y: 0, width: 20, height: 20))
-        if !alpha {
+        if !alpha || opaque {
             context.setFillColor(try #require(CGColor(colorSpace: space, components: red.map { CGFloat($0) })))
             context.fill(CGRect(x: 0, y: 0, width: 20, height: 20))
         }
@@ -72,6 +74,12 @@ enum ImageFixture {
     static func alphaPNG(in dir: URL) throws -> URL {
         let url = dir.appending(path: "alpha.png")
         try write([draw(space: try #require(srgb), alpha: true)], as: .png, to: url)
+        return url
+    }
+
+    static func opaqueRGBAPNG(in dir: URL) throws -> URL {
+        let url = dir.appending(path: "screenshot.png")
+        try write([draw(space: try #require(srgb), alpha: true, opaque: true)], as: .png, to: url)
         return url
     }
 

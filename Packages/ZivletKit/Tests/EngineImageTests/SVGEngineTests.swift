@@ -91,6 +91,15 @@ struct SVGEngineTests {
         #expect(try ImageFixture.properties(png.output)[kCGImagePropertyHasAlpha] as? Bool == true)
     }
 
+    @Test func anOpaqueDrawingHasNoTransparencyNote() async throws {
+        let svg =
+            #"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>"#
+        let dir = try ImageFixture.directory()
+        let source = try SVGFixture.write(svg, named: "o.svg", in: dir)
+        let (plan, output) = try await run.convert(source, .svg, to: .jpg, in: dir)
+        #expect(plan.notes == [.alphaFlattened] && output.withdrawnNotes == [.alphaFlattened])
+    }
+
     @Test func svgzIsGunzippedWithinLimits() async throws {
         let (_, output) = try await convert(
             { try SVGFixture.writeGzipped(SVGFixture.drawing, named: "d.svgz", in: $0) }, to: .png)

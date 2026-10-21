@@ -120,7 +120,7 @@ public actor JobScheduler {
     }
 
     private func note(_ notes: [PlanNote], job: JobID, batch: BatchID) {
-        guard !notes.isEmpty, states[job]?.isTerminal != true else { return }
+        guard states[job]?.isTerminal != true else { return }
         continuation.yield(.noted(batch, job, notes))
     }
 
