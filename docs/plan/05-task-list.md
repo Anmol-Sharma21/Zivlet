@@ -493,13 +493,17 @@ Open-Tangerine, Dropover, Yoink, NotchDrop, Boring Notch or NotchNook code, stri
 
 | Milestone | Definition | Tasks | Exit check |
 |---|---|---|---|
-| **M5a** | Public beta 0.5: owner priorities 1–3 (OCR, Office/ZIP/any-file lock, PDF lock/unlock/merge/split/compress) on top of the P2 platform | P2-01, P2-10, P2-12, P2-13, P2-19, P2-30, P2-31, P2-33, P2-39, P2-41, P2-43, P2-51, P2-100…P2-119 | Copy Text 12/12 Hindi+English fixtures ≤ 1 % CER; Office lock/unlock round-trips with Word/Excel/PowerPoint (LK-M1, LK-M2); AES ZIP opens in Archive Utility (LK-M4); PDF Lock output AES-256 verified, opens in Preview (ASCII password) |
+| **M5a** | Public beta 0.5: first the notch Drop Box and the Notch HUD (owner, 2026-10-22), then owner priorities 1–3 (OCR, Office/ZIP/any-file lock, PDF lock/unlock/merge/split/compress) on top of the P2 platform | P2-197, P2-115, P2-116, P2-141, P2-55, P2-142, P2-143, P2-01, P2-10, P2-12, P2-13, P2-19, P2-30, P2-31, P2-33, P2-39, P2-41, P2-43, P2-51, P2-100…P2-119 | Drop Box and notch tray rows green (P2-141/55/142/143 acceptance); Notch HUD shows progress, results and toasts at the notch and as a pill on a display without one, 0 TCC prompts; Copy Text 12/12 Hindi+English fixtures ≤ 1 % CER; Office lock/unlock round-trips with Word/Excel/PowerPoint (LK-M1, LK-M2); AES ZIP opens in Archive Utility (LK-M4); PDF Lock output AES-256 verified, opens in Preview (ASCII password) |
 | **M5b** | Public beta 0.6: images, multi-file top 3, share presets, silences | M5a + remaining P2 image/media tool rows + P2-120…P2-139 | Combine (images+PDF), Reel and Stitch golden tests; fit presets land ≤ target first try on corpus; silences A/V offset < 1 frame |
-| **M5c / M5** | Public beta 0.7 = Phase 2 complete: documents, Drop Box + notch, wheels, history, archives, searchable PDF | All P2 rows | 05 M5 checks + P2-140…P2-159 green; size gate ≤ 85 MB hard, report vs 70 MB |
+| **M5c / M5** | Public beta 0.7 = Phase 2 complete: documents, wheels, history, archives, searchable PDF (the Drop Box moved to 0.5 on 2026-10-22) | All P2 rows | 05 M5 checks + P2-140…P2-159 green; size gate ≤ 85 MB hard, report vs 70 MB |
 
 ---
 
-### 9.3 Phase 2, wave 2A — owner priorities 1–3 (→ beta 0.5)
+### 9.3 Phase 2, wave 2A — notch Drop Box and Notch HUD first, then owner priorities 1–3 (→ beta 0.5)
+
+Owner decision 2026-10-22 (00-decisions OWN-PLAN-3, OWN-HUD-1): wave 2A starts with spike P2-197, then P2-115 and
+P2-116 below, then P2-141 → P2-55 → P2-142 → P2-143. Those four Drop Box rows keep their IDs and their text in §9.5
+and §9.1 but ship in 0.5. Order: [17-feature-roadmap §4.2](../design/17-feature-roadmap.md).
 
 | ID | Title | Area | Deps | Size | Acceptance | Satisfies |
 |---|---|---|---|---|---|---|
@@ -518,6 +522,8 @@ Open-Tangerine, Dropover, Yoink, NotchDrop, Boring Notch or NotchNook code, stri
 | P2-112 | Unlock-then-convert (ZIP, PDF) | Runtime | P2-101, P2-106, P2-110 | S | A route whose probe reports `passwordRequired` shows the Unlock sheet before running; decrypted copy only in staging; card says "The converted file won't have a password." | FR-101; lock L-07 |
 | P2-113 | libarchive NFC-on-write vendor patch | Vendor | P2-19 | S | Patch in `Vendor/patches/`, SPDX note; test: ZIP/7z header names are NFC for NFC and NFD inputs | FR-99; lock L-05 |
 | P2-114 | Lock slot label refinement | WheelCore, Wheel | P2-100, P2-106, P2-109, P2-110 | S | One `tools.protect` slot per family; frame 1 shows the provisional label from type; label refines to LOCK / UNLOCK / "LOCK · UNLOCK k of n" from the ≤ 30 ms header probe within ≤ 100 ms p95 without moving any slot; [challenge] `CHANGE PASSWORD` is **not** a slice. A slice that appears only when every item is encrypted changes the frame-1 set (FR-18). It is a mode of the Unlock sheet. "k of n" uses the OWN-2 badge, because the label frame is 82 × 22 pt at 7.5 pt. The pre-drop probe skips dataless/iCloud and TCC-protected items (provisional label kept) | FR-92 |
+| P2-115 | NotchIsland core: shared notch panel | ZivletNotch (new, proposed), ZivletUI | P2-197 | M | Non-activating panel above the menu bar on all Spaces incl. full screen; pure `NotchGeometry` from `safeAreaInsets` and the auxiliary top areas, tested with recorded screen values (notch sizes, no notch, scaled modes) **[TDD]**; collapsed/expanded shapes; hover via our own tracking area (no new permission); click-through outside the drawn shape; top-centre pill on the drop's display when it has no notch; Reduce Motion → fade; one arbiter shared by HUD, tray and the later picker; 0 TCC prompts (TCC diff) **[HW]** | FR-150, FR-133; 17e §2a.3 |
+| P2-116 | Notch HUD: progress and results at the notch | ZivletUI, ZivletNotch, ZivletSettings | P2-115 | M | Re-hosts the `ZivletUI` HUD content: collapsed icon + progress ring; hover → working line with time left and Cancel; done → saved name, sizes, Open / Show in Finder / Undo, drag-out; failure → reason, Retry; action toasts with Undo; "n jobs" with a hover list; same linger rules as the HUD (success 4 s, toast 1.5 s / 4 s with Undo, held while hovered); Settings › General "Show progress and results" (default At the notch on Macs with a notch); existing HUD copy and timing tests pass against the island **[TDD]** **[QA][HW]** | FR-150; 17e §2a.4; OWN-HUD-1 |
 | P2-119 | Public beta 0.5 | Release | M5a rows | S (+ ≈ 1 week of stabilisation, [challenge]) | M5a exit checks; O-12 name decision done (blocks any public artifact); `v0.5.0-beta` | M5a **[OWNER]** |
 
 ---
@@ -546,13 +552,16 @@ Open-Tangerine, Dropover, Yoink, NotchDrop, Boring Notch or NotchNook code, stri
 
 ---
 
-### 9.5 Phase 2, wave 2C — Drop Box + notch, wheels, history, archives, PDF pull-forwards (→ beta 0.7 = M5)
+### 9.5 Phase 2, wave 2C — wheels, history, archives, PDF pull-forwards (→ beta 0.7 = M5)
+
+P2-141, P2-142 and P2-143 below (and P2-55 in §9.1) moved to wave 2A on 2026-10-22; they stay listed here so their
+IDs and acceptance do not move. P2-142's Zip button now depends on P2-111 instead of P2-147.
 
 | ID | Title | Area | Deps | Size | Acceptance | Satisfies |
 |---|---|---|---|---|---|---|
 | P2-140 | Size estimator protocol + tier 0 hot-slice label | Core, WheelCore, Wheel | P2-131, probe cache | M | `estimate(probe, settings) → {value, range, tier}` per engine; tier 0 computed from metadata only before the drop ([challenge]: file size, type, Spotlight pixel size/duration; no content reads, no ffprobe, no dataless download, no TCC-triggering reads during a drag) (≤ 5 ms per slice); hot slice second line "≈ 4.2 MB (−71 %)", "≤ 15.5 MB", "Already smaller", range for constant-quality video; read from cache only on highlight (≤ 1 frame); Settings toggle default on; local estimate-vs-actual log | FR-94; MA-07 |
 | P2-141 | Drop Box core (`ZivletShelfCore`) + shake detector | ZivletShelfCore (new), Trigger | P1-44, P0-22 | M | Immutable `Shelf`/`ShelfItem` (bookmark `.withoutImplicitSecurityScope`, resolve with `.withoutImplicitStartAccessing`); de-dup by file identity; Trash path = missing; `boxes.json` 0600 atomic, schema-versioned; lazy resolve; owned copies only for promise/clipping content under `Box/<id>/`; auto-clear plans; shake detector 4 reversals ≥ 30 pt in 0.6 s (opt-in), 0 false positives on recorded non-shake traces **[TDD]** | FR-132; app P2-55a/d |
-| P2-142 | Drop Box bulk actions | Actions, UI | P2-55, P1-45, P2-147 | M | Share (`NSSharingServicePicker`), AirDrop, Copy (URLs), Copy paths, Move to… / Copy to… (one undo entry), Zip via coordinator, Convert all (drag out with ⇧), Remove, Move to Trash (confirm > 1), Clear (10 s undo toast); per-item failure list; storage line + "Empty box storage" | FR-132; app P2-55c |
+| P2-142 | Drop Box bulk actions | Actions, UI | P2-55, P1-45, P2-111 (Zip only; 2026-10-22, was P2-147) | M | Share (`NSSharingServicePicker`), AirDrop, Copy (URLs), Copy paths, Move to… / Copy to… (one undo entry), Zip via coordinator, Convert all (drag out with ⇧), Remove, Move to Trash (confirm > 1), Clear (10 s undo toast); per-item failure list; storage line + "Empty box storage" | FR-132; app P2-55c |
 | P2-143 | Notch shelf | Actions, TriggerHost, Trigger | P2-141, P2-55 | L | During a file drag the pure `NotchProximity` detector (sampler data, no new permission) expands an island tray from the notch (`safeAreaInsets.top`, `auxiliaryTopLeftArea/RightArea`); drop stashes into the current box; hover/click opens the tray later; panel above the menu bar on all Spaces incl. full screen; non-notch displays get a top-centre pill; per-screen on externals; Reduce Motion → fade; never covers menu-bar items beyond the hover; works alongside the wheel (wheel drop wins when both are targets); P-N1 spike thresholds; 0 TCC prompts (TCC diff) **[QA][HW]** | FR-133; picks notch |
 | P2-144 | Custom wheels v1 (`ZivletPresets`) | ZivletPresets (new), WheelCore, Wheel, UI | P1-46, P2-100 | M | `WheelLayout {mode, scope, order, hidden, accent, sliceColours}`; scope resolution format > family > default; hide/show, reorder, ≤ 12 shown, ≥ 1 per mode; new tools appended (badge); per-mode accent; RGB/contrast maths moved to WheelCore; Settings › Wheels list with live `WheelView` preview; keyboard-mode 1–9 follow order | FR-134; app P2-71 |
 | P2-145 | History v1 (`HistoryLog`) | Runtime, UI | P1-15 | M | Evolves UndoLog; `history.json` 0600 atomic, excluded from backup; one-time migration of `undo.json`; retention Off / 7 / 30 (default) / 90 days, max 500; window with search, filter, Reveal, Undo (24 h, stamp-checked), Re-run (re-validates via throwing init; password tools re-ask), Re-run with…, Copy details, Remove, Clear; menu Recent shows 10; never stores passwords or OCR text | FR-135; app §4 |
@@ -619,7 +628,7 @@ Open-Tangerine, Dropover, Yoink, NotchDrop, Boring Notch or NotchNook code, stri
 | P2-194 | I-V3: Swift `GenerateForegroundInstanceMaskRequest` on 26.x | P2-126 | S | Works → switch back; else keep VN |
 | P2-195 | I-R1 + I-C2: hybrid resize on 12–48 MP HEIC/RAW; idle oxipng/cjxl timings | P2-123, P2-125, P3-102 | S | SSIMULACRA2 ≥ 90; ≤ 0.3 s / 12 MP on idle M1 |
 | P2-196 | P-W5: dwell-to-expand preset ring on the wheel | P2-131 | M | No hitch > 2 frames; dwell 350 ms usable in a moderated test (n ≥ 5); else picker fallback |
-| P2-197 | P-N1: notch proximity and island panel; [challenge] also: TCC/iCloud behaviour of pre-drop reads (with P0-33) | P2-143, P2-114, P2-140 | M | Panel above menu bar in full screen on 26.x; drag-near-notch detection ≥ 95 % with 0 accidental opens over 200 recorded normal drags; no TCC prompt **[HW]** |
+| P2-197 | P-N1: notch proximity and island panel; [challenge] also: TCC/iCloud behaviour of pre-drop reads (with P0-33). First row of wave 2A since 2026-10-22 | P2-115, P2-116, P2-143, P2-114, P2-140 | M | Panel above menu bar in full screen on 26.x; drag-near-notch detection ≥ 95 % with 0 accidental opens over 200 recorded normal drags; no TCC prompt **[HW]** |
 | P2-198 | S-BLANK-1: 300-page real scan set | P2-152 | S | 0 content pages classed blank; ≥ 95 % blanks caught |
 | P2-199 | AI-S4/AI-S5: real-footage fit calibration; Gmail 18/24 MB and WhatsApp 15.5 MB real sends | P2-131, P2-140 | S | Preset targets confirmed **[OWNER]** |
 | P3-190 | AI-S1/AI-S2: diarisation on real meetings; FluidAudio CoreML pack size + model licences | P4-100 | M | DER ≤ 20 % **with the CoreML route** (only sherpa-onnx is measured so far, [challenge]); data-only pack ≤ 20 MB; licences GPL-distributable, including the embedding model |
@@ -653,8 +662,9 @@ New owner dependencies for §8: OWN-PDF-1…4, OWN-LK-1, OWN-ARC-1/2, OWN-APP-1�
 | Block | Rows | S / M / L | Engineer-days | Weeks (5 d) |
 |---|---|---|---|---|
 | Wave 2A | P2-100…114, P2-119 + growth of P2-33/39/43 | 11 S / 8 M / 0 L | 35 | ≈ 7 |
+| Wave 2A, added 2026-10-22 | P2-115, P2-116 (new); P2-141/142/143 moved from 2C | 0 S / 4 M / 1 L | 19.5 | ≈ 4 |
 | Wave 2B | P2-120…135, P2-139 | 8 S / 7 M / 2 L | 44 | ≈ 9 |
-| Wave 2C | P2-140…153, P2-159 | 3 S / 11 M / 1 L | 43.5 | ≈ 9 |
+| Wave 2C | P2-140…153, P2-159 (P2-141/142/143 now ship in 2A: subtract 2 M / 1 L, 13.5 d) | 3 S / 11 M / 1 L | 43.5 | ≈ 9 |
 | Phase 2 spikes | P2-190…199 | 8 S / 2 M | 14 | ≈ 3 |
 | Phase 3 additions | P3-100…113 (excl. slot) + P3-190…192 | 5 S / 10 M / 1 L | 42.5 | ≈ 8.5 |
 | Phase 4 additions | P4-100…111 | 1 S / 9 M / 2 L | 43 | ≈ 8.5 |
