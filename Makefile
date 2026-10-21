@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle
+.PHONY: test smoke coverage lint format app demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -37,6 +37,11 @@ demo:
 # Debug only: one conversion through the drop path without a drag (FILE=/abs/in.ext TO=png [CANCEL_MS=300]).
 convert-demo:
 	Scripts/demo-convert.sh "$${FILE:?set FILE to an absolute input path}" "$${TO:?set TO to a target format}" "$${CANCEL_MS:-}"
+
+# Debug only: one action through the drop path without a drag (FILE=/abs/path ACTION=copyFilePath [OPTION=YES]).
+# ACTION is copyTo, copyFilePath or openInTerminal; AirDrop and Move need a person.
+action-demo:
+	Scripts/demo-action.sh "$${FILE:?set FILE to an absolute path}" "$${ACTION:?set ACTION to copyTo, copyFilePath or openInTerminal}" "$${OPTION:-NO}"
 
 # P1-21, P1-50: build Release with the vendored helpers; fail on a Homebrew path or an incomplete bundle.
 release-check:

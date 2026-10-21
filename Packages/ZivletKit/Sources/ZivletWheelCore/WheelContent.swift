@@ -66,9 +66,15 @@ public enum WheelContent: Sendable, Equatable {
     }
 }
 
-/// Minimal capability gate (03a §3.5): targets whose engine is missing are hidden.
+/// Minimal capability gate (03a §3.5): targets whose engine is missing are hidden, and so are actions this build
+/// does not have yet (Float until its shelf exists, D-M4-13).
 public struct CapabilitySnapshot: Sendable, Equatable, Codable {
     public static let full = CapabilitySnapshot(unavailableTargets: [])
     public let unavailableTargets: Set<FormatID>
-    public init(unavailableTargets: Set<FormatID>) { self.unavailableTargets = unavailableTargets }
+    public let unavailableActions: Set<ActionID>
+
+    public init(unavailableTargets: Set<FormatID>, unavailableActions: Set<ActionID> = []) {
+        self.unavailableTargets = unavailableTargets
+        self.unavailableActions = unavailableActions
+    }
 }

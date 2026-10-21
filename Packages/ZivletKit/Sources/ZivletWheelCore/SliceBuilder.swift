@@ -27,7 +27,7 @@ public struct SliceBuilder: Sendable {
         switch mode {
         case .convert: return convertContent(items, capabilities)
         case .tools: return toolContent(items)
-        case .actions: return actionContent(items)
+        case .actions: return actionContent(items, capabilities)
         }
     }
 
@@ -58,10 +58,10 @@ public struct SliceBuilder: Sendable {
         return .slices(ids.map(toolSlice))
     }
 
-    /// The six actions in fixed order for any local selection, folders included (03a §2.6).
-    private func actionContent(_ items: [SelectionItem]) -> WheelContent {
+    /// The actions in fixed order for any local selection, folders included (03a §2.6), minus unavailable ones.
+    private func actionContent(_ items: [SelectionItem], _ caps: CapabilitySnapshot) -> WheelContent {
         guard items.allSatisfy(\.isLocal) else { return .empty(.onlyLocalItems) }
-        return .slices(ActionID.allCases.map(actionSlice))
+        return .slices(ActionID.allCases.filter { !caps.unavailableActions.contains($0) }.map(actionSlice))
     }
 
     private func toolSlice(_ id: ToolID) -> WheelSlice {

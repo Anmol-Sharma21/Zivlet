@@ -24,7 +24,6 @@ struct UndoReply {
 /// on that batch.
 final class ResultHUD {
     static let size = NSSize(width: 360, height: 132)
-    static let margin: CGFloat = 12
     static let successLinger = Duration.seconds(6)
 
     var onCancel: (BatchID) -> Void = { _ in }
@@ -123,15 +122,8 @@ final class ResultHUD {
         }
     }
 
-    /// Below-right of the drop point, kept 12 pt inside the visible frame of that screen.
     private func place() {
-        let screens = NSScreen.screens
-        let point = anchor ?? NSScreen.main.map { CGPoint(x: $0.visibleFrame.midX, y: $0.visibleFrame.midY) } ?? .zero
-        guard let screen = screens.first(where: { $0.frame.contains(point) }) ?? NSScreen.main else { return }
-        let visible = screen.visibleFrame.insetBy(dx: Self.margin, dy: Self.margin)
-        let x = min(max(point.x + 16, visible.minX), visible.maxX - Self.size.width)
-        let y = min(max(point.y - 16 - Self.size.height, visible.minY), visible.maxY - Self.size.height)
-        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        if let origin = HUDPlacement.origin(near: anchor, size: Self.size) { panel.setFrameOrigin(origin) }
     }
 }
 

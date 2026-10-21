@@ -89,6 +89,14 @@ struct SliceBuilderTests {
         #expect(targets(content) == ActionID.allCases.map(SliceTarget.action))
     }
 
+    @Test func floatIsHiddenWhileUnavailableAndOrderIsKept() {
+        let snapshot = CapabilitySnapshot(unavailableTargets: [], unavailableActions: [.pinFloating])
+        let content = builder.content(for: .actions, items: files(.txt), capabilities: snapshot)
+        #expect(content.slices.map(\.label) == ["AIRDROP", "COPY", "MOVE", "COPY PATH", "TERMINAL"])
+        #expect(builder.content(for: .actions, items: files(.txt)).slices.count == 6)
+        #expect(CapabilitySnapshot.full.unavailableActions.isEmpty)
+    }
+
     @Test func emptyStateCopy() {
         #expect(builder.message(for: .noInstalledConverter(.gz)) == "GZIP needs an engine that isn't installed")
         #expect(builder.message(for: .noTools(.ogg)) == "No tools for OGG files")

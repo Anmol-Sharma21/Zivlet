@@ -1,4 +1,5 @@
 import AppKit
+import ZivletActions
 import ZivletCore
 import ZivletRuntime
 import ZivletTrigger
@@ -8,7 +9,8 @@ import ZivletWheelCore
 import os
 
 /// Composition root only (02 ADR-02, 14 §3.1): builds the trigger host, the wheel, the conversion service, the result
-/// HUD and the status menu, and wires them. A drop on a conversion slice starts a batch (05 P1-33).
+/// HUD, the actions and the status menu, and wires them. A drop on a conversion slice starts a batch (05 P1-33); a
+/// drop on an action petal runs the action (P1-44, P1-45).
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Debug builds only: `-ZivletFlagsMonitor YES` adds the global `flagsChanged` monitor for spike P-T2 (off by
     /// default, 03a §1.8). Its permission behaviour is unknown, so Release never reads the default.
@@ -21,6 +23,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let conversions = ConversionService.standard()
     private let undoHistory = UndoHistory()
     private let hud = ResultHUD()
+    private lazy var actions = ActionWiring(undoHistory: undoHistory) { [weak self] batch in
+        await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
+    }
     private var trigger: TriggerHost?
     private var wheel: WheelController?
     private var statusMenu: StatusMenu?
@@ -51,7 +56,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observeConversions()
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
         Task {
-            wheel.capabilities = CapabilitySnapshot(unavailableTargets: await conversions.unavailableTargets())
+            wheel.capabilities = CapabilitySnapshot(
+                unavailableTargets: await conversions.unavailableTargets(),
+                unavailableActions: ActionWiring.unavailableActions)
             await wheel.prewarm()
             launchDemoIfRequested()
         }
@@ -88,13 +95,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func wireHUD() {
         hud.onCancel = { [conversions] batch in Task { await conversions.cancel(batch) } }
         hud.onReveal = { urls in NSWorkspace.shared.activateFileViewerSelecting(urls) }
-        hud.onUndo = { [logger, undoHistory] batch in
-            guard let result = await undoHistory.undo(batch) else {
-                return UndoReply(message: "This can no longer be undone.", canRetry: false)
-            }
-            logger.notice("Undo: \(result.trashed.count) moved to the Trash, \(result.skipped.count) left in place")
-            return UndoReply(message: result.message, canRetry: result.canRetry)
+        hud.onUndo = { [weak self] batch in
+            await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
         }
+    }
+
+    /// Undo for conversions and Moves alike; the reply is the sentence the HUD shows.
+    private func undo(_ batch: BatchID) async -> UndoReply {
+        guard let result = await undoHistory.undo(batch) else {
+            return UndoReply(message: "This can no longer be undone.", canRetry: false)
+        }
+        logger.notice(
+            "Undo: \(result.trashed.count) trashed, \(result.restored.count) moved back, \(result.skipped.count) left in place"
+        )
+        return UndoReply(message: result.message, canRetry: result.canRetry)
     }
 
     private func observeConversions() {
@@ -128,6 +142,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @discardableResult
     private func handle(_ selection: WheelSelection, near point: CGPoint?) -> Task<BatchID, Never>? {
         logger.notice("Wheel selection: \(selection.summary(), privacy: .public)")
+        if case .action(let action) = selection.target {
+            actions.run(action, urls: selection.urls, optionHeld: selection.optionHeld, near: point)
+            return nil
+        }
         guard case .convert(let format) = selection.target else {
             #if DEBUG
                 debugHUD.show(selection.summary())
@@ -140,13 +158,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// DEBUG: `-ZivletDemoWheel <mode>` shows the wheel without a drag; `-ZivletDemoConvert <path> <format>
-    /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, so end-to-end checks need no drag.
+    /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
+    /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, so end-to-end checks need no drag.
     private func launchDemoIfRequested() {
         #if DEBUG
             do {
                 let arguments = ProcessInfo.processInfo.arguments
                 if let scenario = try DemoScenario.parse(arguments: arguments) { wheel?.showDemo(scenario) }
                 if let demo = try DemoConversion.parse(arguments: arguments) { runDemo(demo) }
+                if let demo = try DemoAction.parse(arguments: arguments) {
+                    let selection = WheelSelection(
+                        mode: .actions, target: .action(demo.action), urls: [demo.url], optionHeld: demo.optionHeld)
+                    handle(selection, near: nil)
+                }
             } catch {
                 logger.error("Demo arguments refused: \(String(describing: error), privacy: .private)")
             }
