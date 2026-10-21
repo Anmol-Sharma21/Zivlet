@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # P1-21 acceptance: a Release build must not contain a Homebrew tool path, so it can never pick up an unbundled
 # ffmpeg. Builds the Release app into build/ReleaseCheck, scans every Mach-O file in it, then checks the bundled
-# helpers and their libraries (P1-50, Scripts/check-bundle.sh) and every signature (P1-52, report-only while ad-hoc).
+# helpers and their libraries (P1-50, Scripts/check-bundle.sh), every signature (P1-52, report-only while
+# ad-hoc) and the installed size (P1-52).
 source "$(dirname "$0")/env.sh"
 cd "$REPO_ROOT"
 DERIVED="$REPO_ROOT/build/ReleaseCheck"
@@ -31,3 +32,4 @@ if (( found )); then exit 1; fi
 echo "Release build contains no Homebrew path."
 "$REPO_ROOT/Scripts/check-bundle.sh" "$APP"
 "$REPO_ROOT/Scripts/verify-signatures.sh" "$APP"
+"$REPO_ROOT/Scripts/size-gate.sh" "$APP"
