@@ -182,7 +182,8 @@ struct MediaEngineTests {
     /// A helper that could not start (EMFILE) does not hide routes; the job reports the real cause.
     @Test func aHelperThatCannotStartIsReportedAsSuchNotAsMissing() async throws {
         let rig = try MediaRig(probes: [:])
-        let engine = MediaEngine(locator: rig.locator, runner: FakeRunner(failure: .launchFailed(errno: EMFILE)))
+        let engine = MediaEngine(
+            locator: rig.locator, runner: FakeRunner(failure: .launchFailed(errno: EMFILE)), integrity: rig.integrity)
         #expect(await engine.availability(of: ConversionPair(source: .wav, target: .mp3)) == .available)
         let request = try JobRequest(
             input: try rig.input("a.wav", .wav), operation: .convert(.mp3), destination: rig.dir)
@@ -201,6 +202,29 @@ struct MediaEngineTests {
         }
         let lists = rig.runner.requests.filter { ["-encoders", "-filters"].contains($0.arguments.last ?? "") }
         #expect(lists.count == 2)
+    }
+
+    /// A11: a bundled helper whose signature fails hides the media routes and fails jobs with a reinstall message.
+    @Test func aDamagedHelperHidesTheRoutesAndFailsJobs() async throws {
+        let rig = try MediaRig(probes: ["tone.wav": Self.wav], integrity: CountingIntegrity(fails: true))
+        #expect(
+            await rig.engine.availability(of: ConversionPair(source: .wav, target: .mp3)) == .unavailable(["signature"])
+        )
+        let request = try rig.request("tone.wav", .wav, to: .mp3)
+        await #expect(throws: JobError.engineDamaged(.media)) {
+            try await rig.engine.prepare(request, workspace: rig.workspace(request))
+        }
+        #expect(!rig.runner.requests.contains { $0.executable.lastPathComponent == "ffprobe" })
+    }
+
+    @Test func concurrentFirstJobsCheckTheHelpersOnce() async throws {
+        let rig = try MediaRig(probes: ["tone.wav": Self.wav], delay: .milliseconds(20))
+        let (engine, request) = (rig.engine, try rig.request("tone.wav", .wav, to: .mp3))
+        let workspace = rig.workspace(request)
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<8 { group.addTask { _ = try? await engine.prepare(request, workspace: workspace) } }
+        }
+        #expect(rig.integrity.calls == 1)
     }
 
     @Test func handlesMediaPairsOnly() throws {

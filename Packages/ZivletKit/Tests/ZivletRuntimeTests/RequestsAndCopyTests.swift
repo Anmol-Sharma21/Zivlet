@@ -55,7 +55,7 @@ struct RequestsAndCopyTests {
         .engineMissing(.media), .engineMissing(.image), .invalidDestination, .permissionDenied(folder: "/Volumes/Card"),
         .diskFull, .processFailed(status: 1, stderrTail: "a\nb"), .crashed(signal: 11), .stalled, .cancelled,
         .verificationFailed("short"), .publishFailed(errno: EACCES), .internalInvariant("bug"),
-        .helperFailed(errno: EMFILE), .writeFailed("encoder"),
+        .helperFailed(errno: EMFILE), .writeFailed("encoder"), .engineDamaged(.media), .engineDamaged(.image),
     ]
 
     @Test(arguments: everyError)
@@ -72,6 +72,13 @@ struct RequestsAndCopyTests {
         #else
             #expect(!detail.contains("/opt/homebrew") && !detail.contains("/usr/local"))
         #endif
+    }
+
+    @Test func aDamagedEngineAsksForAReinstall() {
+        #expect(
+            JobErrorCopy.copy(for: .engineDamaged(.media)).message
+                == "Zivlet's media engine is damaged. Reinstall Zivlet to fix it.")
+        #expect(JobErrorCopy.copy(for: .engineDamaged(.image)).message.contains("Reinstall Zivlet"))
     }
 
     @Test func aHelperThatCannotStartSaysWhy() {

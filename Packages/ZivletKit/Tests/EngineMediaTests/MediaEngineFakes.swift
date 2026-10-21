@@ -1,5 +1,6 @@
 import EngineTestSupport
 import Foundation
+import Synchronization
 import ZivletCore
 import ZivletEngineKit
 
@@ -23,19 +24,38 @@ enum HomebrewLists {
     static let full = FFmpegCapabilities(encoders: Set(encoders + ["libvorbis"]), filters: Set(filters + ["zscale"]))
 }
 
+/// A helper signature check for engine tests: passes or throws `engineDamaged(.media)`, and counts its calls.
+final class CountingIntegrity: HelperIntegrityChecking {
+    let fails: Bool
+    private let count = Mutex(0)
+
+    init(fails: Bool = false) {
+        self.fails = fails
+    }
+
+    var calls: Int { count.withLock { $0 } }
+
+    func check(_ tools: MediaTools) throws(JobError) {
+        count.withLock { $0 += 1 }
+        if fails { throw .engineDamaged(.media) }
+    }
+}
+
 /// A scripted ffmpeg/ffprobe pair for engine unit tests. `probes` maps a probed file name to its ffprobe JSON; the
 /// hidden staged file answers to the key "staged".
 struct MediaRig {
     let dir: URL
     let runner: FakeRunner
     let locator: EngineLocator
+    let integrity: CountingIntegrity
     let engine: MediaEngine
 
     static let progress = "out_time_us=500000\nprogress=continue\nout_time_us=1000000\nprogress=end\n"
 
     init(
         probes: [String: String], ffmpeg: SubprocessResult = FakeRunner.result(MediaRig.progress),
-        encoders: [String] = HomebrewLists.encoders, locates: Bool = true, delay: Duration? = nil
+        encoders: [String] = HomebrewLists.encoders, locates: Bool = true, delay: Duration? = nil,
+        integrity: CountingIntegrity = CountingIntegrity()
     ) throws {
         dir = FileManager.default.temporaryDirectory.appending(path: "zivlet-media-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -54,7 +74,8 @@ struct MediaRig {
         }
         locator = EngineLocator(
             bundledHelpers: dir, environment: [:], developmentDirectories: [], isExecutable: { _ in locates })
-        engine = MediaEngine(locator: locator, runner: runner)
+        self.integrity = integrity
+        engine = MediaEngine(locator: locator, runner: runner, integrity: integrity)
     }
 
     func input(_ name: String, _ format: FormatID) throws -> InputItem {

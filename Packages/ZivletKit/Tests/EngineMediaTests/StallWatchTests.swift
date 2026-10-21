@@ -87,7 +87,7 @@ struct StallWatchTests {
     @Test func anEncodeWhoseOutputTimeStopsIsTornDownAsStalled() async throws {
         let rig = try MediaRig(probes: ["tone.wav": MediaEngineTests.wav])
         let engine = MediaEngine(
-            locator: rig.locator, runner: HangingFFmpeg(base: rig.runner),
+            locator: rig.locator, runner: HangingFFmpeg(base: rig.runner), integrity: rig.integrity,
             stall: StallPolicy(limit: .milliseconds(150), interval: .milliseconds(10)))
         let request = try rig.request("tone.wav", .wav, to: .mp3)
         let plan = try await engine.prepare(request, workspace: rig.workspace(request))
@@ -98,7 +98,8 @@ struct StallWatchTests {
 
     @Test func cancellingTheJobStillReportsCancelledNotStalled() async throws {
         let rig = try MediaRig(probes: ["tone.wav": MediaEngineTests.wav])
-        let engine = MediaEngine(locator: rig.locator, runner: HangingFFmpeg(base: rig.runner))
+        let engine = MediaEngine(
+            locator: rig.locator, runner: HangingFFmpeg(base: rig.runner), integrity: rig.integrity)
         let request = try rig.request("tone.wav", .wav, to: .mp3)
         let plan = try await engine.prepare(request, workspace: rig.workspace(request))
         let task = Task { try await engine.execute(plan, context: ExecutionContext()) }

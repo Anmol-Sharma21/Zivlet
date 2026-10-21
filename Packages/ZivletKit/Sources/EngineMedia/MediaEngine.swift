@@ -10,24 +10,29 @@ struct ResolvedTools: Sendable {
     let capabilities: FFmpegCapabilities
 }
 
-/// Locates ffmpeg and probes it on first use. Concurrent first jobs share one lookup and probe; a missing engine is not
-/// cached, so installing one takes effect.
+/// Locates ffmpeg, checks a bundled helper's signature (A11) and probes it on first use. Concurrent first jobs share one
+/// lookup, check and probe; a missing or damaged engine is not cached, so reinstalling takes effect.
 struct MediaToolbox: Sendable {
     private let locator: EngineLocator
     private let runner: any ProcessRunning
+    private let integrity: any HelperIntegrityChecking
     private let cacheDirectory: URL?
     private let shared = SharedLoad<ResolvedTools>()
 
-    init(locator: EngineLocator, runner: any ProcessRunning, cacheDirectory: URL?) {
+    init(
+        locator: EngineLocator, runner: any ProcessRunning, integrity: any HelperIntegrityChecking, cacheDirectory: URL?
+    ) {
         self.locator = locator
         self.runner = runner
+        self.integrity = integrity
         self.cacheDirectory = cacheDirectory
     }
 
     func resolve() async throws(JobError) -> ResolvedTools {
-        let (locator, runner, cacheDirectory) = (locator, runner, cacheDirectory)
+        let (locator, runner, integrity, cacheDirectory) = (locator, runner, integrity, cacheDirectory)
         return try await shared.value { () async throws(JobError) in
             let tools = try locator.locateMediaTools()
+            try integrity.check(tools)
             let probe = CapabilityProbe(tools: tools, runner: runner, cacheDirectory: cacheDirectory)
             return ResolvedTools(tools: tools, capabilities: try await probe.capabilities())
         }
@@ -47,9 +52,11 @@ public struct MediaEngine: Engine {
 
     public init(
         locator: EngineLocator = EngineLocator(), runner: any ProcessRunning = SubprocessRunner(),
-        capabilityCache: URL? = nil, registry: FormatRegistry = .standard, stall: StallPolicy = .standard
+        integrity: any HelperIntegrityChecking = SignedHelperCheck(), capabilityCache: URL? = nil,
+        registry: FormatRegistry = .standard, stall: StallPolicy = .standard
     ) {
-        self.toolbox = MediaToolbox(locator: locator, runner: runner, cacheDirectory: capabilityCache)
+        self.toolbox = MediaToolbox(
+            locator: locator, runner: runner, integrity: integrity, cacheDirectory: capabilityCache)
         self.runner = runner
         self.registry = registry
         self.stall = stall
@@ -77,6 +84,9 @@ public struct MediaEngine: Engine {
         switch error {
         case .helperFailed, .cancelled:
             return .available
+        case .engineDamaged:
+            logger.error("Media engine damaged: its helper failed the signature check")
+            return .unavailable(["signature"])
         default:
             logger.error(
                 "Media engine unavailable: \(error.logDescription, privacy: .public) \(String(describing: error), privacy: .private)"

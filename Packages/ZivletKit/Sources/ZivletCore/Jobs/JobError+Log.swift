@@ -9,6 +9,7 @@ extension JobError {
         case .routeUnavailable(let source, let target, let missing):
             "routeUnavailable(\(source.rawValue) → \(target.rawValue), missing: \(missing.joined(separator: ", ")))"
         case .engineMissing(let engine): "engineMissing(\(engine.rawValue))"
+        case .engineDamaged(let engine): "engineDamaged(\(engine.rawValue))"
         case .invalidDestination: "invalidDestination"
         case .permissionDenied: "permissionDenied"
         case .diskFull: "diskFull"

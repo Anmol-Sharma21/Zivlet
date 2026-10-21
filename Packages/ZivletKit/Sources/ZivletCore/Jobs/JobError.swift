@@ -24,6 +24,8 @@ public enum JobError: Error, Sendable, Equatable, Codable {
     /// The route exists but this machine's engine lacks what it needs (an encoder, a filter, a renderer).
     case routeUnavailable(FormatID, FormatID, [String])
     case engineMissing(EngineID)
+    /// A bundled helper failed its code-signature check (P1-50): modified, unsigned or outside the app.
+    case engineDamaged(EngineID)
     case invalidDestination
     case permissionDenied(folder: String)
     case diskFull

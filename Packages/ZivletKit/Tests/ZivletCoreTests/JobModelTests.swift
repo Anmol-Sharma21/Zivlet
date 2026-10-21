@@ -65,6 +65,7 @@ struct JobModelTests {
         (.routeUnavailable(.mp3, .ogg, ["libvorbis"]), "routeUnavailable(mp3 → ogg, missing: libvorbis)"),
         (.pairNotSupported(.mp3, .png), "pairNotSupported(mp3 → png)"),
         (.engineMissing(.media), "engineMissing(media)"),
+        (.engineDamaged(.media), "engineDamaged(media)"),
         (.crashed(signal: 9), "crashed(signal: 9)"),
         (.helperFailed(errno: 24), "helperFailed(errno: 24)"),
         (.publishFailed(errno: 17), "publishFailed(errno: 17)"),
@@ -83,7 +84,7 @@ struct JobModelTests {
             .engineMissing(.media), .invalidDestination, .permissionDenied(folder: "/Volumes/RO"), .diskFull,
             .processFailed(status: 1, stderrTail: "boom"), .crashed(signal: 11), .cancelled,
             .verificationFailed("no audio"), .publishFailed(errno: 17), .internalInvariant("x"),
-            .helperFailed(errno: 24), .writeFailed("encoder"),
+            .helperFailed(errno: 24), .writeFailed("encoder"), .engineDamaged(.media),
         ]
         let data = try JSONEncoder().encode(errors)
         #expect(try JSONDecoder().decode([JobError].self, from: data) == errors)
