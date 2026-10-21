@@ -20,7 +20,7 @@ let package = Package(
             name: "ZivletKit",
             targets: [
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "EngineMedia", "EngineImage",
-                "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions", "ZivletSettings",
+                "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions", "ZivletSettings", "ZivletUI",
             ])
     ],
     targets: [
@@ -42,6 +42,13 @@ let package = Package(
         .target(name: "ZivletActions", dependencies: ["ZivletCore", "ZivletRuntime"], swiftSettings: shell),
         // Versioned, validated settings values and their UserDefaults store (03b §8.1); no AppKit.
         .target(name: "ZivletSettings", dependencies: ["ZivletTrigger"], swiftSettings: strict),
+        // The app shell's windows and panels: Settings, the status menu model, onboarding, the HUD (14 §3).
+        .target(
+            name: "ZivletUI",
+            dependencies: [
+                "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "ZivletRuntime", "ZivletActions",
+                "ZivletSettings",
+            ], swiftSettings: shell),
         .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: strict),
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
@@ -68,6 +75,7 @@ let package = Package(
         .testTarget(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
         .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings"], swiftSettings: strict),
+        .testTarget(name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport"], swiftSettings: shell),
     ],
     swiftLanguageModes: [.v6]
 )

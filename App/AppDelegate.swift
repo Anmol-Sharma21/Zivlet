@@ -5,6 +5,7 @@ import ZivletRuntime
 import ZivletSettings
 import ZivletTrigger
 import ZivletTriggerHost
+import ZivletUI
 import ZivletWheel
 import ZivletWheelCore
 import os
@@ -23,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let undoHistory = UndoHistory()
     private let hud = ResultHUD()
     private lazy var settings = SettingsWiring(conversions: conversions)
+    private lazy var settingsWindow = SettingsWindowWiring(store: settings.store, conversions: conversions)
     private lazy var actions = ActionWiring(
         undoHistory: undoHistory, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
     ) { [weak self] batch in
@@ -68,6 +70,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) { trigger?.stop() }
+
+    /// Opening Zivlet again while it runs (Finder, Spotlight) opens Settings (03b §8.3).
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        settingsWindow.show()
+        return false
+    }
 
     /// Quit (03a §4.2): cancel running jobs, wait up to 2 s for their cleanup, then let AppKit terminate.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -168,6 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 let arguments = ProcessInfo.processInfo.arguments
                 if let scenario = try DemoScenario.parse(arguments: arguments) { wheel?.showDemo(scenario) }
+                if let pane = SettingsPane.demo(arguments: arguments) { settingsWindow.show(pane) }
                 if let demo = try DemoConversion.parse(arguments: arguments) { runDemo(demo) }
                 if let demo = try DemoAction.parse(arguments: arguments) {
                     let selection = WheelSelection(

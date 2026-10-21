@@ -69,6 +69,13 @@ public actor ConversionService {
         return catalog.distinctTargets.subtracting(available)
     }
 
+    /// Every engine's helper versions, in engine order (Settings › Advanced).
+    public func helperVersions() async -> [HelperVersion] {
+        var versions: [HelperVersion] = []
+        for case let reporter as any HelperVersionReporting in engines { versions += await reporter.helperVersions() }
+        return versions
+    }
+
     /// Settings changed the folder used when a source folder is read-only (01-prd FR-17); later drops use it.
     public func use(fallbackFolder: URL) {
         factory = factory.with(fallbackFolder: fallbackFolder)

@@ -28,6 +28,13 @@ struct MediaToolbox: Sendable {
         self.cacheDirectory = cacheDirectory
     }
 
+    /// The located tools after the signature check, without probing capabilities.
+    func locateChecked() throws(JobError) -> MediaTools {
+        let tools = try locator.locateMediaTools()
+        try integrity.check(tools)
+        return tools
+    }
+
     func resolve() async throws(JobError) -> ResolvedTools {
         let (locator, runner, integrity, cacheDirectory) = (locator, runner, integrity, cacheDirectory)
         return try await shared.value { () async throws(JobError) in

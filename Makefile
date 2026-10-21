@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -33,6 +33,10 @@ app:
 # Debug only: wheel at screen centre without a drag, screenshot in build/ (MODE=convert|tools|actions THEME=glass|solid).
 demo:
 	Scripts/demo-wheel.sh "$${MODE:-convert}" "$${THEME:-glass}"
+
+# Debug only: one Settings pane at launch, window captured to build/settings-<pane>.png (PANE=general|updates|advanced).
+settings-demo:
+	Scripts/demo-settings.sh "$${PANE:-general}"
 
 # Debug only: one conversion through the drop path without a drag (FILE=/abs/in.ext TO=png [CANCEL_MS=300]).
 convert-demo:

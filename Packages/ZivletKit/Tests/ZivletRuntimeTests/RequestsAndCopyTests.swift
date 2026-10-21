@@ -1,4 +1,5 @@
 import Darwin
+import EngineImage
 import Foundation
 import Testing
 import ZivletCore
@@ -63,6 +64,13 @@ struct RequestsAndCopyTests {
         let batch = await service.convert([locked.appending(path: "a.heic")], to: .jpg)
         let last = try #require(await service.snapshots(until: batch).last)
         #expect(last.outputs.map { $0.url.deletingLastPathComponent().lastPathComponent } == ["Chosen"])
+    }
+
+    @Test func helperVersionsComeFromTheEnginesThatReportThem() async {
+        let engines: [any Engine] = [FakeEngine(), ImageEngine()]
+        let scheduler = JobScheduler(engines: engines, lanes: .standard(performanceCores: 2), records: nil)
+        let versions = await ConversionService(scheduler: scheduler, engines: engines).helperVersions()
+        #expect(versions.map(\.name) == ["libwebp", "resvg"])
     }
 
     static let everyError: [JobError] = [
