@@ -4,11 +4,14 @@ import ZivletCore
 public enum ActionError: Error, Sendable, Equatable {
     /// None of the dropped items is a file or folder on this Mac.
     case nothingLocal(ActionID)
+    /// The pasteboard did not take the items or the text.
+    case clipboardRefused
 
     /// One sentence for the result card.
     public var userMessage: String {
         switch self {
         case .nothingLocal(let action): Self.nothingLocalMessage(action)
+        case .clipboardRefused: "Zivlet couldn't write to the clipboard. Try again."
         }
     }
 
