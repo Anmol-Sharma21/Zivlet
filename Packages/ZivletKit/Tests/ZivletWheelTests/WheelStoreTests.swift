@@ -124,6 +124,24 @@ struct WheelStoreTests {
         #expect(ticks.count == 2)
     }
 
+    /// P1-42: a mode switch never carries the old wheel's highlight into the new one.
+    @Test func switchingModeClearsTheHighlight() throws {
+        let s = store()
+        s.present(Fixtures.model(), emptyMessage: nil, appearance: Fixtures.appearance)
+        s.pointer(.slot(1))
+        #expect(s.model?.highlighted == 1)
+        let current = try #require(s.model)
+        s.switchTo(current.switching(to: .tools, content: Fixtures.model(.tools).content), emptyMessage: nil)
+        #expect(s.model?.mode == .tools && s.model?.highlighted == nil)
+        #expect(feedback.events == ["highlight", "switch"])
+    }
+
+    /// Reduce Motion replaces the morph with an 80 ms fade (03a §2.7).
+    @Test func theModeSwitchIsAnEightyMillisecondFadeUnderReduceMotion() {
+        #expect(WheelMotion.modeSwitch(reduceMotion: true) == WheelMotion.Step(duration: 0.08, isFade: true))
+        #expect(WheelMotion.modeSwitch(reduceMotion: false) == WheelMotion.Step(duration: 0.28, isFade: false))
+    }
+
     @Test func soundOffPlaysNothingAndHapticsStay() {
         let haptics = FakeHaptics()
         let ticks = TickLog()

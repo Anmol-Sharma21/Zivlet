@@ -26,9 +26,7 @@ public struct WheelView: View {
         .frame(width: WheelLayout.geometry.panelSide, height: WheelLayout.geometry.panelSide)
         .animation(introAnimation, value: store.isExpanded)
         .animation(motion(.snappy(duration: WheelTiming.highlight)), value: store.model?.highlighted)
-        .animation(
-            motion(.spring(duration: WheelTiming.morph, bounce: WheelTiming.morphBounce)), value: store.model?.mode
-        )
+        .animation(modeSwitch, value: store.model?.mode)
         .animation(.linear(duration: WheelTiming.shake), value: store.rejectCount)
         // Runs after the update that rendered the collapsed wheel, and is cancelled when a new one is presented.
         .task(id: store.presentation) { [store, presentation = store.presentation] in
@@ -119,6 +117,13 @@ public struct WheelView: View {
     }
 
     /// Reduce Motion turns springs into short fades (03a §2.7).
+    /// The glassEffectID morph, or the Reduce Motion fade (`WheelMotion`).
+    private var modeSwitch: Animation {
+        let step = WheelMotion.modeSwitch(reduceMotion: store.appearance.reduceMotion)
+        return step.isFade
+            ? .easeOut(duration: step.duration) : .spring(duration: step.duration, bounce: WheelTiming.morphBounce)
+    }
+
     private func motion(_ animation: Animation) -> Animation {
         store.appearance.reduceMotion ? .easeOut(duration: WheelTiming.reducedMotionFade) : animation
     }

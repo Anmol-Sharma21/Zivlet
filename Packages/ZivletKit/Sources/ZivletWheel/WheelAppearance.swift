@@ -61,3 +61,17 @@ enum WheelTiming {
     static let hide = 0.08
     static let reducedMotionFade = 0.08
 }
+
+/// Which animation a wheel change gets (03a §2.7): the full motion, or under Reduce Motion an 80 ms fade.
+enum WheelMotion {
+    struct Step: Equatable {
+        let duration: Double
+        let isFade: Bool
+    }
+
+    static func modeSwitch(reduceMotion: Bool) -> Step {
+        reduceMotion
+            ? Step(duration: WheelTiming.reducedMotionFade, isFade: true)
+            : Step(duration: WheelTiming.morph, isFade: false)
+    }
+}
