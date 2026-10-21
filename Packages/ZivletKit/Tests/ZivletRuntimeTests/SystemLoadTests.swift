@@ -73,7 +73,7 @@ struct SystemLoadTests {
         let scheduler = JobScheduler(engines: [FakeEngine()], lanes: .standard(performanceCores: 2), records: nil)
         let service = ConversionService(
             scheduler: scheduler, factory: JobRequestFactory(fallbackFolder: box.dir), loadMonitor: SystemLoadMonitor())
-        let batch = await service.convert([try box.file("a.heic")], to: .jpg)
+        let batch = await service.convert([try box.media("a.heic")], to: .jpg)
         let last = try #require(await service.snapshots(until: batch).last)
         #expect(last.outputs.map(\.url.lastPathComponent) == ["a.jpg"])
     }

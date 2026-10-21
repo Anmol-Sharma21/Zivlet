@@ -22,6 +22,12 @@ struct Sandbox {
         return url
     }
 
+    /// A file whose first bytes match its extension, so admission's content check (G-8) lets it through.
+    @discardableResult
+    func media(_ name: String) throws -> URL {
+        try Signature.file(name, Signature.bytes(forName: name), in: self)
+    }
+
     func request(_ name: String, _ format: FormatID, to target: FormatID, quarantine: Data? = nil) throws -> JobRequest
     {
         let input = try InputItem(url: dir.appending(path: name), format: format, byteCount: 4, quarantine: quarantine)

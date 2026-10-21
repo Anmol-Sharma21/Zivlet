@@ -24,7 +24,8 @@ public struct RequestPlan: Sendable, Equatable {
 }
 
 /// Dropped URLs → validated job requests (P1-33, 03a §4.3 location rule). The boundary check for drops: each URL
-/// must be a regular local file with a known extension and a catalog pair to `target`. Outputs go beside the
+/// must be a regular local file (not a symlink, FIFO or folder) with a known extension, a catalog pair to `target`
+/// and content that agrees (03a §3.2). Outputs go beside the
 /// original, or into `fallbackFolder` (Downloads) when that folder is not writable (01-prd FR-17).
 public struct JobRequestFactory: Sendable {
     let fallbackFolder: URL
@@ -57,14 +58,19 @@ public struct JobRequestFactory: Sendable {
         return RequestPlan(requests: requests, rejections: rejections)
     }
 
+    /// Regular file → known extension → catalog pair → content (the sniffed type wins, G-8) → request.
     private func request(for url: URL, target: FormatID) -> Result<JobRequest, JobError> {
         Result { () throws(JobError) -> JobRequest in
-            let size = try Self.regularFileSize(url)
-            guard let format = registry.formatID(fileName: url.lastPathComponent) else {
+            let header = try InputHeader.read(url)
+            guard let named = registry.formatID(fileName: url.lastPathComponent) else {
                 throw .unsupportedInput(.unknownFormat)
             }
+            guard catalog.canConvert(named, to: target) else { throw .pairNotSupported(named, target) }
+            let verdict = try ContentAdmission.resolve(
+                named: named, header: header.bytes, target: target, catalog: catalog)
             let input = try InputItem(
-                url: url, format: format, byteCount: size, quarantine: Publisher.quarantine(of: url))
+                url: url, format: verdict.format, byteCount: header.byteCount,
+                quarantine: Publisher.quarantine(of: url), namedFormat: verdict.isSniffed ? named : nil)
             return try JobRequest(
                 input: input, operation: .convert(target), destination: destination(for: url), catalog: catalog)
         }
@@ -75,11 +81,4 @@ public struct JobRequestFactory: Sendable {
         return access(folder.path, W_OK) == 0 ? folder : fallbackFolder
     }
 
-    /// Follows symlinks; only regular files qualify (folders, devices and sockets do not).
-    static func regularFileSize(_ url: URL) throws(JobError) -> Int64 {
-        var info = stat()
-        guard url.isFileURL, stat(url.path, &info) == 0 else { throw .unsupportedInput(.unreadable) }
-        guard info.st_mode & S_IFMT == S_IFREG else { throw .unsupportedInput(.notAFile) }
-        return Int64(info.st_size)
-    }
 }

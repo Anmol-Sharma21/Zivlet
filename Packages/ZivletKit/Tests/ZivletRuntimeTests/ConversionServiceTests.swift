@@ -30,7 +30,7 @@ struct ConversionServiceTests {
 
     @Test func retryResubmitsOnlyTheFailedItemsToTheSameTarget() async throws {
         let box = try Sandbox()
-        let urls = [try box.file("a.heic"), try box.file("c.mp3")]
+        let urls = [try box.media("a.heic"), try box.media("c.mp3")]
         let service = Self.service(box: box)
         let batch = await service.convert(urls, to: .jpg)
         _ = await service.snapshots(until: batch)
@@ -43,14 +43,14 @@ struct ConversionServiceTests {
     @Test func aBatchWithNothingFailedCannotBeRetried() async throws {
         let box = try Sandbox()
         let service = Self.service(box: box)
-        let batch = await service.convert([try box.file("a.heic")], to: .jpg)
+        let batch = await service.convert([try box.media("a.heic")], to: .jpg)
         _ = await service.snapshots(until: batch)
         #expect(await service.retry(batch) == nil)
     }
 
     @Test func aDropEndsInAFinishedSnapshotWithOutputsAndRefusals() async throws {
         let box = try Sandbox()
-        let urls = [try box.file("a.heic"), try box.file("b.heic"), try box.file("c.mp3")]
+        let urls = [try box.media("a.heic"), try box.media("b.heic"), try box.media("c.mp3")]
         let service = Self.service(box: box)
         let batch = await service.convert(urls, to: .jpg)
         let snapshots = await service.snapshots(until: batch)
@@ -72,7 +72,7 @@ struct ConversionServiceTests {
     @Test func cancellingABatchCancelsItsJobs() async throws {
         let box = try Sandbox()
         let service = Self.service(FakeEngine(body: FakeEngine.waitsForCancel), box: box)
-        let batch = await service.convert([try box.file("a.heic")], to: .png)
+        let batch = await service.convert([try box.media("a.heic")], to: .png)
         await service.cancel(batch)
         let last = try #require(await service.snapshots(until: batch).last)
         #expect(last.cancelledCount == 1)

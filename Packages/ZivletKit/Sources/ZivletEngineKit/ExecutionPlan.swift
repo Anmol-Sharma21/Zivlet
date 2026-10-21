@@ -38,6 +38,8 @@ public enum Stage: Sendable, Codable, Equatable {
 public enum PlanNote: Sendable, Codable, Hashable {
     case alphaFlattened, firstFrameOnly, svgRasterizedInPDF, hdrToneMapped
     case longGIF(seconds: Int)
+    /// The content was another format than the extension said; it was converted as this one (G-8).
+    case sniffed(FormatID)
 }
 
 public enum PlanError: Error, Equatable, Sendable {

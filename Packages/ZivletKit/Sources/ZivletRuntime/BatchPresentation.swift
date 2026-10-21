@@ -70,7 +70,16 @@ public struct BatchPresentation: Sendable, Equatable {
         case .svgRasterizedInPDF: "The drawing was saved as a picture inside the PDF."
         case .hdrToneMapped: "The HDR picture was saved in standard range."
         case .longGIF(let seconds): "Long clips make very large GIFs; this one is \(minutes(seconds))."
+        case .sniffed(let format): sniffedText(format)
         }
+    }
+
+    /// Labels read with a leading vowel sound take "an": AVIF, AIFF, OGG, OPUS, and the letter names M and S.
+    static let anLabels: Set<String> = ["AVIF", "AIFF", "AVI", "OGG", "OPUS", "MP3", "MP4", "M4A", "MKV", "SVG"]
+
+    static func sniffedText(_ format: FormatID) -> String {
+        let label = FormatRegistry.standard.format(format).wheelLabel
+        return "This file is really \(anLabels.contains(label) ? "an" : "a") \(label); converted as \(label)."
     }
 
     /// "Saved to Downloads because the original folder is read-only." once per fallback folder that got a result.

@@ -59,6 +59,11 @@ struct JobPipeline: Sendable {
         }
     }
 
+    /// What admission learned before the engine ran: the content overrode the extension (G-8).
+    private var admissionNotes: [PlanNote] {
+        request.input.namedFormat == nil ? [] : [.sniffed(request.input.format)]
+    }
+
     /// The job already failed. A staging file that cannot be removed is logged and its job record kept, so the
     /// orphan reaper retries at the next launch. True when the staging is gone.
     private func cleanUp(_ workspace: JobWorkspace) -> Bool {
@@ -79,7 +84,7 @@ struct JobPipeline: Sendable {
         let plan = try await services.gates.preparation.withPermit { () async throws(JobError) in
             try await engine.prepare(request, workspace: workspace)
         }
-        await noted(plan.notes)
+        await noted(admissionNotes + plan.notes)
         let lane = plan.lanes.first ?? .cpu
         let output = try await services.gates.semaphore(for: lane).withPermit { () async throws(JobError) in
             try await execute(engine, plan: plan, record: record)

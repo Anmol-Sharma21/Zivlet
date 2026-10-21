@@ -11,12 +11,12 @@ import ZivletEngineKit
 struct RequestsAndCopyTests {
     @Test func validFilesBecomeRequestsBesideTheOriginal() throws {
         let box = try Sandbox()
-        let photo = try box.file("Photo.HEIC")
+        let photo = try box.media("Photo.HEIC")
         let plan = JobRequestFactory(fallbackFolder: box.dir.appending(path: "Downloads")).requests(
             for: [photo], target: .jpg)
         let request = try #require(plan.requests.first)
         #expect(plan.rejections.isEmpty)
-        #expect(request.input.format == .heic && request.input.byteCount == 4 && request.target == .jpg)
+        #expect(request.input.format == .heic && request.input.byteCount == 76 && request.target == .jpg)
         #expect(request.destination.path == box.dir.path)
     }
 
@@ -40,7 +40,7 @@ struct RequestsAndCopyTests {
         let box = try Sandbox()
         let locked = box.dir.appending(path: "locked")
         try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
-        try Data("x".utf8).write(to: locked.appending(path: "a.png"))
+        try Data(Signature.png).write(to: locked.appending(path: "a.png"))
         try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: locked.path)
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: locked.path) }
         let downloads = box.dir.appending(path: "Downloads")
@@ -53,7 +53,7 @@ struct RequestsAndCopyTests {
         let box = try Sandbox()
         let locked = box.dir.appending(path: "locked")
         try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
-        try Data("x".utf8).write(to: locked.appending(path: "a.heic"))
+        try Data(Signature.heic).write(to: locked.appending(path: "a.heic"))
         try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: locked.path)
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: locked.path) }
         let chosen = box.dir.appending(path: "Chosen", directoryHint: .isDirectory)

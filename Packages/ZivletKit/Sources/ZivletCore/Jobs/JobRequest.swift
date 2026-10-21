@@ -2,20 +2,26 @@ import Foundation
 
 /// One local input file (02 §7.2). Invariant: a file URL with a safe absolute path that names a file, and a
 /// non-negative size. `quarantine` is the source's `com.apple.quarantine` value, copied onto outputs (10 §8.5).
+/// `format` is what the file is converted as; `namedFormat` is the extension's format when the content said
+/// otherwise (G-8: the sniffed type wins), nil when they agree.
 public struct InputItem: Sendable, Hashable, Codable {
     public let url: URL
     public let format: FormatID
     public let byteCount: Int64
     public let quarantine: Data?
+    public let namedFormat: FormatID?
 
-    public init(url: URL, format: FormatID, byteCount: Int64, quarantine: Data? = nil) throws(JobError) {
+    public init(
+        url: URL, format: FormatID, byteCount: Int64, quarantine: Data? = nil, namedFormat: FormatID? = nil
+    ) throws(JobError) {
         guard url.isFileURL, PathRules.isSafeAbsolute(url.path), !url.lastPathComponent.isEmpty,
-            url.path != "/", byteCount >= 0
+            url.path != "/", byteCount >= 0, namedFormat != format
         else { throw .unsupportedInput(.notAFile) }
         self.url = url
         self.format = format
         self.byteCount = byteCount
         self.quarantine = quarantine
+        self.namedFormat = namedFormat
     }
 
     public var fileName: String { url.lastPathComponent }
@@ -63,7 +69,7 @@ public struct JobRequest: Sendable, Hashable, Codable {
 }
 
 extension InputItem {
-    private enum CodingKeys: String, CodingKey { case url, format, byteCount, quarantine }
+    private enum CodingKeys: String, CodingKey { case url, format, byteCount, quarantine, namedFormat }
 
     /// Decoding is a boundary (worker IPC in P2): it runs the same checks as `init`.
     public init(from decoder: any Decoder) throws {
@@ -71,7 +77,8 @@ extension InputItem {
         try self.init(
             url: c.decode(URL.self, forKey: .url), format: c.decode(FormatID.self, forKey: .format),
             byteCount: c.decode(Int64.self, forKey: .byteCount),
-            quarantine: c.decodeIfPresent(Data.self, forKey: .quarantine))
+            quarantine: c.decodeIfPresent(Data.self, forKey: .quarantine),
+            namedFormat: c.decodeIfPresent(FormatID.self, forKey: .namedFormat))
     }
 }
 
