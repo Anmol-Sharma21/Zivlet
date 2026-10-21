@@ -42,16 +42,35 @@ public struct UndoOutput: Sendable, Equatable, Codable {
     var stamp: FileStamp { FileStamp(fileID: fileID, byteCount: byteCount, modified: modified) }
 }
 
-/// One undoable batch (03a §4.7). Move entries arrive with the Move action.
+/// One undoable batch (03a §4.7): the outputs a conversion published, or the items a Move put elsewhere.
 public struct UndoEntry: Sendable, Equatable, Codable {
+    public enum Kind: Sendable, Equatable { case conversion, move }
+
     public let batch: BatchID
     public let date: Date
     public let outputs: [UndoOutput]
+    public let moves: [UndoMove]
 
-    public init(batch: BatchID, date: Date, outputs: [UndoOutput]) {
+    public init(batch: BatchID, date: Date, outputs: [UndoOutput] = [], moves: [UndoMove] = []) {
         self.batch = batch
         self.date = date
         self.outputs = outputs
+        self.moves = moves
+    }
+
+    public var kind: Kind { moves.isEmpty ? .conversion : .move }
+    var isEmpty: Bool { outputs.isEmpty && moves.isEmpty }
+
+    private enum CodingKeys: String, CodingKey { case batch, date, outputs, moves }
+
+    /// Histories written before moves existed have no `moves` key.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            batch: try container.decode(BatchID.self, forKey: .batch),
+            date: try container.decode(Date.self, forKey: .date),
+            outputs: try container.decode([UndoOutput].self, forKey: .outputs),
+            moves: try container.decodeIfPresent([UndoMove].self, forKey: .moves) ?? [])
     }
 }
 
@@ -65,9 +84,9 @@ public struct UndoLog: Sendable, Equatable, Codable {
 
     public init(entries: [UndoEntry] = []) { self.entries = entries }
 
-    /// Adds `entry` as the newest; an entry without outputs has nothing to undo and is not kept.
+    /// Adds `entry` as the newest; an entry without outputs or moves has nothing to undo and is not kept.
     public func recording(_ entry: UndoEntry, now: Date) -> UndoLog {
-        guard !entry.outputs.isEmpty else { return pruned(now: now) }
+        guard !entry.isEmpty else { return pruned(now: now) }
         let others = entries.filter { $0.batch != entry.batch }
         return UndoLog(entries: Array(([entry] + others).prefix(Self.capacity))).pruned(now: now)
     }
@@ -76,13 +95,15 @@ public struct UndoLog: Sendable, Equatable, Codable {
         UndoLog(entries: entries.filter { $0.batch != batch })
     }
 
-    /// The batch's entry with only the outputs at `urls`, in place; removed when none are left.
+    /// The batch's entry with only the outputs (or moved items) at `urls`, in place; removed when none are left.
     public func keeping(_ batch: BatchID, outputs urls: Set<URL>) -> UndoLog {
         UndoLog(
             entries: entries.compactMap { entry in
                 guard entry.batch == batch else { return entry }
-                let kept = entry.outputs.filter { urls.contains($0.url) }
-                return kept.isEmpty ? nil : UndoEntry(batch: entry.batch, date: entry.date, outputs: kept)
+                let kept = UndoEntry(
+                    batch: entry.batch, date: entry.date, outputs: entry.outputs.filter { urls.contains($0.url) },
+                    moves: entry.moves.filter { urls.contains($0.moved) })
+                return kept.isEmpty ? nil : kept
             })
     }
 
@@ -102,6 +123,10 @@ public enum UndoSkipReason: String, Sendable, Equatable, Codable {
     case missing
     /// The Trash refused it (permissions, volume without a Trash).
     case trashFailed
+    /// A moved item's old place is taken by something else now.
+    case originalTaken
+    /// Moving an item back failed (its old folder is gone, permissions); Undo can try again.
+    case moveFailed
 }
 
 public struct UndoSkip: Sendable, Equatable {

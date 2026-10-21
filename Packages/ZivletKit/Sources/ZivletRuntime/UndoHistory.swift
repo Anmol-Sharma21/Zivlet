@@ -42,61 +42,28 @@ public struct UndoStore: Sendable {
     }
 }
 
-/// The outcome of one undo, and the sentence the result card shows for it.
-public struct UndoResult: Sendable, Equatable {
-    public let trashed: [URL]
-    public let skipped: [UndoSkip]
-
-    public init(trashed: [URL], skipped: [UndoSkip]) {
-        self.trashed = trashed
-        self.skipped = skipped
-    }
-
-    /// Some files were refused by the Trash and stay in the history, so Undo can be pressed again.
-    public var canRetry: Bool { skipped.contains { $0.reason == .trashFailed } }
-
-    /// One sentence per outcome, trashed first; "Moved to the Trash." alone when nothing was left in place.
-    public var message: String {
-        guard !skipped.isEmpty else { return "Moved to the Trash." }
-        let moved = trashed.isEmpty ? [] : [Self.files(trashed.count) + " moved to the Trash."]
-        let reasons: [UndoSkipReason] = [.changed, .missing, .trashFailed]
-        let left = reasons.compactMap { reason -> String? in
-            let count = skipped.filter { $0.reason == reason }.count
-            return count == 0 ? nil : Self.sentence(reason, count: count)
-        }
-        return (moved + left).joined(separator: " ")
-    }
-
-    private static func files(_ count: Int) -> String { count == 1 ? "1 file" : "\(count) files" }
-
-    private static func sentence(_ reason: UndoSkipReason, count: Int) -> String {
-        let one = count == 1
-        switch reason {
-        case .changed:
-            return files(count) + " changed since " + (one ? "it was" : "they were") + " saved, so "
-                + (one ? "it was" : "they were") + " left in place."
-        case .missing: return files(count) + (one ? " was" : " were") + " no longer there."
-        case .trashFailed: return files(count) + " couldn't be moved to the Trash; Undo can try again."
-        }
-    }
-}
-
-/// Records finished batches and undoes them (P1-15): the log is loaded once, and every change is written back.
+/// Records finished batches and Moves and undoes them (P1-15): the log is loaded once, and every change is written
+/// back.
 public actor UndoHistory {
     public typealias Trash = @Sendable (URL) throws -> Void
+    /// Moves an item from its current place (first) back to its old one (second); never replaces anything.
+    public typealias MoveBack = @Sendable (URL, URL) throws -> Void
 
     private let store: UndoStore
     private let now: @Sendable () -> Date
     private let trash: Trash
+    private let moveBack: MoveBack
     private var log: UndoLog
 
     public init(
         store: UndoStore = .standard(), now: @escaping @Sendable () -> Date = { Date() },
-        trash: @escaping Trash = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
+        trash: @escaping Trash = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) },
+        moveBack: @escaping MoveBack = { try FileManager.default.moveItem(at: $0, to: $1) }
     ) {
         self.store = store
         self.now = now
         self.trash = trash
+        self.moveBack = moveBack
         log = store.load().pruned(now: now())
     }
 
@@ -105,10 +72,20 @@ public actor UndoHistory {
         update(log.recording(UndoEntry(batch: batch, date: date, outputs: outputs.map(UndoOutput.init)), now: date))
     }
 
-    /// Nil when the batch is not (or no longer) undoable. Outputs the Trash refused stay in the entry so Undo can be
-    /// retried; trashed, changed and missing ones leave it, and an entry with nothing left is removed.
+    public func record(_ batch: BatchID, moves: [UndoMove]) {
+        let date = now()
+        update(log.recording(UndoEntry(batch: batch, date: date, moves: moves), now: date))
+    }
+
+    /// Nil when the batch is not (or no longer) undoable. Outputs the Trash refused (or items that could not be moved
+    /// back) stay in the entry so Undo can be retried; the rest leave it, and an entry with nothing left is removed.
     public func undo(_ batch: BatchID) -> UndoResult? {
         guard let entry = log.pruned(now: now()).entry(for: batch) else { return nil }
+        return entry.kind == .move ? undoMoves(entry) : undoOutputs(entry)
+    }
+
+    private func undoOutputs(_ entry: UndoEntry) -> UndoResult {
+        let batch = entry.batch
         let plan = UndoPlanner.plan(entry, stamp: FileStamp.read)
         var trashed: [URL] = []
         var skipped = plan.skipped
@@ -124,6 +101,25 @@ public actor UndoHistory {
         let retry = Set(skipped.filter { $0.reason == .trashFailed }.map(\.url))
         update(log.keeping(batch, outputs: retry))
         return UndoResult(trashed: trashed, skipped: skipped)
+    }
+
+    private func undoMoves(_ entry: UndoEntry) -> UndoResult {
+        let plan = MoveUndoPlanner.plan(entry.moves, stamp: FileStamp.read, occupied: MoveUndoPlanner.isOccupied)
+        var restored: [URL] = []
+        var skipped = plan.skipped
+        for move in plan.restore {
+            do {
+                try moveBack(move.moved, move.original)
+                restored.append(move.original)
+            } catch {
+                UndoStore.logger.error(
+                    "Undo: an item couldn't be moved back: \(String(describing: error), privacy: .private)")
+                skipped.append(UndoSkip(url: move.moved, reason: .moveFailed))
+            }
+        }
+        let retry = Set(skipped.filter { $0.reason == .moveFailed }.map(\.url))
+        update(log.keeping(entry.batch, outputs: retry))
+        return UndoResult(kind: .move, restored: restored, skipped: skipped)
     }
 
     /// Keeps the new log in memory even when it cannot be written; the failure is logged.
