@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 ENV := source Scripts/env.sh &&
 
-.PHONY: test smoke coverage lint format app demo release-check convert-demo
+.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch
 
 test:
 	$(ENV) cd "$$KIT" && swift test
@@ -39,3 +39,10 @@ convert-demo:
 # P1-21: build Release and fail if any binary in it names a Homebrew tool path.
 release-check:
 	Scripts/check-release-paths.sh
+
+# Vendored sources and builds (10a). vendor-test runs every script test; vendor-fetch downloads and verifies sources.
+vendor-test:
+	@for t in Vendor/tests/test-*.sh; do bash "$$t" || exit 1; done
+
+vendor-fetch:
+	Vendor/fetch.sh

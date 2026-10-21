@@ -15,6 +15,10 @@ DerivedData/
 Vendor/src/
 Vendor/build/
 Vendor/out/
+Vendor/downloads/
+Vendor/prefix/
+Vendor/logs/
+Vendor/rs/*/target/
 
 # Xcode user state
 xcuserdata/
