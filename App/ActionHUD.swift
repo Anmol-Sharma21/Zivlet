@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import ZivletActions
 import ZivletCore
+import ZivletUI
 
 /// What the action HUD renders; replaced on every result.
 @Observable

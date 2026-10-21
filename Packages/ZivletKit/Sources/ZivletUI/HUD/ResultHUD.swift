@@ -5,7 +5,7 @@ import ZivletRuntime
 
 /// What the HUD view renders; replaced whole on every snapshot.
 @Observable
-final class HUDModel {
+public final class HUDModel {
     var presentation: BatchPresentation?
     var undoMessage: String?
     /// The last undo left files the Trash refused, so Undo stays available.
@@ -13,23 +13,28 @@ final class HUDModel {
 }
 
 /// What an undo said, and whether pressing Undo again can still help.
-struct UndoReply {
-    let message: String
-    let canRetry: Bool
+public struct UndoReply: Sendable, Equatable {
+    public let message: String
+    public let canRetry: Bool
+
+    public init(message: String, canRetry: Bool) {
+        self.message = message
+        self.canRetry = canRetry
+    }
 }
 
 /// The conversion HUD (01-prd FR-14, M3 subset of P1-40/P1-41): a non-activating glass panel near the drop point with
 /// progress and Cancel while working, then Reveal in Finder and Undo, or the failure in Zivlet's words. With several
 /// batches at once, `HUDBoard` picks the one on screen (a finished failure stays until closed) and every button acts
 /// on that batch.
-final class ResultHUD {
+public final class ResultHUD {
     static let size = NSSize(width: 360, height: 132)
     static let successLinger = Duration.seconds(6)
 
-    var onCancel: (BatchID) -> Void = { _ in }
-    var onReveal: ([URL]) -> Void = { _ in }
+    public var onCancel: (BatchID) -> Void = { _ in }
+    public var onReveal: ([URL]) -> Void = { _ in }
     /// Undoes the shown batch and returns the sentence to show in its place.
-    var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
+    public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
 
     private let model = HUDModel()
     private let panel = NSPanel(
@@ -40,7 +45,7 @@ final class ResultHUD {
     private var anchor: CGPoint?
     private var hideTask: Task<Void, Never>?
 
-    init() {
+    public init() {
         panel.level = .floating
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -56,17 +61,17 @@ final class ResultHUD {
     }
 
     /// Remembers where the drop happened (nil = centre of the main screen) for the next batch.
-    func prepare(near point: CGPoint?) {
+    public func prepare(near point: CGPoint?) {
         anchor = point
     }
 
-    func show(_ snapshot: BatchSnapshot) {
+    public func show(_ snapshot: BatchSnapshot) {
         board = board.updating(snapshot)
         render()
     }
 
     /// Close: the shown batch is dismissed and the next one, if any, takes its place.
-    func hide() {
+    public func hide() {
         if let batch = board.shown?.batch { board = board.dismissing(batch) }
         render()
     }

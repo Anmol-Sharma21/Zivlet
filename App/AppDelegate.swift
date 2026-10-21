@@ -19,19 +19,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static let flagsMonitorKey = "ZivletFlagsMonitor"
     static let quitLimit = Duration.seconds(2)
 
-    private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "app")
-    private let conversions = ConversionService.standard()
+    let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "app")
+    let conversions = ConversionService.standard()
     private let undoHistory = UndoHistory()
-    private let hud = ResultHUD()
+    private lazy var conversion = ConversionWiring(
+        conversions: conversions, undoHistory: undoHistory, menu: menu,
+        revealsResults: { [weak self] in self?.settings.revealsResults ?? false }
+    ) { [weak self] batch in
+        await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
+    }
     private lazy var settings = SettingsWiring(conversions: conversions)
-    private lazy var settingsWindow = SettingsWindowWiring(store: settings.store, conversions: conversions)
+    lazy var settingsWindow = SettingsWindowWiring(store: settings.store, conversions: conversions)
     private lazy var actions = ActionWiring(
         undoHistory: undoHistory, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
     ) { [weak self] batch in
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
     private var trigger: TriggerHost?
-    private var wheel: WheelController?
+    var wheel: WheelController?
     private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory)
     private lazy var onboarding = OnboardingWiring(store: settings.store)
     private lazy var coach = CoachWiring(store: settings.store)
@@ -63,8 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.wheel = wheel
         self.trigger = trigger
         settings.attach(trigger)
-        wireHUD()
-        observeConversions()
+        conversion.start()
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
         Task {
             wheel.capabilities = CapabilitySnapshot(
@@ -110,14 +114,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func wireHUD() {
-        hud.onCancel = { [conversions] batch in Task { await conversions.cancel(batch) } }
-        hud.onReveal = { urls in NSWorkspace.shared.activateFileViewerSelecting(urls) }
-        hud.onUndo = { [weak self] batch in
-            await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
-        }
-    }
-
     private func wireMenu(_ wheel: WheelController) {
         menu.handlers = MenuHandlers(
             cancel: { [conversions] batch in Task { await conversions.cancel(batch) } },
@@ -145,40 +141,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return UndoReply(message: result.message, canRetry: result.canRetry)
     }
 
-    private func observeConversions() {
-        let snapshots = conversions.snapshots
-        Task {
-            for await snapshot in snapshots { self.present(snapshot) }
-        }
-    }
-
-    private func present(_ snapshot: BatchSnapshot) {
-        hud.show(snapshot)
-        menu.track(snapshot)
-        guard snapshot.isFinished else { return }
-        logger.notice("Conversion finished: \(BatchPresentation.logLine(snapshot), privacy: .public)")
-        for failure in snapshot.failures {
-            let detail = String(describing: failure.error)  // may hold paths (stderr tail, folder): private
-            logger.error(
-                "Conversion failed: \(failure.name, privacy: .private): \(failure.error.logDescription, privacy: .public) \(detail, privacy: .private)"
-            )
-        }
-        let published = snapshot.outputs
-        if !published.isEmpty {
-            Task { [undoHistory, menu] in
-                await undoHistory.record(snapshot.batch, outputs: published)
-                menu.refreshRecent()
-            }
-        }
-        let outputs = published.map(\.url)
-        if !outputs.isEmpty, settings.revealsResults {
-            NSWorkspace.shared.activateFileViewerSelecting(outputs)
-        }
-    }
-
     /// The drop path, shared by real drops and the DEBUG demo.
     @discardableResult
-    private func handle(_ selection: WheelSelection, near point: CGPoint?) -> Task<BatchID, Never>? {
+    func handle(_ selection: WheelSelection, near point: CGPoint?) -> Task<BatchID, Never>? {
         logger.notice("Wheel selection: \(selection.summary(), privacy: .public)")
         if onboarding.receive(selection) { return nil }
         if case .action(let action) = selection.target {
@@ -191,47 +156,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             #endif
             return nil
         }
-        hud.prepare(near: point)
-        let urls = selection.urls
-        return Task { [conversions] in await conversions.convert(urls, to: format) }
+        return conversion.convert(selection.urls, to: format, near: point)
     }
-
-    /// DEBUG: `-ZivletDemoWheel <mode>` shows the wheel without a drag; `-ZivletDemoConvert <path> <format>
-    /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
-    /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, so end-to-end checks need no drag.
-    private func launchDemoIfRequested() {
-        #if DEBUG
-            do {
-                let arguments = ProcessInfo.processInfo.arguments
-                if let scenario = try DemoScenario.parse(arguments: arguments) { wheel?.showDemo(scenario) }
-                if let pane = SettingsPane.demo(arguments: arguments) { settingsWindow.show(pane) }
-                if let demo = try DemoConversion.parse(arguments: arguments) { runDemo(demo) }
-                if let demo = try DemoAction.parse(arguments: arguments) {
-                    let selection = WheelSelection(
-                        mode: .actions, target: .action(demo.action), urls: [demo.url], optionHeld: demo.optionHeld)
-                    handle(selection, near: nil)
-                }
-            } catch {
-                logger.error("Demo arguments refused: \(String(describing: error), privacy: .private)")
-            }
-        #endif
-    }
-
-    #if DEBUG
-        private func runDemo(_ demo: DemoConversion) {
-            let selection = WheelSelection(mode: .convert, target: .convert(demo.target), urls: [demo.url])
-            guard let started = handle(selection, near: nil), let delay = demo.cancelAfter else { return }
-            Task { [conversions] in
-                let batch = await started.value
-                do {
-                    try await Task.sleep(for: delay)
-                } catch {
-                    return  // only cancellation of this demo task ends the sleep early
-                }
-                await conversions.cancel(batch)
-            }
-        }
-    #endif
 }
 
 extension AppDelegate: WheelControllerDelegate {

@@ -2,6 +2,7 @@ import AppKit
 import ZivletActions
 import ZivletCore
 import ZivletRuntime
+import ZivletUI
 import os
 
 /// Wires a drop on an action petal to `ActionService` and its result to the action HUD (P1-44, P1-45). Float stays
