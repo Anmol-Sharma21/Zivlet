@@ -17,6 +17,24 @@ struct BatchPresentationTests {
         return BatchSnapshot(batch: BatchID(), target: .png, items: items, isFinished: finished)
     }
 
+    @Test func savingToTheFallbackFolderIsSaidOnce() throws {
+        let locked = URL(filePath: "/Volumes/Card/DCIM")
+        let downloads = URL(filePath: "/Users/someone/Downloads")
+        let requests = try ["a.heic", "b.heic"].map { name in
+            try JobRequest(
+                input: InputItem(url: locked.appending(path: name), format: .heic, byteCount: 4),
+                operation: .convert(.png), destination: downloads)
+        }
+        let batch = BatchID()
+        var snapshot = BatchSnapshot(batch: batch, target: .png, plan: RequestPlan(requests: requests, rejections: []))
+        #expect(snapshot.items.allSatisfy { $0.source?.fallbackFolder == downloads })
+        for request in requests {
+            snapshot = snapshot.applying(.changed(batch, request.id, .succeeded(Self.output)))
+        }
+        let notes = BatchPresentation.make(snapshot.applying(.finished(batch))).notes
+        #expect(notes == ["Saved to Downloads because the original folder is read-only."])
+    }
+
     @Test func workingShowsTheTargetTheItemAndThePercentage() {
         let shown = BatchPresentation.make(
             Self.snapshot([.succeeded(Self.output), .running(JobProgress(fraction: 0.5))], finished: false))

@@ -62,6 +62,14 @@ struct ResultCardModelTests {
         #expect(model.buttons == [.undo, .reveal, .showDetails, .retry, .close] && model.lingers == nil)
     }
 
+    @Test func downloadsFallbackIsAnnounced() throws {
+        let model = ResultCardModel(
+            try HUDFx.finished(outputs: [("a.png", before: 1, after: 1)], usedFallbackFolder: true))
+        #expect(model.notes.contains("Saved to Downloads because the original folder is read-only."))
+        let beside = ResultCardModel(try HUDFx.finished(outputs: [("a.png", before: 1, after: 1)]))
+        #expect(beside.notes.isEmpty)
+    }
+
     @Test func hoverHoldsAndLeavingRestartsTheTimer() {
         var timer = LingerTimer(duration: .seconds(4))
         #expect(!timer.expired(at: .seconds(100)))  // not started

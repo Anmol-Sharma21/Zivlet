@@ -3,14 +3,26 @@ import Foundation
 import ZivletCore
 import ZivletEngineKit
 
-/// The dropped file behind a batch row: where it is and how big it was (the card's "before" size; Retry).
+/// The dropped file behind a batch row: where it is and how big it was (the card's "before" size; Retry), and
+/// the fallback folder its result goes to when its own folder is read-only (01-prd FR-17, announced on the card).
 public struct ItemSource: Sendable, Equatable {
     public let url: URL
     public let byteCount: Int64?
+    public let fallbackFolder: URL?
 
-    public init(url: URL, byteCount: Int64?) {
+    public init(url: URL, byteCount: Int64?, fallbackFolder: URL? = nil) {
         self.url = url
         self.byteCount = byteCount
+        self.fallbackFolder = fallbackFolder
+    }
+
+    /// The request's destination is not the source's folder only when `JobRequestFactory` fell back.
+    init(_ request: JobRequest) {
+        let beside = request.input.url.deletingLastPathComponent().standardizedFileURL.path
+        let destination = request.destination.standardizedFileURL
+        self.init(
+            url: request.input.url, byteCount: request.input.byteCount,
+            fallbackFolder: destination.path == beside ? nil : destination)
     }
 }
 
@@ -58,7 +70,7 @@ public struct BatchSnapshot: Sendable, Equatable {
             items: plan.requests.map {
                 BatchItem(
                     job: $0.id, name: $0.input.fileName, state: .queued, weight: Double($0.input.byteCount),
-                    source: ItemSource(url: $0.input.url, byteCount: $0.input.byteCount))
+                    source: ItemSource($0))
             }
                 + plan.rejections.map {
                     BatchItem(

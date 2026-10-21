@@ -22,7 +22,7 @@ public struct BatchPresentation: Sendable, Equatable {
     public static func make(_ snapshot: BatchSnapshot, registry: FormatRegistry = .standard) -> BatchPresentation {
         let label = registry.format(snapshot.target).wheelLabel
         guard snapshot.isFinished else { return working(snapshot, label: label) }
-        let notes = snapshot.items.flatMap(\.notes).uniqued().map(noteText)
+        let notes = snapshot.items.flatMap(\.notes).uniqued().map(noteText) + fallbackNotes(snapshot)
         let saved = snapshot.outputs
         let failures = snapshot.failures
         let firstFailure = failures.first.map {
@@ -70,6 +70,13 @@ public struct BatchPresentation: Sendable, Equatable {
         case .svgRasterizedInPDF: "The drawing was saved as a picture inside the PDF."
         case .hdrToneMapped: "The HDR picture was saved in standard range."
         case .longGIF(let seconds): "Long clips make very large GIFs; this one is \(minutes(seconds))."
+        }
+    }
+
+    /// "Saved to Downloads because the original folder is read-only." once per fallback folder that got a result.
+    static func fallbackNotes(_ snapshot: BatchSnapshot) -> [String] {
+        snapshot.items.filter { $0.state.published != nil }.compactMap(\.source?.fallbackFolder).uniqued().map {
+            "Saved to \($0.lastPathComponent) because the original folder is read-only."
         }
     }
 
