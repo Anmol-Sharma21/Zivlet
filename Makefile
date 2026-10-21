@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -85,3 +85,14 @@ licence-gate:
 # Corresponding source for a release: make source-bundle VERSION=0.1.0 (writes build/release/).
 source-bundle:
 	$(ENV) Scripts/source-bundle.sh "$${VERSION:?set VERSION, e.g. 0.1.0}"
+
+# P1-60: deterministic fixtures in build/fixtures/<set> (SET=small|full); fixtures-check compares them with
+# Fixtures/manifest-<set>.sha256 when the vendored ffmpeg made them.
+fixtures:
+	$(ENV) Fixtures/generate.sh --set "$${SET:-small}"
+
+fixtures-check:
+	$(ENV) Fixtures/generate.sh --set "$${SET:-small}" && Fixtures/generate.sh --check --set "$${SET:-small}"
+
+fixtures-test:
+	@for t in Fixtures/tests/test-*.sh; do bash "$$t" || exit 1; done

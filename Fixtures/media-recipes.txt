@@ -1,0 +1,28 @@
+# Media fixtures (05 P1-60, 11 §14 item 3), made in this order by Fixtures/generate.sh with the vendored ffmpeg.
+# One recipe per line: <file name> <hash|probe> <ffmpeg arguments>. `hash` files are compared with the committed
+# manifest; `probe` files come from a hardware encoder that is not byte-stable, so only ffprobe opens them.
+# Arguments are split on spaces (none contain one). generate.sh adds "-hide_banner -nostdin -loglevel error -y" in
+# front and the bitexact flags, a fixed creation_time and the output path at the end.
+# Macros: {W}x{H} frame size, {D} seconds, {R} frames per second, {IN} the text inputs, {OUT} this set's folder.
+sdr-h264.mp4 hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -f lavfi -i sine=d={D}:sample_rate=48000 -c:v libx264 -pix_fmt yuv420p -c:a aac -ac 2
+sdr-h264.mov hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -f lavfi -i sine=d={D}:sample_rate=48000 -c:v libx264 -pix_fmt yuv420p -c:a aac -ac 2
+hdr10-hevc.mov probe -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -c:v hevc_videotoolbox -profile:v main10 -pix_fmt p010le -tag:v hvc1 -bsf:v hevc_metadata=colour_primaries=9:transfer_characteristics=16:matrix_coefficients=9 -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc
+hlg-hevc.mov probe -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -c:v hevc_videotoolbox -profile:v main10 -pix_fmt p010le -tag:v hvc1 -bsf:v hevc_metadata=colour_primaries=9:transfer_characteristics=18:matrix_coefficients=9 -color_primaries bt2020 -color_trc arib-std-b67 -colorspace bt2020nc
+rotated.mov hash -display_rotation 90 -i {OUT}/sdr-h264.mov -c copy
+odd-853x479.mov hash -f lavfi -i testsrc=d={D}:s=853x479:r={R} -c:v libx264 -pix_fmt yuv444p
+surround.flac hash -f lavfi -i sine=d={D}:sample_rate=48000 -ac 6 -c:a flac
+pcm24.wav hash -f lavfi -i sine=d={D}:sample_rate=48000 -ac 2 -c:a pcm_s24le
+mono.opus hash -f lavfi -i sine=d={D}:sample_rate=48000 -ac 1 -c:a libopus
+cover.mp3 hash -f lavfi -i sine=d={D}:sample_rate=44100 -f lavfi -i color=c=orange:s=64x64:d=0.1 -map 0:a -map 1:v -c:a libmp3lame -ac 2 -c:v png -frames:v 1 -disposition:v:0 attached_pic -id3v2_version 3
+subs-chapters.mkv hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -f lavfi -i sine=d={D}:sample_rate=48000 -i {IN}/subs.srt -i {IN}/subs.ass -i {IN}/chapters.txt -map 0:v -map 1:a -map 2:s -map 3:s -map_chapters 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -ac 2 -c:s:0 srt -c:s:1 ass
+pcm.avi hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -f lavfi -i sine=d={D}:sample_rate=48000 -c:v mpeg4 -c:a pcm_s16le -ac 2
+wmv2.wmv hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -f lavfi -i sine=d={D}:sample_rate=44100 -c:v wmv2 -c:a wmav2 -ac 2
+vp9-opus.webm hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -f lavfi -i sine=d={D}:sample_rate=48000 -c:v libvpx-vp9 -c:a libopus -ac 2
+vp9-alpha.webm hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R},crop=iw/2:ih:0:0,format=yuva420p,pad=iw*2:ih:0:0:color=black@0 -c:v libvpx-vp9 -pix_fmt yuva420p
+transparent.gif hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R},crop=iw/2:ih:0:0,format=rgba,pad=iw*2:ih:0:0:color=black@0 -filter_complex split[a][b];[a]palettegen=reserve_transparent=1[p];[b][p]paletteuse=alpha_threshold=128
+vorbis.ogg hash -f lavfi -i sine=d={D}:sample_rate=44100 -ac 2 -c:a libvorbis
+audio-only.mp4 hash -f lavfi -i sine=d={D}:sample_rate=48000 -ac 2 -c:a aac
+video-only.mp4 hash -f lavfi -i testsrc2=d={D}:s={W}x{H}:r={R} -c:v libx264 -pix_fmt yuv420p
+tone.m4a hash -f lavfi -i sine=d={D}:sample_rate=44100 -ac 2 -c:a aac
+tone.aiff hash -f lavfi -i sine=d={D}:sample_rate=44100 -ac 2 -c:a pcm_s16be
+tone.wma hash -f lavfi -i sine=d={D}:sample_rate=44100 -ac 2 -c:a wmav2
