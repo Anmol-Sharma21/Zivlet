@@ -75,20 +75,67 @@ public struct RGB: Sendable, Equatable {
 
 /// One accent token and its derived stops (03a §2.7): light = +24 % white; dark = saturation × 1.12 (capped),
 /// brightness × 0.74. The base hue is Zivlet's choice: the user's system accent colour (08 index D-M2-4).
+///
+/// The highlighted petal paints light → base → dark, and its label can sit over most of that (side slots, two-line
+/// action labels). The label is white or black, whichever has the higher worst case over every painted stop. When
+/// even that is below 4.5:1 (01-prd FR-26), light and dark are pulled toward base in steps of 0.1 until it is not
+/// (`strength`). A flat base always reaches 4.58:1 with one of the two, so the loop ends (D-M4-17).
 public struct AccentPalette: Sendable, Equatable {
+    public static let minimumContrast = 4.5
+    static let strengthStep = 0.1
+
     public let base: RGB
     public let light: RGB
     public let dark: RGB
+    /// How much of `light` and `dark` the highlight paints: 1 = the 03a stops, 0 = flat base.
+    public let strength: Double
+    /// White or black for the highlighted petal's label.
+    public let labelOnAccent: RGB
 
     public init(base: RGB) {
         self.base = base
-        light = base.mixed(with: .white, amount: 0.24)
+        let light = base.mixed(with: .white, amount: 0.24)
         let (h, s, b) = base.hsb
-        dark = RGB(hue: h, saturation: min(s * 1.12, 1), brightness: b * 0.74)
+        let dark = RGB(hue: h, saturation: min(s * 1.12, 1), brightness: b * 0.74)
+        self.light = light
+        self.dark = dark
+        let (strength, label) = Self.legible(base: base, light: light, dark: dark)
+        self.strength = strength
+        labelOnAccent = label
     }
 
     public static var system: AccentPalette { AccentPalette(base: RGB(NSColor.controlAccentColor)) }
 
-    /// White or black, whichever contrasts more with the base (01-prd FR-26 asks ≥ 4.5:1 where reachable).
-    public var labelOnAccent: RGB { base.contrast(with: .white) >= base.contrast(with: .black) ? .white : .black }
+    public var paintedLight: RGB { strength == 1 ? light : base.mixed(with: light, amount: strength) }
+    public var paintedDark: RGB { strength == 1 ? dark : base.mixed(with: dark, amount: strength) }
+
+    /// Colours along the painted gradient, light to dark.
+    public var highlightSamples: [RGB] { Self.samples(base: base, light: paintedLight, dark: paintedDark) }
+
+    /// The strongest gradient (from 1 down) whose better label colour reaches `minimumContrast` everywhere.
+    static func legible(base: RGB, light: RGB, dark: RGB) -> (strength: Double, label: RGB) {
+        let steps = Int((1 / strengthStep).rounded())
+        for step in stride(from: steps, through: 0, by: -1) {
+            let strength = Double(step) * strengthStep
+            let samples = samples(
+                base: base, light: base.mixed(with: light, amount: strength),
+                dark: base.mixed(with: dark, amount: strength))
+            let (label, worst) = betterLabel(over: samples)
+            if worst >= minimumContrast || step == 0 { return (strength, label) }
+        }
+        return (0, betterLabel(over: [base]).label)
+    }
+
+    /// White or black, whichever has the higher lowest contrast over `samples`.
+    static func betterLabel(over samples: [RGB]) -> (label: RGB, worst: Double) {
+        let white = samples.map { $0.contrast(with: .white) }.min() ?? 0
+        let black = samples.map { $0.contrast(with: .black) }.min() ?? 0
+        return white >= black ? (.white, white) : (.black, black)
+    }
+
+    static func samples(base: RGB, light: RGB, dark: RGB) -> [RGB] {
+        let fractions = (0...10).map { Double($0) / 10 }
+        return fractions.map { light.mixed(with: base, amount: $0) }
+            + fractions.map { base.mixed(with: dark, amount: $0) }
+    }
 }

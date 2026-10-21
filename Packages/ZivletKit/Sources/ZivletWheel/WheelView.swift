@@ -9,6 +9,8 @@ public struct WheelView: View {
     @Environment(\.colorScheme) private var colorScheme
     /// Solid-theme hairline so the disk edge shows over dark windows.
     private static let solidRim = Color(white: 1, opacity: 0.16)
+    /// The Glass highlight is opaque, so the desktop behind the panel cannot lower its label's contrast (D-M4-17).
+    static let hotFillOpacity = 1.0
 
     public init(store: WheelStore) { self.store = store }
 
@@ -68,7 +70,7 @@ public struct WheelView: View {
         return label(slice, index, model, colour: hot ? palette.labelOnAccent.color : .primary)
             .background {
                 if hot {
-                    shape.fill(accentGradient).opacity(0.9)
+                    shape.fill(accentGradient).opacity(Self.hotFillOpacity)
                 } else {
                     shape.fill(GlassInk.idleScrim(for: colorScheme))
                 }
@@ -94,8 +96,8 @@ public struct WheelView: View {
         let palette = store.appearance.palette
         return RadialGradient(
             stops: [
-                .init(color: palette.light.color, location: 0.2), .init(color: palette.base.color, location: 0.56),
-                .init(color: palette.dark.color, location: 1),
+                .init(color: palette.paintedLight.color, location: 0.2),
+                .init(color: palette.base.color, location: 0.56), .init(color: palette.paintedDark.color, location: 1),
             ], center: .center, startRadius: WheelLayout.geometry.petalInner,
             endRadius: WheelLayout.geometry.petalOuter)
     }
