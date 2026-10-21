@@ -17,6 +17,12 @@ enum WebPWriter {
         let timing: AnimationTiming
         let metadata: WebPMetadata
         let options: WebPOptions
+        /// `convertToSRGB` draws every frame in sRGB and embeds no profile (untagged WebP is sRGB).
+        var colour: ImageColour = .keep
+
+        func space(for image: CGImage) -> CGColorSpace {
+            colour == .convertToSRGB ? RGBAFrame.srgb : RGBAFrame.space(for: image)
+        }
     }
 
     static func write(
@@ -28,7 +34,7 @@ enum WebPWriter {
             animated
             ? try animate(job, config: &config, cancel: cancel, frame: frame)
             : try still(job, config: &config, cancel: cancel, frame: frame)
-        let icc = job.metadata.keepsProfile ? space.copyICCData() as Data? : nil
+        let icc = job.metadata.keepsProfile && job.colour == .keep ? space.copyICCData() as Data? : nil
         let bytes = try WebPMuxer.assemble(encoded, icc: icc, exif: job.metadata.exif, xmp: job.metadata.xmp)
         try StagedBytes.write(bytes, to: staged)
     }
@@ -50,7 +56,7 @@ enum WebPWriter {
     ) throws(JobError) -> (Data, CGColorSpace) {
         if cancel.isCancelled { throw .cancelled }
         let image = try frame(0)
-        let space = RGBAFrame.space(for: image)
+        let space = job.space(for: image)
         let pixels = try RGBAFrame(image, canvas: job.canvas, space: space, alpha: job.options.exactAlpha)
         let data = try pixels.withPicture { (picture: inout WebPPicture) throws(JobError) -> Data in
             try encode(&picture, config: &config)
@@ -87,7 +93,7 @@ enum WebPWriter {
         for position in 0..<job.count {
             if cancel.isCancelled { throw .cancelled }
             let image = try frame(position)
-            let frameSpace = space ?? RGBAFrame.space(for: image)
+            let frameSpace = space ?? job.space(for: image)
             space = frameSpace
             let pixels = try RGBAFrame(image, canvas: job.canvas, space: frameSpace, alpha: job.options.exactAlpha)
             try pixels.withPicture { (picture: inout WebPPicture) throws(JobError) in

@@ -45,10 +45,19 @@ public struct ImageProbe: Sendable, Equatable {
     }
 }
 
+/// The colour setting (Settings, D3): keep the source profile, or Web (sRGB).
+public enum ImageColourOption: String, Sendable, Codable, CaseIterable {
+    case keep, webSRGB
+}
+
 public struct ImageOptions: Sendable, Equatable {
     public let tier: QualityTier
+    public let colour: ImageColourOption
 
-    public init(tier: QualityTier = .standard) { self.tier = tier }
+    public init(tier: QualityTier = .standard, colour: ImageColourOption = .keep) {
+        self.tier = tier
+        self.colour = colour
+    }
 }
 
 /// Pure plan builder for raster → raster and raster → PDF (P1-08, P1-10; 03b §6.2).
@@ -98,7 +107,8 @@ public enum ImagePlanner {
                 quality: lossy.contains(target) ? quality(options.tier) : nil, tiffLZW: target == .tiff,
                 expectedSize: target == .pdf ? probe.pageSize : probe.displaySize, webp: webp,
                 svg: probe.svg == nil
-                    ? nil : try SVGRasterOptions(scale: SVGGeometry.scale, maxEdge: SVGGeometry.maxEdge))
+                    ? nil : try SVGRasterOptions(scale: SVGGeometry.scale, maxEdge: SVGGeometry.maxEdge),
+                colour: options.colour == .webSRGB && target != .pdf ? .convertToSRGB : .keep)
             return try ExecutionPlan(
                 engine: .image, stages: [.image(spec)], stageWeights: [1], lanes: [.cpu], outputFormat: target,
                 stagedFile: staged, notes: notes)

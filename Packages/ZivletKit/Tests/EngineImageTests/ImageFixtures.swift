@@ -152,7 +152,9 @@ func offPool<T: Sendable>(_ body: @escaping @Sendable () throws -> T) async thro
 
 /// Runs one conversion through the engine into `dir`, returning the plan and the staged output.
 struct ImageRun {
-    let engine = ImageEngine()
+    let engine: ImageEngine
+
+    init(engine: ImageEngine = ImageEngine()) { self.engine = engine }
 
     func convert(_ url: URL, _ format: FormatID, to target: FormatID, in dir: URL) async throws
         -> (plan: ExecutionPlan, output: StagedOutput)

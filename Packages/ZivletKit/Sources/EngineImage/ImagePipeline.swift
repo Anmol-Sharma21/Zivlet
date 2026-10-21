@@ -61,7 +61,7 @@ enum ImagePipeline {
             count: spec.frames.count, canvas: spec.expectedSize,
             timing: AnimationTiming.read(source, frames: spec.frames),
             metadata: WebPMetadata.read(source, index: spec.frames[0], output: spec.expectedSize, options: options),
-            options: options)
+            options: options, colour: spec.colour)
         var budget = start
         try WebPWriter.write(job, to: staged, cancel: cancel) { (position: Int) throws(JobError) -> CGImage in
             let index = spec.frames[position]
@@ -80,13 +80,18 @@ enum ImagePipeline {
         let encode = encodeProperties(spec).merging(extra) { _, new in new }
         let metadata = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any] ?? [:]
         let orientation = metadata[kCGImagePropertyOrientation] as? Int ?? 1
-        guard spec.flattenAlpha || OrientationPolicy.bakes(orientation, into: spec.destinationType) else {
+        let converts = spec.colour == .convertToSRGB
+        guard converts || spec.flattenAlpha || OrientationPolicy.bakes(orientation, into: spec.destinationType) else {
             CGImageDestinationAddImageFromSource(destination, source, index, encode as CFDictionary)
             return
         }
         let upright = try oriented(source, index)
-        let image = spec.flattenAlpha ? try flattened(upright) : upright
-        let properties = OrientationPolicy.upright(metadata).merging(encode) { _, new in new }
+        let image =
+            converts
+            ? try redrawn(upright, into: RGBAFrame.srgb, flatten: spec.flattenAlpha)
+            : spec.flattenAlpha ? try flattened(upright) : upright
+        var properties = OrientationPolicy.upright(metadata).merging(encode) { _, new in new }
+        if converts { properties[kCGImagePropertyProfileName] = nil }
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)
     }
 
@@ -122,17 +127,27 @@ enum ImagePipeline {
     /// Draws `image` over white into an opaque 8-bit context in its own RGB space (sRGB for other models).
     static func flattened(_ image: CGImage) throws(JobError) -> CGImage {
         let rgb = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
-        guard let space = rgb ?? CGColorSpace(name: CGColorSpace.sRGB),
+        return try redrawn(image, into: rgb ?? RGBAFrame.srgb, flatten: true)
+    }
+
+    /// `image` drawn into an 8-bit context in `space` (Quartz converts the colours): over white and opaque when
+    /// `flatten`, otherwise keeping transparency.
+    static func redrawn(_ image: CGImage, into space: CGColorSpace, flatten: Bool) throws(JobError) -> CGImage {
+        let opaque: Set<CGImageAlphaInfo> = [.none, .noneSkipLast, .noneSkipFirst]
+        let info = flatten || opaque.contains(image.alphaInfo) ? CGImageAlphaInfo.noneSkipLast : .premultipliedLast
+        guard
             let context = CGContext(
                 data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
-        else { throw .internalInvariant("cannot create a flattening context") }
+                bitmapInfo: info.rawValue)
+        else { throw .internalInvariant("cannot create a drawing context") }
         let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
-        context.setFillColor(CGColor(gray: 1, alpha: 1))
-        context.fill(bounds)
+        if flatten {
+            context.setFillColor(CGColor(gray: 1, alpha: 1))
+            context.fill(bounds)
+        }
         context.draw(image, in: bounds)
-        guard let flat = context.makeImage() else { throw .internalInvariant("cannot flatten the image") }
-        return flat
+        guard let drawn = context.makeImage() else { throw .internalInvariant("cannot redraw the image") }
+        return drawn
     }
 }
 
