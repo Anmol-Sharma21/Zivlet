@@ -3,6 +3,7 @@ import Observation
 import ZivletCore
 import ZivletSettings
 import ZivletTrigger
+import ZivletWheelCore
 
 /// What onboarding can ask the app to do. `write` goes through the settings store and returns what it kept.
 public struct OnboardingCommands {
@@ -11,15 +12,18 @@ public struct OnboardingCommands {
     public var finished: (_ wantsLoginItem: Bool) -> Void
     /// Copies Zivlet to /Applications and relaunches; returns a sentence when that failed. Nil when not needed.
     public var moveToApplications: (() -> String?)?
+    /// Shows the practice file in Finder, for dragging from there.
+    public var revealSample: (URL) -> Void
 
     public init(
         write: @escaping (_ transform: (ZivletSettings.Settings) -> ZivletSettings.Settings) -> ZivletSettings.Settings,
         finished: @escaping (_ wantsLoginItem: Bool) -> Void = { _ in },
-        moveToApplications: (() -> String?)? = nil
+        moveToApplications: (() -> String?)? = nil, revealSample: @escaping (URL) -> Void = { _ in }
     ) {
         self.write = write
         self.finished = finished
         self.moveToApplications = moveToApplications
+        self.revealSample = revealSample
     }
 }
 
@@ -32,12 +36,17 @@ public final class OnboardingModel {
     public var wantsLoginItem = true
     /// Page 7: the sentence after a failed Move to Applications.
     public private(set) var moveError: String?
+    /// The lessons of the practice page on screen; nil on other pages.
+    private(set) var practice: PracticeCoordinator?
+    /// The practice file, when it could be drawn.
+    public var sampleURL: URL?
     @ObservationIgnored let commands: OnboardingCommands
 
     public init(settings: ZivletSettings.Settings, commands: OnboardingCommands) {
         self.settings = settings
         self.commands = commands
         flow = OnboardingFlow(storedPage: settings.onboarding.page)
+        practice = PracticeCoordinator(page: flow.page)
     }
 
     public func next() { show(flow.next().page) }
@@ -46,6 +55,7 @@ public final class OnboardingModel {
     /// Jumps to `page` and stores it, so quitting resumes there.
     public func show(_ page: OnboardingPage) {
         flow = OnboardingFlow(page: page, isCompleted: flow.isCompleted)
+        practice = PracticeCoordinator(page: page)
         settings = commands.write { $0.with(\.onboarding.page, page.rawValue) }
     }
 
@@ -59,6 +69,16 @@ public final class OnboardingModel {
     public func set<Value>(_ path: WritableKeyPath<ZivletSettings.Settings, Value>, _ value: Value) {
         settings = commands.write { $0.with(path, value) }
     }
+
+    /// A wheel selection during practice is taken here and never run; true when it was taken.
+    public func receive(_ selection: WheelSelection) -> Bool {
+        guard let practice else { return false }
+        self.practice = practice.receiving(selection)
+        return true
+    }
+
+    /// The coaching line under the sample, on practice pages.
+    public var practiceMessage: String? { practice?.message(keyCap: keyCap(for:)) }
 
     public func moveToApplications() {
         moveError = commands.moveToApplications?()

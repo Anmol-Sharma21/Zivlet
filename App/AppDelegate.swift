@@ -175,6 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @discardableResult
     private func handle(_ selection: WheelSelection, near point: CGPoint?) -> Task<BatchID, Never>? {
         logger.notice("Wheel selection: \(selection.summary(), privacy: .public)")
+        if onboarding.receive(selection) { return nil }
         if case .action(let action) = selection.target {
             actions.run(action, urls: selection.urls, optionHeld: selection.optionHeld, near: point)
             return nil

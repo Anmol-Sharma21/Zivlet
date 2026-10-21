@@ -1,6 +1,7 @@
 import AppKit
 import ZivletSettings
 import ZivletUI
+import ZivletWheelCore
 import os
 
 /// Shows onboarding until it is finished (P1-47, 03b §8.2), resumes at the stored page, and reopens the practice
@@ -34,6 +35,7 @@ final class OnboardingWiring {
     /// Opens onboarding at `page`, or at the stored page.
     func show(_ page: OnboardingPage?) {
         let model = OnboardingModel(settings: store.current, commands: commands())
+        model.sampleURL = sample()
         if let page { model.show(page) }
         let controller = OnboardingWindowController(model: model)
         self.controller?.close()
@@ -53,7 +55,24 @@ final class OnboardingWiring {
                 return store.current
             },
             finished: { [weak self] wantsLoginItem in self?.finish(wantsLoginItem: wantsLoginItem) },
-            moveToApplications: AppLocation.needsMove(bundlePath: bundle.path) ? { Self.move(bundle) } : nil)
+            moveToApplications: AppLocation.needsMove(bundlePath: bundle.path) ? { Self.move(bundle) } : nil,
+            revealSample: { url in NSWorkspace.shared.activateFileViewerSelecting([url]) })
+    }
+
+    /// Selections made while a practice page is up are taken by onboarding and never run.
+    func receive(_ selection: WheelSelection) -> Bool {
+        guard controller?.window?.isVisible == true, let model, model.receive(selection) else { return false }
+        logger.notice("Practice selection: \(selection.mode.rawValue, privacy: .public)")
+        return true
+    }
+
+    private func sample() -> URL? {
+        do {
+            return try OnboardingSample.make(in: OnboardingSample.standardFolder)
+        } catch {
+            logger.error("Practice file not drawn: \(String(describing: error), privacy: .private)")
+            return nil
+        }
     }
 
     private func finish(wantsLoginItem: Bool) {
