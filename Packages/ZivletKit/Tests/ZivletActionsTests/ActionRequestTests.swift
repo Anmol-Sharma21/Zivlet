@@ -16,7 +16,7 @@ struct ActionRequestTests {
         let b = try dir.file("b.txt")
         let request = try ActionRequest(
             action: .copyFilePath, urls: [a, b, a, URL(fileURLWithPath: a.path + "/.")], optionHeld: false)
-        #expect(request.items == [a.standardizedFileURL, b.standardizedFileURL])
+        #expect(request.items == [a.standardized, b.standardized])
         #expect(request.rejected.isEmpty)
     }
 
@@ -25,7 +25,7 @@ struct ActionRequestTests {
         let remote = try #require(URL(string: "https://example.com/x.png"))
         let request = try ActionRequest(
             action: .copyTo, urls: [a, remote, dir.url.appending(path: "gone.txt")], optionHeld: false)
-        #expect(request.items == [a.standardizedFileURL])
+        #expect(request.items == [a.standardized])
         #expect(request.rejected.map(\.reason) == [.notLocal, .missing])
         #expect(request.rejected.map(\.url) == [remote, dir.url.appending(path: "gone.txt")])
     }
@@ -43,7 +43,7 @@ struct ActionRequestTests {
     @Test func foldersAreAllowedAndTheOptionStateIsKept() throws {
         let sub = try dir.folder("sub")
         let request = try ActionRequest(action: .openInTerminal, urls: [sub], optionHeld: true)
-        #expect(request.items == [sub.standardizedFileURL])
+        #expect(request.items == [sub.standardized])
         #expect(request.optionHeld && request.action == .openInTerminal)
     }
 
@@ -52,6 +52,13 @@ struct ActionRequestTests {
         try FileManager.default.createSymbolicLink(
             at: link, withDestinationURL: dir.url.appending(path: "nowhere"))
         #expect(try ActionRequest(action: .moveTo, urls: [link], optionHeld: false).items == [link])
+    }
+
+    /// Copy Path must hand back the path as dropped: `/private/etc` stays `/private/etc`, not `/etc`.
+    @Test func thePathKeepsItsSpelling() throws {
+        let request = try ActionRequest(
+            action: .copyFilePath, urls: [URL(fileURLWithPath: "/private/etc/hosts")], optionHeld: false)
+        #expect(request.items.map(\.path) == ["/private/etc/hosts"])
     }
 
     @Test(arguments: ActionID.allCases)

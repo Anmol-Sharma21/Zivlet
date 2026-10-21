@@ -37,7 +37,8 @@ public struct RejectedItem: Sendable, Equatable {
 }
 
 /// One action on the dropped items, validated at the boundary (03b §7 "Non-file URLs"): only `file:` URLs whose
-/// path exists (`lstat`, so a dangling symlink still counts) are kept, standardized and de-duplicated in drop order.
+/// path exists (`lstat`, so a dangling symlink still counts) are kept, standardized (`.` and `..` removed, the
+/// spelling otherwise kept, so `/private/etc` stays as dropped) and de-duplicated in drop order.
 /// Everything else is listed in `rejected` so the result card can name it.
 public struct ActionRequest: Sendable, Equatable {
     public let action: ActionID
@@ -65,7 +66,7 @@ public struct ActionRequest: Sendable, Equatable {
                 rejected.append(RejectedItem(url: url, reason: .notLocal))
                 continue
             }
-            let standard = url.standardizedFileURL
+            let standard = url.standardized
             guard exists(standard) else {
                 rejected.append(RejectedItem(url: url, reason: .missing))
                 continue
