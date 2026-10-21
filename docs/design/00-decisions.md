@@ -58,7 +58,7 @@ Web search found no macOS app or file converter named "Satsuma" (the working nam
 | OWN-7 CI | Hosted runners lack Xcode 27; local `make test` is the gate until a self-hosted runner exists |
 
 ### O-12 update (2026-10-21): name conflict found
-`github.com/plyght/satsuma` (MIT, "zero-click offline file converter for macOS", 2 stars, last push 2026-09-16) already uses the name, and Open-Tangerine is built on it. Using "Satsuma" invited confusion with both. **Owner decision (2026-10-21): rename to Zivlet** (O-12a above).
+`github.com/plyght/satsuma` (MIT; an offline macOS file converter; 2 stars, last push 2026-09-16) already uses the name, and Open-Tangerine is built on it. Using "Satsuma" invited confusion with both. **Owner decision (2026-10-21): rename to Zivlet** (O-12a above).
 
 ## Owner decisions, 2026-10-21: name, feature picks, roadmap
 

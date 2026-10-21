@@ -233,10 +233,10 @@ Slot index: `a = (base − atan2(dy, dx)) mod 2π`, `base = π` if n = 3 else π
 
 | Condition | Wheel shows (status pill in place of petals) |
 |---|---|
-| No conversions for this format | "No conversions for this file type. ⌘ Tools · ⌃ Actions" |
-| Mixed families | "These files can't share a format. Convert one kind at a time." |
-| Plain folder on Convert/Tools | "Folders work with ⌃ Actions." |
-| No tools | "No tools for this file type. ⇧ Convert · ⌃ Actions" |
+| Unknown file type | "Zivlet doesn't know this file type" + current binding hint |
+| Mixed families | "These files can't share a format" |
+| Plain folder on Convert/Tools | "Folders work with Actions only" |
+| No tools | "No tools for <TYPE> files" / "No tools for these items" + current binding hint |
 | Engine missing (optional engine) | Slice shown dimmed with "Needs Office Engine" in hub; drop opens the engine card |
 | Unreadable item | "Zivlet can't read one of these files." + name |
 | Tapped wheel rejects items | That wheel's message (never keep the previous wheel silently) |
