@@ -21,6 +21,7 @@ let package = Package(
             targets: [
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "EngineMedia", "EngineImage",
                 "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions", "ZivletSettings", "ZivletUI",
+                "ZivletNotchCore", "ZivletNotch",
             ])
     ],
     targets: [
@@ -29,6 +30,9 @@ let package = Package(
         .target(name: "ZivletWheelCore", dependencies: ["ZivletCore"], swiftSettings: strict),
         .target(name: "ZivletTriggerHost", dependencies: ["ZivletTrigger"], swiftSettings: shell),
         .target(name: "ZivletWheel", dependencies: ["ZivletWheelCore", "ZivletTrigger"], swiftSettings: shell),
+        // The notch island (design/19, D-N1): pure geometry, layout, machine, arbiter; the AppKit panel and hosts.
+        .target(name: "ZivletNotchCore", dependencies: ["ZivletCore"], swiftSettings: strict),
+        .target(name: "ZivletNotch", dependencies: ["ZivletNotchCore"], swiftSettings: shell),
         .target(name: "ZivletEngineKit", dependencies: ["ZivletCore"], swiftSettings: strict),
         .target(name: "EngineMedia", dependencies: ["ZivletEngineKit"], swiftSettings: strict),
         // Built by Vendor/ensure-native.sh before every make target that reads this manifest (D-M4-9).
@@ -47,7 +51,7 @@ let package = Package(
             name: "ZivletUI",
             dependencies: [
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "ZivletRuntime", "ZivletActions",
-                "ZivletSettings",
+                "ZivletSettings", "ZivletNotchCore", "ZivletNotch",
             ], swiftSettings: shell),
         // Writes the image fixtures for Fixtures/generate.sh (P1-60, D-M4-15); a dev tool, not shipped or gated.
         .executableTarget(name: "zivlet-fixtures", dependencies: ["CWebP"], swiftSettings: strict),
@@ -82,6 +86,11 @@ let package = Package(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
         .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings"], swiftSettings: strict),
         .testTarget(name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport"], swiftSettings: shell),
+        .testTarget(
+            name: "ZivletNotchCoreTests", dependencies: ["ZivletNotchCore", "ZivletCore"], swiftSettings: strict),
+        .testTarget(
+            name: "ZivletNotchTests", dependencies: ["ZivletNotch", "ZivletNotchCore", "ZivletCore"],
+            swiftSettings: shell),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.
         .testTarget(
             name: "ZivletMatrixTests",
