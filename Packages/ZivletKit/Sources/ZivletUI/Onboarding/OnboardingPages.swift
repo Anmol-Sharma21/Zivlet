@@ -89,7 +89,13 @@ struct LocationPage: View {
                     lead:
                         "Zivlet is running from a disk image or a temporary place. In Applications it can start at login and update itself."
                 )
-                Button("Move to Applications", action: model.moveToApplications)
+                HStack(spacing: 10) {
+                    Button("Move to Applications", action: model.moveToApplications).disabled(model.isMoving)
+                    if model.isMoving {
+                        ProgressView().controlSize(.small)
+                        Text("Copying…").foregroundStyle(.secondary)
+                    }
+                }
                 if let error = model.moveError { Text(error).foregroundStyle(.red) }
             }
         }

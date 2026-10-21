@@ -11,14 +11,14 @@ public struct OnboardingCommands {
     /// Finish was pressed: the app applies the login choice and closes the window.
     public var finished: (_ wantsLoginItem: Bool) -> Void
     /// Copies Zivlet to /Applications and relaunches; returns a sentence when that failed. Nil when not needed.
-    public var moveToApplications: (() -> String?)?
+    public var moveToApplications: (() async -> String?)?
     /// Shows the practice file in Finder, for dragging from there.
     public var revealSample: (URL) -> Void
 
     public init(
         write: @escaping (_ transform: (ZivletSettings.Settings) -> ZivletSettings.Settings) -> ZivletSettings.Settings,
         finished: @escaping (_ wantsLoginItem: Bool) -> Void = { _ in },
-        moveToApplications: (() -> String?)? = nil, revealSample: @escaping (URL) -> Void = { _ in }
+        moveToApplications: (() async -> String?)? = nil, revealSample: @escaping (URL) -> Void = { _ in }
     ) {
         self.write = write
         self.finished = finished
@@ -37,6 +37,9 @@ public final class OnboardingModel {
     public var wantsLoginItem: Bool
     /// Page 7: the sentence after a failed Move to Applications.
     public private(set) var moveError: String?
+    /// Page 7: the move is running (the copy can take a while from a disk image); the button waits.
+    public var isMoving: Bool { moving != nil }
+    private(set) var moving: Task<Void, Never>?
     /// The lessons of the practice page on screen; nil on other pages.
     private(set) var practice: PracticeCoordinator?
     /// The practice file, when it could be drawn.
@@ -82,8 +85,15 @@ public final class OnboardingModel {
     /// The coaching line under the sample, on practice pages.
     public var practiceMessage: String? { practice?.message(keyCap: keyCap(for:)) }
 
+    /// Starts the move once; a press while it runs is ignored.
     public func moveToApplications() {
-        moveError = commands.moveToApplications?()
+        guard moving == nil, let move = commands.moveToApplications else { return }
+        moveError = nil
+        moving = Task { [weak self] in
+            let error = await move()
+            self?.moveError = error
+            self?.moving = nil
+        }
     }
 
     /// The key that opens `mode`'s wheel, as a key cap ("⇧").

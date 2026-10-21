@@ -107,4 +107,54 @@ struct AppLocationTests {
         }
         #expect(AppLocation.MoveFailure.copyFailed.message.hasPrefix("Zivlet couldn't copy itself"))
     }
+
+    /// A copy that fails part-way leaves nothing in Applications, so a retry is not told "already there".
+    @Test func aFailedCopyLeavesNothingBehind() async throws {
+        let dir = try TempDir()
+        let bundle = try dir.folder("Image/Zivlet.app")
+        try dir.file("Image/Zivlet.app/Contents/Info.plist")
+        let locked = try dir.file("Image/Zivlet.app/Contents/Resources/locked.bin")
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked.path)
+        let apps = try dir.folder("Applications")
+        await #expect(throws: AppLocation.MoveFailure.copyFailed) {
+            try await AppLocation.copyInBackground(bundle: bundle, into: apps)
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: apps.path).isEmpty)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: locked.path)
+        let copied = try await AppLocation.copyInBackground(bundle: bundle, into: apps)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: apps.path) == ["Zivlet.app"])
+        #expect(FileManager.default.fileExists(atPath: copied.appending(path: "Contents/Resources/locked.bin").path))
+    }
+
+    /// LaunchServices can hand back the running copy (same bundle id) or nothing; only a new process lets this one
+    /// quit.
+    @Test func thisCopyQuitsOnlyWhenAnotherProcessStarted() {
+        #expect(!AppLocation.shouldQuit(launched: nil, current: 500))
+        #expect(!AppLocation.shouldQuit(launched: 500, current: 500))
+        #expect(AppLocation.shouldQuit(launched: 501, current: 500))
+        #expect(AppLocation.MoveFailure.notOpened.message.contains("Applications"))
+    }
+}
+
+@Suite("Location page: the move runs off the main actor (03b §8.2 page 7)")
+@MainActor
+struct MoveToApplicationsModelTests {
+    @Test func theButtonWaitsForTheMoveAndShowsItsSentence() async {
+        var stored = Settings.defaults
+        let commands = OnboardingCommands(
+            write: { transform in
+                stored = transform(stored)
+                return stored
+            },
+            moveToApplications: {
+                try? await Task.sleep(for: .milliseconds(20))
+                return "Zivlet couldn't copy itself to Applications."
+            })
+        let model = OnboardingModel(settings: .defaults, commands: commands)
+        model.moveToApplications()
+        #expect(model.isMoving)
+        model.moveToApplications()  // ignored while the first move runs
+        await model.moving?.value
+        #expect(!model.isMoving && model.moveError == "Zivlet couldn't copy itself to Applications.")
+    }
 }

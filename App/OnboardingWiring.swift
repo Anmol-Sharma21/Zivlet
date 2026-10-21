@@ -57,7 +57,7 @@ final class OnboardingWiring {
                 return store.current
             },
             finished: { [weak self] wantsLoginItem in self?.finish(wantsLoginItem: wantsLoginItem) },
-            moveToApplications: AppLocation.needsMove(bundlePath: bundle.path) ? { Self.move(bundle) } : nil,
+            moveToApplications: AppLocation.needsMove(bundlePath: bundle.path) ? { await Self.move(bundle) } : nil,
             revealSample: { url in NSWorkspace.shared.activateFileViewerSelecting([url]) })
     }
 
@@ -86,17 +86,29 @@ final class OnboardingWiring {
         model = nil
     }
 
-    /// Copies to /Applications, opens the copy and quits this one; a failure returns its sentence.
-    private static func move(_ bundle: URL) -> String? {
+    /// Copies to /Applications off the main actor, opens the copy as a new process and quits this one only once
+    /// that process exists; a failure returns its sentence and this copy keeps running.
+    private static func move(_ bundle: URL) async -> String? {
         let copied: URL
         do {
-            copied = try AppLocation.copy(bundle: bundle)
+            copied = try await AppLocation.copyInBackground(bundle: bundle)
         } catch {
             return error.message
         }
-        NSWorkspace.shared.openApplication(at: copied, configuration: NSWorkspace.OpenConfiguration()) { _, _ in
-            DispatchQueue.main.async { NSApplication.shared.terminate(nil) }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        let launched: NSRunningApplication
+        do {
+            launched = try await NSWorkspace.shared.openApplication(at: copied, configuration: configuration)
+        } catch {
+            Logger(subsystem: "app.zivlet.Zivlet", category: "app").error(
+                "The copy in Applications did not open: \(String(describing: error), privacy: .private)")
+            return AppLocation.MoveFailure.notOpened.message
         }
+        guard AppLocation.shouldQuit(launched: launched.processIdentifier, current: getpid()) else {
+            return AppLocation.MoveFailure.notOpened.message
+        }
+        NSApplication.shared.terminate(nil)
         return nil
     }
 }
