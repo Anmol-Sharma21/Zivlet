@@ -27,7 +27,7 @@ public struct FeedbackGroup: Sendable, Equatable, Codable {
 }
 
 /// Output group (03a §4.5, 01-prd FR-17): reveal in Finder, and where results go when the source folder is read-only.
-/// `fallbackFolder` is an absolute path to an existing directory.
+/// `fallbackFolder` is an absolute path; it may not exist right now (checked where it is used).
 public struct OutputGroup: Sendable, Equatable, Codable {
     public var revealResults = true
     public var fallbackFolder = URL.downloadsDirectory.path

@@ -86,15 +86,27 @@ struct SettingsStoreTests {
         #expect(SettingsStore(defaults: defaults).current.trigger.bindings == swapped)
     }
 
-    @Test func aFallbackFolderThatIsNotAnExistingDirectoryIsRefused() throws {
-        let defaults = try freshDefaults()
-        let store = SettingsStore(defaults: defaults)
+    @Test func aRelativeFallbackFolderIsRefused() throws {
+        let store = SettingsStore(defaults: try freshDefaults())
         store.update { $0.with(\.output.fallbackFolder, "relative/path") }
-        #expect(store.current.output.fallbackFolder == URL.downloadsDirectory.path)
-        store.update { $0.with(\.output.fallbackFolder, "/no/such/folder-\(UUID().uuidString)") }
         #expect(store.current.output.fallbackFolder == URL.downloadsDirectory.path)
         store.update { $0.with(\.output.fallbackFolder, NSTemporaryDirectory()) }
         #expect(store.current.output.fallbackFolder == NSTemporaryDirectory())
+    }
+
+    /// A folder that is gone now (an unplugged drive) is still a valid setting; it is checked where it is used.
+    @Test func aMissingFallbackFolderKeepsTheOutputGroup() throws {
+        let defaults = try freshDefaults()
+        let gone = "/Volumes/Unplugged-\(UUID().uuidString)/Exports"
+        var stored = OutputGroup()
+        stored.revealResults = false
+        stored.fallbackFolder = gone
+        defaults.set(try JSONEncoder().encode(stored), forKey: SettingsStore.key("output"))
+        let store = SettingsStore(defaults: defaults)
+        #expect(store.current.output.fallbackFolder == gone && !store.current.output.revealResults)
+        store.update { $0.with(\.output.revealResults, true) }
+        #expect(store.current.output.revealResults)
+        #expect(SettingsStore(defaults: defaults).current.output.revealResults)
     }
 
     @Test func anInvalidUpdateIsDroppedForThatGroupOnly() throws {

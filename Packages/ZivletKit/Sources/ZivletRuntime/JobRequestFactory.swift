@@ -26,24 +26,27 @@ public struct RequestPlan: Sendable, Equatable {
 /// Dropped URLs → validated job requests (P1-33, 03a §4.3 location rule). The boundary check for drops: each URL
 /// must be a regular local file (not a symlink, FIFO or folder) with a known extension, a catalog pair to `target`
 /// and content that agrees (03a §3.2). Outputs go beside the
-/// original, or into `fallbackFolder` (Downloads) when that folder is not writable (01-prd FR-17).
+/// original, or into `fallbackFolder` (Downloads) when that folder is not writable (01-prd FR-17). A chosen
+/// fallback folder that is gone or read-only now (an unplugged drive) gives way to `downloads`; settings keep it.
 public struct JobRequestFactory: Sendable {
     let fallbackFolder: URL
+    let downloads: URL
     let registry: FormatRegistry
     let catalog: ConversionCatalog
 
     public init(
-        fallbackFolder: URL = URL.downloadsDirectory, registry: FormatRegistry = .standard,
-        catalog: ConversionCatalog = .standard
+        fallbackFolder: URL = URL.downloadsDirectory, downloads: URL = URL.downloadsDirectory,
+        registry: FormatRegistry = .standard, catalog: ConversionCatalog = .standard
     ) {
         self.fallbackFolder = fallbackFolder
+        self.downloads = downloads
         self.registry = registry
         self.catalog = catalog
     }
 
     /// A copy that sends read-only-folder outputs to `fallbackFolder`.
     public func with(fallbackFolder: URL) -> JobRequestFactory {
-        JobRequestFactory(fallbackFolder: fallbackFolder, registry: registry, catalog: catalog)
+        JobRequestFactory(fallbackFolder: fallbackFolder, downloads: downloads, registry: registry, catalog: catalog)
     }
 
     public func requests(for urls: [URL], target: FormatID) -> RequestPlan {
@@ -78,7 +81,13 @@ public struct JobRequestFactory: Sendable {
 
     private func destination(for url: URL) -> URL {
         let folder = url.deletingLastPathComponent()
-        return access(folder.path, W_OK) == 0 ? folder : fallbackFolder
+        if Self.isWritableFolder(folder) { return folder }
+        return Self.isWritableFolder(fallbackFolder) ? fallbackFolder : downloads
+    }
+
+    private static func isWritableFolder(_ url: URL) -> Bool {
+        var info = stat()
+        return stat(url.path, &info) == 0 && (info.st_mode & S_IFMT) == S_IFDIR && access(url.path, W_OK) == 0
     }
 
 }

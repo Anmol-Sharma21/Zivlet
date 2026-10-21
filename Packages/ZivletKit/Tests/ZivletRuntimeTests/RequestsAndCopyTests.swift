@@ -43,9 +43,25 @@ struct RequestsAndCopyTests {
         try Data(Signature.png).write(to: locked.appending(path: "a.png"))
         try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: locked.path)
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: locked.path) }
-        let downloads = box.dir.appending(path: "Downloads")
+        let downloads = box.dir.appending(path: "Downloads", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: false)
         let plan = JobRequestFactory(fallbackFolder: downloads).requests(
             for: [locked.appending(path: "a.png")], target: .jpg)
+        #expect(plan.requests.first?.destination == downloads)
+    }
+
+    /// The chosen fallback folder can disappear (an unplugged drive); settings keep it, and outputs go to Downloads.
+    @Test func aMissingFallbackFolderFallsBackToDownloads() throws {
+        let box = try Sandbox()
+        let locked = box.dir.appending(path: "locked")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
+        try Data(Signature.png).write(to: locked.appending(path: "a.png"))
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: locked.path) }
+        let downloads = box.dir.appending(path: "Downloads", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: false)
+        let factory = JobRequestFactory(fallbackFolder: box.dir.appending(path: "Unplugged"), downloads: downloads)
+        let plan = factory.requests(for: [locked.appending(path: "a.png")], target: .jpg)
         #expect(plan.requests.first?.destination == downloads)
     }
 

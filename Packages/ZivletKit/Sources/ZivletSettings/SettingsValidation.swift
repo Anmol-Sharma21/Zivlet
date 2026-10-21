@@ -4,6 +4,7 @@ import ZivletTrigger
 /// The boundary checks for stored and edited settings (03b §8.1). Each returns true for a value the app may use.
 enum SettingsValidation {
     static let maxIdentifierLength = 255
+    static let maxPathLength = Int(PATH_MAX)
 
     /// Bundle identifiers only: letters, digits, dots and hyphens.
     static func isValidTerminal(_ id: String) -> Bool {
@@ -11,11 +12,10 @@ enum SettingsValidation {
             && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "-") }
     }
 
-    /// An absolute path to a directory that exists now.
+    /// An absolute path. Whether the folder exists is checked where it is used (`JobRequestFactory` falls back to
+    /// Downloads), so an unplugged drive never resets or locks the output group.
     static func isValidFolder(_ path: String) -> Bool {
-        guard path.hasPrefix("/") else { return false }
-        var isDirectory: ObjCBool = false
-        return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+        path.hasPrefix("/") && !path.utf8.contains(0) && path.utf8.count <= maxPathLength
     }
 
     /// Three distinct single modifiers, or nil.
