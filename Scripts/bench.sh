@@ -6,7 +6,10 @@
 #   4. idle wake-ups and CPU of the Release app 10 s after launch (budget 0 and 0.0 %)
 #   5. tap→wheel p95 from the trigger→frame signpost over 50 DEBUG demo shows (no real event latency: the real-drag
 #      p95 at 120 Hz is an owner step, O-6)
-# Writes build/bench/<timestamp>.json, then runs bench-compare.sh (the first run writes this Mac's baseline).
+# First bench-guard.sh samples the load (G-M4-11): on a Mac kept busy by another process it waits a bounded time, then
+# exits 3 with a "Skipped: the Mac is busy (...)" line instead of measuring (ZIVLET_BENCH_FORCE=1 measures anyway).
+# Writes build/bench/<timestamp>.json with that sample as "load", then runs bench-compare.sh (the first run writes
+# this Mac's baseline).
 # Needs make app (Debug) and make release-check (Release) first; only the apps this script starts are stopped.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
@@ -22,6 +25,7 @@ note() { echo "bench: $*" >&2; }
 [[ -x "$DEBUG_APP" ]] || die "no Debug app: run make app"
 [[ -x "$RELEASE_APP" ]] || die "no Release app: run make release-check"
 [[ -x "$STAGE/ffmpeg" ]] || die "no vendored ffmpeg: run make vendor"
+load=$("$REPO_ROOT/Scripts/bench-guard.sh") || exit $? # 3: busy, skipped (the guard printed why)
 mkdir -p "$OUT"
 WORK=$(mktemp -d "$OUT/run.XXXXXX")
 started=()
@@ -123,9 +127,10 @@ stamp=$(date '+%Y%m%d-%H%M%S')
 result=$OUT/$stamp.json
 "$JQ" -n --arg model "$model" --arg macos "$(sw_vers -buildVersion)" --arg date "$stamp" \
     --arg heic "$heic_ms" --arg mov "$mov_s" --arg admit "${admit_ms:-}" --arg hud "${hud_ms:-}" \
-    --arg wake "${idle_wakeups:-}" --arg cpu "${idle_cpu:-}" --arg wheel "${wheel_p95:-}" '
+    --arg wake "${idle_wakeups:-}" --arg cpu "${idle_cpu:-}" --arg wheel "${wheel_p95:-}" \
+    --argjson load "$load" '
     def num: if . == "" then null else tonumber end;
-    { model: $model, macos: $macos, date: $date, note: "27-only",
+    { model: $model, macos: $macos, date: $date, note: "27-only", load: $load,
       metrics: ({ heic12mp_to_jpeg_ms: ($heic | num), mov1080p60s_to_mp4_s: ($mov | num),
         drop_to_admit_ms: ($admit | num), drop_to_hud_ms: ($hud | num), idle_wakeups: ($wake | num),
         idle_cpu_percent: ($cpu | num), tap_to_wheel_p95_ms: ($wheel | num) }

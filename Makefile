@@ -110,7 +110,7 @@ matrix-subset:
 
 # P1-63, G-9: engine timings, drop → admit/HUD and tap → wheel from signposts, idle wake-ups; fails on a > 10 %
 # regression against docs/plan/perf/baseline-<model>.json (written by the first run). Needs make app and
-# make release-check first.
+# make release-check first. On a Mac kept busy by another process it skips with status 3 (Scripts/bench-guard.sh).
 bench:
 	$(ENV) $(NATIVE) Vendor/ensure-media.sh >/dev/null && Scripts/bench.sh
 

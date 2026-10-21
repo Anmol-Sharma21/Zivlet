@@ -111,7 +111,7 @@ trust, path-only folder validation, the HUD scrim, the withdrawn transparency no
 | G-M4-8 | Restored vendor outputs are checked against their own stamps and hashes plus the media gate, but not against expected hashes kept outside the tarball; the release job builds from source instead | when builds are reproducible across hosts (X5) |
 | G-M4-9 | The PR matrix subset is 24 pairs plus 8 targeted cases, not the plan's "about 40" pairs; the nightly full matrix covers all 161 | M5 if PR time allows |
 | G-M4-10 | Escape closes a HUD card only once it is key (after a click into it), by design (D-M4-16) | — |
-| G-M4-11 | `make bench` failed its 10 % gate on a loaded Mac (X6) | re-run on a quiet Mac; if MOV → MP4 or tap → wheel still regress, bisect between `460c14e` and `main` |
+| G-M4-11 | `make bench` failed its 10 % gate on a loaded Mac (X6). After the exit run, `make bench` was made busy-aware (`Scripts/bench-guard.sh`, [perf/README](perf/README.md)): it samples the load first, waits up to 180 s for a busy Mac, then skips with status 3 and the busy process named, records the sample as `load` in its JSON, and `make m4-exit` shows X6 as `skipped (busy)`. The guard is tested with injected samples only; no benchmark has been run with it yet, so the quiet re-run is still open | re-run on a quiet Mac; if MOV → MP4 or tap → wheel still regress, bisect between `460c14e` and `main` |
 | G-13, G-14 | plan size estimates, per-stage lanes, retry on worker crash; per-file gating on hover | P2-01, M5 (unchanged from the plan) |
 
 ## 7. Owner steps

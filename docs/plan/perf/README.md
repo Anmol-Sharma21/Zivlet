@@ -8,6 +8,24 @@ macOS 26 (05 §8).
 It needs `make app` (the Debug app, for the demo hooks and signposts) and `make release-check` (the Release app,
 for idle wake-ups) first, and a logged-in session with a display. It stops only the app processes it starts.
 
+## Busy Mac
+
+Before measuring, `Scripts/bench-guard.sh` samples the Mac: the 1-minute load average (`vm.loadavg`) against the
+core count (`hw.ncpu`) and the heaviest other process (`ps`, by CPU). The Mac is busy when one process uses more
+than 50 % of a core or the load is above 0.5 per core. A busy Mac is sampled again every 10 s for up to 180 s; if it
+stays busy, `make bench` measures nothing and exits with status 3 and one line that names the cause, for example:
+
+    Skipped: the Mac is busy (mediaanalysisd 150 % CPU). Re-run when idle or set ZIVLET_BENCH_FORCE=1.
+
+A skip is not a pass and not a regression: re-run on a quiet Mac. `make m4-exit` reports the X6 row as
+`skipped (busy)` with that line. `ZIVLET_BENCH_FORCE=1` measures anyway (the sample then says `forced`);
+`ZIVLET_BENCH_WAIT_STEP` and `ZIVLET_BENCH_WAIT_MAX` change the wait, in whole seconds.
+
+Each run's JSON records the sample it started from as `load`: `load_1min`, `cores`, `load_per_core`,
+`heaviest.process` and `heaviest.cpu_percent`, `busy`, `forced`, `samples` and `waited_s`. The gate only reads
+`metrics`. The guard was added after the M4 exit run (G-M4-11), where `mediaanalysisd` (Photos analysis) used about
+135 % CPU and failed the gate without a code change; the Mac14,9 baseline below predates it and has no `load`.
+
 ## Metrics
 
 | Metric | How | Budget (10 §8.11, 05 P1-63) |

@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # The automated M4 exit rows X1–X9 (10h F8), in order. Each row's output goes to build/m4-exit/<row>.log and one
-# line per row says pass or fail; the script exits 1 when any row failed. The owner rows (O-1 … O-6) are not here:
-# docs/plan/qa/trigger.md and docs/plan/qa/actions.md list them.
+# line per row says pass or fail; the script exits 1 when any row failed. X6 says "skipped (busy)" instead of FAIL
+# when make bench skipped because another process kept the Mac busy (bench-guard.sh, G-M4-11); that is not a pass,
+# so re-run X6 on a quiet Mac. The owner rows (O-1 … O-6) are not here: docs/plan/qa/trigger.md and
+# docs/plan/qa/actions.md list them. ZIVLET_M4_EXIT_LOGS replaces build/m4-exit (script tests only).
 # Usage: Scripts/m4-exit.sh [--only X1,X4,...] [--list]     --list prints the rows and commands without running.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
-LOGS=$REPO_ROOT/build/m4-exit
+LOGS=${ZIVLET_M4_EXIT_LOGS:-$REPO_ROOT/build/m4-exit}
+BUSY_SKIP='^Skipped: the Mac is busy' # bench-guard.sh's skip line
 ROWS="X1 X2 X3 X4 X5 X6 X7 X8 X9"
 
 command_of() {
@@ -92,6 +95,8 @@ for row in $selected; do
     started=$SECONDS
     if run_row "$row" >"$LOGS/$row.log" 2>&1; then
         echo "$row pass ($((SECONDS - started)) s)  $(command_of "$row")"
+    elif [[ "$row" == X6 ]] && skip=$(grep -m1 "$BUSY_SKIP" "$LOGS/$row.log"); then
+        echo "$row skipped (busy) ($((SECONDS - started)) s)  $(command_of "$row")  $skip"
     else
         echo "$row FAIL ($((SECONDS - started)) s)  $(command_of "$row")  see $LOGS/$row.log"
         failed=1
