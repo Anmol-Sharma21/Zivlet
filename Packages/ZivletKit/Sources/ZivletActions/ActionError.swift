@@ -6,12 +6,25 @@ public enum ActionError: Error, Sendable, Equatable {
     case nothingLocal(ActionID)
     /// The pasteboard did not take the items or the text.
     case clipboardRefused
+    /// AirDrop is off, missing on this Mac, or cannot take these items.
+    case airDropUnavailable
+    /// The AirDrop sheet reported an error other than the person cancelling.
+    case airDropFailed(code: Int)
 
     /// One sentence for the result card.
     public var userMessage: String {
         switch self {
         case .nothingLocal(let action): Self.nothingLocalMessage(action)
         case .clipboardRefused: "Zivlet couldn't write to the clipboard. Try again."
+        case .airDropUnavailable, .airDropFailed: "Zivlet couldn't start AirDrop for these files."
+        }
+    }
+
+    /// The text behind "Show details", when there is more to say than `userMessage`.
+    public var detail: String? {
+        switch self {
+        case .airDropFailed(let code): "AirDrop reported error \(code)."
+        default: nil
         }
     }
 
