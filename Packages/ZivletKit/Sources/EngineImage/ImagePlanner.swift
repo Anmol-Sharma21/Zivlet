@@ -109,8 +109,10 @@ public enum ImagePlanner {
                 output: target == .pdf ? .pdf : .raster, frames: frames, flattenAlpha: flatten,
                 quality: lossy.contains(target) ? quality(options.tier) : nil, tiffLZW: target == .tiff,
                 expectedSize: target == .pdf ? probe.pageSize : probe.displaySize, webp: webp,
-                svg: probe.svg == nil
-                    ? nil : try SVGRasterOptions(scale: SVGGeometry.scale, maxEdge: SVGGeometry.maxEdge),
+                svg: try probe.svg.map { svg throws(PlanError) in
+                    try SVGRasterOptions(
+                        scale: SVGGeometry.scale, maxEdge: svg.edge, reservedPixels: svg.embeddedPixels)
+                },
                 colour: options.colour == .webSRGB && target != .pdf ? .convertToSRGB : .keep,
                 decodeToSDR: probe.hasGainMap)
             return try ExecutionPlan(

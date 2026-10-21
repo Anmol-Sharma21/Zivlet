@@ -3,7 +3,7 @@ name = "zivlet_svg"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
-description = "C ABI over resvg for Zivlet: SVG bytes to premultiplied RGBA8, data: image hrefs only"
+description = "C ABI over resvg for Zivlet: SVG bytes to premultiplied RGBA8, data: image hrefs only, bounded work"
 publish = false
 
 [lib]
@@ -11,10 +11,13 @@ crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 resvg = { version = "=0.47.0", default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }
+# Header sizes of embedded raster images (the version usvg already uses), checked before resvg decodes them.
+imagesize = "=0.14.0"
 
 [profile.release]
 opt-level = 3
 lto = "fat"
 codegen-units = 1
-panic = "abort"
+# Unwind, so a panic in resvg or a decoder is caught at the C boundary and fails one call, not the app.
+panic = "unwind"
 strip = "debuginfo"

@@ -29,7 +29,8 @@ fi
 [[ -f "$CRATE/Cargo.lock" ]] || { echo "error: $CRATE/Cargo.lock missing" >&2; exit 1; }
 
 if [[ "${1:-}" == "--test" ]]; then
-    # Tests run on the host with the default (unwinding) test profile; the release archive aborts on panic.
+    # Tests run on the host with the default test profile; both it and the release archive unwind on panic, so the
+    # C entry points catch a panic and fail the call.
     cargo test --locked --manifest-path "$CRATE/Cargo.toml" 2>&1
 fi
 # staticlib alone: with the rlib type also requested (for the tests) rustc skips fat LTO and leaves the C entry
