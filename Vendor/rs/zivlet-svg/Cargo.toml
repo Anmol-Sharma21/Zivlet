@@ -1,0 +1,20 @@
+[package]
+name = "zivlet_svg"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "C ABI over resvg for Zivlet: SVG bytes to premultiplied RGBA8, data: image hrefs only"
+publish = false
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+resvg = { version = "=0.47.0", default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"
