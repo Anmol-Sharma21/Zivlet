@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var trigger: TriggerHost?
     private var wheel: WheelController?
     private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory)
+    private lazy var onboarding = OnboardingWiring(store: settings.store)
     #if DEBUG
         private let debugHUD = DebugHUD()
     #endif
@@ -66,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 unavailableActions: ActionWiring.unavailableActions)
             await wheel.prewarm()
             launchDemoIfRequested()
+            onboarding.showIfNeeded()
         }
     }
 
@@ -120,7 +122,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.actions.announce(await self.undo(batch).message)
                 }
             },
-            settings: { [weak self] in self?.settingsWindow.show() })
+            settings: { [weak self] in self?.settingsWindow.show() },
+            practice: { [weak self] in self?.onboarding.show(.practiceConvert) })
         menu.install(wheel: wheel)
         actions.onFinished = { [menu] in menu.refreshRecent() }
     }
