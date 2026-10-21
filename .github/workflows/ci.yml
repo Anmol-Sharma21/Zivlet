@@ -1,0 +1,59 @@
+# Pull-request and main-branch checks (P0-07). GitHub's hosted macOS images lack Xcode 27, so every job runs on the
+# project's self-hosted runner (labels below; owner step O-4). `make ci-local` runs the same run steps in the same
+# order on a developer Mac, so keep every run step free of GitHub expressions.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  check:
+    name: Lint, test, coverage, app, release check, matrix subset, licences
+    runs-on: [self-hosted, macOS, ARM64, zivlet]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Vendor script tests
+        run: make vendor-test
+      - name: Vendor outputs (runner cache, else build)
+        run: Scripts/ci-vendor.sh
+      - name: Lint
+        run: make lint
+      - name: Test
+        run: mkdir -p build/reports && make test 2>&1 | tee build/reports/test.log
+      - name: Coverage
+        run: mkdir -p build/reports && make coverage 2>&1 | tee build/reports/coverage.txt
+      - name: Debug app
+        run: make app
+      - name: Release check (Release build, bundle, signatures, size)
+        run: make release-check
+      - name: Pair matrix (one pair per source and target)
+        run: ZIVLET_MATRIX=subset make matrix
+      - name: Licence gate
+        run: make licence-gate
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reports
+          path: build/reports/
+          if-no-files-found: ignore
+          retention-days: 14

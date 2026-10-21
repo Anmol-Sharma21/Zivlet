@@ -1,0 +1,53 @@
+# Vendor builds (P0-37): when anything under Vendor/ changes, build every vendor output from the pinned sources,
+# pack it under its cache key and keep the tarball plus the corresponding-source bundle as artifacts.
+# Self-hosted runner only (O-4).
+name: Vendor
+
+on:
+  push:
+    branches: [main]
+    paths: ["Vendor/**"]
+  pull_request:
+    paths: ["Vendor/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vendor-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  build:
+    name: Build, pack and source bundle
+    runs-on: [self-hosted, macOS, ARM64, zivlet]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Vendor script tests
+        run: make vendor-test
+      - name: Build every vendor output
+        run: make vendor
+      - name: Pack under the cache key
+        run: make vendor-pack
+      - name: Corresponding source
+        run: make source-bundle VERSION=vendor
+      - name: Upload the vendor tarball and source bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vendor
+          path: |
+            Vendor/out/zivlet-vendor-*.tar.xz
+            build/release/
+          if-no-files-found: error
+          retention-days: 30

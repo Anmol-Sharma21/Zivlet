@@ -13,7 +13,7 @@
 
 ## Test plan
 
-<!-- There is no hosted CI yet (no runner with Xcode 27). Run the following locally and paste the summary. -->
+<!-- CI runs on a self-hosted runner once it is registered. Until then run the following locally (or make ci-local) and paste the summary. -->
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

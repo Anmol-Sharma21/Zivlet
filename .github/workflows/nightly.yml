@@ -1,0 +1,94 @@
+# Nightly (P1-61, P1-62, P1-63, P0-37, G-12): the full 161-pair matrix with the hostile corpus, the benchmark with
+# its regression gate, the vendor reproducibility check and the wheel-test watch. Self-hosted runner only (O-4).
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  matrix:
+    name: Full pair matrix and hostile corpus
+    runs-on: [self-hosted, macOS, ARM64, zivlet]
+    timeout-minutes: 180
+    env:
+      ZIVLET_MATRIX: full
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Vendor outputs (runner cache, else build)
+        run: Scripts/ci-vendor.sh
+      - name: Matrix (161 pairs) and hostile corpus
+        run: mkdir -p build/reports && make matrix 2>&1 | tee build/reports/matrix.log
+      - name: Upload matrix log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: matrix
+          path: build/reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  bench:
+    name: Benchmark with the regression gate
+    needs: matrix
+    runs-on: [self-hosted, macOS, ARM64, zivlet]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Vendor outputs (runner cache, else build)
+        run: Scripts/ci-vendor.sh
+      - name: Apps for the benchmark
+        run: make app && make release-check
+      - name: Benchmark
+        run: make bench
+
+  reproducibility:
+    name: Vendor reproducibility
+    runs-on: [self-hosted, macOS, ARM64, zivlet]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fetch sources
+        run: make vendor-fetch
+      - name: Two clean media builds compared
+        run: Vendor/repro-check.sh
+
+  wheel-watch:
+    name: Wheel tests, 20 runs
+    runs-on: [self-hosted, macOS, ARM64, zivlet]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Repeat ZivletWheelTests
+        run: Scripts/flaky-watch.sh 20
+      - name: Upload failing logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheel-watch
+          path: build/reports/wheel-watch/
+          if-no-files-found: ignore
+          retention-days: 30

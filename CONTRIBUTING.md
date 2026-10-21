@@ -23,11 +23,11 @@ make lint test coverage app
 
 All four must exit 0. Fill in the pull request template, including the DCO checkbox.
 
-## No CI yet
+## CI
 
-There is no hosted CI yet: GitHub's hosted macOS runners don't ship Xcode 27, which Zivlet needs. Until a runner that
-has it is available, reviewers run the commands above locally. Please paste their summary output into your pull
-request.
+GitHub's hosted macOS runners don't ship Xcode 27, which Zivlet needs, so the workflows in `.github/workflows` run
+on a self-hosted runner. Until that runner is registered they don't run; `make ci-local` runs the same steps as
+`ci.yml`, in the same order, on your Mac. Please paste its summary into your pull request.
 
 ## Third-party code
 

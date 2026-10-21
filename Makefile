@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -113,3 +113,7 @@ matrix-subset:
 # make release-check first.
 bench:
 	$(ENV) $(NATIVE) Vendor/ensure-media.sh >/dev/null && Scripts/bench.sh
+
+# P0-07: the run steps of .github/workflows/ci.yml, in order, on this Mac (the self-hosted runner runs the same).
+ci-local:
+	$(ENV) Scripts/ci-local.sh
