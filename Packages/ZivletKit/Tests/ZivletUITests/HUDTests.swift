@@ -94,3 +94,20 @@ struct HUDTimingTests {
         hud.close(b.batch)
     }
 }
+
+@Suite("HUD panels can become key (Escape, selectable details)")
+@MainActor
+struct HUDKeyTests {
+    /// A borderless window cannot become key by default; without key status the card's Escape shortcut and its
+    /// selectable failure details do nothing.
+    @Test func theHUDWindowCanBecomeKeyWithoutActivatingZivlet() {
+        let window = HUDWindow(size: HUDLayout.size)
+        #expect(window.canBecomeKey && window.styleMask.contains(.nonactivatingPanel))
+        #expect(window.styleMask.contains(.borderless) && window.becomesKeyOnlyIfNeeded)
+    }
+
+    @Test func theResultPanelUsesTheHUDWindow() {
+        let panel = HUDPanel(HUDPanel.Callbacks(cancel: { _ in }, act: { _, _ in }, hover: { _, _ in }))
+        #expect(panel.canBecomeKey)
+    }
+}

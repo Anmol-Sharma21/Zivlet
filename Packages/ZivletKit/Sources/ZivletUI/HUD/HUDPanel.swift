@@ -21,19 +21,11 @@ final class HUDPanel {
     }
 
     let model = HUDModel()
-    private let panel = NSPanel(
-        contentRect: NSRect(origin: .zero, size: HUDLayout.size), styleMask: [.borderless, .nonactivatingPanel],
-        backing: .buffered, defer: true)
+    private let panel = HUDWindow(size: HUDLayout.size)
     private var hosting: NSHostingView<ResultHUDView>?
     private var batch: BatchID?
 
     init(_ callbacks: Callbacks) {
-        panel.level = .floating
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         let view = ResultHUDView(
             model: model,
             cancel: { [weak self] in if let batch = self?.batch { callbacks.cancel(batch) } },
@@ -47,6 +39,7 @@ final class HUDPanel {
 
     var isVisible: Bool { panel.isVisible }
     var frame: CGRect { panel.frame }
+    var canBecomeKey: Bool { panel.canBecomeKey }
 
     func bind(_ batch: BatchID) { self.batch = batch }
 
