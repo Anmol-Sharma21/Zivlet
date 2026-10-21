@@ -97,6 +97,8 @@ enum ImageReader {
 /// Re-opens the staged file (03b §6.1 "verify by re-opening the output"): type, displayed size, alpha, frame or
 /// page count.
 enum ImageVerifier {
+    static let unexpectedAlpha = "The output has transparency the source did not have."
+
     static func check(_ url: URL, spec: ImagePipelineSpec) throws(JobError) {
         switch spec.output {
         case .pdf: try checkPDF(url, spec: spec)
@@ -118,6 +120,7 @@ enum ImageVerifier {
             throw .verificationFailed("The output is \(probe.displaySize), expected \(spec.expectedSize).")
         }
         if spec.flattenAlpha, probe.hasAlpha { throw .verificationFailed("The output still has transparency.") }
+        if let webp = spec.webp, !webp.exactAlpha, probe.hasAlpha { throw .verificationFailed(unexpectedAlpha) }
         guard probe.frameCount == spec.frames.count else {
             let unit = probe.frameCount == 1 ? "frame" : "frames"
             throw .verificationFailed("The output has \(probe.frameCount) \(unit), expected \(spec.frames.count).")

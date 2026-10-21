@@ -11,6 +11,8 @@ public enum WebPPlanner {
     static let animatedTypes: Set<String> = ["public.png", "public.heics"]
     /// Most frames one animated WebP carries; the job pixel budget can lower it further.
     static let maxFrames = 1_000
+    /// libwebp's largest width or height (`WEBP_MAX_DIMENSION`).
+    static let maxEdge = 16_383
 
     /// Compact / Balanced / High on libwebp's 0…100 scale (the same ladder as JPEG, HEIC and AVIF).
     public static func quality(_ tier: QualityTier) -> Double {
@@ -30,6 +32,9 @@ public enum WebPPlanner {
             preconditionFailure("the WebP ladder and method are inside libwebp's ranges")
         }
     }
+
+    /// False when a side is past `maxEdge`; such sources are refused before any decode.
+    static func fits(_ size: PixelSize) -> Bool { max(size.width, size.height) <= maxEdge }
 
     static func isAnimated(_ probe: ImageProbe) -> Bool {
         probe.frameCount > 1 && animatedTypes.contains(probe.typeIdentifier)

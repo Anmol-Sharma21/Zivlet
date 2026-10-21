@@ -20,6 +20,7 @@ enum ImagePipeline {
         }
         let budget = PixelBudget(limits)
         switch spec.output {
+        case .raster where spec.webp != nil: try writeWebP(source, spec, to: staged, cancel: cancel, budget: budget)
         case .raster: try writeRaster(source, spec, to: staged, cancel: cancel, budget: budget)
         case .pdf: try ImagePDFWriter.write(source, spec, to: staged, cancel: cancel, budget: budget)
         }
@@ -40,6 +41,24 @@ enum ImagePipeline {
             try addFrame(index, of: source, to: destination, spec)
         }
         guard CGImageDestinationFinalize(destination) else { throw ImageWriteFailure.error(at: staged) }
+    }
+
+    /// libwebp instead of ImageIO (D-M4-8): every planned frame decoded upright, within the pixel budget.
+    private static func writeWebP(
+        _ source: CGImageSource, _ spec: ImagePipelineSpec, to staged: URL, cancel: CancellationFlag,
+        budget start: PixelBudget
+    ) throws(JobError) {
+        guard let options = spec.webp else { throw .internalInvariant("WebP output without WebP options") }
+        let job = WebPWriter.Job(
+            count: spec.frames.count, canvas: spec.expectedSize, timing: WebPTiming.read(source, frames: spec.frames),
+            metadata: WebPMetadata.read(source, index: spec.frames[0], output: spec.expectedSize, options: options),
+            options: options)
+        var budget = start
+        try WebPWriter.write(job, to: staged, cancel: cancel) { (position: Int) throws(JobError) -> CGImage in
+            let index = spec.frames[position]
+            budget = try budget.admitting(source, index)
+            return try oriented(source, index)
+        }
     }
 
     /// Copies the frame as stored (tag kept) unless it needs flattening or its orientation baked in

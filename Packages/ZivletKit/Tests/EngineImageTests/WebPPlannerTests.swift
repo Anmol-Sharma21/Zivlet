@@ -75,6 +75,13 @@ struct WebPPlannerTests {
         #expect(WebPPlanner.frames(probe: Self.probe(frames: 5_000), animated: false) == [0])
     }
 
+    @Test(arguments: [PixelSize(width: 16_384, height: 10), PixelSize(width: 10, height: 20_000)])
+    func sourcesPastTheWebPEdgeLimitAreRefused(size: PixelSize) {
+        let probe = ImageProbe(
+            typeIdentifier: "public.png", frameCount: 1, pixelSize: size, orientation: 1, hasAlpha: false)
+        #expect(throws: JobError.unsupportedInput(.tooLarge)) { try Self.plan(probe: probe) }
+    }
+
     @Test func webpIsAvailableWithoutAnImageIOEncoder() {
         #expect(ImageRoutes.missing(source: .png, target: .webp, writableTypes: []) == nil)
     }

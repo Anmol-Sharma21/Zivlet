@@ -80,6 +80,7 @@ public enum ImagePlanner {
         guard probe.pixelSize.width > 0, probe.pixelSize.height > 0 else { throw .unsupportedInput(.unreadable) }
         guard !pixels.overflow, pixels.partialValue <= maxPixels else { throw .unsupportedInput(.tooLarge) }
         let webp = target == .webp ? WebPPlanner.options(tier: options.tier, probe: probe) : nil
+        if webp != nil, !WebPPlanner.fits(probe.displaySize) { throw .unsupportedInput(.tooLarge) }
         let frames =
             webp.map { WebPPlanner.frames(probe: probe, animated: $0.animated) }
             ?? frames(source: source, target: target, probe: probe)

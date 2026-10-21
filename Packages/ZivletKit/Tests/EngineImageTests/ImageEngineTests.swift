@@ -21,12 +21,6 @@ struct ImageEngineTests {
             }
             return
         }
-        if pair.target == .webp {
-            await withKnownIssue("the libwebp writer lands in task B2") {
-                _ = try await run.convert(source, pair.source, to: pair.target, in: dir)
-            }
-            return
-        }
         let (plan, output) = try await run.convert(source, pair.source, to: pair.target, in: dir)
         #expect(output.byteCount > 0 && output.format == pair.target && plan.engine == .image)
     }
