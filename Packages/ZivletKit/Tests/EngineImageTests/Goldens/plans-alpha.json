@@ -1,0 +1,1898 @@
+{
+  "avif__bmp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "bmp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.bmp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.microsoft.bmp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.avif",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "avif__heic" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "heic",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.heic",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.heic",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.avif",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "avif__jpg" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "jpg",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.jpg",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.jpeg",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.avif",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "avif__pdf" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "pdf",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.pdf",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.adobe.pdf",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "pdf",
+            "source" : "file:///in/a.avif",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "avif__png" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "png",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.png",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.png",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.avif",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "avif__tiff" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "tiff",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.tiff",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.tiff",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.avif",
+            "tiffLZW" : true
+          }
+        }
+      }
+    ]
+  },
+  "avif__webp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "webp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.webp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "org.webmproject.webp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.avif",
+            "tiffLZW" : false,
+            "webp" : {
+              "animated" : false,
+              "exactAlpha" : true,
+              "keepEXIF" : true,
+              "keepICC" : true,
+              "keepXMP" : true,
+              "lossless" : false,
+              "method" : 4,
+              "quality" : 85,
+              "sharpYUV" : true
+            }
+          }
+        }
+      }
+    ]
+  },
+  "bmp__avif" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "avif",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.avif",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.avif",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.bmp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "bmp__heic" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "heic",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.heic",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.heic",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.bmp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "bmp__jpg" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "jpg",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.jpg",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.jpeg",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.bmp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "bmp__pdf" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "pdf",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.pdf",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.adobe.pdf",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "pdf",
+            "source" : "file:///in/a.bmp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "bmp__png" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "png",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.png",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.png",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.bmp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "bmp__tiff" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "tiff",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.tiff",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.tiff",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.bmp",
+            "tiffLZW" : true
+          }
+        }
+      }
+    ]
+  },
+  "bmp__webp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "webp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.webp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "org.webmproject.webp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.bmp",
+            "tiffLZW" : false,
+            "webp" : {
+              "animated" : false,
+              "exactAlpha" : true,
+              "keepEXIF" : true,
+              "keepICC" : true,
+              "keepXMP" : true,
+              "lossless" : false,
+              "method" : 4,
+              "quality" : 85,
+              "sharpYUV" : true
+            }
+          }
+        }
+      }
+    ]
+  },
+  "heic__avif" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "avif",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.avif",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.avif",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.heic",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "heic__bmp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "bmp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.bmp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.microsoft.bmp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.heic",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "heic__jpg" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "jpg",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.jpg",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.jpeg",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.heic",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "heic__pdf" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "pdf",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.pdf",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.adobe.pdf",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "pdf",
+            "source" : "file:///in/a.heic",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "heic__png" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "png",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.png",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.png",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.heic",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "heic__tiff" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "tiff",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.tiff",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.tiff",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.heic",
+            "tiffLZW" : true
+          }
+        }
+      }
+    ]
+  },
+  "heic__webp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "webp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.webp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "org.webmproject.webp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.heic",
+            "tiffLZW" : false,
+            "webp" : {
+              "animated" : false,
+              "exactAlpha" : true,
+              "keepEXIF" : true,
+              "keepICC" : true,
+              "keepXMP" : true,
+              "lossless" : false,
+              "method" : 4,
+              "quality" : 85,
+              "sharpYUV" : true
+            }
+          }
+        }
+      }
+    ]
+  },
+  "jpg__avif" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "avif",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.avif",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.avif",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.jpg",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "jpg__bmp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "bmp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.bmp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.microsoft.bmp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.jpg",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "jpg__heic" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "heic",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.heic",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.heic",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.jpg",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "jpg__pdf" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "pdf",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.pdf",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.adobe.pdf",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "pdf",
+            "source" : "file:///in/a.jpg",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "jpg__png" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "png",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.png",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.png",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.jpg",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "jpg__tiff" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "tiff",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.tiff",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.tiff",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.jpg",
+            "tiffLZW" : true
+          }
+        }
+      }
+    ]
+  },
+  "jpg__webp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "webp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.webp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "org.webmproject.webp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.jpg",
+            "tiffLZW" : false,
+            "webp" : {
+              "animated" : false,
+              "exactAlpha" : true,
+              "keepEXIF" : true,
+              "keepICC" : true,
+              "keepXMP" : true,
+              "lossless" : false,
+              "method" : 4,
+              "quality" : 85,
+              "sharpYUV" : true
+            }
+          }
+        }
+      }
+    ]
+  },
+  "png__avif" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "avif",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.avif",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.avif",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.png",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "png__bmp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "bmp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.bmp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.microsoft.bmp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.png",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "png__heic" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "heic",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.heic",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.heic",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.png",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "png__jpg" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "jpg",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.jpg",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.jpeg",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.png",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "png__pdf" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "pdf",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.pdf",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.adobe.pdf",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "pdf",
+            "source" : "file:///in/a.png",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "png__tiff" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "tiff",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.tiff",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.tiff",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.png",
+            "tiffLZW" : true
+          }
+        }
+      }
+    ]
+  },
+  "png__webp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "webp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.webp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "org.webmproject.webp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.png",
+            "tiffLZW" : false,
+            "webp" : {
+              "animated" : false,
+              "exactAlpha" : true,
+              "keepEXIF" : true,
+              "keepICC" : true,
+              "keepXMP" : true,
+              "lossless" : false,
+              "method" : 4,
+              "quality" : 85,
+              "sharpYUV" : true
+            }
+          }
+        }
+      }
+    ]
+  },
+  "tiff__avif" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "avif",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.avif",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.avif",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.tiff",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "tiff__bmp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "bmp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.bmp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.microsoft.bmp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.tiff",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "tiff__heic" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "heic",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.heic",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.heic",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.tiff",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "tiff__jpg" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "jpg",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.jpg",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.jpeg",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.tiff",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "tiff__pdf" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "pdf",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.pdf",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.adobe.pdf",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "pdf",
+            "source" : "file:///in/a.tiff",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "tiff__png" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "png",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.png",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.png",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.tiff",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "tiff__webp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "webp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.webp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "org.webmproject.webp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.tiff",
+            "tiffLZW" : false,
+            "webp" : {
+              "animated" : false,
+              "exactAlpha" : true,
+              "keepEXIF" : true,
+              "keepICC" : true,
+              "keepXMP" : true,
+              "lossless" : false,
+              "method" : 4,
+              "quality" : 85,
+              "sharpYUV" : true
+            }
+          }
+        }
+      }
+    ]
+  },
+  "webp__avif" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "avif",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.avif",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.avif",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.webp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "webp__bmp" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "bmp",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.bmp",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.microsoft.bmp",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.webp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "webp__heic" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "heic",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.heic",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.heic",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.webp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "webp__jpg" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+      {
+        "alphaFlattened" : {
+
+        }
+      }
+    ],
+    "outputFormat" : "jpg",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.jpg",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.jpeg",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : true,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "quality" : 0.85,
+            "source" : "file:///in/a.webp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "webp__pdf" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "pdf",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.pdf",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "com.adobe.pdf",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "pdf",
+            "source" : "file:///in/a.webp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "webp__png" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "png",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.png",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.png",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.webp",
+            "tiffLZW" : false
+          }
+        }
+      }
+    ]
+  },
+  "webp__tiff" : {
+    "engine" : "image",
+    "lanes" : [
+      "cpu"
+    ],
+    "notes" : [
+
+    ],
+    "outputFormat" : "tiff",
+    "stageWeights" : [
+      1
+    ],
+    "stagedFile" : "file:///in/.zivlet-1.tiff",
+    "stages" : [
+      {
+        "image" : {
+          "_0" : {
+            "colour" : "keep",
+            "decodeToSDR" : false,
+            "destinationType" : "public.tiff",
+            "expectedSize" : {
+              "height" : 480,
+              "width" : 640
+            },
+            "flattenAlpha" : false,
+            "frames" : [
+              0
+            ],
+            "output" : "raster",
+            "source" : "file:///in/a.webp",
+            "tiffLZW" : true
+          }
+        }
+      }
+    ]
+  }
+}

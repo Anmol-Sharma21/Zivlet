@@ -58,7 +58,7 @@ let package = Package(
             swiftSettings: strict),
         .testTarget(
             name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG"],
-            swiftSettings: strict),
+            resources: [.copy("Goldens")], swiftSettings: strict),
         .testTarget(
             name: "ZivletRuntimeTests", dependencies: ["ZivletRuntime", "EngineTestSupport"], swiftSettings: strict),
     ],
