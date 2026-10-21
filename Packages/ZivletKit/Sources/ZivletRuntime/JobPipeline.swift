@@ -124,7 +124,9 @@ struct JobPipeline: Sendable {
         return { pid in
             do {
                 try services.records?.write(
-                    record.with(childPID: pid, childPath: services.processes.executablePath(pid)))
+                    record.with(
+                        childPID: pid, childPath: services.processes.executablePath(pid),
+                        childStart: services.processes.startTime(pid)))
             } catch {
                 Self.logger.error("Job record not updated: \(String(describing: error), privacy: .private)")
             }

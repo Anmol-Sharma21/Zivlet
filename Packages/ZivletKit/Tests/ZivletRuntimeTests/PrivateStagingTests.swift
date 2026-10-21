@@ -86,5 +86,6 @@ struct PrivateStagingTests {
 struct DeadProcesses: ProcessInspecting {
     func isAlive(_ pid: Int32) -> Bool { false }
     func executablePath(_ pid: Int32) -> String? { nil }
+    func startTime(_ pid: Int32) -> UInt64? { nil }
     func killGroup(_ pgid: Int32) {}
 }

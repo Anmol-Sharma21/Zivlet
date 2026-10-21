@@ -11,15 +11,18 @@ import ZivletEngineKit
 final class FakeProcesses: ProcessInspecting {
     let alive: Set<Int32>
     let paths: [Int32: String]
+    let starts: [Int32: UInt64]
     let kills = Mutex<[Int32]>([])
 
-    init(alive: Set<Int32> = [], paths: [Int32: String] = [:]) {
+    init(alive: Set<Int32> = [], paths: [Int32: String] = [:], starts: [Int32: UInt64] = [:]) {
         self.alive = alive
         self.paths = paths
+        self.starts = starts
     }
 
     func isAlive(_ pid: Int32) -> Bool { alive.contains(pid) }
     func executablePath(_ pid: Int32) -> String? { paths[pid] }
+    func startTime(_ pid: Int32) -> UInt64? { starts[pid] }
     func killGroup(_ pgid: Int32) { kills.withLock { $0.append(pgid) } }
     var killed: [Int32] { kills.withLock { $0 } }
 }
@@ -35,8 +38,9 @@ struct OrphanReaperTests {
         let (store, box) = try Self.store()
         let record = JobRecord(job: JobID(), ownerPID: 7, stagedFile: box.dir.appending(path: ".zivlet-x.mp4"))
         try store.write(record)
-        try store.write(record.with(childPID: 9, childPath: "/opt/homebrew/bin/ffmpeg"))
-        #expect(store.all() == [record.with(childPID: 9, childPath: "/opt/homebrew/bin/ffmpeg")])
+        let running = record.with(childPID: 9, childPath: "/opt/homebrew/bin/ffmpeg", childStart: 1_234)
+        try store.write(running)
+        #expect(store.all() == [running] && running.childStart == 1_234)
         store.remove(record.job)
         store.remove(record.job)
         #expect(store.all().isEmpty)
@@ -54,8 +58,10 @@ struct OrphanReaperTests {
         let (store, box) = try Self.store()
         let staged = try box.file(".zivlet-dead.mp4", "partial")
         try store.write(
-            JobRecord(job: JobID(), ownerPID: 100, stagedFile: staged, childPID: 200, childPath: "/x/ffmpeg"))
-        let processes = FakeProcesses(alive: [200], paths: [200: "/x/ffmpeg"])
+            JobRecord(
+                job: JobID(), ownerPID: 100, stagedFile: staged, childPID: 200, childPath: "/x/ffmpeg",
+                childStart: 42))
+        let processes = FakeProcesses(alive: [200], paths: [200: "/x/ffmpeg"], starts: [200: 42])
         let report = OrphanReaper(store: store, processes: processes, currentPID: 1).reap()
         #expect(report == OrphanReaper.Report(killed: 1, removedFiles: 1))
         #expect(processes.killed == [200])
@@ -103,10 +109,53 @@ struct OrphanReaperTests {
         let path = try #require(SystemProcesses().executablePath(sleeper))
         let staged = try box.file(".zivlet-sleep.mp4")
         let deadOwner = Int32.max
+        let start = try #require(SystemProcesses().startTime(sleeper))
         try store.write(
-            JobRecord(job: JobID(), ownerPID: deadOwner, stagedFile: staged, childPID: sleeper, childPath: path))
+            JobRecord(
+                job: JobID(), ownerPID: deadOwner, stagedFile: staged, childPID: sleeper, childPath: path,
+                childStart: start))
         #expect(OrphanReaper(store: store).reap() == OrphanReaper.Report(killed: 1, removedFiles: 1))
         #expect(try await child.value.termination == .signaled(SIGKILL))
         #expect(!SystemProcesses().isAlive(sleeper))
+    }
+
+    /// G-11: the PID was recycled by another process of the same executable; its start time gives it away.
+    @Test func aPIDThatNowBelongsToAnotherProcessIsNotKilled() async throws {
+        let (store, box) = try Self.store()
+        let pid = Mutex<Int32>(0)
+        let child = Task {
+            try await SubprocessRunner().run(
+                SubprocessRequest(executable: URL(fileURLWithPath: "/bin/sleep"), arguments: ["30"]),
+                onSpawn: { spawned in pid.withLock { $0 = spawned } })
+        }
+        while pid.withLock({ $0 }) == 0 { try await Task.sleep(for: .milliseconds(10)) }
+        let sleeper = pid.withLock { $0 }
+        defer { kill(sleeper, SIGKILL) }
+        let path = try #require(SystemProcesses().executablePath(sleeper))
+        let start = try #require(SystemProcesses().startTime(sleeper))
+        try store.write(
+            JobRecord(
+                job: JobID(), ownerPID: Int32.max, stagedFile: box.dir.appending(path: ".zivlet-x"),
+                childPID: sleeper, childPath: path, childStart: start - 1_000_000))
+        #expect(OrphanReaper(store: store).reap().killed == 0)
+        #expect(SystemProcesses().isAlive(sleeper))
+        kill(sleeper, SIGKILL)
+        _ = try? await child.value
+    }
+
+    @Test func aRecordWithoutAStartTimeNeverKills() throws {
+        let (store, box) = try Self.store()
+        try store.write(
+            JobRecord(
+                job: JobID(), ownerPID: 100, stagedFile: box.dir.appending(path: ".zivlet-a"), childPID: 200,
+                childPath: "/x/ffmpeg"))
+        let processes = FakeProcesses(alive: [200], paths: [200: "/x/ffmpeg"], starts: [200: 42])
+        #expect(OrphanReaper(store: store, processes: processes, currentPID: 1).reap().killed == 0)
+    }
+
+    @Test func thisProcessHasAStableStartTime() throws {
+        let first = try #require(SystemProcesses().startTime(getpid()))
+        #expect(SystemProcesses().startTime(getpid()) == first && first > 0)
+        #expect(SystemProcesses().startTime(-1) == nil)
     }
 }
