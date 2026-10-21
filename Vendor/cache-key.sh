@@ -5,18 +5,23 @@
 #   CWebP       versions.lock, build-media.sh, build-native.sh, xcframework.sh
 #   CZivletSVG  build-rs.sh, xcframework.sh, rust-toolchain.txt, the zivlet-svg crate (manifest, lock, sources)
 #   all         the three keys together (written to Vendor/out/KEY and into the pack tarball name)
+# Every component key also covers the scripts that drive, verify, pack and restore the outputs (COMMON), so a change
+# to one of them never yields outputs under the key of the code before it.
 set -euo pipefail
 source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 if [[ "${1:-}" == "--root" ]]; then ROOT=$(cd "$2" && pwd); shift 2; fi
 COMPONENT=${1:-all}
 
+COMMON="Vendor/vendor.sh Vendor/verify-media.sh Vendor/check-tools.sh Vendor/fetch.sh Vendor/pack.sh Vendor/unpack.sh
+Vendor/cache-key.sh Vendor/ensure-media.sh Vendor/ensure-native.sh Scripts/env.sh Scripts/ci-vendor.sh"
+
 inputs() {
     case "$1" in
-        media) echo Vendor/versions.lock Vendor/build-media.sh Vendor/encoders.txt Vendor/stage-media.sh ;;
-        CWebP) echo Vendor/versions.lock Vendor/build-media.sh Vendor/build-native.sh Vendor/xcframework.sh ;;
+        media) echo $COMMON Vendor/versions.lock Vendor/build-media.sh Vendor/encoders.txt Vendor/stage-media.sh ;;
+        CWebP) echo $COMMON Vendor/versions.lock Vendor/build-media.sh Vendor/build-native.sh Vendor/xcframework.sh ;;
         CZivletSVG)
-            echo Vendor/build-rs.sh Vendor/xcframework.sh Vendor/rust-toolchain.txt
+            echo $COMMON Vendor/build-rs.sh Vendor/xcframework.sh Vendor/rust-toolchain.txt
             (cd "$ROOT" && find Vendor/rs/zivlet-svg/Cargo.toml Vendor/rs/zivlet-svg/Cargo.lock \
                 Vendor/rs/zivlet-svg/src Vendor/rs/zivlet-svg/include -type f | LC_ALL=C sort)
             ;;

@@ -1,6 +1,6 @@
 # Vendor builds (P0-37): when anything under Vendor/ changes, build every vendor output from the pinned sources,
 # pack it under its cache key and keep the tarball plus the corresponding-source bundle as artifacts.
-# Self-hosted runner only (O-4).
+# Self-hosted runner only (O-4); pull requests from forks do not run here (see ci.yml).
 name: Vendor
 
 on:
@@ -28,6 +28,7 @@ defaults:
 jobs:
   build:
     name: Build, pack and source bundle
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, macOS, ARM64, zivlet]
     timeout-minutes: 90
     steps:

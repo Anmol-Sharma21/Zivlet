@@ -5,7 +5,7 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 T=$(tmpdir); trap 'rm -rf "$T"' EXIT
 key() { "$ROOT/Vendor/cache-key.sh" --root "$T/repo" "$@"; }
 mkdir -p "$T/repo"
-(cd "$ROOT" && git ls-files Vendor | tar -cf - -T -) | tar -xf - -C "$T/repo"
+(cd "$ROOT" && git ls-files Vendor Scripts/env.sh Scripts/ci-vendor.sh | tar -cf - -T -) | tar -xf - -C "$T/repo"
 
 base=$(key)
 [[ "$base" =~ ^[0-9a-f]{64}$ ]] || fail "key is not 64 hex chars: $base"
@@ -25,6 +25,18 @@ assert_eq "$(key CZivletSVG)" "$svg" "the SVG key must not depend on encoders.tx
 echo "// x" >> "$T/repo/Vendor/rs/zivlet-svg/src/lib.rs"
 [[ "$(key CZivletSVG)" != "$svg" ]] || fail "crate source not in the SVG key"
 
+# The scripts that drive, verify, pack and restore every output are in every key: a change to one of them cannot
+# produce outputs under the key of the code before it.
+for script in Vendor/vendor.sh Vendor/verify-media.sh Vendor/check-tools.sh Vendor/fetch.sh Vendor/pack.sh \
+    Vendor/unpack.sh Vendor/cache-key.sh Vendor/ensure-media.sh Vendor/ensure-native.sh Scripts/env.sh \
+    Scripts/ci-vendor.sh; do
+    before=$(key media)/$(key CWebP)/$(key CZivletSVG)
+    echo "# changed" >>"$T/repo/$script"
+    after=$(key media)/$(key CWebP)/$(key CZivletSVG)
+    IFS=/ read -r m1 w1 s1 <<<"$before"; IFS=/ read -r m2 w2 s2 <<<"$after"
+    [[ "$m1" != "$m2" && "$w1" != "$w2" && "$s1" != "$s2" ]] || fail "$script is not in every component key"
+done
+
 # unpack.sh: refuses an archive whose KEY differs from the current inputs unless --force.
 mkdir -p "$T/w/out/media-stage/Helpers"; echo stub > "$T/w/out/media-stage/Helpers/ffmpeg"
 echo "0000000000000000000000000000000000000000000000000000000000000000" > "$T/w/out/KEY"
@@ -33,7 +45,10 @@ tarball=$(ls "$T"/w/out/zivlet-vendor-*.tar.xz); assert_file "$tarball"
 mkdir -p "$T/w2"
 assert_fails env ZIVLET_VENDOR_WORK="$T/w2" "$ROOT/Vendor/unpack.sh" "$tarball"
 assert_no_file "$T/w2/out/media-stage/Helpers/ffmpeg"
-ZIVLET_VENDOR_WORK=$T/w2 "$ROOT/Vendor/unpack.sh" "$tarball" --force >/dev/null
+# --force skips the key checks only; the stub stage goes past a stand-in verifier (test-unpack-verify.sh covers
+# the real refusals).
+printf '#!/usr/bin/env bash\nexit 0\n' >"$T/verify"; chmod +x "$T/verify"
+ZIVLET_VERIFY_MEDIA=$T/verify ZIVLET_VENDOR_WORK=$T/w2 "$ROOT/Vendor/unpack.sh" "$tarball" --force >/dev/null
 assert_eq "$(cat "$T/w2/out/media-stage/Helpers/ffmpeg")" "stub"
 # An archive with a member outside out/ is refused.
 mkdir -p "$T/evil/x"; echo bad > "$T/evil/x/f"; tar -C "$T/evil" -cJf "$T/evil.tar.xz" x

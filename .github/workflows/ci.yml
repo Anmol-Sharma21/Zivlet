@@ -1,6 +1,9 @@
 # Pull-request and main-branch checks (P0-07). GitHub's hosted macOS images lack Xcode 27, so every job runs on the
 # project's self-hosted runner (labels below; owner step O-4). `make ci-local` runs the same run steps in the same
-# order on a developer Mac, so keep every run step free of GitHub expressions.
+# order on a developer Mac, so keep every run step free of GitHub expressions. A pull request from a fork never runs
+# here: its code would run on a persistent runner that holds the shared vendor cache. A maintainer pushes such a
+# change to a branch of this repository after reading it. Pull requests read the vendor cache but never write it
+# (Scripts/ci-vendor.sh).
 name: CI
 
 on:
@@ -25,6 +28,7 @@ defaults:
 jobs:
   check:
     name: Lint, test, coverage, app, release check, matrix subset, licences
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, macOS, ARM64, zivlet]
     timeout-minutes: 120
     steps:

@@ -4,6 +4,9 @@
 # run, or any missing owner input (O-1 Developer ID and notary key, O-2 Sparkle key, O-3 download location), signs
 # ad-hoc, skips notarization and the appcast with the owner-step messages, and keeps the files as workflow artifacts
 # only. Secrets live in the protected `release` environment and are passed only to the steps that use them.
+# The release runner is its own host and OS user (owner step O-4): its keychain, workspace and appcast feed directory
+# (ZIVLET_RELEASE_FEED_DIR, default ~/zivlet-release-feed of that user) are written only by this workflow, and the
+# vendor outputs are built from the pinned sources here, never restored from a cache other jobs can write.
 name: Release
 
 on:
@@ -75,8 +78,8 @@ jobs:
             >>"$GITHUB_ENV"
           echo "Release $version: $mode"
 
-      - name: Vendor outputs (runner cache, else build)
-        run: Scripts/ci-vendor.sh
+      - name: Vendor outputs (built from the pinned sources)
+        run: Scripts/ci-vendor.sh --from-source
       - name: Licence gate
         run: make licence-gate
       - name: Release archive and dSYMs
@@ -128,14 +131,15 @@ jobs:
       - name: SBOM
         run: Scripts/sbom.sh "$ZIVLET_VERSION"
 
-      - name: Signed appcast (kept with the earlier DMGs on the runner, for deltas)
+      - name: Signed appcast (kept with the earlier DMGs in the release-only feed directory, for deltas)
         if: env.ZIVLET_MODE == 'signed'
         env:
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
           ZIVLET_DOWNLOAD_URL_PREFIX: ${{ vars.ZIVLET_DOWNLOAD_URL_PREFIX }}
+          ZIVLET_RELEASE_FEED_DIR: ${{ vars.ZIVLET_RELEASE_FEED_DIR }}
         run: |
-          feed="${RUNNER_TOOL_CACHE:?}/zivlet-releases"
-          mkdir -p "$feed"
+          feed="${ZIVLET_RELEASE_FEED_DIR:-$HOME/zivlet-release-feed}"
+          mkdir -p "$feed" && chmod 700 "$feed"
           cp "build/release/Zivlet-$ZIVLET_VERSION.dmg" "$feed/"
           Scripts/make-appcast.sh "$feed"
           cp "$feed/appcast.xml" build/release/

@@ -33,6 +33,13 @@ Dir.glob(File.join(ARGV[0], "*.yml")).sort.each do |path|
     check.(job["permissions"].nil?, "#{name}/#{job_name}: job widens permissions") unless name == "release"
   end
   check.(!triggers.nil?, "#{name}: no triggers")
+  # Code from a fork never runs on the persistent self-hosted runner (it could poison the shared vendor cache).
+  if triggers.is_a?(Hash) && triggers.key?("pull_request")
+    (doc["jobs"] || {}).each do |job_name, job|
+      check.(job["if"].to_s.include?("github.event.pull_request.head.repo.full_name == github.repository"),
+             "#{name}/#{job_name}: pull requests from forks must not run on the self-hosted runner")
+    end
+  end
 end
 ci = File.read(File.join(ARGV[0], "ci.yml"))
 ["make lint", "make test", "make coverage", "make release-check", "make licence-gate", "make vendor-test"].each do |cmd|
@@ -71,6 +78,10 @@ end
 %w[sign-app.sh verify-signatures.sh notarize.sh make-dmg.sh size-gate.sh source-bundle.sh sbom.sh make-appcast.sh
    vm-smoke.sh].each { |s| check.(rtext.include?("Scripts/#{s}"), "release: does not run Scripts/#{s}") }
 check.(rtext.include?("gh release create") && rtext.include?("--draft"), "release: no draft release")
+# The signed build never takes vendor outputs or old DMGs from a cache other jobs can write.
+check.(!rtext.include?("RUNNER_TOOL_CACHE"), "release: uses the shared runner tool cache")
+check.(rtext =~ /run:\s*Scripts\/ci-vendor\.sh --from-source\s*$/, "release: vendor outputs not built from source")
+check.(rtext.include?("ZIVLET_RELEASE_FEED_DIR"), "release: appcast feed directory is not the release-only one")
 if problems.empty? then puts "workflows OK" else puts problems; exit 1 end
 RUBY
 out=$(/usr/bin/ruby -ryaml -e "$CHECKER" "$WF" 2>&1) || fail "$out"
