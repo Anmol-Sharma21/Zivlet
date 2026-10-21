@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        ResourceLimits.raiseOpenFiles()
         reapOrphans()
         let reader = DragPayloadReader()
         let wheel = WheelController(
