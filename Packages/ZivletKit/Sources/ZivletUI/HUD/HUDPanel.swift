@@ -58,6 +58,8 @@ final class HUDPanel {
     func showUndo(_ reply: UndoReply) {
         model.card.undoMessage = reply.message
         model.card.undoCanRetry = reply.canRetry
+        model.card.remove(reply.removed)
+        model.card.undoInFlight = false
         refit()
     }
 

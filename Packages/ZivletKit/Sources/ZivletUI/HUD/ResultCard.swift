@@ -11,7 +11,7 @@ struct ResultCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 12) {
-                if let first = model.outputs.first { thumbnail(first) }
+                if let first = state.remaining(model.outputs).first { thumbnail(first) }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(model.title).font(.headline).lineLimit(1).truncationMode(.middle)
                     Text(model.sizeLine ?? model.subtitle).font(.callout).foregroundStyle(.secondary).lineLimit(2)
@@ -46,7 +46,7 @@ struct ResultCard: View {
 
     private func thumbnail(_ url: URL) -> some View {
         let image = state.thumbnail ?? ThumbnailLoader.placeholder(for: url)
-        return FileDragSource(urls: model.outputs, image: image)
+        return FileDragSource(urls: state.remaining(model.outputs), image: image)
             .frame(width: ThumbnailLoader.side * 0.75, height: ThumbnailLoader.side * 0.75)
             .accessibilityLabel("Result file. Drag it to use it elsewhere.")
     }
@@ -62,16 +62,7 @@ struct ResultCard: View {
         .controlSize(.small)
     }
 
-    /// Undo goes once it has answered, unless the Trash refused something.
-    private var visibleButtons: [ResultCardModel.Button] {
-        model.buttons.filter { button in
-            switch button {
-            case .undo: state.undoMessage == nil || state.undoCanRetry
-            case .showDetails: !state.showsDetails
-            default: true
-            }
-        }
-    }
+    private var visibleButtons: [ResultCardModel.Button] { state.visible(model) }
 
     static func title(_ button: ResultCardModel.Button) -> String {
         switch button {

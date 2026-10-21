@@ -3,14 +3,16 @@ import ZivletCore
 import ZivletRuntime
 import os
 
-/// What an undo said, and whether pressing Undo again can still help.
+/// What an undo said, whether pressing Undo again can still help, and which outputs it put in the Trash.
 public struct UndoReply: Sendable, Equatable {
     public let message: String
     public let canRetry: Bool
+    public let removed: [URL]
 
-    public init(message: String, canRetry: Bool) {
+    public init(message: String, canRetry: Bool, removed: [URL] = []) {
         self.message = message
         self.canRetry = canRetry
+        self.removed = removed
     }
 }
 
@@ -36,6 +38,7 @@ public final class ResultHUD {
     private var pending: [(anchor: CGPoint?, interval: OSSignpostIntervalState)] = []
     private var lingers: [BatchID: Task<Void, Never>] = [:]
     private var timers: [BatchID: LingerTimer] = [:]
+    private var undos: [BatchID: Task<Void, Never>] = [:]
     private let now: () -> Duration = { .seconds(ProcessInfo.processInfo.systemUptime) }
     /// Built at launch, so the first drop only places and fills a panel (≤ 50 ms, P1-40).
     private var spare: HUDPanel?
@@ -69,6 +72,7 @@ public final class ResultHUD {
     /// The batch's panel closes; the others stay where they are.
     public func close(_ batch: BatchID) {
         board = board.dismissing(batch)
+        undos[batch] = nil
         lingers.removeValue(forKey: batch)?.cancel()
         timers[batch] = nil
         panels.removeValue(forKey: batch)?.close()
@@ -97,9 +101,10 @@ public final class ResultHUD {
                 hover: { [weak self] batch, inside in self?.hover(batch, inside: inside) }))
     }
 
-    /// A card button was pressed.
+    /// A card button was pressed. Reveal, Open and Copy act only on outputs an undo has not put in the Trash.
     func press(_ button: ResultCardModel.Button, on batch: BatchID) {
-        let outputs = board.snapshots.first { $0.batch == batch }?.outputs.map(\.url) ?? []
+        let saved = board.snapshots.first { $0.batch == batch }?.outputs.map(\.url) ?? []
+        let outputs = card(batch)?.remaining(saved) ?? saved
         switch button {
         case .undo: undo(batch)
         case .reveal: onReveal(outputs)
@@ -144,12 +149,39 @@ public final class ResultHUD {
         onRetry(batch)
     }
 
+    /// Undo once: a press while the reply is pending is ignored. After the reply the success card lingers again.
     private func undo(_ batch: BatchID) {
+        guard let card = card(batch), !card.undoInFlight else { return }
         lingers.removeValue(forKey: batch)?.cancel()
         timers[batch] = nil
-        Task { [weak self, onUndo] in
+        card.undoInFlight = true
+        undos[batch] = Task { [weak self, onUndo] in
             let reply = await onUndo(batch)
-            self?.panels[batch]?.showUndo(reply)
+            guard let self else { return }
+            self.undos[batch] = nil
+            guard let panel = self.panels[batch] else { return }
+            panel.showUndo(reply)
+            self.restartLinger(batch, after: reply)
         }
+    }
+
+    private func restartLinger(_ batch: BatchID, after reply: UndoReply) {
+        guard !reply.canRetry, let snapshot = board.snapshots.first(where: { $0.batch == batch }),
+            let duration = ResultCardModel(snapshot).lingers
+        else { return }
+        timers[batch] = LingerTimer(duration: duration).started(at: now())
+        scheduleExpiry(batch)
+    }
+}
+
+// Test seams: what the card offers, and whether it is on its way out.
+extension ResultHUD {
+    func card(_ batch: BatchID) -> CardState? { panels[batch]?.model.card }
+    func pendingUndo(_ batch: BatchID) -> Task<Void, Never>? { undos[batch] }
+    func isLingering(_ batch: BatchID) -> Bool { timers[batch]?.deadline != nil }
+
+    func visibleButtons(_ batch: BatchID) -> [ResultCardModel.Button] {
+        guard let model = panels[batch]?.model, let snapshot = model.snapshot else { return [] }
+        return model.card.visible(ResultCardModel(snapshot))
     }
 }

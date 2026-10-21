@@ -136,3 +136,74 @@ struct ResultCardSnapshotTests {
         }
     }
 #endif
+
+@Suite("Result card undo (P1-41)")
+@MainActor
+struct ResultCardUndoTests {
+    static let screens = { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] }
+
+    static func trashed(_ snapshot: BatchSnapshot) -> UndoReply {
+        UndoReply(message: "Moved 1 file to the Trash.", canRetry: false, removed: snapshot.outputs.map(\.url))
+    }
+
+    @Test func undoIsAskedOnceWhileItsReplyIsPending() async throws {
+        let hud = ResultHUD(screens: Self.screens)
+        let snapshot = try HUDFx.finished(outputs: [("photo.png", before: 2_000, after: 1_000)])
+        var asked = 0
+        hud.onUndo = { _ in
+            asked += 1
+            try? await Task.sleep(for: .milliseconds(30))
+            return Self.trashed(snapshot)
+        }
+        hud.show(snapshot)
+        hud.press(.undo, on: snapshot.batch)
+        hud.press(.undo, on: snapshot.batch)
+        #expect(hud.visibleButtons(snapshot.batch) == [.reveal, .open, .copy])
+        await hud.pendingUndo(snapshot.batch)?.value
+        #expect(asked == 1 && hud.card(snapshot.batch)?.undoMessage == "Moved 1 file to the Trash.")
+        hud.close(snapshot.batch)
+    }
+
+    /// The outputs are in the Trash: nothing on the card may act on them, and the card leaves on its own again.
+    @Test func afterAnUndoTheTrashedOutputsAreNotOfferedAndTheCardLeaves() async throws {
+        let hud = ResultHUD(screens: Self.screens)
+        let snapshot = try HUDFx.finished(outputs: [("photo.png", before: 2_000, after: 1_000)])
+        hud.onUndo = { _ in Self.trashed(snapshot) }
+        hud.show(snapshot)
+        hud.press(.undo, on: snapshot.batch)
+        #expect(!hud.isLingering(snapshot.batch))
+        await hud.pendingUndo(snapshot.batch)?.value
+        #expect(hud.visibleButtons(snapshot.batch).isEmpty)
+        #expect(hud.isLingering(snapshot.batch))
+        hud.close(snapshot.batch)
+    }
+
+    @Test func copyAfterAPartialUndoOffersOnlyWhatIsLeft() async throws {
+        let hud = ResultHUD(screens: Self.screens)
+        let snapshot = try HUDFx.finished(outputs: [("a.png", before: 2, after: 1), ("b.png", before: 2, after: 1)])
+        let (first, second) = (snapshot.outputs[0].url, snapshot.outputs[1].url)
+        hud.onUndo = { _ in
+            UndoReply(message: "1 file could not be moved to the Trash.", canRetry: true, removed: [first])
+        }
+        var copied: [[URL]] = []
+        hud.onCopy = { copied.append($0) }
+        hud.show(snapshot)
+        hud.press(.undo, on: snapshot.batch)
+        await hud.pendingUndo(snapshot.batch)?.value
+        hud.press(.copy, on: snapshot.batch)
+        #expect(copied == [[second]])
+        #expect(hud.visibleButtons(snapshot.batch) == [.undo, .reveal, .open, .copy])
+        hud.close(snapshot.batch)
+    }
+
+    @Test func anUndoThatChangedNothingKeepsTheButtons() async throws {
+        let hud = ResultHUD(screens: Self.screens)
+        let snapshot = try HUDFx.finished(outputs: [("photo.png", before: 2_000, after: 1_000)])
+        hud.onUndo = { _ in UndoReply(message: "This can no longer be undone.", canRetry: false) }
+        hud.show(snapshot)
+        hud.press(.undo, on: snapshot.batch)
+        await hud.pendingUndo(snapshot.batch)?.value
+        #expect(hud.visibleButtons(snapshot.batch) == [.reveal, .open, .copy] && hud.isLingering(snapshot.batch))
+        hud.close(snapshot.batch)
+    }
+}

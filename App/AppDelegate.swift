@@ -147,7 +147,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "Undo: \(result.trashed.count) trashed, \(result.restored.count) moved back, \(result.skipped.count) left in place"
         )
         menu.refreshRecent()
-        return UndoReply(message: result.message, canRetry: result.canRetry)
+        return UndoReply(message: result.message, canRetry: result.canRetry, removed: result.trashed)
     }
 
     /// The drop path, shared by real drops and the DEBUG demo.
