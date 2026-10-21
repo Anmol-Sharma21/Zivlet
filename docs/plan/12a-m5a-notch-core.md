@@ -21,14 +21,14 @@ No commit.
 
 | Field | Value |
 |---|---|
-| Goal | Move `Rect2D` (and its `contains`) from `ZivletWheelCore/PanelPlacer.swift` to `ZivletCore/Shared/Rect2D.swift`, unchanged. Add targets `ZivletNotchCore` (deps `ZivletCore`, `strict`) and `ZivletNotch` (deps `ZivletNotchCore`, `shell`), test targets `ZivletNotchCoreTests` (`strict`) and `ZivletNotchTests` (`shell`), both modules in the `ZivletKit` product, `ZivletUI` depends on `ZivletNotch`, and both in `GATED_MODULES` of `Scripts/coverage.sh` |
-| Acceptance | the existing `PanelPlacerTests` and `WheelControllerTests` pass unchanged after the move (imports adjusted only); `make test lint coverage app` pass; coverage lists 15 modules |
+| Goal | Move `Rect2D` (and its `contains`) from `ZivletWheelCore/PanelPlacer.swift` to `ZivletCore/Shared/Rect2D.swift`, unchanged, together with its public `CGRect` bridge (`Rect2D(_ rect: CGRect)` and `.cgRect`, today in `ZivletWheel/WheelController.swift`); `CGRect` comes with Foundation on Darwin, so `ZivletCore` gains no import and `Scripts/check-imports.sh` (R1) still passes. No module keeps its own copy of the bridge. Add targets `ZivletNotchCore` (deps `ZivletCore`, `strict`) and `ZivletNotch` (deps `ZivletNotchCore`, `shell`), test targets `ZivletNotchCoreTests` (`strict`) and `ZivletNotchTests` (`shell`), both modules in the `ZivletKit` product, `ZivletUI` depends on `ZivletNotch`, and both in `GATED_MODULES` of `Scripts/coverage.sh` |
+| Acceptance | the existing `PanelPlacerTests` and `WheelControllerTests` pass unchanged after the move (imports adjusted only); `make test lint coverage app` pass; coverage lists 14 modules (12 today plus the two new ones) |
 | Effort | S |
 
 **Files:** create `Sources/ZivletCore/Shared/Rect2D.swift`, `Sources/ZivletNotchCore/NotchCore.swift` (module doc
 comment only), `Sources/ZivletNotch/Notch.swift` (same), `Tests/ZivletNotchCoreTests/Rect2DTests.swift`,
 `Tests/ZivletNotchTests/NotchModuleTests.swift`; modify `Package.swift`, `Sources/ZivletWheelCore/PanelPlacer.swift`,
-`Sources/ZivletWheel/WheelController.swift` (import), `Tests/ZivletWheelCoreTests/PanelPlacerTests.swift`,
+`Sources/ZivletWheel/WheelController.swift` (bridge removed, import), `Tests/ZivletWheelCoreTests/PanelPlacerTests.swift`,
 `Tests/ZivletWheelTests/WheelControllerTests.swift` (imports), `Scripts/coverage.sh`.
 
 ### N1.1 Tests
@@ -39,6 +39,11 @@ struct Rect2DTests {
     @Test func containsIsHalfOpenOnTheMaxEdges() {
         let r = Rect2D(x: 0, y: 0, width: 10, height: 10)
         #expect(r.contains(Point2D(x: 0, y: 0)) && !r.contains(Point2D(x: 10, y: 5)))
+    }
+
+    @Test func theCGRectBridgeRoundTrips() {
+        let r = Rect2D(x: 1, y: 2, width: 3, height: 4)
+        #expect(Rect2D(r.cgRect) == r)
     }
 }
 
@@ -61,7 +66,7 @@ Commits `refactor(core): move Rect2D into ZivletCore next to Point2D` and
 
 | Field | Value |
 |---|---|
-| Goal | `DisplayGeometry` value (`id`, `frame`, `visibleFrame`, `safeAreaTop`, `auxiliaryTopLeft?`, `auxiliaryTopRight?`; `Sendable`, `Equatable`, `Codable`) with a validating init that rejects non-finite or negative sizes (boundary: values come from AppKit). `NotchGeometry.housing(of:) -> Rect2D?` and `hasNotch(_:)`. Test fixtures `DisplayFixtures.mbp14MoreSpace` (recorded), `noNotch1080`, `safeAreaWithoutAux`, `sideBySide` (constructed, named as such) |
+| Goal | `DisplayGeometry` value (`id`, `frame`, `visibleFrame`, `safeAreaTop`, `auxiliaryTopLeft?`, `auxiliaryTopRight?`, `isBuiltIn`; `Sendable`, `Equatable`, `Codable`) with a validating init that rejects non-finite or negative sizes (boundary: values come from AppKit). `NotchGeometry.housing(of:) -> Rect2D?`, `hasNotch(_:)`, and the pure latch `NotchGeometry.builtInNotchSeen(before: Bool, displays: [DisplayGeometry]) -> Bool` (true if it was already true or any display is built in and has a housing; design/19 §3.2). Test fixtures `DisplayFixtures.mbp14MoreSpace` (recorded), `noNotch1080`, `safeAreaWithoutAux`, `sideBySide` (constructed, named as such) |
 | Acceptance | tests below green; no hard-coded notch size anywhere in `Sources/` |
 | Effort | S |
 
@@ -78,7 +83,7 @@ enum DisplayFixtures {
             id: 1, frame: Rect2D(x: 0, y: 0, width: 1800, height: 1169),
             visibleFrame: Rect2D(x: 0, y: 94, width: 1800, height: 1036), safeAreaTop: 38,
             auxiliaryTopLeft: Rect2D(x: 0, y: 1131, width: 790, height: 38),
-            auxiliaryTopRight: Rect2D(x: 1010, y: 1131, width: 790, height: 38))
+            auxiliaryTopRight: Rect2D(x: 1010, y: 1131, width: 790, height: 38), isBuiltIn: true)
     }
 
     /// Constructed: an external 1080p display to the left, with a 25 pt menu bar and no notch.
@@ -86,7 +91,7 @@ enum DisplayFixtures {
         try DisplayGeometry(
             id: 2, frame: Rect2D(x: -1920, y: 0, width: 1920, height: 1080),
             visibleFrame: Rect2D(x: -1920, y: 0, width: 1920, height: 1055), safeAreaTop: 0,
-            auxiliaryTopLeft: nil, auxiliaryTopRight: nil)
+            auxiliaryTopLeft: nil, auxiliaryTopRight: nil, isBuiltIn: false)
     }
     // safeAreaWithoutAux(), make(leftWidth:rightX:), sideBySide() and all() follow the same pattern.
 }
@@ -121,8 +126,15 @@ struct NotchGeometryTests {
             try DisplayGeometry(
                 id: 9, frame: Rect2D(x: 0, y: 0, width: .nan, height: 10),
                 visibleFrame: Rect2D(x: 0, y: 0, width: 10, height: 10), safeAreaTop: 0,
-                auxiliaryTopLeft: nil, auxiliaryTopRight: nil)
+                auxiliaryTopLeft: nil, auxiliaryTopRight: nil, isBuiltIn: false)
         }
+    }
+
+    @Test func theBuiltInNotchLatchSurvivesTheLidClosing() throws {
+        let external = try DisplayFixtures.noNotch1080()
+        #expect(NotchGeometry.builtInNotchSeen(before: false, displays: [try DisplayFixtures.mbp14MoreSpace()]))
+        #expect(NotchGeometry.builtInNotchSeen(before: true, displays: [external]))     // lid closed
+        #expect(!NotchGeometry.builtInNotchSeen(before: false, displays: [external]))
     }
 
     @Test func geometryRoundTripsThroughJSON() throws {
@@ -143,7 +155,7 @@ Commit `feat(notch): display geometry and the notch housing from public screen v
 
 | Field | Value |
 |---|---|
-| Goal | Pure frames per surface and display: `collapsed` = housing plus one ear (= housing height) each side; `ears` (left and right content rectangles, never inside the housing); `toast` = 360 × (housing + 36); `expanded(contentHeight:)` = 380 wide, housing + content, ≤ 320; pill frames on a display without a notch (collapsed 200 × 28, toast 360 × 40, expanded 380 × content ≤ 320, top 6 pt under `visibleFrame.maxY`); all centred and clamped inside the display frame. `display(for: Point2D?, in: [DisplayGeometry])` → the display containing the point, else the first, nil when empty. Constants in `IslandLayout.Metrics` |
+| Goal | Pure frames per surface and display (design/19 §3.4, D-N3 as revised): `collapsed` = housing plus a 6 pt shoulder each side plus a 24 pt tab below; `tab` (the collapsed content rectangle under the housing, never inside it); `contentScrolls(contentHeight:on:)` true above the 320 pt cap; `toast` = 360 × (housing + 36); `expanded(contentHeight:)` = 380 wide, housing + content, ≤ 320; pill frames on a display without a notch (collapsed 200 × 28, toast 360 × 40, expanded 380 × content ≤ 320, top 6 pt under `visibleFrame.maxY`); all centred and clamped inside the display frame. `display(for: Point2D?, in: [DisplayGeometry])` → the display containing the point, else the first, nil when empty. Constants in `IslandLayout.Metrics` |
 | Acceptance | tests below green |
 | Effort | S |
 
@@ -155,16 +167,21 @@ Commit `feat(notch): display geometry and the notch housing from public screen v
 ```swift
 @Suite("Island layout (P2-115, design/19 §3.4)")
 struct IslandLayoutTests {
-    @Test func collapsedIsTheHousingPlusOneEarEachSide() throws {
+    @Test func collapsedIsTheHousingWithShouldersAndATabBelow() throws {
         let frame = IslandLayout.frame(.collapsed, on: try DisplayFixtures.mbp14MoreSpace())
-        #expect(frame == Rect2D(x: 752, y: 1131, width: 296, height: 38))
+        #expect(frame == Rect2D(x: 784, y: 1107, width: 232, height: 62))
     }
 
-    @Test func earsSitBesideTheHousingNeverInsideIt() throws {
+    @Test func collapsedContentSitsInTheTabNeverInsideTheHousing() throws {
         let display = try DisplayFixtures.mbp14MoreSpace()
-        let ears = try #require(IslandLayout.ears(on: display))
-        #expect(ears.left == Rect2D(x: 752, y: 1131, width: 38, height: 38))
-        #expect(ears.right == Rect2D(x: 1010, y: 1131, width: 38, height: 38))
+        #expect(IslandLayout.tab(on: display) == Rect2D(x: 790, y: 1107, width: 220, height: 24))
+    }
+
+    @Test func collapsedCoversAtMostSixPointsOfMenuBarEachSide() throws {   // design/19 §5.3 acceptance rule
+        let display = try DisplayFixtures.mbp14MoreSpace()
+        let housing = try #require(NotchGeometry.housing(of: display))
+        let frame = IslandLayout.frame(.collapsed, on: display)
+        #expect(frame.minX >= housing.minX - 6 && frame.maxX <= housing.maxX + 6)
     }
 
     @Test func toastHangsBelowTheHousing() throws {
@@ -176,6 +193,8 @@ struct IslandLayoutTests {
         let display = try DisplayFixtures.mbp14MoreSpace()
         #expect(IslandLayout.frame(.expanded, on: display, contentHeight: 108).height == 146)
         #expect(IslandLayout.frame(.expanded, on: display, contentHeight: 900).height == 320)
+        #expect(IslandLayout.contentScrolls(contentHeight: 900, on: display))
+        #expect(!IslandLayout.contentScrolls(contentHeight: 108, on: display))
     }
 
     @Test func thePillSitsSixPointsUnderTheMenuBar() throws {
@@ -205,7 +224,7 @@ struct IslandLayoutTests {
 
 RED: `cannot find 'IslandLayout'`. GREEN: `swift test --filter IslandLayoutTests`.
 
-Commit `feat(notch): island frames for the notch and the top-centre pill`.
+Commit `feat(notch): island frames for the notch tab and the top-centre pill`.
 
 ---
 
@@ -213,23 +232,31 @@ Commit `feat(notch): island frames for the notch and the top-centre pill`.
 
 | Field | Value |
 |---|---|
-| Goal | A pure value `IslandMachine` with `func handling(_ event: IslandEvent) -> (IslandMachine, [IslandEffect])`. State: the current `IslandRequest?`, `surface`, hover phase (`outside`, `intent(deadline)`, `inside`, `leaving(deadline)`), `suppressed` (wheel), `keyed`. Events (each with `now: Duration`): `request(IslandRequest?)`, `pointerEntered`, `pointerExited`, `tick`, `clicked`, `escape`, `wheelShown`, `wheelHidden`, `displaysChanged([UInt32])`, `accessibilityFocused`. Effects: `show(surface, display, contentHeight)`, `hide`, `schedule(deadline)` (at most one per result), `cancelDeadline`, `becomeKeyAllowed`, `resignKey`, `closeRequested(client)`. `Timing` constants: intent 150 ms, grace 300 ms. `IslandMotion(reduceMotion:)` → `.spring(response: 0.38, damping: 0.78)` / `.spring(0.32, 0.9)` or `.fade(0.18)` (plain values; the shell maps them to SwiftUI) |
-| Acceptance | every row of design/19 §4.2 has a test; no `Date`, no clock reads in the module (`grep -n "Date()\|ContinuousClock\|DispatchTime" Sources/ZivletNotchCore` empty) |
+| Goal | A pure value `IslandMachine` with `func handling(_ event: IslandEvent) -> (IslandMachine, [IslandEffect])`. State: the current `IslandRequest?` (client, display, resting, hover surface; no height, no sticky flag), `surface`, the last measured `contentHeight`, hover phase (`outside`, `intent(deadline)`, `inside`, `leaving(deadline)`), holds (`pointer`, `accessibility`, `drag`), `pinned` (opened by `expandRequested`), `suppressed` (wheel), `keyed`. Events (each with `now: Duration`): `request(IslandRequest?)`, `contentHeightChanged(Double)`, `pointerEntered`, `pointerExited`, `accessibilityFocused`, `accessibilityUnfocused`, `dragBegan`, `dragEnded`, `expandRequested`, `tick`, `clicked`, `resignedKey`, `escape`, `wheelShown`, `wheelHidden`, `reduceMotionChanged(Bool)`. No display event: `IslandHosts` owns display changes (N7). Effects: `show(surface, display, contentHeight)`, `hide`, `schedule(deadline)` (at most one per result), `cancelDeadline`, `held(Bool)` (for the client's lingers), `becomeKey`, `becomeKeyAllowed`, `resignKey`, `closeRequested(client)`. `Timing` constants: intent 150 ms, grace 300 ms. `IslandMotion(reduceMotion:)` → `.spring(response: 0.38, damping: 0.78)` / `.spring(0.32, 0.9)` or `.fade(0.18)` (plain values; the shell maps them to SwiftUI) |
+| Acceptance | every row of design/19 §4.2 has a named test, and one table-driven test sends every `IslandEvent` case to the machine in every state (hidden, collapsed, toast, hover-expanded, focus-expanded, drag-held, pinned, keyed, suppressed) and checks the result against an expected table, so an event with no row fails the test; no `Date`, no clock reads in the module (`grep -n "Date()\|ContinuousClock\|DispatchTime" Sources/ZivletNotchCore` empty) |
 | Effort | M |
 
 **Files:** create `Sources/ZivletNotchCore/IslandRequest.swift` (`IslandRequest`, `IslandClientID`),
 `Sources/ZivletNotchCore/IslandEvent.swift`, `Sources/ZivletNotchCore/IslandMachine.swift`,
-`Sources/ZivletNotchCore/IslandMachine+Hover.swift` (keep each file < 200 lines and each function < 50),
+`Sources/ZivletNotchCore/IslandMachine+Hover.swift`, `Sources/ZivletNotchCore/IslandMachine+Holds.swift` (keep each
+file < 200 lines and each function < 50),
 `Sources/ZivletNotchCore/IslandMotion.swift`, `Tests/ZivletNotchCoreTests/IslandMachineTests.swift`,
-`Tests/ZivletNotchCoreTests/IslandMachineHoverTests.swift`, `Tests/ZivletNotchCoreTests/IslandMotionTests.swift`.
+`Tests/ZivletNotchCoreTests/IslandMachineHoverTests.swift`, `Tests/ZivletNotchCoreTests/IslandMachineHoldTests.swift`,
+`Tests/ZivletNotchCoreTests/IslandMachineTableTests.swift`, `Tests/ZivletNotchCoreTests/IslandMotionTests.swift`.
 
 ### N4.1 Failing tests first
 
 ```swift
 extension IslandRequest {
-    static func hud(_ resting: IslandSurface, sticky: Bool = false, display: UInt32 = 1) -> IslandRequest {
-        IslandRequest(client: .hud, display: display, resting: resting, hoverSurface: .expanded,
-                      contentHeight: 108, sticky: sticky)
+    static func hud(_ resting: IslandSurface, display: UInt32 = 1) -> IslandRequest {
+        IslandRequest(client: .hud, display: display, resting: resting, hoverSurface: .expanded)
+    }
+}
+
+extension IslandMachine {
+    /// A machine showing `resting` whose host has measured 108 pt of content.
+    static func showing(_ resting: IslandSurface, at t: Duration) -> IslandMachine {
+        IslandMachine().handling(.request(.hud(resting), now: t)).0.handling(.contentHeightChanged(108, now: t)).0
     }
 }
 
@@ -240,7 +267,15 @@ struct IslandMachineTests {
     @Test func aRequestShowsItsRestingSurface() {
         let (m, effects) = IslandMachine().handling(.request(.hud(.collapsed), now: t0))
         #expect(m.surface == .collapsed)
-        #expect(effects.contains(.show(.collapsed, display: 1, contentHeight: 108)))
+        #expect(effects.contains(.show(.collapsed, display: 1, contentHeight: 0)))
+    }
+
+    @Test func aNewHeightWhileExpandedAndHoveredReLaysOutAndKeepsTheHover() {
+        var m = IslandMachine.showing(.toast, at: t0).handling(.pointerEntered(now: t0)).0
+        m = m.handling(.tick(now: t0 + .milliseconds(150))).0
+        let (next, effects) = m.handling(.contentHeightChanged(200, now: t0 + .seconds(1)))
+        #expect(next.surface == .expanded && next.isHovered)
+        #expect(effects == [.show(.expanded, display: 1, contentHeight: 200)])
     }
 
     @Test func withdrawingTheRequestHidesAndClearsTimers() {
@@ -249,21 +284,38 @@ struct IslandMachineTests {
         #expect(m.surface == .hidden && effects.contains(.hide) && effects.contains(.cancelDeadline))
     }
 
-    @Test func aStickyRequestExpandsAtOnceAndStaysAfterThePointerLeaves() {
-        var m = IslandMachine().handling(.request(.hud(.expanded, sticky: true), now: t0)).0
-        m = m.handling(.pointerEntered(now: t0)).0.handling(.pointerExited(now: t0 + .milliseconds(10))).0
-        m = m.handling(.tick(now: t0 + .seconds(5))).0
-        #expect(m.surface == .expanded)
+    @Test func theMenuCommandExpandsMakesKeyAndStaysAfterThePointerPasses() {
+        var m = IslandMachine.showing(.collapsed, at: t0)
+        let (opened, effects) = m.handling(.expandRequested(now: t0))
+        #expect(opened.surface == .expanded && effects.contains(.becomeKey))
+        m = opened.handling(.pointerEntered(now: t0)).0.handling(.pointerExited(now: t0 + .milliseconds(10))).0
+        #expect(m.handling(.tick(now: t0 + .seconds(5))).0.surface == .expanded)
     }
 
-    @Test func theWheelCollapsesAHoverExpansionButNotAStickyCard() { /* wheelShown → collapsed; sticky stays */ }
+    @Test func theWheelSendsAHoverExpansionBackToItsRestingSurface() { /* resting toast, hover-expanded, wheelShown → toast */ }
+    @Test func theWheelLeavesAPinnedIslandOpen() { /* expandRequested, wheelShown → expanded */ }
     @Test func hoverIsIgnoredWhileTheWheelIsShown() { /* entered + tick past intent → still collapsed */ }
     @Test func escapeDoesNothingBeforeAClick() { /* escape without clicked → no effects */ }
     @Test func escapeAfterAClickCollapsesAndResignsKey() { /* clicked, escape → resting, .resignKey */ }
-    @Test func escapeOnAClosableStickyCardAsksTheClientToClose() { /* → .closeRequested(.hud) */ }
-    @Test func aRequestWhoseDisplayIsGoneMovesToTheFirstDisplay() { /* displaysChanged([1]) for display 2 */ }
-    @Test func accessibilityFocusExpandsLikeHover() { /* D-M5a-4: no intent delay */ }
+    @Test func escapeOnAClosableCardAsksTheClientToClose() { /* → .closeRequested(.hud) */ }
+    @Test func resigningKeyClearsKeyedSoEscapeIsIgnoredAgain() { /* clicked, resignedKey, escape → no effects */ }
+    @Test func reduceMotionChangesOnlyTheNextTransition() { /* reduceMotionChanged(true) → no effects; next show uses fade */ }
     @Test func everyStepSchedulesAtMostOneDeadline() { /* property over a scripted event list */ }
+}
+
+@Suite("Island machine: holds by focus and drag (D-N13, D-M5a-4)")
+struct IslandMachineHoldTests {
+    let t0 = Duration.seconds(100)
+
+    @Test func accessibilityFocusExpandsAtOnceAndHolds() { /* focused → expanded, effects contain .held(true) */ }
+    @Test func losingAccessibilityFocusActsAsThePointerLeaving() { /* unfocused → grace 300 ms → resting, .held(false) */ }
+    @Test func aDragFromTheIslandHoldsItPastTheGraceAndTheLinger() {
+        var m = IslandMachine.showing(.toast, at: t0).handling(.pointerEntered(now: t0)).0
+        m = m.handling(.tick(now: t0 + .milliseconds(150))).0.handling(.dragBegan(now: t0 + .seconds(1))).0
+        m = m.handling(.pointerExited(now: t0 + .seconds(1))).0.handling(.tick(now: t0 + .seconds(10))).0
+        #expect(m.surface == .expanded)
+    }
+    @Test func theEndOfADragOutsideStartsTheGraceAndReleasesTheHold() { /* dragEnded outside → .held(false), grace */ }
 }
 
 @Suite("Island machine: hover intent and grace (design/19 §4.4)")
@@ -308,9 +360,13 @@ struct IslandMotionTests {
 The bodies marked with comments are written out in the task the same way as the tests above them (Arrange the
 machine with events, Act with one event, Assert surface and effects).
 
+`IslandMachineTableTests` holds one row per (state, event) pair, written as data (`[(StateName, IslandEvent,
+IslandSurface, [IslandEffect])]`), and loops over `IslandEvent.allCases(now:)` so a new event case without rows
+fails it.
+
 RED: `cannot find 'IslandMachine'`. GREEN: `swift test --filter "IslandMachine|IslandMotion"`.
 
-Commit `feat(notch): island state machine with hover intent, grace, wheel suppression and Escape`.
+Commit `feat(notch): island state machine with hover intent, grace, holds, wheel suppression and Escape`.
 
 ---
 
@@ -362,7 +418,7 @@ Commit `feat(notch): arbiter so the HUD, the tray and the picker share one islan
 
 | Field | Value |
 |---|---|
-| Goal | `enum HUDPlacement: String { automatic, notch, nearDrop }` with `resolved(hasBuiltInNotch:)`; `struct HUDGroup { placement = .automatic }`; `Settings.hud`; `SettingsStore` loads and saves `settings.hud.v1` through the existing `load`/`save` helpers; validation accepts every case. A launch argument `-ZivletHUDPlacement notch|nearDrop` overrides for that run only and is never stored (same pattern as `-ZivletRevealResults`, used by the demo) |
+| Goal | `enum HUDPlacement: String { automatic, notch, nearDrop }` with `resolved(hasBuiltInNotch:)`; `struct HUDGroup { placement = .automatic }`; `Settings.hud`; `SettingsStore` loads and saves `settings.hud.v1` through the existing `load`/`save` helpers; validation accepts every case; `update()` writes the group when it changed, like the others. `SettingsStore` knows nothing of the demo's `-ZivletHUDPlacement` launch argument: N11 reads it in the app's `SettingsWiring`, as `-ZivletRevealResults` is read there today, so an override never shows in the picker or in `diagnosticsJSON` |
 | Acceptance | tests below green; `diagnosticsJSON` contains `"hud"`; the stored JSON for the other groups is byte-identical before and after an M4 store is loaded and saved |
 | Effort | S |
 
@@ -401,7 +457,6 @@ struct HUDPlacementTests {
 
     @Test func anExplicitChoiceIsStoredAndReloaded() { /* update to .nearDrop, new store, == .nearDrop */ }
     @Test func anUnreadableGroupFallsBackToAutomatic() { /* store Data("{\"placement\":\"corner\"}") */ }
-    @Test func theLaunchArgumentOverridesForOneRunAndIsNotStored() { /* launchArguments: ["ZivletHUDPlacement": "notch"] */ }
     @Test func diagnosticsIncludeThePlacement() { #expect(Settings().diagnosticsJSON.contains("\"placement\"")) }
 }
 ```
@@ -417,15 +472,18 @@ Commit `feat(settings): choose where progress and results show, automatic by def
 
 | Field | Value |
 |---|---|
-| Goal | **`IslandPanel`**: `NSPanel` subclass, `[.borderless, .nonactivatingPanel]`, level `.statusBar`, `[.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]`, `isOpaque = false`, clear background, `hasShadow = false`, `hidesOnDeactivate = false`, `isMovable = false`, `becomesKeyOnlyIfNeeded = true`, `canBecomeKey` true, `canBecomeMain` false. **`ScreenGeometryReader`**: `DisplayGeometryProvider` over `NSScreen.screens` (id from `NSScreenNumber`), re-read on `didChangeScreenParametersNotification`, publishing on `changes`; the `NSScreen` → value mapping is a static function over plain values so it is testable. **`IslandHost`** (one display): owns a panel, a tracking view (`.mouseEnteredAndExited`, `.activeAlways`, `.inVisibleRect`) and an `NSHostingView` whose root view is `IslandChrome` (the black `IslandShape` with continuous corners, plus the client's content for the surface); applies `IslandEffect`s: expand = set the target frame first, then animate the shape; collapse = animate, then set the smaller frame on completion; hide = fade, then `orderOut` and cancel the deadline task; one `Task.sleep` per scheduled deadline, feeding `.tick`; pre-warms its hosting view once off screen at creation. **`IslandHosts`**: creates a host per display on demand, owns the arbiter and machine per display, forwards client requests, wheel and Reduce Motion events, and posts accessibility announcements given by clients |
+| Goal | **`IslandPanel`**: `NSPanel` subclass, `[.borderless, .nonactivatingPanel]`, level `.statusBar`, `[.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]`, `isOpaque = false`, clear background, `hasShadow = false`, `hidesOnDeactivate = false`, `isMovable = false`, `becomesKeyOnlyIfNeeded = true`, `canBecomeKey` true, `canBecomeMain` false; reports `resignKey` to its host. **`ScreenGeometryReader`**: `DisplayGeometryProvider` over `NSScreen.screens` (id from `NSScreenNumber`, `isBuiltIn` from `CGDisplayIsBuiltin`), re-read on `didChangeScreenParametersNotification`; `changes` returns a new stream per call and fans every change out to all of them (as `SettingsStore.changes`); `hasBuiltInNotch` is the N2 latch, stored in the injected defaults under `notch.builtInSeen.v1`; the `NSScreen` → value mapping is a static function over plain values so it is testable. **`IslandHost`** (one display): owns a panel, a tracking view and an `NSHostingView` whose root view is `IslandChrome` (the black `IslandShape` with continuous corners, plus the client's content for the surface, in a scroll view when `IslandLayout.contentScrolls`). **Generation token** (D-N4): every applied effect bumps it; each completion checks it before it calls `orderOut` or shrinks the frame. Expand = set the target frame first, then animate the shape; collapse = animate, then set the smaller frame on completion; hide = fade, then `orderOut` and cancel the deadline task. **Hover** (D-N6): one tracking area (`.mouseEnteredAndExited`, `.activeAlways`) sized to the current shape, rebuilt in `updateTrackingAreas` after every frame or shape change; after every frame change and order-front the host compares the pointer location (injected; `NSEvent.mouseLocation` in the app) with the shape and sends `pointerEntered` or `pointerExited`; enter events are dropped while a collapse runs. **Content height**: after every content change the host measures `fittingSize` at the fixed width and sends `contentHeightChanged` when it differs. **Clock** (D-N11): `now` and the deadline sleep both use `ContinuousClock`; a sleep that wakes before the deadline reschedules; one task per scheduled deadline, feeding `.tick`. `update(display:)` re-lays out the current surface on new geometry. Forwards `held(Bool)` effects to the client. Builds its panel and hosting view at creation (pre-warm, D-N9). **`IslandHosts`**: built once by `AppDelegate` from one provider and injected into every client (the HUD now, the tray in M5b); creates and pre-warms a host for every current display at init and on each display change, destroys hosts of displays that are gone, calls `update(display:)` on the others, and tells each client the new display set with the replacement for each removed display (design/19 §5.2); owns the arbiter and one machine per display; forwards client requests, wheel, menu-command and Reduce Motion events; posts accessibility announcements given by clients |
 | Acceptance | tests below green; idle: a hidden host has no pending task and its panel is not visible |
-| Effort | M |
+| Effort | M (the upper end: about 4 days) |
 
 **Files:** create `Sources/ZivletNotch/IslandPanel.swift`, `Sources/ZivletNotch/ScreenGeometryReader.swift`,
 `Sources/ZivletNotch/IslandShape.swift`, `Sources/ZivletNotch/IslandChrome.swift`, `Sources/ZivletNotch/IslandHost.swift`,
-`Sources/ZivletNotch/IslandHosts.swift`, `Sources/ZivletNotch/IslandClient.swift` (the content protocol:
-`func content(for surface: IslandSurface) -> AnyView`, `var accessibilityLabel`, `var accessibilityValue`),
+`Sources/ZivletNotch/IslandHosts.swift`, `Sources/ZivletNotch/IslandHover.swift` (tracking area and pointer check),
+`Sources/ZivletNotch/IslandClient.swift` (the content protocol: `func content(for surface: IslandSurface) -> AnyView`,
+`var accessibilityLabel`, `var accessibilityValue`, `func held(_ held: Bool, now: Duration)`,
+`func displaysChanged(_ ids: [UInt32], replacing: [UInt32: UInt32])`),
 `Tests/ZivletNotchTests/IslandPanelTests.swift`, `Tests/ZivletNotchTests/IslandHostTests.swift`,
+`Tests/ZivletNotchTests/IslandHostHoverTests.swift`, `Tests/ZivletNotchTests/IslandHostsTests.swift`,
 `Tests/ZivletNotchTests/ScreenGeometryReaderTests.swift`, `Tests/ZivletNotchTests/FakeDisplays.swift` (a fake provider
 whose displays sit at x −5000 so nothing appears on the developer's screen).
 
@@ -475,11 +533,41 @@ struct IslandHostTests {
         #expect(host.frame == IslandLayout.frame(.collapsed, on: FakeDisplays.notch).cgRect)
     }
 
+    @Test func aShowDuringTheFadeOutKeepsThePanelVisible() async {
+        let host = IslandHost(display: FakeDisplays.notch, client: FakeClient(), motion: .slow(0.2))
+        host.apply([.show(.toast, display: 1, contentHeight: 0)])
+        host.apply([.hide])
+        host.apply([.show(.collapsed, display: 1, contentHeight: 0)])   // a new job during the fade
+        await host.animationsSettled()
+        #expect(host.isVisible && host.frame == IslandLayout.frame(.collapsed, on: FakeDisplays.notch).cgRect)
+    }
+
+    @Test func anExpandDuringACollapseKeepsTheLargeFrame() async { /* .slow motion: expanded → collapsed → expanded, settle → expanded frame */ }
     @Test func hiddenOrdersOutAndLeavesNoPendingTask() async { /* schedule, then hide → !isVisible, !hasPendingDeadline */ }
     @Test func aDeadlineFeedsOneTickToTheMachine() async { /* schedule now + 10 ms → one .tick observed */ }
+    @Test func aSleepThatWakesEarlyReschedules() async { /* injected clock: sleep returns before the deadline → a new sleep, no tick yet */ }
+    @Test func aContentChangeSendsTheMeasuredHeight() { /* FakeClient grows its text → contentHeightChanged(h) once */ }
     @Test func theHostIsPrewarmed() { #expect(IslandHost(display: FakeDisplays.notch, client: FakeClient()).isPrewarmed) }
     @Test func thePillIsUsedOnADisplayWithoutANotch() { /* FakeDisplays.plain → collapsed frame 200 × 28 */ }
-    @Test func hostsAreCreatedPerDisplayOnDemand() { /* IslandHosts with two fake displays: request on 2 → one host */ }
+    @Test func newGeometryUnderTheSameIDReLaysOutTheCurrentSurface() { /* update(display:) with a moved frame → new frame */ }
+}
+
+@Suite("Island host hover (D-N6)")
+@MainActor
+struct IslandHostHoverTests {
+    @Test func theTrackingAreaFollowsTheShapeNotTheWindow() { /* during expand: tracking rect == shape, not panel bounds */ }
+    @Test func aFrameShrinkUnderAStillPointerSendsExit() { /* fake pointer inside expanded, outside collapsed → pointerExited */ }
+    @Test func anIslandAppearingUnderAStillPointerSendsEnter() { /* fake pointer inside the collapsed shape at show → pointerEntered */ }
+    @Test func enterIsIgnoredWhileACollapseRuns() { /* .slow motion: collapse, mouseEntered during it → no pointerEntered */ }
+}
+
+@Suite("Island hosts (D-N8, design/19 §5.2)")
+@MainActor
+struct IslandHostsTests {
+    @Test func aPrewarmedHostExistsForEveryDisplayAtLaunch() { /* two fake displays → two hosts, both prewarmed, none visible */ }
+    @Test func removingADisplayDestroysItsHostAndTellsClientsTheReplacement() { /* items on 2, remove 2 → client gets [2: 1] */ }
+    @Test func aNewDisplayGetsAPrewarmedHost() { /* add display 3 → host 3 prewarmed */ }
+    @Test func twoSubscribersBothSeeEachChange() async { /* provider.changes twice → both streams yield */ }
 }
 
 @Suite("Screen geometry reader")
@@ -489,22 +577,28 @@ struct ScreenGeometryReaderTests {
         let raw = ScreenGeometryReader.Raw(
             number: 1, frame: CGRect(x: 0, y: 0, width: 1800, height: 1169),
             visible: CGRect(x: 0, y: 94, width: 1800, height: 1036), safeTop: 38,
-            left: CGRect(x: 0, y: 1131, width: 790, height: 38), right: CGRect(x: 1010, y: 1131, width: 790, height: 38))
+            left: CGRect(x: 0, y: 1131, width: 790, height: 38), right: CGRect(x: 1010, y: 1131, width: 790, height: 38),
+            builtIn: true)
         #expect(try ScreenGeometryReader.geometry(raw) == DisplayFixtures.mbp14MoreSpace())
     }
 
     @Test func aScreenWithInvalidValuesIsSkippedWithOneErrorLine() { /* NaN width → nil, logged once */ }
+    @Test func theNotchLatchIsStoredAndSurvivesTheLidClosing() { /* built-in notch seen → stored; new reader with only the external display → true */ }
 }
 ```
 
 `IslandHost` takes an `IslandMotion`-derived animation; tests pass `.instant` so completion runs on the next
-main-actor turn. `cgRect` is a small internal `Rect2D` → `CGRect` bridge in `ZivletNotch`.
+main-actor turn, and `.slow(seconds)` where the order of completions matters (stale completions, collapse in
+progress). The pointer location and the clock are injected, so the hover and wake tests need no real pointer and no
+real sleep. `cgRect` is the `ZivletCore` bridge moved in N1; `ZivletNotch` has no copy of its own.
 
 RED: `cannot find 'IslandPanel'`. GREEN: `swift test --filter "IslandPanel|IslandHost|ScreenGeometryReader"`, then
 `make coverage` (`ZivletNotch` ≥ 80 %) and `make app`.
 
 Manual check after GREEN (developer, optional, not a gate): a DEBUG-only launch argument
-`-ZivletIslandPreview collapsed|toast|expanded` shows the island with fixed sample content for 5 s so the frame swap
-can be seen on the real notch; quit with `osascript -e 'quit app "Zivlet"'`.
+`-ZivletIslandPreview collapsed|toast|expanded|progress|indeterminate` shows the island with fixed sample content
+(5 s for the first three; `progress` feeds a fake fraction at 10 Hz and `indeterminate` runs the stepped glyph until
+quit) so the frame swap can be seen on the real notch and X6 can sample each state; quit with
+`osascript -e 'quit app "Zivlet"'`.
 
 Commit `feat(notch): island panel and host above the menu bar on every Space, hover by tracking area only`.
