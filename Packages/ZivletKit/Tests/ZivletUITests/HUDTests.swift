@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 import ZivletCore
 import ZivletRuntime
@@ -146,5 +147,21 @@ struct HUDKeyTests {
     @Test func theResultPanelUsesTheHUDWindow() {
         let panel = HUDPanel(HUDPanel.Callbacks(cancel: { _ in }, act: { _, _ in }, hover: { _, _ in }))
         #expect(panel.canBecomeKey)
+    }
+}
+
+@Suite("HUD text contrast over glass (NFR-14)")
+struct HUDInkTests {
+    /// The glass may let the backdrop through untouched: a white desktop behind dark-mode white text, a black one
+    /// behind light-mode black text. Primary and secondary text must still reach 4.5:1.
+    @Test(arguments: [ColorScheme.dark, .light])
+    func textKeeps4_5To1OverTheWorstBackdrop(scheme: ColorScheme) {
+        #expect(HUDInk.worstContrast(scheme: scheme, textOpacity: 1) >= 4.5)
+        #expect(HUDInk.worstContrast(scheme: scheme, textOpacity: HUDInk.secondaryOpacity) >= 4.5)
+    }
+
+    @Test func theScrimOpposesTheText() {
+        #expect(HUDInk.scrim(for: .dark) == Color.black.opacity(HUDInk.scrimOpacity))
+        #expect(HUDInk.scrim(for: .light) == Color.white.opacity(HUDInk.scrimOpacity))
     }
 }

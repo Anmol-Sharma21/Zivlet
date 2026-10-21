@@ -17,7 +17,7 @@ struct ActionHUDView: View {
                 if let toast = result.toast { Text(toast).font(.headline).lineLimit(1) }
                 if let card = result.card { cardView(card, isAlone: result.toast == nil) }
                 if let message = model.undoMessage {
-                    Text(message).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                    Text(message).font(.caption).foregroundStyle(HUDInk.secondary).lineLimit(3)
                 }
                 buttons(result)
             }
@@ -25,7 +25,7 @@ struct ActionHUDView: View {
         .padding(14)
         .frame(width: ActionHUD.width, alignment: .topLeading)
         .fixedSize(horizontal: false, vertical: true)
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
+        .hudGlass()
         .onHover(perform: hover)
     }
 
@@ -33,13 +33,13 @@ struct ActionHUDView: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(card.title).font(isAlone ? .headline : .callout).lineLimit(3)
             ForEach(Array(card.lines.prefix(Self.maxLines).enumerated()), id: \.offset) { _, line in
-                Text(line).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                Text(line).font(.caption).foregroundStyle(HUDInk.secondary).lineLimit(1).truncationMode(.middle)
             }
             if card.lines.count > Self.maxLines {
-                Text("and \(card.lines.count - Self.maxLines) more").font(.caption).foregroundStyle(.secondary)
+                Text("and \(card.lines.count - Self.maxLines) more").font(.caption).foregroundStyle(HUDInk.secondary)
             }
             if model.showsDetail, let detail = card.detail {
-                Text(detail).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                Text(detail).font(.caption).foregroundStyle(HUDInk.secondary).textSelection(.enabled)
             }
         }
     }

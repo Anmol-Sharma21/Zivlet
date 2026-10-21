@@ -25,7 +25,7 @@ struct ResultHUDView: View {
     private func working(_ snapshot: BatchSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(HUDCopy.title(target: snapshot.target)).font(.headline).lineLimit(1)
-            Text(HUDCopy.working(snapshot)).font(.callout).foregroundStyle(.secondary).lineLimit(1)
+            Text(HUDCopy.working(snapshot)).font(.callout).foregroundStyle(HUDInk.secondary).lineLimit(1)
                 .truncationMode(.middle)
             if snapshot.isIndeterminate {
                 ProgressView().progressViewStyle(.linear)
@@ -40,6 +40,6 @@ struct ResultHUDView: View {
         }
         .padding(14)
         .frame(width: HUDLayout.size.width, height: HUDLayout.size.height, alignment: .topLeading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
+        .hudGlass()
     }
 }

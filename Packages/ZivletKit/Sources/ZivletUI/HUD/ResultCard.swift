@@ -14,11 +14,11 @@ struct ResultCard: View {
                 if let first = state.remaining(model.outputs).first { thumbnail(first) }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(model.title).font(.headline).lineLimit(1).truncationMode(.middle)
-                    Text(model.sizeLine ?? model.subtitle).font(.callout).foregroundStyle(.secondary).lineLimit(2)
+                    Text(model.sizeLine ?? model.subtitle).font(.callout).foregroundStyle(HUDInk.secondary).lineLimit(2)
                         .truncationMode(.middle)
-                    ForEach(model.notes, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
+                    ForEach(model.notes, id: \.self) { Text($0).font(.caption).foregroundStyle(HUDInk.secondary) }
                     if let message = state.undoMessage {
-                        Text(message).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                        Text(message).font(.caption).foregroundStyle(HUDInk.secondary).lineLimit(3)
                     }
                 }
             }
@@ -29,7 +29,7 @@ struct ResultCard: View {
         .frame(width: HUDLayout.size.width, alignment: .topLeading)
         .frame(minHeight: HUDLayout.size.height, alignment: .topLeading)
         .fixedSize(horizontal: false, vertical: true)
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
+        .hudGlass()
     }
 
     /// The technical detail (an exit status and the helper's last lines), selectable for a bug report.
