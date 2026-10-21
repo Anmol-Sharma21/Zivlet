@@ -10,6 +10,10 @@ public enum ActionError: Error, Sendable, Equatable {
     case airDropUnavailable
     /// The AirDrop sheet reported an error other than the person cancelling.
     case airDropFailed(code: Int)
+    /// The terminal chosen in Settings (named) is not on this Mac.
+    case terminalMissing(String)
+    /// The terminal (named) did not open the folders.
+    case terminalFailed(String, code: Int)
 
     /// One sentence for the result card.
     public var userMessage: String {
@@ -17,6 +21,8 @@ public enum ActionError: Error, Sendable, Equatable {
         case .nothingLocal(let action): Self.nothingLocalMessage(action)
         case .clipboardRefused: "Zivlet couldn't write to the clipboard. Try again."
         case .airDropUnavailable, .airDropFailed: "Zivlet couldn't start AirDrop for these files."
+        case .terminalMissing(let name): "\(name) isn't installed. Choose another in Settings."
+        case .terminalFailed(let name, _): "Zivlet couldn't open \(name)."
         }
     }
 
@@ -24,6 +30,7 @@ public enum ActionError: Error, Sendable, Equatable {
     public var detail: String? {
         switch self {
         case .airDropFailed(let code): "AirDrop reported error \(code)."
+        case .terminalFailed(_, let code): "The system reported error \(code)."
         default: nil
         }
     }
