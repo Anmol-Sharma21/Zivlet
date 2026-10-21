@@ -54,7 +54,8 @@ assert_contains "$(cat "$FAKE_CALLS")" "stapler validate $T/Zivlet-0.1.0.dmg"
 touch "$T/AuthKey_TEST.p8"
 api=(NOTARY_KEY_ID=KEY1 NOTARY_ISSUER_ID=ISSUER1 NOTARY_KEY_PATH="$T/AuthKey_TEST.p8" FAKE_STATUS=Accepted)
 : >"$FAKE_CALLS"
-out=$(clean_env "${api[@]}" FAKE_SPCTL="source=Notarized Developer ID" "$NOTARIZE" "$T/Zivlet.zip" "$T/Zivlet.app" 2>&1) ||
+out=$(clean_env "${api[@]}" FAKE_SPCTL="source=Notarized Developer ID" "$NOTARIZE" "$T/Zivlet.zip" "$T/Zivlet.app" \
+    2>&1) ||
     fail "Accepted zip failed: $out"
 assert_contains "$(cat "$FAKE_CALLS")" "--key $T/AuthKey_TEST.p8 --key-id KEY1 --issuer ISSUER1"
 assert_contains "$(cat "$FAKE_CALLS")" "stapler staple $T/Zivlet.app"

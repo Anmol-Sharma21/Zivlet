@@ -9,7 +9,6 @@ LOCK=$REPO_ROOT/Vendor/versions.lock; MANIFEST=$REPO_ROOT/Vendor/licenses.json
 SRC=$REPO_ROOT/Vendor/src; DOWNLOADS=$REPO_ROOT/Vendor/downloads
 FFMPEG=$REPO_ROOT/Vendor/out/media-stage/Helpers/ffmpeg
 CARGO_HOME=${ZIVLET_CARGO_HOME:-$REPO_ROOT/Vendor/downloads/cargo-home}
-CRATE=$REPO_ROOT/Vendor/rs/zivlet-svg
 ALLOWED=" GPL-2.0-or-later GPL-3.0-or-later LGPL-2.0-or-later LGPL-2.1-or-later BSD-2-Clause BSD-3-Clause
 BSD-3-Clause-Clear ISC MIT Apache-2.0 Zlib WTFPL MPL-2.0 LicenseRef-AOM-Patent-1.0 "
 ALLOWED=" ${ALLOWED//$'\n'/ } " # one line, so every id is surrounded by spaces
@@ -69,9 +68,7 @@ check_crates() {
         [[ -z "$line" ]] && continue
         allowed "${line#* * }" || problem "crate licence not allowed: $line"
         count=$((count + 1))
-    done < <(cd "$CRATE" && CARGO_HOME=$CARGO_HOME cargo tree --locked --offline -e normal \
-        --target aarch64-apple-darwin --prefix none --format '{p} {l}' 2>/dev/null |
-        sed -e 's/ (\*)$//' -e 's/ (\/[^)]*)//' | sort -u)
+    done < <("$REPO_ROOT/Scripts/crates.sh" 2>/dev/null)
     ((count > 0)) || problem "cargo tree listed no crates (run Vendor/build-rs.sh once to fetch them)"
     CRATES=$count
 }

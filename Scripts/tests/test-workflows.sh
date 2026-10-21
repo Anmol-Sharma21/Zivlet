@@ -17,7 +17,8 @@ Dir.glob(File.join(ARGV[0], "*.yml")).sort.each do |path|
   triggers = doc["on"] || doc[true] || {}
   check.(!text.include?("pull_request_target"), "#{name}: uses pull_request_target")
   check.(doc["concurrency"].to_s.include?("github.ref"), "#{name}: no per-ref concurrency")
-  check.(doc.dig("env", "DEVELOPER_DIR") == "/Applications/Xcode.app/Contents/Developer", "#{name}: DEVELOPER_DIR not set")
+  check.(doc.dig("env", "DEVELOPER_DIR") == "/Applications/Xcode.app/Contents/Developer",
+         "#{name}: DEVELOPER_DIR not set")
   text.scan(/uses:\s*(\S+)/).flatten.each do |ref|
     check.(ref =~ /\A[\w.-]+\/[\w.\/-]+@[0-9a-f]{40}\z/, "#{name}: action not pinned to a commit SHA: #{ref}")
   end

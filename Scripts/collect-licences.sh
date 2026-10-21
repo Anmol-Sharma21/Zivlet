@@ -7,7 +7,6 @@ source "$(dirname "$0")/env.sh"
 MANIFEST=$REPO_ROOT/Vendor/licenses.json
 SRC=$REPO_ROOT/Vendor/src; DOWNLOADS=$REPO_ROOT/Vendor/downloads
 CARGO_HOME=${ZIVLET_CARGO_HOME:-$REPO_ROOT/Vendor/downloads/cargo-home}
-CRATE=$REPO_ROOT/Vendor/rs/zivlet-svg
 OUT=${LICENSES_OUT:-$REPO_ROOT/Vendor/out/licenses}
 mkdir -p "$OUT"
 
@@ -54,9 +53,7 @@ write_crates() {
                 printf '\n===== %s =====\n\n' "$(basename "$file")"
                 cat "$file"
             done
-        done < <(cd "$CRATE" && CARGO_HOME=$CARGO_HOME cargo tree --locked --offline -e normal \
-            --target aarch64-apple-darwin --prefix none --format '{p} {l}' | sed -e 's/ (\*)$//' -e 's/ (\/[^)]*)//' |
-            sort -u)
+        done < <("$REPO_ROOT/Scripts/crates.sh")
     } >"$OUT/rust-crates.txt"
 }
 
