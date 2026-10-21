@@ -171,11 +171,3 @@ public final class WheelController {
         return nil
     }
 }
-
-extension Rect2D {
-    public init(_ rect: CGRect) {
-        self.init(x: rect.origin.x, y: rect.origin.y, width: rect.width, height: rect.height)
-    }
-
-    public var cgRect: CGRect { CGRect(x: x, y: y, width: width, height: height) }
-}

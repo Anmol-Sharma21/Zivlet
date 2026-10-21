@@ -1,32 +1,5 @@
 import ZivletCore
 
-/// Axis-aligned rectangle in global points, AppKit orientation (origin bottom-left). Keeps WheelCore free of CoreGraphics.
-public struct Rect2D: Sendable, Hashable, Codable {
-    public let x: Double
-    public let y: Double
-    public let width: Double
-    public let height: Double
-
-    public init(x: Double, y: Double, width: Double, height: Double) {
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-    }
-
-    public var minX: Double { x }
-    public var minY: Double { y }
-    public var maxX: Double { x + width }
-    public var maxY: Double { y + height }
-    public var midX: Double { x + width / 2 }
-    public var midY: Double { y + height / 2 }
-
-    /// Half-open on the max edges, so a point on the seam between two displays belongs to one of them.
-    public func contains(_ p: Point2D) -> Bool {
-        p.x >= minX && p.x < maxX && p.y >= minY && p.y < maxY
-    }
-}
-
 /// One display as the placer sees it: full frame and the frame minus menu bar and Dock.
 public struct ScreenFrame: Sendable, Equatable {
     public let frame: Rect2D
