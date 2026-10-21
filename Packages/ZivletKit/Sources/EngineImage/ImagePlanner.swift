@@ -13,10 +13,13 @@ public struct ImageProbe: Sendable, Equatable {
     /// Stored pixels per inch on each axis (72 when the file names none).
     public let dpiWidth: Double
     public let dpiHeight: Double
+    /// Set for an SVG source; `pixelSize` is then the size it renders at.
+    public let svg: SVGGeometry?
 
     public init(
         typeIdentifier: String, frameCount: Int, pixelSize: PixelSize, orientation: Int, hasAlpha: Bool,
-        dpiWidth: Double = PDFPageGeometry.defaultDPI, dpiHeight: Double = PDFPageGeometry.defaultDPI
+        dpiWidth: Double = PDFPageGeometry.defaultDPI, dpiHeight: Double = PDFPageGeometry.defaultDPI,
+        svg: SVGGeometry? = nil
     ) {
         self.typeIdentifier = typeIdentifier
         self.frameCount = frameCount
@@ -25,6 +28,7 @@ public struct ImageProbe: Sendable, Equatable {
         self.hasAlpha = hasAlpha
         self.dpiWidth = dpiWidth
         self.dpiHeight = dpiHeight
+        self.svg = svg
     }
 
     /// Orientations 5–8 rotate by 90°, so the displayed size swaps width and height.
@@ -34,6 +38,7 @@ public struct ImageProbe: Sendable, Equatable {
 
     /// The PDF page for this image, in points, rounded as verification compares it.
     var pageSize: PixelSize {
+        if let svg { return svg.pageSize }
         let size = PDFPageGeometry.pageSize(
             orientation: orientation, stored: pixelSize, dpiX: dpiWidth, dpiY: dpiHeight)
         return PixelSize(width: Int(size.width.rounded()), height: Int(size.height.rounded()))
@@ -85,20 +90,26 @@ public enum ImagePlanner {
             webp.map { WebPPlanner.frames(probe: probe, animated: $0.animated) }
             ?? frames(source: source, target: target, probe: probe)
         let flatten = opaqueTargets.contains(target) && probe.hasAlpha
-        let notes =
-            (flatten ? [PlanNote.alphaFlattened] : []) + (frames.count < probe.frameCount ? [.firstFrameOnly] : [])
+        let notes = notes(target: target, probe: probe, frames: frames, flatten: flatten)
         do {
             let spec = try ImagePipelineSpec(
                 source: request.input.url, destinationType: registry.format(target).contentTypes[0],
                 output: target == .pdf ? .pdf : .raster, frames: frames, flattenAlpha: flatten,
                 quality: lossy.contains(target) ? quality(options.tier) : nil, tiffLZW: target == .tiff,
-                expectedSize: target == .pdf ? probe.pageSize : probe.displaySize, webp: webp)
+                expectedSize: target == .pdf ? probe.pageSize : probe.displaySize, webp: webp,
+                svg: probe.svg == nil
+                    ? nil : try SVGRasterOptions(scale: SVGGeometry.scale, maxEdge: SVGGeometry.maxEdge))
             return try ExecutionPlan(
                 engine: .image, stages: [.image(spec)], stageWeights: [1], lanes: [.cpu], outputFormat: target,
                 stagedFile: staged, notes: notes)
         } catch {
             throw .internalInvariant("image plan rejected: \(error)")
         }
+    }
+
+    static func notes(target: FormatID, probe: ImageProbe, frames: [Int], flatten: Bool) -> [PlanNote] {
+        (flatten ? [.alphaFlattened] : []) + (frames.count < probe.frameCount ? [.firstFrameOnly] : [])
+            + (probe.svg != nil && target == .pdf ? [.svgRasterizedInPDF] : [])
     }
 
     /// Every page of a TIFF into a PDF; otherwise the first frame (03b §6.2: animation flattened to the first frame).
@@ -108,14 +119,12 @@ public enum ImagePlanner {
     }
 }
 
-/// Route gate for images (03a §3.5): SVG input needs the renderer M3 does not ship yet (index D-M3-7); WebP is
-/// written by the linked libwebp (D-M4-8) and PDF by Quartz; every other raster target needs ImageIO to list its type
-/// as writable.
+/// Route gate for images (03a §3.5): SVG is read by the linked zivlet-svg (D-M4-6), WebP written by the linked
+/// libwebp (D-M4-8) and PDF by Quartz; every other raster target needs ImageIO to list its type as writable.
 public enum ImageRoutes {
     public static func missing(
         source: FormatID, target: FormatID, writableTypes: Set<String>, registry: FormatRegistry = .standard
     ) -> [String]? {
-        if source == .svg { return ["svg renderer"] }
         if target == .pdf || target == .webp { return nil }
         let type = registry.format(target).contentTypes[0]
         return writableTypes.contains(type) ? nil : ["ImageIO \(type) encoder"]

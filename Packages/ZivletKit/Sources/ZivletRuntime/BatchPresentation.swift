@@ -67,6 +67,7 @@ public struct BatchPresentation: Sendable, Equatable {
         switch note {
         case .alphaFlattened: "Transparency was flattened onto white."
         case .firstFrameOnly: "Only the first frame or page was kept."
+        case .svgRasterizedInPDF: "The drawing was saved as a picture inside the PDF."
         }
     }
 

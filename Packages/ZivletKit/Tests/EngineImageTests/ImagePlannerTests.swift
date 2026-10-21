@@ -89,10 +89,6 @@ struct ImagePlannerTests {
         #expect(Self.probe(orientation: 0).orientation == 1 && Self.probe(orientation: 9).orientation == 1)
     }
 
-    @Test func svgInputIsTypedUnavailable() {
-        #expect(throws: JobError.routeUnavailable(.svg, .png, ["svg renderer"])) { try Self.plan(.svg, .png) }
-    }
-
     @Test func anUnwritableTypeIsUnavailable() {
         let noAVIF = ImageTypes.writable.subtracting(["public.avif"])
         #expect(throws: JobError.routeUnavailable(.jpg, .avif, ["ImageIO public.avif encoder"])) {
@@ -125,13 +121,12 @@ struct ImagePlannerTests {
     }
 
     @Test(arguments: imagePairs)
-    func everyImagePairPlansOrIsTypedUnavailable(pair: ConversionPair) {
+    func everyImagePairPlans(pair: ConversionPair) {
         do {
             let plan = try Self.plan(pair.source, pair.target)
             #expect(plan.outputFormat == pair.target)
-            #expect(pair.source != .svg)
         } catch {
-            #expect(pair.source == .svg, "\(pair): \(error)")
+            Issue.record("\(pair): \(error)")
         }
     }
 }

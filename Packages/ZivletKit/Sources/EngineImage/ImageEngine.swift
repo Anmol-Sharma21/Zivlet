@@ -47,7 +47,10 @@ public struct ImageEngine: Engine {
             throw .routeUnavailable(request.input.format, request.target, missing)
         }
         let url = request.input.url
-        let probe = try await BlockingWork.run { _ throws(JobError) in try ImageReader.probe(url) }
+        let isSVG = request.input.format == .svg
+        let probe = try await BlockingWork.run { _ throws(JobError) in
+            try isSVG ? SVGRenderer.probe(url) : ImageReader.probe(url)
+        }
         return try ImagePlanner.plan(
             request, probe: probe, staged: workspace.stagedFile, writableTypes: writableTypes, options: options,
             registry: registry)

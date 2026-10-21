@@ -12,15 +12,9 @@ struct ImageEngineTests {
     let run = ImageRun()
 
     @Test(arguments: ImagePlannerTests.imagePairs)
-    func everyPairConvertsAndVerifiesOrIsTypedUnavailable(pair: ConversionPair) async throws {
+    func everyPairConvertsAndVerifies(pair: ConversionPair) async throws {
         let dir = try ImageFixture.directory()
         let source = try await offPool { try ImageFixture.opaque(pair.source, in: dir) }
-        if pair.source == .svg {
-            await #expect(throws: JobError.routeUnavailable(pair.source, pair.target, ["svg renderer"])) {
-                try await run.convert(source, pair.source, to: pair.target, in: dir)
-            }
-            return
-        }
         let (plan, output) = try await run.convert(source, pair.source, to: pair.target, in: dir)
         #expect(output.byteCount > 0 && output.format == pair.target && plan.engine == .image)
     }
@@ -133,8 +127,7 @@ struct ImageEngineGateTests {
         let engine = ImageEngine(writableTypes: ImageTypes.writable)
         #expect(await engine.availability(of: ConversionPair(source: .png, target: .jpg)) == .available)
         #expect(await engine.availability(of: ConversionPair(source: .png, target: .webp)) == .available)
-        #expect(
-            await engine.availability(of: ConversionPair(source: .svg, target: .pdf)) == .unavailable(["svg renderer"]))
+        #expect(await engine.availability(of: ConversionPair(source: .svg, target: .pdf)) == .available)
         #expect(engine.handles(ConversionPair(source: .heic, target: .pdf)))
         #expect(!engine.handles(ConversionPair(source: .pdf, target: .png)))
         #expect(!engine.handles(ConversionPair(source: .mp4, target: .gif)))

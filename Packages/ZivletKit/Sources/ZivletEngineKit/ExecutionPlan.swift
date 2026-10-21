@@ -32,12 +32,13 @@ public enum Stage: Sendable, Codable, Equatable {
 }
 
 /// Something the result card tells the user about the output (10 §4.2: "Animation flattened to first frame").
+/// `svgRasterizedInPDF`: an SVG became a PDF page holding a picture of it, not vector art (D-M4-6).
 public enum PlanNote: String, Sendable, Codable, Equatable {
-    case alphaFlattened, firstFrameOnly
+    case alphaFlattened, firstFrameOnly, svgRasterizedInPDF
 }
 
 public enum PlanError: Error, Equatable, Sendable {
-    case noStages, countMismatch, badWeights, noFrames, badQuality, badMethod
+    case noStages, countMismatch, badWeights, noFrames, badQuality, badMethod, badScale
 }
 
 /// A pure, Codable plan (02 §7.3, ADR-06): stages with progress weights and one scheduler lane each, the output

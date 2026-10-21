@@ -37,6 +37,11 @@ struct BatchPresentationTests {
         #expect(shown.title == "Saved 2 files" && shown.notes == ["Only the first frame or page was kept."])
     }
 
+    @Test func anSVGSavedAsPDFSaysItIsAPicture() {
+        let shown = BatchPresentation.make(Self.snapshot([.succeeded(Self.output)], notes: [.svgRasterizedInPDF]))
+        #expect(shown.notes == ["The drawing was saved as a picture inside the PDF."])
+    }
+
     @Test func partialSuccessNamesTheFirstFailure() {
         let shown = BatchPresentation.make(Self.snapshot([.succeeded(Self.output), .failed(.diskFull)]))
         #expect(shown.phase == .partial && shown.title == "Saved 1 of 2 files")

@@ -34,6 +34,22 @@ enum ImagePDFWriter {
         guard ImageWriteFailure.isWritten(staged) else { throw ImageWriteFailure.error(at: staged) }
     }
 
+    /// One page of `page` points holding `image` scaled to fill it (an SVG's picture, D-M4-6).
+    static func writePicture(_ image: CGImage, page: PixelSize, to staged: URL) throws(JobError) {
+        try StagedFile.check(staged)
+        guard let context = CGContext(staged as CFURL, mediaBox: nil, nil) else {
+            throw ImageWriteFailure.error(at: staged)
+        }
+        var box = CGRect(x: 0, y: 0, width: page.width, height: page.height)
+        context.beginPDFPage(
+            [kCGPDFContextMediaBox: Data(bytes: &box, count: MemoryLayout<CGRect>.size)] as CFDictionary)
+        context.interpolationQuality = .high
+        context.draw(image, in: box)
+        context.endPDFPage()
+        context.closePDF()
+        guard ImageWriteFailure.isWritten(staged) else { throw ImageWriteFailure.error(at: staged) }
+    }
+
     private static func drawPage(
         _ source: CGImageSource, _ index: Int, spec: ImagePipelineSpec, into context: CGContext
     )

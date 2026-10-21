@@ -14,6 +14,7 @@ enum ImagePipeline {
     static func run(
         _ spec: ImagePipelineSpec, to staged: URL, cancel: CancellationFlag, limits: PixelLimits = .standard
     ) throws(JobError) {
+        if let svg = spec.svg { return try SVGPipeline.run(spec, svg, to: staged, cancel: cancel) }
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithURL(spec.source as CFURL, options) else {
             throw .unsupportedInput(.unreadable)

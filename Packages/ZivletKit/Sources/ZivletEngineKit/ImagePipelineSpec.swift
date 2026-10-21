@@ -19,7 +19,8 @@ public enum ImageOutputKind: String, Sendable, Codable {
 
 /// One ImageIO / Quartz pass (03b §6.1–6.2): which frames of `source` to write, as which type, with which settings.
 /// `expectedSize` is the displayed size (EXIF orientation applied) that verification compares against. `webp` set
-/// means libwebp writes the frames instead of ImageIO (D-M4-8).
+/// means libwebp writes the frames instead of ImageIO (D-M4-8); `svg` set means the source is an SVG rendered by
+/// zivlet-svg instead of decoded by ImageIO (D-M4-6).
 /// Invariant: at least one frame, frame indices non-negative, quality (when set) in 0...1.
 public struct ImagePipelineSpec: Sendable, Codable, Equatable {
     public let source: URL
@@ -31,10 +32,12 @@ public struct ImagePipelineSpec: Sendable, Codable, Equatable {
     public let tiffLZW: Bool
     public let expectedSize: PixelSize
     public let webp: WebPOptions?
+    public let svg: SVGRasterOptions?
 
     public init(
         source: URL, destinationType: String, output: ImageOutputKind, frames: [Int], flattenAlpha: Bool,
-        quality: Double?, tiffLZW: Bool, expectedSize: PixelSize, webp: WebPOptions? = nil
+        quality: Double?, tiffLZW: Bool, expectedSize: PixelSize, webp: WebPOptions? = nil,
+        svg: SVGRasterOptions? = nil
     ) throws(PlanError) {
         guard !frames.isEmpty, frames.allSatisfy({ $0 >= 0 }) else { throw .noFrames }
         if let quality, !(0...1).contains(quality) { throw .badQuality }
@@ -47,12 +50,13 @@ public struct ImagePipelineSpec: Sendable, Codable, Equatable {
         self.tiffLZW = tiffLZW
         self.expectedSize = expectedSize
         self.webp = webp
+        self.svg = svg
     }
 }
 
 extension ImagePipelineSpec {
     private enum CodingKeys: String, CodingKey {
-        case source, destinationType, output, frames, flattenAlpha, quality, tiffLZW, expectedSize, webp
+        case source, destinationType, output, frames, flattenAlpha, quality, tiffLZW, expectedSize, webp, svg
     }
 
     public init(from decoder: any Decoder) throws {
@@ -66,7 +70,8 @@ extension ImagePipelineSpec {
                 quality: c.decodeIfPresent(Double.self, forKey: .quality),
                 tiffLZW: c.decode(Bool.self, forKey: .tiffLZW),
                 expectedSize: c.decode(PixelSize.self, forKey: .expectedSize),
-                webp: c.decodeIfPresent(WebPOptions.self, forKey: .webp))
+                webp: c.decodeIfPresent(WebPOptions.self, forKey: .webp),
+                svg: c.decodeIfPresent(SVGRasterOptions.self, forKey: .svg))
         } catch let error as PlanError {
             throw DecodingError.dataCorrupted(
                 .init(codingPath: c.codingPath, debugDescription: "Invalid image spec", underlyingError: error))
