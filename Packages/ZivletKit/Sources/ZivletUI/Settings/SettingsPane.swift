@@ -24,7 +24,7 @@ public enum SettingsPane: String, CaseIterable, Sendable {
 
     var height: CGFloat {
         switch self {
-        case .general: 640
+        case .general: 720
         case .updates: 260
         case .advanced: 300
         }

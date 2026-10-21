@@ -9,6 +9,7 @@ struct GeneralPane: View {
 
     var body: some View {
         Form {
+            if let login = model.loginItem { LoginItemSection(model: login) }
             Section {
                 ForEach(WheelMode.allCases, id: \.self) { BindingPicker(mode: $0, model: model) }
             } header: {
@@ -49,5 +50,24 @@ struct GeneralPane: View {
         let home = NSHomeDirectory()
         guard path == home || path.hasPrefix(home + "/") else { return path }
         return "~" + path.dropFirst(home.count)
+    }
+}
+
+/// "Open Zivlet at login", with the approval hint and any refusal underneath.
+struct LoginItemSection: View {
+    let model: LoginItemModel
+
+    var body: some View {
+        Section("Startup") {
+            Toggle("Open Zivlet at login", isOn: Binding(get: { model.isOn }, set: { model.setOn($0) }))
+            if let approval = model.approvalMessage {
+                HStack {
+                    Text(approval).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Open Login Items", action: model.openSystemSettings)
+                }
+            }
+            if let error = model.errorText { Text(error).foregroundStyle(.red) }
+        }
     }
 }

@@ -23,6 +23,7 @@ final class SettingsWindowWiring {
     func show(_ pane: SettingsPane = .general) {
         if controller == nil { make() }
         guard let controller, let model else { return }
+        model.loginItem = LoginItemModel()  // the status can change in System Settings while the window is closed
         Task { [conversions] in model.helperVersions = await conversions.helperVersions() }
         controller.show(pane)
         let window = controller.window?.windowNumber ?? 0

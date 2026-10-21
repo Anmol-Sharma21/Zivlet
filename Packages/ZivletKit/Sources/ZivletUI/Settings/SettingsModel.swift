@@ -38,6 +38,8 @@ public final class SettingsModel {
     public private(set) var settings: ZivletSettings.Settings
     public let terminalChoices: [TerminalApp]
     public var helperVersions: [HelperVersion] = []
+    /// Launch at login (D5); nil hides the row.
+    public var loginItem: LoginItemModel?
     @ObservationIgnored let commands: SettingsCommands
 
     public init(settings: ZivletSettings.Settings, installedTerminals: [TerminalApp], commands: SettingsCommands) {
