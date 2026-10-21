@@ -56,6 +56,7 @@ demo_set() {
         "$REPO_ROOT/Scripts/demo-convert.sh" "$input" "${pair##*:}"
     done
     pkill -x Zivlet || true
+    rm -rf "$dir" # our own scratch folder: the copied fixtures and their outputs
 }
 
 # X9: Accessibility, Input Monitoring or event posting asked for during X8 fails the row.
