@@ -68,7 +68,7 @@ final class ActionHUD {
         let height = hosting.fittingSize.height
         let size = NSSize(width: Self.width, height: height)
         panel.setContentSize(size)
-        if let origin = HUDPlacement.origin(near: point, size: size) { panel.setFrameOrigin(origin) }
+        if let origin = HUDLayout.origin(near: point, size: size) { panel.setFrameOrigin(origin) }
     }
 
     /// Toasts leave on their own; cards, and toasts while hovered, stay.

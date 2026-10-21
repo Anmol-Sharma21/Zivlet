@@ -1,16 +1,7 @@
 import AppKit
-import SwiftUI
 import ZivletCore
 import ZivletRuntime
-
-/// What the HUD view renders; replaced whole on every snapshot.
-@Observable
-public final class HUDModel {
-    var presentation: BatchPresentation?
-    var undoMessage: String?
-    /// The last undo left files the Trash refused, so Undo stays available.
-    var undoCanRetry = false
-}
+import os
 
 /// What an undo said, and whether pressing Undo again can still help.
 public struct UndoReply: Sendable, Equatable {
@@ -23,80 +14,85 @@ public struct UndoReply: Sendable, Equatable {
     }
 }
 
-/// The conversion HUD (01-prd FR-14, M3 subset of P1-40/P1-41): a non-activating glass panel near the drop point with
-/// progress and Cancel while working, then Reveal in Finder and Undo, or the failure in Zivlet's words. With several
-/// batches at once, `HUDBoard` picks the one on screen (a finished failure stays until closed) and every button acts
-/// on that batch.
+/// The conversion HUD (01-prd FR-14, P1-40, P1-41): one non-activating glass panel per batch near its drop point,
+/// cascading 24 pt for each batch already on screen. Progress and Cancel while working; then the result. A
+/// success leaves after a while; a failure stays until closed (`HUDBoard`). Every button acts on its own batch.
 public final class ResultHUD {
-    static let size = NSSize(width: 360, height: 132)
-    static let successLinger = Duration.seconds(6)
+    public static let successLinger = Duration.seconds(6)
 
     public var onCancel: (BatchID) -> Void = { _ in }
     public var onReveal: ([URL]) -> Void = { _ in }
-    /// Undoes the shown batch and returns the sentence to show in its place.
+    /// Undoes a batch and returns the sentence to show in its place.
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
 
-    private let model = HUDModel()
-    private let panel = NSPanel(
-        contentRect: NSRect(origin: .zero, size: ResultHUD.size), styleMask: [.borderless, .nonactivatingPanel],
-        backing: .buffered, defer: true)
+    private let screens: () -> [CGRect]
+    private let signposter = OSSignposter(subsystem: "app.zivlet.Zivlet", category: "hud")
     private var board = HUDBoard()
-    private var renderedBatch: BatchID?
-    private var anchor: CGPoint?
-    private var hideTask: Task<Void, Never>?
+    private var panels: [BatchID: HUDPanel] = [:]
+    private var order: [BatchID] = []
+    private var pending: [(anchor: CGPoint?, interval: OSSignpostIntervalState)] = []
+    private var lingers: [BatchID: Task<Void, Never>] = [:]
+    /// Built at launch, so the first drop only places and fills a panel (≤ 50 ms, P1-40).
+    private var spare: HUDPanel?
 
-    public init() {
-        panel.level = .floating
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        let view = ResultHUDView(
-            model: model, cancel: { [weak self] in self?.cancel() }, reveal: { [weak self] in self?.reveal() },
-            undo: { [weak self] in self?.undo() }, close: { [weak self] in self?.hide() })
-        let hosting = NSHostingView(rootView: view)
-        hosting.frame = NSRect(origin: .zero, size: Self.size)
-        panel.contentView = hosting
+    public init(screens: @escaping () -> [CGRect] = { NSScreen.screens.map(\.visibleFrame) }) {
+        self.screens = screens
+        spare = makePanel()
     }
 
-    /// Remembers where the drop happened (nil = centre of the main screen) for the next batch.
+    public var isVisible: Bool { panels.values.contains { $0.isVisible } }
+
+    /// The open panels' frames, oldest first.
+    public var panelFrames: [CGRect] { order.compactMap { panels[$0]?.frame } }
+
+    /// A drop happened at `point` (nil = centre of the main screen); the next new batch opens there.
     public func prepare(near point: CGPoint?) {
-        anchor = point
+        pending.append((point, signposter.beginInterval("drop→hud")))
     }
 
     public func show(_ snapshot: BatchSnapshot) {
         board = board.updating(snapshot)
-        render()
-    }
-
-    /// Close: the shown batch is dismissed and the next one, if any, takes its place.
-    public func hide() {
-        if let batch = board.shown?.batch { board = board.dismissing(batch) }
-        render()
-    }
-
-    private func render() {
-        hideTask?.cancel()
-        guard let shown = board.shown else {
-            renderedBatch = nil
-            panel.orderOut(nil)
-            return
+        let panel = panels[snapshot.batch] ?? open(snapshot.batch)
+        panel.render(snapshot)
+        lingers[snapshot.batch]?.cancel()
+        if snapshot.isFinished, !snapshot.needsAcknowledgementInHUD, panel.model.undoMessage == nil {
+            linger(snapshot.batch)
         }
-        if shown.batch != renderedBatch {
-            model.undoMessage = nil
-            model.undoCanRetry = false
-            renderedBatch = shown.batch
-        }
-        model.presentation = BatchPresentation.make(shown)
-        if !panel.isVisible { place() }
-        panel.orderFrontRegardless()
-        if shown.isFinished, model.presentation?.phase == .succeeded, model.undoMessage == nil { linger(shown.batch) }
     }
 
-    /// A success leaves after a while, but only while it is still the batch on screen.
+    /// The batch's panel closes; the others stay where they are.
+    public func close(_ batch: BatchID) {
+        board = board.dismissing(batch)
+        lingers.removeValue(forKey: batch)?.cancel()
+        panels.removeValue(forKey: batch)?.close()
+        order.removeAll { $0 == batch }
+    }
+
+    private func open(_ batch: BatchID) -> HUDPanel {
+        let drop = pending.isEmpty ? nil : pending.removeFirst()
+        let panel = spare ?? makePanel()
+        spare = nil
+        let screen = HUDLayout.screen(for: drop?.anchor, in: screens()) ?? .zero
+        panel.place(HUDLayout.frame(anchor: drop?.anchor, index: panels.count, screen: screen))
+        panel.bind(batch)
+        panels[batch] = panel
+        order.append(batch)
+        panel.orderFront()
+        if let interval = drop?.interval { signposter.endInterval("drop→hud", interval) }
+        return panel
+    }
+
+    private func makePanel() -> HUDPanel {
+        HUDPanel(
+            cancel: { [weak self] batch in self?.onCancel(batch) },
+            reveal: { [weak self] batch in self?.reveal(batch) },
+            undo: { [weak self] batch in self?.undo(batch) },
+            close: { [weak self] batch in self?.close(batch) })
+    }
+
+    /// A success leaves after a while, unless it was closed or undone meanwhile.
     private func linger(_ batch: BatchID) {
-        hideTask = Task { [weak self] in
+        lingers[batch] = Task { [weak self] in
             do {
                 try await Task.sleep(for: Self.successLinger)
             } catch {
@@ -104,68 +100,24 @@ public final class ResultHUD {
             }
             guard let self else { return }
             self.board = self.board.expiring(batch)
-            self.render()
+            if !self.board.snapshots.contains(where: { $0.batch == batch }) { self.close(batch) }
         }
     }
 
-    private func cancel() {
-        if let batch = board.shown?.batch { onCancel(batch) }
+    private func reveal(_ batch: BatchID) {
+        onReveal(board.snapshots.first { $0.batch == batch }?.outputs.map(\.url) ?? [])
     }
 
-    private func reveal() {
-        onReveal(board.shown?.outputs.map(\.url) ?? [])
-    }
-
-    private func undo() {
-        guard let batch = board.shown?.batch else { return }
-        hideTask?.cancel()
+    private func undo(_ batch: BatchID) {
+        lingers.removeValue(forKey: batch)?.cancel()
         Task { [weak self, onUndo] in
             let reply = await onUndo(batch)
-            guard let self, self.board.shown?.batch == batch else { return }
-            self.model.undoMessage = reply.message
-            self.model.undoCanRetry = reply.canRetry
+            self?.panels[batch]?.showUndo(reply)
         }
-    }
-
-    private func place() {
-        if let origin = HUDPlacement.origin(near: anchor, size: Self.size) { panel.setFrameOrigin(origin) }
     }
 }
 
-struct ResultHUDView: View {
-    let model: HUDModel
-    let cancel: () -> Void
-    let reveal: () -> Void
-    let undo: () -> Void
-    let close: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let shown = model.presentation {
-                Text(shown.title).font(.headline).lineLimit(1)
-                Text(shown.subtitle).font(.callout).foregroundStyle(.secondary).lineLimit(1)
-                if let fraction = shown.fraction { ProgressView(value: fraction) }
-                ForEach(shown.notes, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
-                if let message = model.undoMessage ?? shown.detail {
-                    Text(message).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                }
-                Spacer(minLength: 0)
-                buttons(shown)
-            }
-        }
-        .padding(14)
-        .frame(width: ResultHUD.size.width, height: ResultHUD.size.height, alignment: .topLeading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
-    }
-
-    private func buttons(_ shown: BatchPresentation) -> some View {
-        HStack {
-            Spacer()
-            if shown.canCancel { Button("Cancel", action: cancel) }
-            if shown.canUndo, model.undoMessage == nil || model.undoCanRetry { Button("Undo", action: undo) }
-            if shown.canReveal { Button("Reveal in Finder", action: reveal) }
-            if !shown.canCancel { Button("Close", action: close).keyboardShortcut(.cancelAction) }
-        }
-        .controlSize(.small)
-    }
+extension BatchSnapshot {
+    /// Finished with a failure: stays until closed.
+    var needsAcknowledgementInHUD: Bool { isFinished && !failures.isEmpty }
 }
