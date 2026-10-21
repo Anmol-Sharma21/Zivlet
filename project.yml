@@ -37,6 +37,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.zivlet.Zivlet
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        # The embed phase reads Vendor/out/media-stage, which the script sandbox would hide.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    # P1-50, D-M4-10: copy and sign the vendored helpers before Xcode signs the app. Runs on every build (about
+    # a second) so a rebuilt stage is never missed; without a stage, Debug warns and Release fails.
+    postBuildScripts:
+      - name: Embed media helpers
+        script: '"$SRCROOT/Scripts/embed-helpers.sh"'
+        basedOnDependencyAnalysis: false
 schemes:
   Zivlet:
     build:

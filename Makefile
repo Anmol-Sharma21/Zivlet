@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack
+.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -38,9 +38,9 @@ demo:
 convert-demo:
 	Scripts/demo-convert.sh "$${FILE:?set FILE to an absolute input path}" "$${TO:?set TO to a target format}" "$${CANCEL_MS:-}"
 
-# P1-21: build Release and fail if any binary in it names a Homebrew tool path.
+# P1-21, P1-50: build Release with the vendored helpers; fail on a Homebrew path or an incomplete bundle.
 release-check:
-	$(ENV) $(NATIVE) Scripts/check-release-paths.sh
+	$(ENV) $(NATIVE) Vendor/ensure-media.sh && Scripts/check-release-paths.sh
 
 # Vendored sources and builds (10a). vendor-test runs every script test; vendor-fetch downloads and verifies sources.
 vendor-test:
@@ -63,3 +63,7 @@ vendor-pack:
 # Restores a packed vendor tree: make vendor-unpack TARBALL=Vendor/out/zivlet-vendor-<key>.tar.xz
 vendor-unpack:
 	$(ENV) Vendor/unpack.sh "$${TARBALL:?set TARBALL to a zivlet-vendor-<key>.tar.xz}"
+
+# Shell tests of the release and bundle scripts (some need make vendor and make app first).
+script-test:
+	@for t in Scripts/tests/test-*.sh; do bash "$$t" || exit 1; done

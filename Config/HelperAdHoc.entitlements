@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Ad-hoc signatures only (Debug, and Release before the owner's Developer ID exists). Under the hardened runtime,
+library validation refuses an ad-hoc libav* dylib in an ad-hoc ffmpeg ("different Team IDs"), because neither has
+a Team ID. With a Developer ID every file shares the Team ID, so Scripts sign the helpers without this file.
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

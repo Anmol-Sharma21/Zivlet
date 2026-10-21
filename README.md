@@ -46,14 +46,16 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 | Vendored libraries | `make test`, `coverage`, `app` and `release-check` first build `CWebP` and `CZivletSVG` into `Vendor/out` when they are missing or stale (about 25 s on a clean clone). Sources are downloaded into `Vendor/downloads` and checked against the SHA-256 in `Vendor/versions.lock` |
 | Media helpers | `make vendor` builds FFmpeg 9.0.2 and its codec libraries (about 3 minutes clean) and stages and checks them; `make vendor-test` runs the vendor script tests |
 
-Zivlet doesn't bundle ffmpeg yet. A Debug build looks for a development ffmpeg in this order:
+Every app build copies the vendored `ffmpeg` and `ffprobe` (from `make vendor`) into `Contents/Helpers` and their
+libraries into `Contents/Frameworks`. A Debug build looks for ffmpeg in this order:
 
-1. the app's bundled helpers (there are none yet);
+1. the app's bundled helpers;
 2. the directory named by `ZIVLET_FFMPEG_DIR`;
 3. a Homebrew install (`brew install ffmpeg`).
 
-Release builds trust only the bundled helpers. `make release-check` fails if a Release build refers to a Homebrew
-path. Image conversions don't need any external tool.
+Without `make vendor`, a Debug build warns and uses 2 or 3; a Release build fails. Release builds trust only the
+bundled helpers: `make release-check` builds the media helpers if needed, then fails if a Release build refers to a
+Homebrew path or its bundle misses a helper or library. Image conversions don't need any external tool.
 
 ## Roadmap
 
