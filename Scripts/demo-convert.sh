@@ -34,9 +34,13 @@ for _ in $(seq 1 30); do
     if [[ "$STAGING" == "0" ]]; then break; fi
     sleep 0.1
 done
+CARD="$(/usr/bin/log show --start "$START" --style compact \
+    --predicate 'subsystem == "app.zivlet.Zivlet" AND eventMessage BEGINSWITH "Result card"' |
+    grep -o 'Result card: .*' | tail -1 || true)"
 pkill -x Zivlet || true
 if [[ -z "$LINE" ]]; then echo "error: no 'Conversion finished' log line within 60 s" >&2; exit 1; fi
 echo "$LINE"
+if [[ -n "$CARD" ]]; then echo "$CARD"; fi
 if [[ "$STAGING" != "0" ]]; then echo "error: $STAGING staging files left in $DIR after 3 s" >&2; exit 1; fi
 if [[ -n "$CANCEL" ]]; then
     if [[ "$LINE" != *"0 saved, 0 failed, 1 cancelled"* || -e "$OUT" ]]; then echo "error: cancel left a result" >&2; exit 1; fi

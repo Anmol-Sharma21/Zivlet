@@ -3,19 +3,23 @@ import SwiftUI
 import ZivletCore
 import ZivletRuntime
 
-/// What one HUD panel renders; replaced on every snapshot of its batch.
+/// What one HUD panel renders; the snapshot is replaced on every update of its batch.
 @Observable
 public final class HUDModel {
     public internal(set) var snapshot: BatchSnapshot?
-    public internal(set) var undoMessage: String?
-    /// The last undo left files the Trash refused, so Undo stays available.
-    public internal(set) var undoCanRetry = false
+    public let card = CardState()
 
     public init() {}
 }
 
-/// One batch's panel: non-activating, floating, on every Space; buttons call back with the batch.
+/// One batch's panel: non-activating, floating, on every Space; its buttons and hover call back with the batch.
 final class HUDPanel {
+    struct Callbacks {
+        let cancel: (BatchID) -> Void
+        let act: (BatchID, ResultCardModel.Button) -> Void
+        let hover: (BatchID, Bool) -> Void
+    }
+
     let model = HUDModel()
     private let panel = NSPanel(
         contentRect: NSRect(origin: .zero, size: HUDLayout.size), styleMask: [.borderless, .nonactivatingPanel],
@@ -23,21 +27,18 @@ final class HUDPanel {
     private var hosting: NSHostingView<ResultHUDView>?
     private var batch: BatchID?
 
-    init(
-        cancel: @escaping (BatchID) -> Void, reveal: @escaping (BatchID) -> Void, undo: @escaping (BatchID) -> Void,
-        close: @escaping (BatchID) -> Void
-    ) {
+    init(_ callbacks: Callbacks) {
         panel.level = .floating
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.becomesKeyOnlyIfNeeded = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        let act = { [weak self] (action: @escaping (BatchID) -> Void) in
-            { if let batch = self?.batch { action(batch) } }
-        }
         let view = ResultHUDView(
-            model: model, cancel: act(cancel), reveal: act(reveal), undo: act(undo), close: act(close))
+            model: model,
+            cancel: { [weak self] in if let batch = self?.batch { callbacks.cancel(batch) } },
+            act: { [weak self] button in if let batch = self?.batch { callbacks.act(batch, button) } },
+            hover: { [weak self] inside in if let batch = self?.batch { callbacks.hover(batch, inside) } })
         let hosting = NSHostingView(rootView: view)
         hosting.frame = NSRect(origin: .zero, size: HUDLayout.size)
         panel.contentView = hosting
@@ -56,20 +57,35 @@ final class HUDPanel {
     func render(_ snapshot: BatchSnapshot) {
         let wasFinished = model.snapshot?.isFinished ?? false
         model.snapshot = snapshot
-        if snapshot.isFinished != wasFinished { refit() }
+        guard snapshot.isFinished, !wasFinished else { return }
+        refit()
+        if let first = snapshot.outputs.first { loadThumbnail(first.url) }
     }
 
     func showUndo(_ reply: UndoReply) {
-        model.undoMessage = reply.message
-        model.undoCanRetry = reply.canRetry
+        model.card.undoMessage = reply.message
+        model.card.undoCanRetry = reply.canRetry
+        refit()
+    }
+
+    func showDetails() {
+        model.card.showsDetails = true
         refit()
     }
 
     func close() { panel.orderOut(nil) }
 
+    private func loadThumbnail(_ url: URL) {
+        Task { [weak self] in
+            let image = await ThumbnailLoader.thumbnail(for: url)
+            self?.model.card.thumbnail = image
+        }
+    }
+
     /// Grows or shrinks to the content (never below the working size), keeping the top edge.
     private func refit() {
         guard let hosting else { return }
+        hosting.layoutSubtreeIfNeeded()
         let height = max(HUDLayout.size.height, hosting.fittingSize.height)
         let top = panel.frame.maxY
         panel.setFrame(

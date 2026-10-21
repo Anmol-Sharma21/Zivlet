@@ -1,4 +1,5 @@
 import AppKit
+import ZivletActions
 import ZivletCore
 import ZivletRuntime
 import ZivletUI
@@ -25,6 +26,10 @@ final class ConversionWiring {
         self.revealsResults = revealsResults
         hud.onCancel = { [conversions] batch in Task { await conversions.cancel(batch) } }
         hud.onReveal = { urls in NSWorkspace.shared.activateFileViewerSelecting(urls) }
+        hud.onOpen = { urls in urls.forEach { NSWorkspace.shared.open($0) } }
+        hud.onCopy = { [logger] urls in
+            if case .failed = ClipboardAction().copyItems(urls) { logger.error("Copy from the result card refused") }
+        }
         hud.onUndo = undo
     }
 
@@ -41,11 +46,20 @@ final class ConversionWiring {
         return Task { [conversions] in await conversions.convert(urls, to: format) }
     }
 
+    /// What a person would read on the card, so automation can see it: the name is private, the sizes public.
+    private static func logCard(_ card: ResultCardModel, logger: Logger) {
+        guard let line = card.sizeLine, let split = line.range(of: " · ") else { return }
+        let name = String(line[..<split.lowerBound])
+        let sizes = String(line[split.upperBound...])
+        logger.notice("Result card: \(name, privacy: .private) · \(sizes, privacy: .public)")
+    }
+
     private func present(_ snapshot: BatchSnapshot) {
         hud.show(snapshot)
         menu.track(snapshot)
         guard snapshot.isFinished else { return }
         logger.notice("Conversion finished: \(BatchPresentation.logLine(snapshot), privacy: .public)")
+        Self.logCard(ResultCardModel(snapshot), logger: logger)
         for failure in snapshot.failures {
             let detail = String(describing: failure.error)  // may hold paths (stderr tail, folder): private
             logger.error(

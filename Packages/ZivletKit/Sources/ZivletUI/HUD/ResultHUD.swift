@@ -15,13 +15,14 @@ public struct UndoReply: Sendable, Equatable {
 }
 
 /// The conversion HUD (01-prd FR-14, P1-40, P1-41): one non-activating glass panel per batch near its drop point,
-/// cascading 24 pt for each batch already on screen. Progress and Cancel while working; then the result. A
-/// success leaves after a while; a failure stays until closed (`HUDBoard`). Every button acts on its own batch.
+/// cascading 24 pt for each batch already on screen. Progress and Cancel while working; then the result card. A
+/// success leaves after 4 s, held while the pointer is over it; a failure stays until closed (`HUDBoard`). Every
+/// button acts on its own batch.
 public final class ResultHUD {
-    public static let successLinger = Duration.seconds(6)
-
     public var onCancel: (BatchID) -> Void = { _ in }
     public var onReveal: ([URL]) -> Void = { _ in }
+    public var onOpen: ([URL]) -> Void = { _ in }
+    public var onCopy: ([URL]) -> Void = { _ in }
     /// Undoes a batch and returns the sentence to show in its place.
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
 
@@ -32,6 +33,8 @@ public final class ResultHUD {
     private var order: [BatchID] = []
     private var pending: [(anchor: CGPoint?, interval: OSSignpostIntervalState)] = []
     private var lingers: [BatchID: Task<Void, Never>] = [:]
+    private var timers: [BatchID: LingerTimer] = [:]
+    private let now: () -> Duration = { .seconds(ProcessInfo.processInfo.systemUptime) }
     /// Built at launch, so the first drop only places and fills a panel (≤ 50 ms, P1-40).
     private var spare: HUDPanel?
 
@@ -54,16 +57,18 @@ public final class ResultHUD {
         board = board.updating(snapshot)
         let panel = panels[snapshot.batch] ?? open(snapshot.batch)
         panel.render(snapshot)
-        lingers[snapshot.batch]?.cancel()
-        if snapshot.isFinished, !snapshot.needsAcknowledgementInHUD, panel.model.undoMessage == nil {
-            linger(snapshot.batch)
-        }
+        guard snapshot.isFinished, timers[snapshot.batch] == nil,
+            let duration = ResultCardModel(snapshot).lingers
+        else { return }
+        timers[snapshot.batch] = LingerTimer(duration: duration).started(at: now())
+        scheduleExpiry(snapshot.batch)
     }
 
     /// The batch's panel closes; the others stay where they are.
     public func close(_ batch: BatchID) {
         board = board.dismissing(batch)
         lingers.removeValue(forKey: batch)?.cancel()
+        timers[batch] = nil
         panels.removeValue(forKey: batch)?.close()
         order.removeAll { $0 == batch }
     }
@@ -84,40 +89,55 @@ public final class ResultHUD {
 
     private func makePanel() -> HUDPanel {
         HUDPanel(
-            cancel: { [weak self] batch in self?.onCancel(batch) },
-            reveal: { [weak self] batch in self?.reveal(batch) },
-            undo: { [weak self] batch in self?.undo(batch) },
-            close: { [weak self] batch in self?.close(batch) })
+            HUDPanel.Callbacks(
+                cancel: { [weak self] batch in self?.onCancel(batch) },
+                act: { [weak self] batch, button in self?.act(button, on: batch) },
+                hover: { [weak self] batch, inside in self?.hover(batch, inside: inside) }))
     }
 
-    /// A success leaves after a while, unless it was closed or undone meanwhile.
-    private func linger(_ batch: BatchID) {
+    private func act(_ button: ResultCardModel.Button, on batch: BatchID) {
+        let outputs = board.snapshots.first { $0.batch == batch }?.outputs.map(\.url) ?? []
+        switch button {
+        case .undo: undo(batch)
+        case .reveal: onReveal(outputs)
+        case .open: onOpen(outputs)
+        case .copy: onCopy(outputs)
+        case .showDetails: panels[batch]?.showDetails()
+        case .retry: break
+        case .close: close(batch)
+        }
+    }
+
+    /// Hovering holds a lingering card; leaving restarts its full linger.
+    private func hover(_ batch: BatchID, inside: Bool) {
+        guard let timer = timers[batch] else { return }
+        timers[batch] = inside ? timer.hovered(at: now()) : timer.unhovered(at: now())
+        scheduleExpiry(batch)
+    }
+
+    /// Closes the card when its timer runs out, unless it was hovered, undone or closed meanwhile.
+    private func scheduleExpiry(_ batch: BatchID) {
+        lingers.removeValue(forKey: batch)?.cancel()
+        guard let deadline = timers[batch]?.deadline else { return }
+        let wait = max(.zero, deadline - now())
         lingers[batch] = Task { [weak self] in
             do {
-                try await Task.sleep(for: Self.successLinger)
+                try await Task.sleep(for: wait)
             } catch {
-                return  // re-rendered or closed meanwhile
+                return  // rescheduled or closed meanwhile
             }
-            guard let self else { return }
+            guard let self, let timer = self.timers[batch], timer.expired(at: self.now()) else { return }
             self.board = self.board.expiring(batch)
             if !self.board.snapshots.contains(where: { $0.batch == batch }) { self.close(batch) }
         }
     }
 
-    private func reveal(_ batch: BatchID) {
-        onReveal(board.snapshots.first { $0.batch == batch }?.outputs.map(\.url) ?? [])
-    }
-
     private func undo(_ batch: BatchID) {
         lingers.removeValue(forKey: batch)?.cancel()
+        timers[batch] = nil
         Task { [weak self, onUndo] in
             let reply = await onUndo(batch)
             self?.panels[batch]?.showUndo(reply)
         }
     }
-}
-
-extension BatchSnapshot {
-    /// Finished with a failure: stays until closed.
-    var needsAcknowledgementInHUD: Bool { isFinished && !failures.isEmpty }
 }

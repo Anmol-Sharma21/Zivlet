@@ -3,6 +3,17 @@ import Foundation
 import ZivletCore
 import ZivletEngineKit
 
+/// The dropped file behind a batch row: where it is and how big it was (the card's "before" size; Retry).
+public struct ItemSource: Sendable, Equatable {
+    public let url: URL
+    public let byteCount: Int64?
+
+    public init(url: URL, byteCount: Int64?) {
+        self.url = url
+        self.byteCount = byteCount
+    }
+}
+
 /// One row of a batch: a job, or a dropped item that was refused before it became one (`job == nil`).
 public struct BatchItem: Sendable, Equatable {
     public let job: JobID?
@@ -11,17 +22,24 @@ public struct BatchItem: Sendable, Equatable {
     public let notes: [PlanNote]
     /// Its share of the batch's progress: the source size in bytes (10 §8.2), at least 1.
     public let weight: Double
+    public let source: ItemSource?
 
-    public init(job: JobID?, name: String, state: JobState, notes: [PlanNote] = [], weight: Double = 1) {
+    public init(
+        job: JobID?, name: String, state: JobState, notes: [PlanNote] = [], weight: Double = 1,
+        source: ItemSource? = nil
+    ) {
         self.job = job
         self.name = name
         self.state = state
         self.notes = notes
         self.weight = max(1, weight)
+        self.source = source
     }
 
     func with(state: JobState? = nil, notes: [PlanNote]? = nil) -> BatchItem {
-        BatchItem(job: job, name: name, state: state ?? self.state, notes: notes ?? self.notes, weight: weight)
+        BatchItem(
+            job: job, name: name, state: state ?? self.state, notes: notes ?? self.notes, weight: weight,
+            source: source)
     }
 }
 
@@ -38,11 +56,14 @@ public struct BatchSnapshot: Sendable, Equatable {
         self.init(
             batch: batch, target: target,
             items: plan.requests.map {
-                BatchItem(job: $0.id, name: $0.input.fileName, state: .queued, weight: Double($0.input.byteCount))
+                BatchItem(
+                    job: $0.id, name: $0.input.fileName, state: .queued, weight: Double($0.input.byteCount),
+                    source: ItemSource(url: $0.input.url, byteCount: $0.input.byteCount))
             }
                 + plan.rejections.map {
                     BatchItem(
-                        job: nil, name: $0.url.lastPathComponent, state: .failed($0.error), weight: refusedWeight)
+                        job: nil, name: $0.url.lastPathComponent, state: .failed($0.error), weight: refusedWeight,
+                        source: ItemSource(url: $0.url, byteCount: nil))
                 },
             isFinished: false)
     }
