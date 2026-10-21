@@ -1,0 +1,1 @@
+-filter_complex color=white:s=300x200[bg];[bg][0:0]overlay=shortest=1,format=yuv420p[v] -map [v] -c:v mpeg4 -vtag xvid -fps_mode cfr -q:v 3 -r 13 -map_metadata 0 -map_chapters 0 -f avi file:/out/y.avi

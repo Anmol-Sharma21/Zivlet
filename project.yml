@@ -1,0 +1,44 @@
+name: Zivlet
+options:
+  bundleIdPrefix: app.zivlet
+  deploymentTarget:
+    macOS: "26.0"
+  xcodeVersion: "27.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+packages:
+  ZivletKit:
+    path: Packages/ZivletKit
+targets:
+  Zivlet:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: ZivletKit
+        product: ZivletKit
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: Zivlet
+        CFBundleDisplayName: Zivlet
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSUIElement: true
+        LSMinimumSystemVersion: "26.0"
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: "Copyright © 2026 Zivlet contributors. GPL-3.0-or-later."
+    entitlements:
+      path: Config/Zivlet.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.zivlet.Zivlet
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+schemes:
+  Zivlet:
+    build:
+      targets:
+        Zivlet: all

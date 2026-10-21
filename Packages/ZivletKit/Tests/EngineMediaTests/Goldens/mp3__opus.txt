@@ -1,0 +1,1 @@
+-map 0:0 -vn -sn -dn -c:a libopus -b:a 128k -vbr on -application audio -ar 48000 -map_metadata 0 -map_chapters 0 -f opus file:/out/y.opus

@@ -1,0 +1,1 @@
+-map 0:0 -vn -sn -dn -c:a libmp3lame -q:a 2 -map_metadata 0 -map_chapters 0 -id3v2_version 3 -write_xing 1 -f mp3 file:/out/y.mp3

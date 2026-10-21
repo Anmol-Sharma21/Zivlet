@@ -1,0 +1,1 @@
+-map 0:0 -map 0:1 -c:v copy -c:a aac_at -b:a 192k -map_metadata 0 -map_chapters 0 -movflags +faststart -f mp4 file:/out/y.mp4

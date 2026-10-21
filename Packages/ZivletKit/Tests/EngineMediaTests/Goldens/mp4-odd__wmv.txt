@@ -1,0 +1,1 @@
+-map 0:0 -map 0:1 -c:v wmv2 -fps_mode cfr -q:v 3 -vf scale=trunc(iw/2)*2:trunc(ih/2)*2 -c:a wmav2 -b:a 192k -ac 2 -map_metadata 0 -map_chapters 0 -f asf file:/out/y.wmv

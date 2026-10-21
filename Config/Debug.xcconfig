@@ -1,0 +1,6 @@
+#include "Base.xcconfig"
+ONLY_ACTIVE_ARCH = YES
+OTHER_CODE_SIGN_FLAGS = --options=runtime
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG
+// One binary: library validation under the hardened runtime rejects a separate ad-hoc Zivlet.debug.dylib.
+ENABLE_DEBUG_DYLIB = NO

@@ -1,0 +1,1 @@
+-filter_complex [0:0]fps=15,scale='min(480,iw)':-2:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff:max_colors=256[p];[b][p]paletteuse=dither=sierra2_4a:diff_mode=rectangle -an -loop 0 -f gif file:/out/y.gif

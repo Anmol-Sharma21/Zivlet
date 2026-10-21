@@ -1,0 +1,1 @@
+-map 0:0 -vn -sn -dn -c:a pcm_s16be -map_metadata 0 -map_chapters 0 -write_id3v2 1 -f aiff file:/out/y.aiff

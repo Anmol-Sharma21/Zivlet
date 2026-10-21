@@ -1,0 +1,1 @@
+-map 0:0 -vn -sn -dn -c:a wmav2 -b:a 192k -ac 2 -map_metadata 0 -map_chapters 0 -f asf file:/out/y.wma

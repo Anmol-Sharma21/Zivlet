@@ -1,0 +1,1 @@
+-map 0:0 -map 0:1 -c:v copy -c:a copy -map_metadata 0 -map_chapters 0 -movflags +faststart -f mov file:/out/y.mov

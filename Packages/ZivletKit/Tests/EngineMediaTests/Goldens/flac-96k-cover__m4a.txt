@@ -1,0 +1,1 @@
+-map 0:0 -map 0:1 -c:v copy -disposition:v:0 attached_pic -sn -dn -c:a aac_at -b:a 192k -ar 48000 -map_metadata 0 -map_chapters 0 -movflags +faststart -f ipod file:/out/y.m4a

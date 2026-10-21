@@ -1,0 +1,1 @@
+-map 0:0 -vn -sn -dn -c:a flac -compression_level 8 -sample_fmt s32 -bits_per_raw_sample 24 -map_metadata 0 -map_chapters 0 -f flac file:/out/y.flac

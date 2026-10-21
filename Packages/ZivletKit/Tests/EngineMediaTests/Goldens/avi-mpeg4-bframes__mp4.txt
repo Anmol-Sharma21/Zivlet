@@ -1,0 +1,1 @@
+-map 0:0 -map 0:1 -c:v h264_videotoolbox -profile:v high -allow_sw 1 -pix_fmt yuv420p -tag:v avc1 -q:v 60 -c:a copy -map_metadata 0 -map_chapters 0 -movflags +faststart -f mp4 file:/out/y.mp4

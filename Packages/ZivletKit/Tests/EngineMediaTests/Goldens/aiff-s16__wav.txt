@@ -1,0 +1,1 @@
+-map 0:0 -vn -sn -dn -c:a pcm_s16le -map_metadata 0 -map_chapters 0 -rf64 auto -f wav file:/out/y.wav

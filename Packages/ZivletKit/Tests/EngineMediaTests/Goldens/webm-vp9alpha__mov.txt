@@ -1,0 +1,1 @@
+-map 0:0 -map 0:1 -c:v hevc_videotoolbox -pix_fmt bgra -alpha_quality 0.75 -tag:v hvc1 -q:v 72 -c:a aac_at -b:a 192k -map_metadata 0 -map_chapters 0 -movflags +faststart -f mov file:/out/y.mov
