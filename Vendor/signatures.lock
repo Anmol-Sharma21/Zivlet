@@ -1,0 +1,5 @@
+# Sources whose upstream publishes a detached OpenPGP signature: name, signature URL, signer fingerprint.
+# Vendor/verify-sources.sh checks them with the committed keys in Vendor/keys (see Vendor/PROVENANCE.md).
+# name    signature                                                                                             fingerprint
+ffmpeg    https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz.asc                                                      FCF986EA15E6E293A5644F10B4322F04D67658D8
+libwebp   https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz.asc          6B0E6B70976DE303EDF2F601F9C3D6BDB8232B5D
