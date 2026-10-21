@@ -42,6 +42,13 @@ struct BatchPresentationTests {
         #expect(shown.notes == ["The drawing was saved as a picture inside the PDF."])
     }
 
+    @Test(arguments: [(61, "1 minute"), (150, "3 minutes"), (600, "10 minutes")])
+    func aLongGIFSaysHowLongTheClipIs(seconds: Int, length: String) {
+        let shown = BatchPresentation.make(
+            Self.snapshot([.succeeded(Self.output)], notes: [.longGIF(seconds: seconds)]))
+        #expect(shown.notes == ["Long clips make very large GIFs; this one is \(length)."])
+    }
+
     @Test func partialSuccessNamesTheFirstFailure() {
         let shown = BatchPresentation.make(Self.snapshot([.succeeded(Self.output), .failed(.diskFull)]))
         #expect(shown.phase == .partial && shown.title == "Saved 1 of 2 files")

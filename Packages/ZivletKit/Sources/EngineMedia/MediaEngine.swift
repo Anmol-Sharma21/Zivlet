@@ -106,7 +106,8 @@ public struct MediaEngine: Engine {
         }
         let info = try await probe(request.input.url, format: request.input.format, tools: resolved.tools)
         let planned = try Self.plan(request, info: info, staged: workspace.stagedFile, resolved: resolved)
-        return try Self.executionPlan(planned, request: request, staged: workspace.stagedFile)
+        let notes = GIFPlanner.notes(source: request.input.format, target: request.target, info: info)
+        return try Self.executionPlan(planned, request: request, staged: workspace.stagedFile, notes: notes)
     }
 
     public func execute(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
@@ -182,7 +183,9 @@ extension MediaEngine {
         return plan
     }
 
-    static func executionPlan(_ plan: FFmpegPlan, request: JobRequest, staged: URL) throws(JobError) -> ExecutionPlan {
+    static func executionPlan(_ plan: FFmpegPlan, request: JobRequest, staged: URL, notes: [PlanNote] = [])
+        throws(JobError) -> ExecutionPlan
+    {
         let total = plan.passes.map(\.weight).reduce(0, +)
         let flattened = request.input.format == .gif && ![.webm, .mov].contains(request.target)
         do {
@@ -192,7 +195,7 @@ extension MediaEngine {
                     .ffmpeg(FFmpegStage(argv: $0.argv, expectedDurationMicros: plan.expectedDurationMicros))
                 },
                 stageWeights: plan.passes.map { $0.weight / total }, lanes: plan.passes.map { _ in plan.lane },
-                outputFormat: request.target, stagedFile: staged, notes: flattened ? [.alphaFlattened] : [])
+                outputFormat: request.target, stagedFile: staged, notes: (flattened ? [.alphaFlattened] : []) + notes)
         } catch {
             throw .internalInvariant("media plan rejected: \(error)")
         }

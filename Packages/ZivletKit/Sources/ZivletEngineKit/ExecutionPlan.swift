@@ -32,9 +32,11 @@ public enum Stage: Sendable, Codable, Equatable {
 }
 
 /// Something the result card tells the user about the output (10 §4.2: "Animation flattened to first frame").
-/// `svgRasterizedInPDF`: an SVG became a PDF page holding a picture of it, not vector art (D-M4-6).
-public enum PlanNote: String, Sendable, Codable, Equatable {
+/// `svgRasterizedInPDF`: an SVG became a PDF page holding a picture of it, not vector art (D-M4-6). `longGIF`: a
+/// video longer than a minute became a GIF, which is large (03b §5.6); never a refusal.
+public enum PlanNote: Sendable, Codable, Hashable {
     case alphaFlattened, firstFrameOnly, svgRasterizedInPDF
+    case longGIF(seconds: Int)
 }
 
 public enum PlanError: Error, Equatable, Sendable {

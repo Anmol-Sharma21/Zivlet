@@ -68,7 +68,14 @@ public struct BatchPresentation: Sendable, Equatable {
         case .alphaFlattened: "Transparency was flattened onto white."
         case .firstFrameOnly: "Only the first frame or page was kept."
         case .svgRasterizedInPDF: "The drawing was saved as a picture inside the PDF."
+        case .longGIF(let seconds): "Long clips make very large GIFs; this one is \(minutes(seconds))."
         }
+    }
+
+    /// Whole minutes, rounded, at least one: "1 minute", "3 minutes".
+    static func minutes(_ seconds: Int) -> String {
+        let count = max(Int((Double(seconds) / 60).rounded()), 1)
+        return count == 1 ? "1 minute" : "\(count) minutes"
     }
 
     /// One public log line per finished batch, for example "1 saved, 0 failed, 0 cancelled" (no paths).

@@ -4,6 +4,17 @@ import ZivletEngineKit
 /// GIF output with a two-branch palette graph, and GIF input flattened or kept with alpha (03b §5.6).
 enum GIFPlanner {
     static let maxLegacyFrameRate = 50
+    /// Video → GIF past this length gets the `longGIF` note.
+    static let longClipMicros: Int64 = 60_000_000
+
+    /// `longGIF` for a video (not GIF) source longer than a minute turned into a GIF.
+    static func notes(source: FormatID, target: FormatID, info: MediaInfo) -> [PlanNote] {
+        guard target == .gif, source != .gif, let micros = info.durationMicros, micros > longClipMicros else {
+            return []
+        }
+        return [.longGIF(seconds: Int(micros / 1_000_000))]
+    }
+
     static let paletteTail =
         "split[a][b];[a]palettegen=stats_mode=diff:max_colors=256[p];[b][p]paletteuse=dither="
 

@@ -88,3 +88,25 @@ struct MediaVerifierTests {
         #expect(MediaVerifier.expectedStreams(argv) == count)
     }
 }
+
+@Suite("Long clips turned into GIFs (G-17, 03b §5.6)")
+struct LongGIFNoteTests {
+    static let lengths: [(Int64, [PlanNote])] = [(61_000_000, [.longGIF(seconds: 61)]), (60_000_000, [])]
+
+    @Test(arguments: lengths)
+    func longClipsTurnedIntoGIFsAreNoted(micros: Int64, notes: [PlanNote]) throws {
+        let info = MediaInfo(formatName: "mov", durationMicros: micros, streams: [Fx.video(0, "h264", 64, 48)])
+        #expect(GIFPlanner.notes(source: .mov, target: .gif, info: info) == notes)
+        #expect(GIFPlanner.notes(source: .mov, target: .mp4, info: info).isEmpty)
+    }
+
+    @Test func theLongGIFNoteReachesThePlan() async throws {
+        let long = ProbeJSON.file(
+            "mov,mp4,m4a,3gp,3g2,mj2", duration: "\"125.0\"",
+            ProbeJSON.stream(0, "video", "h264", #","width":64,"height":48,"pix_fmt":"yuv420p""#))
+        let rig = try MediaRig(probes: ["clip.mov": long])
+        let request = try rig.request("clip.mov", .mov, to: .gif)
+        let plan = try await rig.engine.prepare(request, workspace: rig.workspace(request))
+        #expect(plan.notes == [.longGIF(seconds: 125)])
+    }
+}
