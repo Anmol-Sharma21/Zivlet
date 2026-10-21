@@ -8,8 +8,15 @@ import Foundation
 /// which applies the profile and then executes the helper in the same process (same PID and process group).
 public struct HelperSandbox: Sendable, Equatable {
     public static let launcher = URL(filePath: "/usr/bin/sandbox-exec")
-    /// Homebrew keeps a helper's libraries outside its own folder (development only, D-M3-19).
-    static let homebrew = "/opt/homebrew"
+    /// Homebrew keeps a helper's libraries outside its own folder. Debug only (D-M3-19): a Release binary holds no
+    /// Homebrew path (P1-21).
+    static var homebrew: String? {
+        #if DEBUG
+            "/opt/homebrew"
+        #else
+            nil
+        #endif
+    }
 
     public let reads: [URL]
     public let writes: [URL]
@@ -41,7 +48,8 @@ public struct HelperSandbox: Sendable, Equatable {
         let folder = (executable as NSString).deletingLastPathComponent
         let parent = (folder as NSString).deletingLastPathComponent
         let root = (parent as NSString).pathComponents.count >= 3 ? parent : folder
-        return [root] + (executable.hasPrefix(homebrew + "/") ? [homebrew] : [])
+        guard let homebrew, executable.hasPrefix(homebrew + "/") else { return [root] }
+        return [root, homebrew]
     }
 
     /// The path the kernel checks: symlinks resolved (`/var` → `/private/var`); the path as given when it does not
