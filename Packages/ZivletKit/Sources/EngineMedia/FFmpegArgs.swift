@@ -45,9 +45,33 @@ enum FFmpegArgs {
     }
 
     static let evenDimensions = "scale=trunc(iw/2)*2:trunc(ih/2)*2"
-    static let toneMapToSDR =
-        "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,"
-        + "zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
+    /// HDR → SDR (03b §5.2) with the input signal named, so zscale never has to guess it from container tags. The
+    /// first step also names its output primaries: on an untagged frame zscale otherwise copies "unknown" from the
+    /// frame and fails with "no path between colorspaces" (seen with the bundled build, D-M4-12).
+    static func toneMapToSDR(_ signal: HDRSignal) -> String {
+        "zscale=tin=\(signal.transfer):min=\(signal.matrix):pin=\(signal.primaries)"
+            + ":t=linear:npl=100:p=\(signal.primaries),"
+            + "format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
+    }
+}
+
+/// The transfer, matrix and primaries of an HDR stream in zscale's names (D-M4-12). Only names on the lists are
+/// taken from the probe; anything else (missing, unknown or hostile) becomes BT.2020, which every PQ or HLG stream
+/// Zivlet meets uses, so a probe value can never add to the filter graph.
+struct HDRSignal: Sendable, Equatable {
+    static let transfers: Set<String> = ["smpte2084", "arib-std-b67"]
+    static let matrices: Set<String> = ["bt2020nc", "bt2020c", "bt709"]
+    static let primarySets: Set<String> = ["bt2020", "smpte432", "bt709"]
+
+    let transfer: String
+    let matrix: String
+    let primaries: String
+
+    init(_ stream: StreamInfo) {
+        transfer = stream.colorTransfer.flatMap { Self.transfers.contains($0) ? $0 : nil } ?? "smpte2084"
+        matrix = stream.colorSpace.flatMap { Self.matrices.contains($0) ? $0 : nil } ?? "bt2020nc"
+        primaries = stream.colorPrimaries.flatMap { Self.primarySets.contains($0) ? $0 : nil } ?? "bt2020"
+    }
 }
 
 extension MediaPlanRequest {

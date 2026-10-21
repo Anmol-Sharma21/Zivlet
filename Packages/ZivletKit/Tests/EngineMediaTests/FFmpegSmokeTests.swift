@@ -131,6 +131,12 @@ enum SmokeCases {
                 + ["-color_primaries", "bt2020", "-colorspace", "bt2020nc"],
             .mov, .webm, Fx.info(Fx.video(0, "hevc", 64, 64, fps: 10, pixFmt: "yuv420p10le", hdr: true)),
             streams: ["video:vp9"], requires: ["libx265", "zscale", "tonemap", "libvpx-vp9"]),
+        // No colour tags in the bitstream or container; only the probe facts say PQ (D-M4-12).
+        SmokeCase(
+            "mov-hdr-untagged__webm",
+            synth: video + ["-c:v", "hevc_videotoolbox", "-profile:v", "main10", "-pix_fmt", "p010le"],
+            .mov, .webm, Fx.info(Fx.video(0, "hevc", 64, 64, fps: 10, pixFmt: "p010le", hdr: true)),
+            streams: ["video:vp9"], requires: ["hevc_videotoolbox", "zscale", "tonemap", "libvpx-vp9"]),
     ]
 
     static let gif: [SmokeCase] = [

@@ -95,7 +95,7 @@ enum VideoEncoders {
 
     /// Re-encode filters (03b §5.2 order): tone-map, then the height cap or even dimensions.
     static func filters(_ r: MediaPlanRequest, _ video: StreamInfo, _ encoding: VideoEncoding) -> [String] {
-        let toneMap = video.isHDR && !encoding.isHEVCMain10 ? [FFmpegArgs.toneMapToSDR] : []
+        let toneMap = video.isHDR && !encoding.isHEVCMain10 ? [FFmpegArgs.toneMapToSDR(HDRSignal(video))] : []
         let chain = toneMap + scale(r.options.heightLimit, video)
         return chain.isEmpty ? [] : ["-vf", chain.joined(separator: ",")]
     }

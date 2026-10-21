@@ -25,7 +25,10 @@ enum ProbeJSON {
     static let mp4 = file("mov,mp4,m4a,3gp,3g2,mj2", h264, aac)
     static let hdr = file(
         "mov,mp4,m4a,3gp,3g2,mj2",
-        stream(0, "video", "hevc", #","width":3840,"height":2160,"pix_fmt":"yuv420p10le","color_transfer":"smpte2084""#)
+        stream(
+            0, "video", "hevc",
+            #","width":3840,"height":2160,"pix_fmt":"yuv420p10le","color_transfer":"smpte2084","#
+                + #""color_primaries":"bt2020","color_space":"bt2020nc""#)
     )
     static let coverArt = file(
         "mp3", stream(0, "audio", "mp3", #","sample_rate":"44100","channels":1"#),
@@ -55,6 +58,7 @@ struct MediaProbeTests {
     @Test func recognisesHDRTenBitVideo() throws {
         let video = try #require(try parse(ProbeJSON.hdr).primaryVideo)
         #expect(video.isHDR && video.bitDepth == 10)
+        #expect(video.colorPrimaries == "bt2020" && video.colorSpace == "bt2020nc")
     }
 
     @Test func coverArtIsAnAttachedPictureNotThePrimaryVideo() throws {

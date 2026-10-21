@@ -280,7 +280,10 @@ struct MediaPairSweepTests {
     @Test func requirementsAreReadFromTheArgv() {
         let graph = "[0:0]fps=15,scale='min(480,iw)':-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse"
         #expect(FFmpegRequirements.filterNames(graph) == ["fps", "scale", "split", "palettegen", "paletteuse"])
-        let argv = ["-map", "0:0", "-c:v", "libx264", "-c:a:1", "aac_at", "-c", "copy", "-vf", FFmpegArgs.toneMapToSDR]
+        let argv = [
+            "-map", "0:0", "-c:v", "libx264", "-c:a:1", "aac_at", "-c", "copy", "-vf",
+            FFmpegArgs.toneMapToSDR(HDRSignal(Fx.video(0, "hevc", hdr: true))),
+        ]
         #expect(FFmpegRequirements.encoders(in: argv) == ["libx264", "aac_at"])
         #expect(FFmpegRequirements.filters(in: argv) == ["zscale", "format", "tonemap"])
     }

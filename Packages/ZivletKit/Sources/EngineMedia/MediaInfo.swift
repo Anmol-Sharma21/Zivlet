@@ -14,6 +14,9 @@ public struct StreamInfo: Sendable, Codable, Equatable {
     public let bitsPerRawSample: Int?
     public let hasBFrames: Int?
     public let colorTransfer: String?
+    /// ffprobe `color_primaries` and `color_space` (the matrix), as ffprobe names them.
+    public let colorPrimaries: String?
+    public let colorSpace: String?
     public let avgFrameRate: Double?
     public let sampleRate: Int?
     public let channels: Int?
@@ -24,7 +27,8 @@ public struct StreamInfo: Sendable, Codable, Equatable {
     public init(
         index: Int, kind: StreamKind, codec: String, width: Int? = nil, height: Int? = nil, pixFmt: String? = nil,
         bitsPerRawSample: Int? = nil, hasBFrames: Int? = nil, colorTransfer: String? = nil,
-        avgFrameRate: Double? = nil, sampleRate: Int? = nil, channels: Int? = nil, sampleFmt: String? = nil,
+        colorPrimaries: String? = nil, colorSpace: String? = nil, avgFrameRate: Double? = nil, sampleRate: Int? = nil,
+        channels: Int? = nil, sampleFmt: String? = nil,
         isAttachedPic: Bool = false, isDefault: Bool = false
     ) {
         self.index = index
@@ -36,6 +40,8 @@ public struct StreamInfo: Sendable, Codable, Equatable {
         self.bitsPerRawSample = bitsPerRawSample
         self.hasBFrames = hasBFrames
         self.colorTransfer = colorTransfer
+        self.colorPrimaries = colorPrimaries
+        self.colorSpace = colorSpace
         self.avgFrameRate = avgFrameRate
         self.sampleRate = sampleRate
         self.channels = channels

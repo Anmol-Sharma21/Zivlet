@@ -35,6 +35,45 @@ struct MediaPlannerRuleTests {
         #expect(args.contains(subsequence: expected), "\(target) \(tier): \(args)")
     }
 
+    static func videoFilter(_ argv: [String]) throws -> String {
+        try #require(argv.firstIndex(of: "-vf").map { argv[$0 + 1] })
+    }
+
+    @Test func toneMapChainNamesTheInputTransferMatrixAndPrimaries() throws {
+        let info = Fx.info(
+            Fx.video(
+                0, "hevc", 3840, 2160, pixFmt: "yuv420p10le", transfer: "arib-std-b67", primaries: "bt2020",
+                matrix: "bt2020nc"))
+        let vf = try Self.videoFilter(argv(Fx.request(.mov, .webm, info)))
+        #expect(vf.hasPrefix("zscale=tin=arib-std-b67:min=bt2020nc:pin=bt2020:t=linear:npl=100:p=bt2020,"))
+        #expect(vf.hasSuffix(",zscale=t=bt709:m=bt709:r=tv,format=yuv420p"))
+    }
+
+    /// HEVC Main 10 keeps HDR (no tone-map), so these use VP9 WebM, which is 8-bit SDR.
+    /// A stream whose probe says PQ but whose container names no matrix or primaries: BT.2020 is assumed, so zscale
+    /// is never left to guess ("no path between colorspaces").
+    @Test func untaggedHDRAssumesBT2020() throws {
+        let info = Fx.info(Fx.video(0, "hevc", 64, 64, pixFmt: "yuv420p10le", hdr: true))
+        let vf = try Self.videoFilter(argv(Fx.request(.mov, .webm, info)))
+        #expect(vf.hasPrefix("zscale=tin=smpte2084:min=bt2020nc:pin=bt2020:t=linear"))
+    }
+
+    @Test(arguments: ["bt2020nc:t=linear,drawtext=x", "", "unknown"])
+    func unexpectedProbeNamesNeverReachTheFilterGraph(name: String) throws {
+        let info = Fx.info(
+            Fx.video(0, "hevc", 64, 64, pixFmt: "yuv420p10le", hdr: true, primaries: name, matrix: name))
+        let vf = try Self.videoFilter(argv(Fx.request(.mov, .webm, info)))
+        #expect(vf.hasPrefix("zscale=tin=smpte2084:min=bt2020nc:pin=bt2020:t=linear"))
+        #expect(!vf.contains("drawtext"))
+    }
+
+    @Test func gifToneMapNamesTheInputToo() throws {
+        let info = Fx.info(Fx.video(0, "hevc", 64, 64, pixFmt: "yuv420p10le", transfer: "arib-std-b67"))
+        let args = try argv(Fx.request(.mov, .gif, info))
+        let graph = try #require(args.firstIndex(of: "-filter_complex"))
+        #expect(args[graph + 1].hasPrefix("[0:0]zscale=tin=arib-std-b67:min=bt2020nc:pin=bt2020:"))
+    }
+
     @Test func movDefaultsToHighEverythingElseToBalanced() {
         #expect(MediaOptions.defaults(for: .mov).tier == .best)
         #expect(MediaOptions.defaults(for: .mp4).tier == .standard)

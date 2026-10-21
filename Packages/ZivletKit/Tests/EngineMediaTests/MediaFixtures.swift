@@ -7,11 +7,13 @@ import ZivletCore
 enum Fx {
     static func video(
         _ index: Int, _ codec: String, _ w: Int = 1920, _ h: Int = 1080, fps: Double = 30,
-        pixFmt: String = "yuv420p", hdr: Bool = false, bFrames: Int = 0
+        pixFmt: String = "yuv420p", hdr: Bool = false, bFrames: Int = 0, transfer: String? = nil,
+        primaries: String? = nil, matrix: String? = nil
     ) -> StreamInfo {
         StreamInfo(
             index: index, kind: .video, codec: codec, width: w, height: h, pixFmt: pixFmt, hasBFrames: bFrames,
-            colorTransfer: hdr ? "smpte2084" : "bt709", avgFrameRate: fps)
+            colorTransfer: transfer ?? (hdr ? "smpte2084" : "bt709"), colorPrimaries: primaries, colorSpace: matrix,
+            avgFrameRate: fps)
     }
 
     static func audio(

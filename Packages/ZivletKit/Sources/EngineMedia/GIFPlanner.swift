@@ -9,7 +9,7 @@ enum GIFPlanner {
 
     static func videoToGIF(_ r: MediaPlanRequest) throws(MediaPlanError) -> FFmpegPlan {
         guard let video = r.info.primaryVideo else { throw .noVideoTrack }
-        let toneMap = video.isHDR ? FFmpegArgs.toneMapToSDR + "," : ""
+        let toneMap = video.isHDR ? FFmpegArgs.toneMapToSDR(HDRSignal(video)) + "," : ""
         let scale = r.options.gifWidthLimit.map { "scale='min(\($0),iw)':-2:flags=lanczos," } ?? ""
         let graph =
             "[0:\(video.index)]" + toneMap + "fps=\(frameRate(r.options.gifFPS, video))," + scale

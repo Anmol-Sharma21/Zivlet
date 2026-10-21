@@ -93,13 +93,14 @@ struct ProbeFormat: Decodable {
 
 struct ProbeStream: Decodable {
     let index, codecType, codecName, width, height, pixFmt, bitsPerRawSample, hasBFrames: Scalar?
-    let colorTransfer, avgFrameRate, sampleRate, channels, sampleFmt: Scalar?
+    let colorTransfer, colorPrimaries, colorSpace, avgFrameRate, sampleRate, channels, sampleFmt: Scalar?
     let disposition: [String: Scalar]?
 
     enum CodingKeys: String, CodingKey {
         case index, width, height, channels, disposition
         case codecType = "codec_type", codecName = "codec_name", pixFmt = "pix_fmt"
         case bitsPerRawSample = "bits_per_raw_sample", hasBFrames = "has_b_frames", colorTransfer = "color_transfer"
+        case colorPrimaries = "color_primaries", colorSpace = "color_space"
         case avgFrameRate = "avg_frame_rate", sampleRate = "sample_rate", sampleFmt = "sample_fmt"
     }
 
@@ -113,6 +114,7 @@ struct ProbeStream: Decodable {
             codec: codecName?.value ?? "unknown", width: width, height: height, pixFmt: pixFmt?.value,
             bitsPerRawSample: probe.bounded(bitsPerRawSample?.integer, 1...probe.maxBitDepth),
             hasBFrames: probe.bounded(hasBFrames?.integer, 0...16), colorTransfer: colorTransfer?.value,
+            colorPrimaries: colorPrimaries?.value, colorSpace: colorSpace?.value,
             avgFrameRate: avgFrameRate?.value.flatMap(Self.rate),
             sampleRate: probe.bounded(sampleRate?.integer, 1...probe.maxSampleRate),
             channels: probe.bounded(channels?.integer, 1...probe.maxChannels), sampleFmt: sampleFmt?.value,
