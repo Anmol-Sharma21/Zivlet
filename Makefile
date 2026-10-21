@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 ENV := source Scripts/env.sh &&
 
-.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch
+.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media
 
 test:
 	$(ENV) cd "$$KIT" && swift test
@@ -46,3 +46,7 @@ vendor-test:
 
 vendor-fetch:
 	Vendor/fetch.sh
+
+# Builds FFmpeg and the codec libraries from the fetched sources (about 3 minutes clean; does not fetch).
+vendor-media:
+	$(ENV) Vendor/build-media.sh

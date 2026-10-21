@@ -1,0 +1,45 @@
+# FFmpeg encoder allow-list by configure name (D-M4-2); build-media.sh passes it to --enable-encoder.
+# Runtime names can differ (configure movtext = runtime mov_text, libvpx_vp9 = libvpx-vp9); verify-media.sh checks
+# the runtime names. The native opus and vorbis encoders stay off: the planners always pick libopus and libvorbis.
+libx264
+libvpx_vp8
+libvpx_vp9
+libsvtav1
+libopus
+libvorbis
+libmp3lame
+libwebp
+libwebp_anim
+h264_videotoolbox
+hevc_videotoolbox
+prores_videotoolbox
+aac_at
+alac_at
+aac
+alac
+flac
+wmav2
+wmv2
+mpeg4
+gif
+png
+apng
+mjpeg
+movtext
+webvtt
+srt
+subrip
+ass
+ssa
+pcm_s16le
+pcm_s16be
+pcm_s24le
+pcm_s24be
+pcm_s32le
+pcm_s32be
+pcm_f32le
+pcm_f32be
+pcm_u8
+pcm_s8
+wrapped_avframe
+rawvideo
