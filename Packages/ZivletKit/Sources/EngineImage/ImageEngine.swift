@@ -12,14 +12,16 @@ public struct ImageEngine: Engine {
     let writableTypes: Set<String>
     let options: ImageOptions
     let registry: FormatRegistry
+    let budget: DecodeBudget
 
     public init(
         writableTypes: Set<String> = ImageEngine.systemWritableTypes(), options: ImageOptions = ImageOptions(),
-        registry: FormatRegistry = .standard
+        registry: FormatRegistry = .standard, budget: DecodeBudget = .shared
     ) {
         self.writableTypes = writableTypes
         self.options = options
         self.registry = registry
+        self.budget = budget
     }
 
     /// `CGImageDestinationCopyTypeIdentifiers()`, the ImageIO capability gate (13 §2.1: never hard-coded).
@@ -56,7 +58,23 @@ public struct ImageEngine: Engine {
             registry: registry)
     }
 
+    /// Waits for decode budget (G-15), runs the stages, then gives it back. Frames are decoded one at a time, so the
+    /// reservation is the largest stage canvas (pixels for rasters; points for PDF pages, which ImageIO decodes at
+    /// the source size, so a high-DPI page is under-counted).
     public func execute(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
+        let pixels = plan.stages.compactMap(\.image).map { $0.expectedSize.width * $0.expectedSize.height }.max() ?? 0
+        let reservation = try await budget.reserve(pixels)
+        let result: Result<StagedOutput, JobError>
+        do {
+            result = .success(try await run(plan, context: context))
+        } catch {
+            result = .failure(error)
+        }
+        await budget.release(reservation)
+        return try result.get()
+    }
+
+    private func run(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
         for (index, stage) in plan.stages.enumerated() {
             guard let spec = stage.image else { throw .internalInvariant("image engine got a non-image stage") }
             let (staged, sink, frames) = (plan.stagedFile, context.progress, max(1, spec.frames.count))
