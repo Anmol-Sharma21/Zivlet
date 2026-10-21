@@ -2,14 +2,16 @@ import Darwin
 import Foundation
 import ZivletCore
 import ZivletEngineKit
+import os
 
-/// Staging and atomic publication (P1-30, 03a §4.3, ADR-08). A job writes one hidden file,
-/// `<destination>/.zivlet-<job id>.<ext>`, created exclusively so two jobs never share it and on the destination's
-/// volume so publishing is one rename. Publishing copies the input's quarantine onto it, then
+/// Staging and atomic publication (P1-30, 03a §4.3, ADR-08). A job writes one file inside its own private hidden
+/// folder, `<destination>/.zivlet-<job id>/staged.<ext>` (G-16), created exclusively so two jobs never share it and
+/// on the destination's volume so publishing is one rename. Publishing copies the input's quarantine onto it, then
 /// `renamex_np(RENAME_EXCL)` claims `<base>.<ext>`, `<base> 2.<ext>`, …: an existing file (the source included) is
 /// never replaced, and case-insensitive volumes collide case-insensitively because the kernel decides.
 public struct Publisher: Sendable {
     public static let stagingPrefix = ".zivlet-"
+    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
     static let quarantineName = "com.apple.quarantine"
 
     let namer: OutputNamer
@@ -26,13 +28,10 @@ public struct Publisher: Sendable {
         self.stamp = stamp
     }
 
+    /// `<destination>/.zivlet-<job>/staged.<ext>` inside a private folder (G-16, `StagingDirectory`).
     public func claimStaging(for request: JobRequest) throws(JobError) -> JobWorkspace {
         let ext = registry.format(request.target).canonicalExtension
-        let url = request.destination.appending(
-            path: "\(Self.stagingPrefix)\(request.id).\(ext)", directoryHint: .notDirectory)
-        let fd = open(url.path, O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0o644)
-        guard fd >= 0 else { throw Self.claimError(errno, folder: request.destination) }
-        close(fd)
+        let url = try StagingDirectory.claim(in: request.destination, job: request.id, ext: ext)
         return JobWorkspace(job: request.id, stagedFile: url)
     }
 
@@ -45,6 +44,7 @@ public struct Publisher: Sendable {
             let destination = request.destination.appending(
                 path: name.rendered(counter: counter), directoryHint: .notDirectory)
             if renamex_np(output.url.path, destination.path, UInt32(RENAME_EXCL)) == 0 {
+                removeStagingFolder(of: output.url)
                 return try published(destination, format: output.format)
             }
             guard errno == EEXIST else { throw .publishFailed(errno: errno) }
@@ -52,9 +52,19 @@ public struct Publisher: Sendable {
         throw .publishFailed(errno: EEXIST)
     }
 
-    /// Removes a staged file after a failure or cancel. Already gone is fine; anything else is reported.
+    /// Removes a staged file and its folder after a failure or cancel. Already gone is fine; anything else is
+    /// reported.
     public func discard(_ workspace: JobWorkspace) throws(JobError) {
-        guard unlink(workspace.stagedFile.path) == 0 || errno == ENOENT else { throw .publishFailed(errno: errno) }
+        try StagingDirectory.remove(workspace.stagedFile)
+    }
+
+    /// The output is already published, so a folder that cannot be removed is only logged.
+    private func removeStagingFolder(of stagedFile: URL) {
+        do {
+            try StagingDirectory.removeFolder(of: stagedFile)
+        } catch {
+            Self.logger.error("Staging folder not removed: \(error.logDescription, privacy: .public)")
+        }
     }
 
     private func copyQuarantine(_ value: Data, to url: URL) throws(JobError) {

@@ -55,12 +55,12 @@ struct Sandbox {
 struct PublisherTests {
     let publisher = Publisher()
 
-    @Test func stagingIsAHiddenFileInTheDestinationClaimedExclusively() throws {
+    @Test func stagingIsAHiddenEntryInTheDestinationClaimedExclusively() throws {
         let box = try Sandbox()
         let request = try box.request("photo.heic", .heic, to: .jpg)
         let workspace = try publisher.claimStaging(for: request)
-        #expect(workspace.stagedFile.deletingLastPathComponent().path == box.dir.path)
-        #expect(workspace.stagedFile.lastPathComponent == ".zivlet-\(request.id).jpg")
+        #expect(workspace.stagedFile.deletingLastPathComponent().deletingLastPathComponent().path == box.dir.path)
+        #expect(box.listing == [".zivlet-\(request.id)"] && workspace.stagedFile.lastPathComponent == "staged.jpg")
         #expect(throws: JobError.publishFailed(errno: EEXIST)) { try publisher.claimStaging(for: request) }
     }
 

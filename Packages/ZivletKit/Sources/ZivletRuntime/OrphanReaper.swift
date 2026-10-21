@@ -89,7 +89,7 @@ public struct SystemProcesses: ProcessInspecting {
 }
 
 /// Launch-time cleanup (P1-32, 03a §4.8): for each record whose owner is gone, kill the helper's process group if
-/// that PID still runs the recorded executable, delete the hidden staged file, then the record.
+/// that PID still runs the recorded executable, delete the hidden staged file and its folder, then the record.
 public struct OrphanReaper: Sendable {
     public struct Report: Sendable, Equatable {
         public let killed: Int
@@ -118,17 +118,23 @@ public struct OrphanReaper: Sendable {
                 processes.killGroup(pid)
                 killed += 1
             }
-            if Self.isStagingName(record.stagedFile.lastPathComponent),
-                unlink(record.stagedFile.path) == 0
-            {
-                removed += 1
-            }
+            if Self.removeStaging(record.stagedFile) { removed += 1 }
             store.remove(record.job)
         }
         return Report(killed: killed, removedFiles: removed)
     }
 
-    /// Only hidden staging files are ever deleted.
+    /// Only hidden staging entries are ever deleted: the file inside a `.zivlet-<job>` folder and the folder (G-16),
+    /// or a hidden staged file left by an older version. True when something was removed.
+    static func removeStaging(_ stagedFile: URL) -> Bool {
+        guard let folder = StagingDirectory.folder(of: stagedFile) else {
+            return isStagingName(stagedFile.lastPathComponent) && unlink(stagedFile.path) == 0
+        }
+        let removedFile = unlink(stagedFile.path) == 0
+        let removedFolder = rmdir(folder.path) == 0
+        return removedFile || removedFolder
+    }
+
     static func isStagingName(_ name: String) -> Bool {
         name.hasPrefix(Publisher.stagingPrefix)
     }
