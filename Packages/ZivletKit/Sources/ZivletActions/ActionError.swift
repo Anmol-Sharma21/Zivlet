@@ -10,6 +10,8 @@ public enum ActionError: Error, Sendable, Equatable {
     case airDropUnavailable
     /// The AirDrop sheet reported an error other than the person cancelling.
     case airDropFailed(code: Int)
+    /// Float waits for the shelf (P2-55); its petal is hidden, so this only answers a stray request.
+    case floatNotYetAvailable
     /// The terminal chosen in Settings (named) is not on this Mac.
     case terminalMissing(String)
     /// The terminal (named) did not open the folders.
@@ -21,6 +23,7 @@ public enum ActionError: Error, Sendable, Equatable {
         case .nothingLocal(let action): Self.nothingLocalMessage(action)
         case .clipboardRefused: "Zivlet couldn't write to the clipboard. Try again."
         case .airDropUnavailable, .airDropFailed: "Zivlet couldn't start AirDrop for these files."
+        case .floatNotYetAvailable: "Float arrives in a later version."
         case .terminalMissing(let name): "\(name) isn't installed. Choose another in Settings."
         case .terminalFailed(let name, _): "Zivlet couldn't open \(name)."
         }

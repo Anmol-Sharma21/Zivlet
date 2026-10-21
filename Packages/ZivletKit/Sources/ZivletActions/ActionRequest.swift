@@ -25,6 +25,15 @@ public struct RejectedItem: Sendable, Equatable {
         self.url = url
         self.reason = reason
     }
+
+    /// "photo.png: Not stored on this Mac." A web link without a file name is shown by its host.
+    public var cardLine: String {
+        let name =
+            url.lastPathComponent.isEmpty || url.lastPathComponent == "/"
+            ? url.host() ?? url.absoluteString
+            : url.lastPathComponent
+        return "\(name): \(reason.userMessage)"
+    }
 }
 
 /// One action on the dropped items, validated at the boundary (03b §7 "Non-file URLs"): only `file:` URLs whose
@@ -38,6 +47,16 @@ public struct ActionRequest: Sendable, Equatable {
     public let optionHeld: Bool
 
     public init(action: ActionID, urls: [URL], optionHeld: Bool) throws(ActionError) {
+        let screened = Self.screen(urls)
+        guard !screened.items.isEmpty else { throw .nothingLocal(action) }
+        self.action = action
+        items = screened.items
+        rejected = screened.rejected
+        self.optionHeld = optionHeld
+    }
+
+    /// Splits `urls` into usable local items (standardized, first occurrence kept) and rejected ones.
+    public static func screen(_ urls: [URL]) -> (items: [URL], rejected: [RejectedItem]) {
         var items: [URL] = []
         var seen: Set<String> = []
         var rejected: [RejectedItem] = []
@@ -47,17 +66,13 @@ public struct ActionRequest: Sendable, Equatable {
                 continue
             }
             let standard = url.standardizedFileURL
-            guard Self.exists(standard) else {
+            guard exists(standard) else {
                 rejected.append(RejectedItem(url: url, reason: .missing))
                 continue
             }
             if seen.insert(standard.path).inserted { items.append(standard) }
         }
-        guard !items.isEmpty else { throw .nothingLocal(action) }
-        self.action = action
-        self.items = items
-        self.rejected = rejected
-        self.optionHeld = optionHeld
+        return (items, rejected)
     }
 
     private static func exists(_ url: URL) -> Bool {
