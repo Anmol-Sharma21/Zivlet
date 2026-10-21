@@ -126,6 +126,20 @@ struct MediaEngineTests {
         #expect(seen.withLock { $0.pid } == FakeRunner.fakePID)
     }
 
+    @Test func progressCarriesTheStageBytesAndTimeLeft() async throws {
+        let progress = "total_size=4096\nout_time_us=3000000\nspeed=2.0x\nprogress=continue\nprogress=end\n"
+        let rig = try MediaRig(probes: ["tone.wav": Self.wav], ffmpeg: FakeRunner.result(progress))
+        let request = try rig.request("tone.wav", .wav, to: .mp3)
+        let plan = try await rig.engine.prepare(request, workspace: rig.workspace(request))
+        _ = try rig.staged(request, bytes: 321)
+        let seen = Mutex<[JobProgress]>([])
+        let context = ExecutionContext(progress: ProgressSink(interval: .zero) { p in seen.withLock { $0.append(p) } })
+        _ = try await rig.engine.execute(plan, context: context)
+        let first = try #require(seen.withLock { $0 }.first)
+        #expect(first.bytesWritten == 4096 && first.stage == 0 && first.stageCount == plan.stages.count)
+        #expect(first.eta != nil)
+    }
+
     @Test(arguments: [
         (FakeRunner.result("", status: 1, stderr: "x: No space left on device"), JobError.diskFull),
         (FakeRunner.result("", status: 69, stderr: "boom"), .processFailed(status: 69, stderrTail: "boom")),

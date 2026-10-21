@@ -9,16 +9,19 @@ public struct BatchItem: Sendable, Equatable {
     public let name: String
     public let state: JobState
     public let notes: [PlanNote]
+    /// Its share of the batch's progress: the source size in bytes (10 §8.2), at least 1.
+    public let weight: Double
 
-    public init(job: JobID?, name: String, state: JobState, notes: [PlanNote] = []) {
+    public init(job: JobID?, name: String, state: JobState, notes: [PlanNote] = [], weight: Double = 1) {
         self.job = job
         self.name = name
         self.state = state
         self.notes = notes
+        self.weight = max(1, weight)
     }
 
     func with(state: JobState? = nil, notes: [PlanNote]? = nil) -> BatchItem {
-        BatchItem(job: job, name: name, state: state ?? self.state, notes: notes ?? self.notes)
+        BatchItem(job: job, name: name, state: state ?? self.state, notes: notes ?? self.notes, weight: weight)
     }
 }
 
@@ -29,11 +32,18 @@ public struct BatchSnapshot: Sendable, Equatable {
     public let items: [BatchItem]
     public let isFinished: Bool
 
+    /// Refused items weigh as much as the smallest accepted file, so they count without dominating.
     public init(batch: BatchID, target: FormatID, plan: RequestPlan) {
+        let refusedWeight = plan.requests.map { Double($0.input.byteCount) }.min() ?? 1
         self.init(
             batch: batch, target: target,
-            items: plan.requests.map { BatchItem(job: $0.id, name: $0.input.fileName, state: .queued) }
-                + plan.rejections.map { BatchItem(job: nil, name: $0.url.lastPathComponent, state: .failed($0.error)) },
+            items: plan.requests.map {
+                BatchItem(job: $0.id, name: $0.input.fileName, state: .queued, weight: Double($0.input.byteCount))
+            }
+                + plan.rejections.map {
+                    BatchItem(
+                        job: nil, name: $0.url.lastPathComponent, state: .failed($0.error), weight: refusedWeight)
+                },
             isFinished: false)
     }
 
@@ -74,19 +84,31 @@ public struct BatchSnapshot: Sendable, Equatable {
     public var cancelledCount: Int { items.count { $0.state == .cancelled } }
     public var doneCount: Int { items.count { $0.state.isTerminal } }
 
-    /// Mean of the items: finished = 1, running = its fraction (0 while indeterminate), otherwise 0. Monotonic
-    /// because each item's state only moves forward.
+    /// Weighted mean of the items (weight = source bytes): finished = 1, running = its fraction (0 while
+    /// indeterminate), otherwise 0. Monotonic because each item's state and fraction only move forward.
     public var fraction: Double {
         guard !items.isEmpty else { return 1 }
-        let sum = items.reduce(0.0) { total, item in
-            switch item.state {
-            case .running(let progress): total + (progress.fraction ?? 0)
-            case .verifying, .publishing: total + 1
-            default: total + (item.state.isTerminal ? 1 : 0)
-            }
-        }
-        return sum / Double(items.count)
+        let total = items.reduce(0.0) { $0 + $1.weight }
+        let done = items.reduce(0.0) { sum, item in sum + item.weight * Self.share(item.state) }
+        return min(1, done / total)
     }
+
+    private static func share(_ state: JobState) -> Double {
+        switch state {
+        case .running(let progress): progress.fraction ?? 0
+        case .verifying, .publishing: 1
+        default: state.isTerminal ? 1 : 0
+        }
+    }
+
+    /// The converting item's progress (stage, bytes, ETA), while it runs.
+    public var currentProgress: JobProgress? {
+        guard case .running(let progress) = current?.item.state else { return nil }
+        return progress
+    }
+
+    /// The converting item's length is unknown: the HUD shows bytes and an indeterminate bar.
+    public var isIndeterminate: Bool { currentProgress.map { $0.fraction == nil } ?? false }
 
     /// The item currently converting, for "name · 2 of 5".
     public var current: (index: Int, item: BatchItem)? {

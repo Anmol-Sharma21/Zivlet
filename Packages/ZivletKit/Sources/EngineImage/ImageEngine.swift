@@ -59,14 +59,24 @@ public struct ImageEngine: Engine {
     public func execute(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
         for (index, stage) in plan.stages.enumerated() {
             guard let spec = stage.image else { throw .internalInvariant("image engine got a non-image stage") }
-            let staged = plan.stagedFile
-            try await BlockingWork.run { flag throws(JobError) in try ImagePipeline.run(spec, to: staged, cancel: flag)
+            let (staged, sink, frames) = (plan.stagedFile, context.progress, max(1, spec.frames.count))
+            try await BlockingWork.run { flag throws(JobError) in
+                try ImagePipeline.run(spec, to: staged, cancel: flag) { done in
+                    sink.report(Self.progress(frames: done, of: frames, stage: index, plan: plan))
+                }
             }
-            context.progress.report(plan.overallFraction(stage: index, fraction: 1))
+            context.progress.report(Self.progress(frames: frames, of: frames, stage: index, plan: plan))
         }
         var info = stat()
         let size = stat(plan.stagedFile.path, &info) == 0 ? Int64(info.st_size) : 0
         return StagedOutput(format: plan.outputFormat, url: plan.stagedFile, byteCount: size)
+    }
+
+    /// Frames done of the stage's frames, as plan-wide progress (P1-40: images report frames done / total).
+    static func progress(frames done: Int, of total: Int, stage: Int, plan: ExecutionPlan) -> JobProgress {
+        JobProgress(
+            fraction: plan.overallFraction(stage: stage, fraction: Double(done) / Double(total)), stage: stage,
+            stageCount: plan.stages.count)
     }
 
     public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {

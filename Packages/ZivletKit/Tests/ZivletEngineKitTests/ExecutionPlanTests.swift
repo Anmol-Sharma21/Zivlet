@@ -103,6 +103,29 @@ struct ProgressSinkTests {
         #expect(probe.values == [nil, 0.5])
     }
 
+    @Test func aBurstIsThrottledToTenHertz() {
+        let probe = SinkProbe()
+        let sink = probe.sink()
+        for step in 0..<100 {
+            sink.report(Double(step) / 200)
+            probe.advance(.microseconds(500))
+        }
+        #expect(probe.values.count <= 2)
+    }
+
+    @Test func bytesOnlyProgressIsDeliveredThrottled() {
+        let probe = SinkProbe()
+        let bytes = Mutex<[Int64?]>([])
+        let sink = ProgressSink(clock: { probe.now.withLock { $0 } }) { progress in
+            bytes.withLock { $0.append(progress.bytesWritten) }
+        }
+        sink.report(JobProgress(fraction: nil, bytesWritten: 10))
+        sink.report(JobProgress(fraction: nil, bytesWritten: 20))
+        probe.advance(.milliseconds(150))
+        sink.report(JobProgress(fraction: nil, bytesWritten: 30))
+        #expect(bytes.withLock { $0 } == [10, 30])
+    }
+
     @Test func discardSinkAcceptsReports() {
         ProgressSink.discard.report(0.5)
         #expect(ProgressSink.uptime() > .zero)

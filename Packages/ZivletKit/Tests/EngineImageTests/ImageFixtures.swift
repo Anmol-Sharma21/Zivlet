@@ -156,14 +156,14 @@ struct ImageRun {
 
     init(engine: ImageEngine = ImageEngine()) { self.engine = engine }
 
-    func convert(_ url: URL, _ format: FormatID, to target: FormatID, in dir: URL) async throws
-        -> (plan: ExecutionPlan, output: StagedOutput)
-    {
+    func convert(
+        _ url: URL, _ format: FormatID, to target: FormatID, in dir: URL, context: ExecutionContext = ExecutionContext()
+    ) async throws -> (plan: ExecutionPlan, output: StagedOutput) {
         let input = try InputItem(url: url, format: format, byteCount: 1)
         let request = try JobRequest(input: input, operation: .convert(target), destination: dir)
         let workspace = JobWorkspace(job: request.id, stagedFile: dir.appending(path: ".zivlet-\(request.id)"))
         let plan = try await engine.prepare(request, workspace: workspace)
-        let output = try await engine.execute(plan, context: ExecutionContext())
+        let output = try await engine.execute(plan, context: context)
         try await engine.verify(output, plan: plan)
         return (plan, output)
     }

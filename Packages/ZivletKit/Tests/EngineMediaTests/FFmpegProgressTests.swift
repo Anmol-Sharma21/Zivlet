@@ -41,8 +41,8 @@ struct FFmpegProgressTests {
     @Test func oneEventPerBlock() {
         #expect(
             Self.events() == [
-                FFmpegProgressEvent(outTimeMicros: nil, speed: nil, isEnd: false),
-                FFmpegProgressEvent(outTimeMicros: 2_500_000, speed: 1.5, isEnd: false),
+                FFmpegProgressEvent(outTimeMicros: nil, speed: nil, isEnd: false, totalSize: 48),
+                FFmpegProgressEvent(outTimeMicros: 2_500_000, speed: 1.5, isEnd: false, totalSize: 16_527),
                 FFmpegProgressEvent(outTimeMicros: 0, speed: 173, isEnd: true),
             ])
     }
@@ -62,6 +62,33 @@ struct FFmpegProgressTests {
         #expect(FFmpegProgressParser.fraction(running, expectedMicros: 0) == nil)
         let unknown = FFmpegProgressEvent(outTimeMicros: nil, speed: nil, isEnd: false)
         #expect(FFmpegProgressParser.fraction(unknown, expectedMicros: 5) == nil)
+    }
+
+    @Test func etaIsTheRemainingOutputTimeOverSpeed() {
+        let events = Self.events("total_size=900\nout_time_us=4000000\nspeed=2.0x\nprogress=continue")
+        let event = events[0]
+        #expect(event.totalSize == 900)
+        #expect(FFmpegProgressParser.eta(event, expectedMicros: 10_000_000) == .seconds(3))
+    }
+
+    @Test func noETAWithoutASpeedADurationOrTwoSecondsOfOutput() {
+        let unknownSpeed = FFmpegProgressEvent(outTimeMicros: 4_000_000, speed: nil, isEnd: false)
+        #expect(FFmpegProgressParser.eta(unknownSpeed, expectedMicros: 10_000_000) == nil)
+        let early = FFmpegProgressEvent(outTimeMicros: 1_500_000, speed: 2, isEnd: false)
+        #expect(FFmpegProgressParser.eta(early, expectedMicros: 10_000_000) == nil)
+        let stalled = FFmpegProgressEvent(outTimeMicros: 4_000_000, speed: 0.001, isEnd: false)
+        #expect(FFmpegProgressParser.eta(stalled, expectedMicros: 10_000_000) == nil)
+        let running = FFmpegProgressEvent(outTimeMicros: 4_000_000, speed: 1, isEnd: false)
+        #expect(FFmpegProgressParser.eta(running, expectedMicros: nil) == nil)
+        let done = FFmpegProgressEvent(outTimeMicros: 4_000_000, speed: 1, isEnd: true)
+        #expect(FFmpegProgressParser.eta(done, expectedMicros: 10_000_000) == nil)
+        let past = FFmpegProgressEvent(outTimeMicros: 12_000_000, speed: 1, isEnd: false)
+        #expect(FFmpegProgressParser.eta(past, expectedMicros: 10_000_000) == .zero)
+    }
+
+    @Test func speedNAIsNoSpeed() {
+        let events = Self.events("out_time_us=4000000\nspeed=N/A\nprogress=continue")
+        #expect(events[0].speed == nil)
     }
 
     @Test func linesWithoutAnEqualsSignOrForeignKeysAreIgnored() {

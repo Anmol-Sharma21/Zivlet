@@ -95,6 +95,21 @@ struct JobModelTests {
         #expect(JobProgress(fraction: raw).fraction == expected)
     }
 
+    @Test func progressCarriesStageBytesAndETAAndRoundTrips() throws {
+        let progress = JobProgress(fraction: 0.4, stage: 1, stageCount: 2, bytesWritten: 1_000, eta: .seconds(3))
+        #expect(progress.stage == 1 && progress.stageCount == 2 && progress.bytesWritten == 1_000)
+        #expect(progress.eta == .seconds(3))
+        let data = try JSONEncoder().encode(progress)
+        #expect(try JSONDecoder().decode(JobProgress.self, from: data) == progress)
+        let plain = JobProgress(fraction: 0.5)
+        #expect(plain.stage == 0 && plain.stageCount == 1 && plain.bytesWritten == nil && plain.eta == nil)
+    }
+
+    @Test func impossibleStagesBytesAndETAAreDropped() {
+        let progress = JobProgress(fraction: 0.4, stage: 5, stageCount: 0, bytesWritten: -3, eta: .seconds(-1))
+        #expect(progress.stageCount == 1 && progress.stage == 0 && progress.bytesWritten == nil && progress.eta == nil)
+    }
+
     @Test func nonFiniteProgressIsIndeterminate() {
         #expect(JobProgress(fraction: .nan).fraction == nil)
         #expect(JobProgress(fraction: nil).fraction == nil)

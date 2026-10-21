@@ -12,8 +12,10 @@ import ZivletEngineKit
 /// orientation applied (so it is applied exactly once) and written with orientation 1. Callers run it
 /// through `BlockingWork` (index D-M3-10); `cancel` is polled between frames.
 enum ImagePipeline {
+    /// `framesDone` hears each finished frame (raster and WebP outputs), for frame-based progress.
     static func run(
-        _ spec: ImagePipelineSpec, to staged: URL, cancel: CancellationFlag, limits: PixelLimits = .standard
+        _ spec: ImagePipelineSpec, to staged: URL, cancel: CancellationFlag, limits: PixelLimits = .standard,
+        framesDone: (Int) -> Void = { _ in }
     ) throws(JobError) {
         if let svg = spec.svg { return try SVGPipeline.run(spec, svg, to: staged, cancel: cancel) }
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
@@ -22,15 +24,16 @@ enum ImagePipeline {
         }
         let budget = PixelBudget(limits)
         switch spec.output {
-        case .raster where spec.webp != nil: try writeWebP(source, spec, to: staged, cancel: cancel, budget: budget)
-        case .raster: try writeRaster(source, spec, to: staged, cancel: cancel, budget: budget)
+        case .raster where spec.webp != nil:
+            try writeWebP(source, spec, to: staged, cancel: cancel, budget: budget, framesDone: framesDone)
+        case .raster: try writeRaster(source, spec, to: staged, cancel: cancel, budget: budget, framesDone: framesDone)
         case .pdf: try ImagePDFWriter.write(source, spec, to: staged, cancel: cancel, budget: budget)
         }
     }
 
     private static func writeRaster(
         _ source: CGImageSource, _ spec: ImagePipelineSpec, to staged: URL, cancel: CancellationFlag,
-        budget start: PixelBudget
+        budget start: PixelBudget, framesDone: (Int) -> Void
     ) throws(JobError) {
         guard
             let destination = CGImageDestinationCreateWithURL(
@@ -47,6 +50,7 @@ enum ImagePipeline {
             budget = try budget.admitting(source, index)
             let delay = timing?.frameProperties(spec.destinationType, position: position) ?? [:]
             try addFrame(index, of: source, to: destination, spec, extra: delay)
+            framesDone(position + 1)
         }
         guard CGImageDestinationFinalize(destination) else { throw ImageWriteFailure.error(at: staged) }
     }
@@ -54,7 +58,7 @@ enum ImagePipeline {
     /// libwebp instead of ImageIO (D-M4-8): every planned frame decoded upright, within the pixel budget.
     private static func writeWebP(
         _ source: CGImageSource, _ spec: ImagePipelineSpec, to staged: URL, cancel: CancellationFlag,
-        budget start: PixelBudget
+        budget start: PixelBudget, framesDone: (Int) -> Void
     ) throws(JobError) {
         guard let options = spec.webp else { throw .internalInvariant("WebP output without WebP options") }
         let job = WebPWriter.Job(
@@ -66,8 +70,10 @@ enum ImagePipeline {
         try WebPWriter.write(job, to: staged, cancel: cancel) { (position: Int) throws(JobError) -> CGImage in
             let index = spec.frames[position]
             budget = try budget.admitting(source, index)
+            if position > 0 { framesDone(position) }
             return try oriented(source, index, standardRange: spec.decodeToSDR)
         }
+        framesDone(spec.frames.count)
     }
 
     /// Copies the frame as stored (tag kept) unless it needs flattening or its orientation baked in

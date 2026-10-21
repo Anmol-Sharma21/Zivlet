@@ -221,6 +221,20 @@ extension MediaEngine {
         return policy.limit + .microseconds(micros)
     }
 
+    /// One parser event as job progress: the plan-wide fraction (nil while the duration is unknown), the stage,
+    /// the bytes written and the time left in this pass.
+    static func progress(_ event: FFmpegProgressEvent, stage: FFmpegStage, index: Int, plan: ExecutionPlan)
+        -> JobProgress
+    {
+        let expected = stage.expectedDurationMicros
+        let fraction = FFmpegProgressParser.fraction(event, expectedMicros: expected).map {
+            plan.overallFraction(stage: index, fraction: $0)
+        }
+        return JobProgress(
+            fraction: fraction, stage: index, stageCount: plan.stages.count, bytesWritten: event.totalSize,
+            eta: FFmpegProgressParser.eta(event, expectedMicros: expected))
+    }
+
     private func run(
         _ stage: FFmpegStage, index: Int, plan: ExecutionPlan, tools: MediaTools, context: ExecutionContext
     ) async throws(JobError) {
@@ -241,9 +255,7 @@ extension MediaEngine {
                 }
                 guard let event else { return }
                 monitor.observe(event)
-                guard let fraction = FFmpegProgressParser.fraction(event, expectedMicros: stage.expectedDurationMicros)
-                else { return }
-                context.progress.report(plan.overallFraction(stage: index, fraction: fraction))
+                context.progress.report(Self.progress(event, stage: stage, index: index, plan: plan))
             }
         }
         try MediaFailure.check(result)

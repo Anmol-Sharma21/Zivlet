@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import Synchronization
 import Testing
 import ZivletCore
 import ZivletEngineKit
@@ -33,6 +34,15 @@ struct ImageAnimationTests {
         }
         let carried = try loop(sequence, kCGImagePropertyHEICSDictionary, kCGImagePropertyHEICSLoopCount)
         #expect(try loop(output.url, kCGImagePropertyPNGDictionary, kCGImagePropertyAPNGLoopCount) == carried)
+    }
+
+    @Test func progressCountsFramesDone() async throws {
+        let dir = try ImageFixture.directory()
+        let apng = try await offPool { try AnimationFixture.animatedPNG(frames: 4, delay: 0.1, loops: 0, in: dir) }
+        let seen = Mutex<[Double?]>([])
+        let sink = ProgressSink(interval: .zero) { progress in seen.withLock { $0.append(progress.fraction) } }
+        _ = try await run.convert(apng, .png, to: .heic, in: dir, context: ExecutionContext(progress: sink))
+        #expect(seen.withLock { $0 } == [0.25, 0.5, 0.75, 1.0])
     }
 
     @Test func anAPNGBecomesAHEICSequence() async throws {

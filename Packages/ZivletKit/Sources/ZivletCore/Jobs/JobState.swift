@@ -1,16 +1,27 @@
 import Foundation
 
-/// Progress of one job (02 §7.2, trimmed for M3). `fraction == nil` means indeterminate. Invariant: a fraction is
-/// finite and in 0...1 (out-of-range values are clamped, non-finite ones become indeterminate).
+/// Progress of one job (02 §7.2, 03a §4.5). `fraction == nil` means indeterminate (unknown duration); then
+/// `bytesWritten` is what the HUD shows. Invariants: a fraction is finite and in 0...1 (clamped; non-finite becomes
+/// indeterminate), `0 <= stage < stageCount`, and bytes and ETA are never negative (dropped otherwise).
 public struct JobProgress: Sendable, Equatable, Codable {
     public let fraction: Double?
+    public let stage: Int
+    public let stageCount: Int
+    public let bytesWritten: Int64?
+    public let eta: Duration?
 
-    public init(fraction: Double?) {
-        guard let fraction, fraction.isFinite else {
+    public init(
+        fraction: Double?, stage: Int = 0, stageCount: Int = 1, bytesWritten: Int64? = nil, eta: Duration? = nil
+    ) {
+        if let fraction, fraction.isFinite {
+            self.fraction = min(1, max(0, fraction))
+        } else {
             self.fraction = nil
-            return
         }
-        self.fraction = min(1, max(0, fraction))
+        self.stageCount = max(1, stageCount)
+        self.stage = (0..<self.stageCount).contains(stage) ? stage : 0
+        self.bytesWritten = bytesWritten.flatMap { $0 >= 0 ? $0 : nil }
+        self.eta = eta.flatMap { $0 >= .zero ? $0 : nil }
     }
 }
 

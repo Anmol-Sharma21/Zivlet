@@ -3,7 +3,8 @@ import Synchronization
 import ZivletCore
 
 /// Engine → runtime progress channel (02 §6.2, 03a §4.5): throttled to one delivery per `interval` (10 Hz), fractions
-/// never decrease, the first report and the final 1.0 always pass. Safe to call from any thread.
+/// never decrease (a lower one is dropped), the first report and the final 1.0 always pass, and indeterminate
+/// (bytes-only) progress passes at the same rate until a fraction is known. Safe to call from any thread.
 public struct ProgressSink: Sendable {
     public static let discard = ProgressSink { _ in }
 
@@ -17,6 +18,9 @@ public struct ProgressSink: Sendable {
     }
 
     public func report(_ fraction: Double?) { gate.offer(JobProgress(fraction: fraction)) }
+
+    /// Stage, bytes and ETA as well; the same throttle and monotonic rule apply.
+    public func report(_ progress: JobProgress) { gate.offer(progress) }
 
     /// Monotonic time since boot, the default clock.
     public static func uptime() -> Duration {
@@ -57,7 +61,8 @@ private final class ProgressGate: Sendable {
 
     private static func admits(_ progress: JobProgress, last: Last, now: Duration, interval: Duration) -> Bool {
         guard let at = last.at else { return true }
-        guard let fraction = progress.fraction else { return false }
+        // Bytes-only progress (unknown duration) passes until a positive fraction has been delivered.
+        guard let fraction = progress.fraction else { return (last.fraction ?? 0) == 0 && now - at >= interval }
         if let previous = last.fraction, fraction <= previous { return false }
         return fraction >= 1 || now - at >= interval
     }
