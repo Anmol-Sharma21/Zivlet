@@ -28,6 +28,26 @@ struct ConversionServiceTests {
         return ConversionService(scheduler: scheduler, factory: JobRequestFactory(fallbackFolder: box.dir))
     }
 
+    @Test func retryResubmitsOnlyTheFailedItemsToTheSameTarget() async throws {
+        let box = try Sandbox()
+        let urls = [try box.file("a.heic"), try box.file("c.mp3")]
+        let service = Self.service(box: box)
+        let batch = await service.convert(urls, to: .jpg)
+        _ = await service.snapshots(until: batch)
+        let retried = try #require(await service.retry(batch))
+        let last = try #require(await service.snapshots(until: retried).last)
+        #expect(retried != batch && last.target == .jpg && last.items.map(\.name) == ["c.mp3"])
+        #expect(await service.retry(BatchID()) == nil)
+    }
+
+    @Test func aBatchWithNothingFailedCannotBeRetried() async throws {
+        let box = try Sandbox()
+        let service = Self.service(box: box)
+        let batch = await service.convert([try box.file("a.heic")], to: .jpg)
+        _ = await service.snapshots(until: batch)
+        #expect(await service.retry(batch) == nil)
+    }
+
     @Test func aDropEndsInAFinishedSnapshotWithOutputsAndRefusals() async throws {
         let box = try Sandbox()
         let urls = [try box.file("a.heic"), try box.file("b.heic"), try box.file("c.mp3")]

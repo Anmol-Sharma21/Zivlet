@@ -13,6 +13,9 @@ public actor ConversionService {
     private let engines: [any Engine]
     private var factory: JobRequestFactory
     private var batches: [BatchID: BatchSnapshot] = [:]
+    /// Finished batches with failures: their target and failed sources, for Retry (the newest few).
+    private var retryable: [(batch: BatchID, target: FormatID, urls: [URL])] = []
+    static let retryLimit = 20
     private var listener: Task<Void, Never>?
     private let loadMonitor: SystemLoadMonitor?
     private let loadFeed: Task<Void, Never>?
@@ -76,6 +79,14 @@ public actor ConversionService {
         return versions
     }
 
+    /// Re-submits the failed items of a finished batch to the same target (P1-41); nil when it has none (or is
+    /// no longer remembered).
+    public func retry(_ batch: BatchID) async -> BatchID? {
+        guard let entry = retryable.first(where: { $0.batch == batch }) else { return nil }
+        retryable.removeAll { $0.batch == batch }
+        return await convert(entry.urls, to: entry.target)
+    }
+
     /// Settings changed the folder used when a source folder is read-only (01-prd FR-17); later drops use it.
     public func use(fallbackFolder: URL) {
         factory = factory.with(fallbackFolder: fallbackFolder)
@@ -88,6 +99,15 @@ public actor ConversionService {
     /// Quit: cancel everything and wait at most `limit` (03a §4.2).
     public func shutdown(within limit: Duration) async -> Bool {
         await scheduler.shutdown(within: limit)
+    }
+
+    private func remember(_ snapshot: BatchSnapshot) {
+        let failed = snapshot.items.compactMap { item -> URL? in
+            guard case .failed = item.state else { return nil }
+            return item.source?.url
+        }
+        guard !failed.isEmpty else { return }
+        retryable = Array(([(snapshot.batch, snapshot.target, failed)] + retryable).prefix(Self.retryLimit))
     }
 
     private func listen() {
@@ -103,6 +123,7 @@ public actor ConversionService {
         let next = snapshot.applying(event)
         guard next != snapshot else { return }
         batches[batch] = next.isFinished ? nil : next
+        if next.isFinished { remember(next) }
         feed.yield(next)
     }
 }

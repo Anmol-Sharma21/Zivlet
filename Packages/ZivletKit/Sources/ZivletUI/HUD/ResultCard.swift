@@ -22,6 +22,7 @@ struct ResultCard: View {
                     }
                 }
             }
+            if state.showsDetails, let details = model.details { detailsView(details) }
             buttons
         }
         .padding(14)
@@ -29,6 +30,18 @@ struct ResultCard: View {
         .frame(minHeight: HUDLayout.size.height, alignment: .topLeading)
         .fixedSize(horizontal: false, vertical: true)
         .glassEffect(.regular, in: .rect(cornerRadius: 18))
+    }
+
+    /// The technical detail (an exit status and the helper's last lines), selectable for a bug report.
+    private func detailsView(_ details: String) -> some View {
+        ScrollView {
+            Text(details).font(.caption.monospaced()).textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxHeight: 120)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(6)
+        .background(.quaternary, in: .rect(cornerRadius: 6))
     }
 
     private func thumbnail(_ url: URL) -> some View {

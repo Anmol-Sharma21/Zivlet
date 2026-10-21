@@ -33,6 +33,35 @@ struct ResultCardModelTests {
         #expect(model.buttons == [.close] && model.sizeLine == nil && model.title == "Cancelled")
     }
 
+    @Test func failureOffersDetailsAndRetryAndStays() throws {
+        let model = ResultCardModel(try HUDFx.failed(error: .processFailed(status: 1, stderrTail: "boom")))
+        #expect(model.buttons == [.showDetails, .retry, .close])
+        #expect(model.lingers == nil)
+        #expect(model.details == "Exit status 1.\nboom")
+        #expect(model.title == "The conversion failed.")
+    }
+
+    @Test func aFailureWithoutDetailsStillOffersRetry() throws {
+        let model = ResultCardModel(try HUDFx.failed(error: .diskFull))
+        #expect(model.buttons == [.retry, .close] && model.details == nil)
+    }
+
+    @Test func aPartialBatchOffersBothSides() throws {
+        let saved = try HUDFx.request("a.heic")
+        let failed = try HUDFx.request("b.heic")
+        let batch = BatchID()
+        let output = PublishedOutput(
+            url: URL(filePath: "/tmp/a.png"), format: .png, byteCount: 10, fileID: 1, modified: .distantPast)
+        let snapshot = BatchSnapshot(
+            batch: batch, target: .png, plan: RequestPlan(requests: [saved, failed], rejections: [])
+        )
+        .applying(.changed(batch, saved.id, .succeeded(output)))
+        .applying(.changed(batch, failed.id, .failed(.processFailed(status: 2, stderrTail: "x"))))
+        .applying(.finished(batch))
+        let model = ResultCardModel(snapshot)
+        #expect(model.buttons == [.undo, .reveal, .showDetails, .retry, .close] && model.lingers == nil)
+    }
+
     @Test func hoverHoldsAndLeavingRestartsTheTimer() {
         var timer = LingerTimer(duration: .seconds(4))
         #expect(!timer.expired(at: .seconds(100)))  // not started
@@ -52,6 +81,24 @@ struct ResultCardSnapshotTests {
         let card = ResultCard(model: ResultCardModel(snapshot), state: CardState(), act: { _ in })
         let image = try #require(ImageRenderer(content: card).nsImage)
         #expect(image.size.width == HUDLayout.size.width && image.size.height >= HUDLayout.size.height)
+    }
+
+    @Test func theFailureCardRendersItsDetailsWhenAsked() throws {
+        let model = ResultCardModel(try HUDFx.failed(error: .processFailed(status: 1, stderrTail: "boom")))
+        let state = CardState()
+        state.showsDetails = true
+        let image = try #require(ImageRenderer(content: ResultCard(model: model, state: state, act: { _ in })).nsImage)
+        #expect(image.size.height > HUDLayout.size.height)
+    }
+
+    @Test func retryClosesTheFailedCardAndAsksForANewBatch() throws {
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        var retried: [BatchID] = []
+        hud.onRetry = { retried.append($0) }
+        let snapshot = try HUDFx.failed(error: .stalled)
+        hud.show(snapshot)
+        hud.press(.retry, on: snapshot.batch)
+        #expect(retried == [snapshot.batch] && !hud.isVisible)
     }
 
     @Test func theHUDRendersAFinishedBatchAsACard() throws {

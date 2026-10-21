@@ -30,13 +30,21 @@ public struct ResultCardModel: Sendable, Equatable {
         notes = shown.notes
         details = shown.detail
         outputs = snapshot.outputs.map(\.url)
-        buttons = Self.buttons(shown)
+        buttons = Self.buttons(shown, hasDetails: shown.detail != nil)
         lingers = snapshot.failures.isEmpty ? Self.successLinger : nil
         holdsWhileHovered = true
     }
 
-    static func buttons(_ shown: BatchPresentation) -> [Button] {
-        shown.canUndo ? [.undo, .reveal, .open, .copy] : [.close]
+    /// Success: Undo, Reveal, Open, Copy. Failure: Show Details (when there are any), Retry, Close. Part of each:
+    /// Undo and Reveal for what was saved, then the failure's buttons. A cancel only closes.
+    static func buttons(_ shown: BatchPresentation, hasDetails: Bool) -> [Button] {
+        let failure: [Button] = (hasDetails ? [.showDetails] : []) + [.retry, .close]
+        switch shown.phase {
+        case .succeeded: return [.undo, .reveal, .open, .copy]
+        case .partial: return [.undo, .reveal] + failure
+        case .failed: return failure
+        case .working, .cancelled: return [.close]
+        }
     }
 
     /// Before → after for the saved items only, in Finder's file-size style.

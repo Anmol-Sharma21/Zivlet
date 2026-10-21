@@ -23,6 +23,8 @@ public final class ResultHUD {
     public var onReveal: ([URL]) -> Void = { _ in }
     public var onOpen: ([URL]) -> Void = { _ in }
     public var onCopy: ([URL]) -> Void = { _ in }
+    /// Re-submits a batch's failed items; the new batch opens where the failed card was.
+    public var onRetry: (BatchID) -> Void = { _ in }
     /// Undoes a batch and returns the sentence to show in its place.
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
 
@@ -91,11 +93,12 @@ public final class ResultHUD {
         HUDPanel(
             HUDPanel.Callbacks(
                 cancel: { [weak self] batch in self?.onCancel(batch) },
-                act: { [weak self] batch, button in self?.act(button, on: batch) },
+                act: { [weak self] batch, button in self?.press(button, on: batch) },
                 hover: { [weak self] batch, inside in self?.hover(batch, inside: inside) }))
     }
 
-    private func act(_ button: ResultCardModel.Button, on batch: BatchID) {
+    /// A card button was pressed.
+    func press(_ button: ResultCardModel.Button, on batch: BatchID) {
         let outputs = board.snapshots.first { $0.batch == batch }?.outputs.map(\.url) ?? []
         switch button {
         case .undo: undo(batch)
@@ -103,7 +106,7 @@ public final class ResultHUD {
         case .open: onOpen(outputs)
         case .copy: onCopy(outputs)
         case .showDetails: panels[batch]?.showDetails()
-        case .retry: break
+        case .retry: retry(batch)
         case .close: close(batch)
         }
     }
@@ -130,6 +133,15 @@ public final class ResultHUD {
             self.board = self.board.expiring(batch)
             if !self.board.snapshots.contains(where: { $0.batch == batch }) { self.close(batch) }
         }
+    }
+
+    private func retry(_ batch: BatchID) {
+        let anchor = panels[batch].map {
+            CGPoint(x: $0.frame.minX - HUDLayout.offset, y: $0.frame.maxY + HUDLayout.offset)
+        }
+        close(batch)
+        prepare(near: anchor)
+        onRetry(batch)
     }
 
     private func undo(_ batch: BatchID) {

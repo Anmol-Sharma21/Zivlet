@@ -31,6 +31,7 @@ final class ConversionWiring {
             if case .failed = ClipboardAction().copyItems(urls) { logger.error("Copy from the result card refused") }
         }
         hud.onUndo = undo
+        hud.onRetry = { [conversions] batch in Task { await conversions.retry(batch) } }
     }
 
     func start() {
