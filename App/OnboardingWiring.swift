@@ -35,7 +35,8 @@ final class OnboardingWiring {
 
     /// Opens onboarding at `page`, or at the stored page.
     func show(_ page: OnboardingPage?) {
-        let model = OnboardingModel(settings: store.current, commands: commands())
+        let model = OnboardingModel(
+            settings: store.current, commands: commands(), loginItemIsOn: LoginItemModel().isOn)
         model.sampleURL = sample()
         if let page { model.show(page) }
         let controller = OnboardingWindowController(model: model)

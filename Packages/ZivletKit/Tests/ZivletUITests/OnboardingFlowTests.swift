@@ -47,6 +47,16 @@ struct OnboardingModelTests {
         #expect(writes.last?.onboarding.completed == true && model.flow.isCompleted)
     }
 
+    /// Practice can be reopened from the menu after onboarding; Finish must not turn back on a login item the
+    /// person turned off in Settings.
+    @Test func reopenedAfterCompletionTheLoginChoiceIsTheCurrentState() {
+        let commands = OnboardingCommands(write: { transform in transform(.defaults) })
+        let done = Settings.defaults.with(\.onboarding.completed, true)
+        #expect(!OnboardingModel(settings: done, commands: commands, loginItemIsOn: false).wantsLoginItem)
+        #expect(OnboardingModel(settings: done, commands: commands, loginItemIsOn: true).wantsLoginItem)
+        #expect(OnboardingModel(settings: .defaults, commands: commands, loginItemIsOn: false).wantsLoginItem)
+    }
+
     @Test func keyCapsFollowTheBindings() throws {
         let bindings = try TriggerBindings(convert: .option, tools: .command, actions: .control)
         let model = OnboardingModel.preview(settings: Settings.defaults.with(\.trigger.bindings, bindings))

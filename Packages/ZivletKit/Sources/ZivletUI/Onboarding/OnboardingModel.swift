@@ -32,8 +32,9 @@ public struct OnboardingCommands {
 public final class OnboardingModel {
     public private(set) var flow: OnboardingFlow
     public private(set) var settings: ZivletSettings.Settings
-    /// Page 6: "Open Zivlet at login", on by default and applied at Finish.
-    public var wantsLoginItem = true
+    /// Page 6: "Open Zivlet at login", applied at Finish. On by default the first time; when onboarding is reopened
+    /// after it was finished (practice from the menu), it starts from the login item's current state.
+    public var wantsLoginItem: Bool
     /// Page 7: the sentence after a failed Move to Applications.
     public private(set) var moveError: String?
     /// The lessons of the practice page on screen; nil on other pages.
@@ -42,9 +43,10 @@ public final class OnboardingModel {
     public var sampleURL: URL?
     @ObservationIgnored let commands: OnboardingCommands
 
-    public init(settings: ZivletSettings.Settings, commands: OnboardingCommands) {
+    public init(settings: ZivletSettings.Settings, commands: OnboardingCommands, loginItemIsOn: Bool = false) {
         self.settings = settings
         self.commands = commands
+        wantsLoginItem = settings.onboarding.completed ? loginItemIsOn : true
         flow = OnboardingFlow(storedPage: settings.onboarding.page)
         practice = PracticeCoordinator(page: flow.page)
     }
