@@ -35,13 +35,17 @@ public final class ResultHUD {
     private var board = HUDBoard()
     private var panels: [BatchID: HUDPanel] = [:]
     private var order: [BatchID] = []
+    /// Each open panel's cascade index.
+    private var slots: [BatchID: Int] = [:]
     private var pending: [(anchor: CGPoint?, interval: OSSignpostIntervalState)] = []
     private var lingers: [BatchID: Task<Void, Never>] = [:]
     private var timers: [BatchID: LingerTimer] = [:]
     private var undos: [BatchID: Task<Void, Never>] = [:]
     private let now: () -> Duration = { .seconds(ProcessInfo.processInfo.systemUptime) }
-    /// Built at launch, so the first drop only places and fills a panel (≤ 50 ms, P1-40).
+    /// Built at launch and again after each drop that used it, so a drop only places and fills a panel (≤ 50 ms,
+    /// P1-40).
     private var spare: HUDPanel?
+    private var refill: Task<Void, Never>?
 
     public init(screens: @escaping () -> [CGRect] = { NSScreen.screens.map(\.visibleFrame) }) {
         self.screens = screens
@@ -76,21 +80,37 @@ public final class ResultHUD {
         lingers.removeValue(forKey: batch)?.cancel()
         timers[batch] = nil
         panels.removeValue(forKey: batch)?.close()
+        slots[batch] = nil
         order.removeAll { $0 == batch }
     }
+
+    var hasSpare: Bool { spare != nil }
 
     private func open(_ batch: BatchID) -> HUDPanel {
         let drop = pending.isEmpty ? nil : pending.removeFirst()
         let panel = spare ?? makePanel()
         spare = nil
         let screen = HUDLayout.screen(for: drop?.anchor, in: screens()) ?? .zero
-        panel.place(HUDLayout.frame(anchor: drop?.anchor, index: panels.count, screen: screen))
+        let slot = HUDLayout.freeSlot(used: Set(slots.values))
+        panel.place(HUDLayout.frame(anchor: drop?.anchor, index: slot, screen: screen))
         panel.bind(batch)
         panels[batch] = panel
+        slots[batch] = slot
         order.append(batch)
         panel.orderFront()
         if let interval = drop?.interval { signposter.endInterval("drop→hud", interval) }
+        refillSpare()
         return panel
+    }
+
+    /// Builds the next spare on a later main-actor turn, off the drop path.
+    private func refillSpare() {
+        guard refill == nil else { return }
+        refill = Task { [weak self] in
+            guard let self else { return }
+            if self.spare == nil { self.spare = self.makePanel() }
+            self.refill = nil
+        }
     }
 
     private func makePanel() -> HUDPanel {

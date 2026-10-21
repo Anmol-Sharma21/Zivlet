@@ -26,6 +26,12 @@ struct HUDLayoutTests {
         #expect(frame.minX == 736 && frame.maxY == 434)
     }
 
+    @Test func aNewPanelTakesTheLowestFreeCascadeSlot() {
+        #expect(HUDLayout.freeSlot(used: []) == 0)
+        #expect(HUDLayout.freeSlot(used: [1]) == 0)
+        #expect(HUDLayout.freeSlot(used: [0, 1, 3]) == 2)
+    }
+
     @Test func theScreenIsTheOneUnderThePointer() {
         let left = CGRect(x: -1440, y: 0, width: 1440, height: 900)
         #expect(HUDLayout.screen(for: CGPoint(x: -100, y: 100), in: [screen, left]) == left)
@@ -92,6 +98,37 @@ struct HUDTimingTests {
         #expect(frames[1].minX - frames[0].minX == 24 && frames[0].maxY - frames[1].maxY == 24)
         hud.close(a.batch)
         hud.close(b.batch)
+    }
+
+    /// A(0) and B(1) open, A closes: the next batch goes where A was, not on top of B.
+    @Test func aNewBatchTakesTheSlotAClosedOneLeft() throws {
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        let (a, b, c) = (
+            try HUDFx.snapshot(submitted: 1), try HUDFx.snapshot(submitted: 1), try HUDFx.snapshot(submitted: 1)
+        )
+        for snapshot in [a, b] {
+            hud.prepare(near: CGPoint(x: -4000, y: -4400))
+            hud.show(snapshot)
+        }
+        let (frameA, frameB) = (hud.panelFrames[0], hud.panelFrames[1])
+        hud.close(a.batch)
+        hud.prepare(near: CGPoint(x: -4000, y: -4400))
+        hud.show(c)
+        #expect(hud.panelFrames == [frameB, frameA])
+        hud.close(b.batch)
+        hud.close(c.batch)
+    }
+
+    /// Every drop, not only the first, finds a panel already built (P1-40: only place and fill on the drop path).
+    @Test func theSparePanelIsRebuiltAfterADrop() async throws {
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        #expect(hud.hasSpare)
+        let snapshot = try HUDFx.snapshot(submitted: 1)
+        hud.show(snapshot)
+        #expect(!hud.hasSpare)
+        for _ in 0..<100 where !hud.hasSpare { await Task.yield() }
+        #expect(hud.hasSpare)
+        hud.close(snapshot.batch)
     }
 }
 

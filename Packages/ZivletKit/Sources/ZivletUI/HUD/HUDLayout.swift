@@ -19,6 +19,11 @@ public enum HUDLayout {
         return CGRect(origin: CGPoint(x: x, y: y), size: size)
     }
 
+    /// The cascade index for a new panel: the lowest one no open panel holds, so a closed panel's place is reused.
+    public static func freeSlot(used: Set<Int>) -> Int {
+        (0...used.count).first { !used.contains($0) } ?? used.count
+    }
+
     /// The visible frame under `point`, else the first one.
     public static func screen(for point: CGPoint?, in screens: [CGRect]) -> CGRect? {
         guard let point else { return screens.first }
