@@ -76,7 +76,8 @@ public enum DiagnosticsError: Error, Equatable {
 public enum Diagnostics {
     public static let logLimit = 200
 
-    public static func build(_ sources: DiagnosticsSources) async throws(DiagnosticsError) -> String {
+    /// `@concurrent`: the redaction pass runs off the caller's actor.
+    @concurrent public static func build(_ sources: DiagnosticsSources) async throws(DiagnosticsError) -> String {
         guard !sources.version.isEmpty else { throw .missing("version") }
         guard !sources.home.isEmpty else { throw .missing("home") }
         let sections = [

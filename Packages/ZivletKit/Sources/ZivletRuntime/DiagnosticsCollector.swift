@@ -7,34 +7,42 @@ import ZivletEngineKit
 /// Gathers `DiagnosticsSources` on this Mac (P1-48): the app's version, macOS and the Mac model, helper versions with
 /// the SHA-256 of ffmpeg and ffprobe, the capability cache, and this process's last log lines from
 /// `OSLogStore(scope: .currentProcessIdentifier)`. Settings and the trigger trace come from the app. Local reads only.
+/// `collect` is `@concurrent`: the hashing and the log read never run on the caller's actor (the Settings button is
+/// on the main actor).
 public struct DiagnosticsCollector: Sendable {
     public static let subsystem = "app.zivlet.Zivlet"
+    /// How far back the log store is read; the report keeps the last `Diagnostics.logLimit` lines of that.
+    static let logWindow: TimeInterval = 10 * 60
 
     let bundle: Bundle
     let capabilityCache: URL
     let tools: MediaTools?
+    /// Called once where the work starts (tests check the thread).
+    let observe: @Sendable () -> Void
 
     public init(
         bundle: Bundle = .main,
         capabilityCache: URL = URL.cachesDirectory.appending(
             path: "app.zivlet.Zivlet/Capabilities", directoryHint: .isDirectory),
-        tools: MediaTools? = try? EngineLocator().locateMediaTools()
+        tools: MediaTools? = try? EngineLocator().locateMediaTools(), observe: @escaping @Sendable () -> Void = {}
     ) {
         self.bundle = bundle
         self.capabilityCache = capabilityCache
         self.tools = tools
+        self.observe = observe
     }
 
-    public func collect(settingsJSON: String, triggerTrace: [String], helpers: [HelperVersion]) async
+    @concurrent public func collect(settingsJSON: String, triggerTrace: [String], helpers: [HelperVersion]) async
         -> DiagnosticsSources
     {
+        observe()
         let info = bundle.infoDictionary ?? [:]
         return DiagnosticsSources(
             version: info["CFBundleShortVersionString"] as? String ?? "development",
             build: info["CFBundleVersion"] as? String ?? "0",
             macOS: ProcessInfo.processInfo.operatingSystemVersionString, model: Self.model(),
             helpers: helperReports(helpers), capabilities: capabilities(), settings: settingsJSON,
-            log: Self.recentLog(limit: Diagnostics.logLimit), trigger: triggerTrace,
+            log: Self.recentLog(limit: Diagnostics.logLimit, since: Self.logStart(now: Date())), trigger: triggerTrace,
             home: FileManager.default.homeDirectoryForCurrentUser.path)
     }
 
@@ -79,12 +87,15 @@ public struct DiagnosticsCollector: Sendable {
         return String(decoding: bytes.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
     }
 
-    /// This process's last `limit` lines from Zivlet's subsystem: "HH:mm:ss.SSS [category] message".
-    static func recentLog(limit: Int) -> [String] {
+    static func logStart(now: Date) -> Date { now.addingTimeInterval(-logWindow) }
+
+    /// This process's last `limit` lines from Zivlet's subsystem since `start`: "HH:mm:ss.SSS [category] message".
+    static func recentLog(limit: Int, since start: Date) -> [String] {
         do {
             let store = try OSLogStore(scope: .currentProcessIdentifier)
             let predicate = NSPredicate(format: "subsystem == %@", subsystem)
-            let entries = try store.getEntries(matching: predicate).compactMap { $0 as? OSLogEntryLog }
+            let entries = try store.getEntries(at: store.position(date: start), matching: predicate)
+                .compactMap { $0 as? OSLogEntryLog }
             let format = Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute().second()
                 .secondFraction(.fractional(3))
             return entries.suffix(limit).map { "\($0.date.formatted(format)) [\($0.category)] \($0.composedMessage)" }

@@ -1,4 +1,6 @@
+import Darwin
 import Foundation
+import Synchronization
 import Testing
 import ZivletCore
 import ZivletEngineKit
@@ -62,6 +64,20 @@ struct DiagnosticsTests {
             DiagnosticsCollector.sha256(of: file)
                 == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
         #expect(DiagnosticsCollector.sha256(of: file.appending(path: "missing")) == nil)
+    }
+
+    /// The log store is read from ten minutes back, not from the start of the process (a long session has a lot).
+    @Test func theLogIsReadFromTenMinutesBack() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        #expect(DiagnosticsCollector.logStart(now: now) == Date(timeIntervalSince1970: 9_400))
+    }
+
+    /// Called from the main actor (the Settings button), the hashing and the log read still run off it.
+    @Test @MainActor func collectingRunsOffTheMainThread() async {
+        let onMain = Mutex<[Bool]>([])
+        let collector = DiagnosticsCollector(observe: { onMain.withLock { $0.append(pthread_main_np() != 0) } })
+        _ = await collector.collect(settingsJSON: "{}", triggerTrace: [], helpers: [])
+        #expect(onMain.withLock { $0 } == [false])
     }
 
     @Test func theLiveCollectorFillsEverySectionWithoutNetwork() async throws {
