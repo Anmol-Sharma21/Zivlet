@@ -14,6 +14,9 @@ extension AppDelegate {
                 let arguments = ProcessInfo.processInfo.arguments
                 if let scenario = try DemoScenario.parse(arguments: arguments) { wheel?.showDemo(scenario) }
                 if let pane = SettingsPane.demo(arguments: arguments) { settingsWindow.show(pane) }
+                if let dir = UITestFixture.directory(arguments: arguments) {
+                    conversion.hud.show(try UITestFixture.snapshot(in: dir))
+                }
                 if let demo = try DemoConversion.parse(arguments: arguments) { runDemo(demo) }
                 if let demo = try DemoAction.parse(arguments: arguments) {
                     let selection = WheelSelection(

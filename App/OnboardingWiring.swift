@@ -19,14 +19,15 @@ final class OnboardingWiring {
         self.store = store
     }
 
-    /// At launch: only while unfinished, and never during a DEBUG demo run.
+    /// At launch: only while unfinished, and never during a DEBUG demo or UI test run.
     func showIfNeeded(arguments: [String] = ProcessInfo.processInfo.arguments) {
         #if DEBUG
             if UserDefaults.standard.bool(forKey: Self.resetKey) {
                 store.update { $0.with(\.onboarding, OnboardingGroup()) }
             }
         #endif
-        guard !store.current.onboarding.completed, !arguments.contains(where: { $0.hasPrefix("-ZivletDemo") }) else {
+        let isDemoRun = arguments.contains { $0.hasPrefix("-ZivletDemo") || $0 == "-UITestFixture" }
+        guard !store.current.onboarding.completed, !isDemoRun else {
             return
         }
         show(nil)

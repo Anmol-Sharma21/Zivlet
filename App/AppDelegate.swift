@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "app")
     let conversions = ConversionService.standard()
     private let undoHistory = UndoHistory()
-    private lazy var conversion = ConversionWiring(
+    lazy var conversion = ConversionWiring(
         conversions: conversions, undoHistory: undoHistory, menu: menu,
         revealsResults: { [weak self] in self?.settings.revealsResults ?? false }
     ) { [weak self] batch in

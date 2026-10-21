@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import TestSupport
 import Testing
 import ZivletCore
 import ZivletRuntime
@@ -117,3 +118,21 @@ struct ResultCardSnapshotTests {
         hud.close(snapshot.batch)
     }
 }
+
+#if DEBUG
+    @Suite("UI test fixture (D-M4-14)")
+    struct UITestFixtureTests {
+        @Test func theFlagNamesAnAbsoluteDirectory() {
+            #expect(UITestFixture.directory(arguments: ["Z", "-UITestFixture", "/tmp/x"])?.path == "/tmp/x")
+            #expect(UITestFixture.directory(arguments: ["Z", "-UITestFixture", "relative"]) == nil)
+            #expect(UITestFixture.directory(arguments: ["Z", "-UITestFixture"]) == nil)
+        }
+
+        @Test func theFixtureIsASuccessCard() throws {
+            let dir = try TempDir()
+            let model = ResultCardModel(try UITestFixture.snapshot(in: dir.url))
+            #expect(model.title == "Saved practice.png" && model.buttons == [.undo, .reveal, .open, .copy])
+            #expect(model.sizeLine?.hasPrefix("practice.png · 2.1 MB → ") == true)
+        }
+    }
+#endif

@@ -45,8 +45,24 @@ targets:
       - name: Embed media helpers
         script: '"$SRCROOT/Scripts/embed-helpers.sh"'
         basedOnDependencyAnalysis: false
+  # Owner-run (D-M4-14): needs an Accessibility/automation grant; not part of make test.
+  ZivletUITestsApp:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    dependencies:
+      - target: Zivlet
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.zivlet.ZivletUITestsApp
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Zivlet
+        SWIFT_VERSION: "6.0"
 schemes:
   Zivlet:
     build:
       targets:
         Zivlet: all
+    test:
+      targets:
+        - ZivletUITestsApp
