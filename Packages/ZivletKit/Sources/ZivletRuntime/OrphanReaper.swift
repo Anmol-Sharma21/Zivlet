@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import ZivletCore
+import ZivletEngineKit
 
 /// The process facts the reaper needs, injectable for tests.
 public protocol ProcessInspecting: Sendable {
@@ -70,13 +71,18 @@ public struct OrphanReaper: Sendable {
     }
 
     /// PID, executable path and start time must all match: a PID reused by another process, even another ffmpeg,
-    /// is left alone, and so is any record that lacks one of the three (G-11).
+    /// is left alone, and so is any record that lacks one of the three (G-11). A sandboxed helper starts as
+    /// `sandbox-exec` and then executes ffmpeg or ffprobe in the same process (D-M4-19), so a record of the launcher
+    /// also matches a process now running one of those helpers.
     func isStillTheHelper(_ record: JobRecord) -> Bool {
-        guard let pid = record.childPID, pid > 0, let path = record.childPath, let start = record.childStart else {
-            return false
-        }
-        return processes.executablePath(pid) == path && processes.startTime(pid) == start
+        guard let pid = record.childPID, pid > 0, let path = record.childPath, let start = record.childStart,
+            processes.startTime(pid) == start, let now = processes.executablePath(pid)
+        else { return false }
+        guard path == HelperSandbox.launcher.path, now != path else { return now == path }
+        return Self.helperNames.contains((now as NSString).lastPathComponent)
     }
+
+    static let helperNames: Set<String> = ["ffmpeg", "ffprobe"]
 
     /// Only hidden staging entries are ever deleted: the file inside a `.zivlet-<job>` folder and the folder (G-16),
     /// or a hidden staged file left by an older version. True when something was removed.

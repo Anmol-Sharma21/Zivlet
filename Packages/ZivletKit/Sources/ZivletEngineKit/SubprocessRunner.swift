@@ -19,16 +19,26 @@ public struct SubprocessRequest: Sendable, Equatable {
     public let stdoutLimit: Int
     /// Bytes kept from the end of stderr (10 §8.3: 64 KB tail).
     public let stderrTailLimit: Int
+    /// The profile the helper runs under; nil runs it as it is (helpers that read no untrusted file).
+    public let sandbox: HelperSandbox?
 
     public init(
         executable: URL, arguments: [String], environment: [String: String] = ChildEnvironment.fixed(),
-        stdoutLimit: Int = defaultStdoutLimit, stderrTailLimit: Int = defaultStderrTailLimit
+        stdoutLimit: Int = defaultStdoutLimit, stderrTailLimit: Int = defaultStderrTailLimit,
+        sandbox: HelperSandbox? = nil
     ) {
         self.executable = executable
         self.arguments = arguments
         self.environment = environment
         self.stdoutLimit = max(0, stdoutLimit)
         self.stderrTailLimit = max(0, stderrTailLimit)
+        self.sandbox = sandbox
+    }
+
+    /// What is actually executed: the helper, or `sandbox-exec -p <profile> <helper> …` under a sandbox.
+    var launch: (executable: URL, arguments: [String]) {
+        guard let sandbox else { return (executable, arguments) }
+        return (HelperSandbox.launcher, ["-p", sandbox.profile(helper: executable), executable.path] + arguments)
     }
 }
 

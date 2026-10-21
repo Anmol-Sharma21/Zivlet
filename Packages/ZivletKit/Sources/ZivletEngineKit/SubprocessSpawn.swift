@@ -51,8 +51,9 @@ enum Spawner {
         posix_spawn_file_actions_adddup2(&actions, stdout, 1)
         posix_spawn_file_actions_adddup2(&actions, stderr, 2)
         configure(&attributes)
-        let path = request.executable.path
-        let argv = [path] + request.arguments
+        let launch = request.launch
+        let path = launch.executable.path
+        let argv = [path] + launch.arguments
         let envp = request.environment.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
         var pid: pid_t = 0
         let status = withCStrings(argv) { cArgv in

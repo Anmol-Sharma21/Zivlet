@@ -160,7 +160,7 @@ extension MediaEngine {
     func probe(_ url: URL, format: FormatID, tools: MediaTools) async throws(JobError) -> MediaInfo {
         let request = SubprocessRequest(
             executable: tools.ffprobe, arguments: MediaProbe.arguments(for: url.path),
-            stdoutLimit: MediaProbe.maxOutputBytes + 1)
+            stdoutLimit: MediaProbe.maxOutputBytes + 1, sandbox: HelperSandbox(reads: [url]))
         let result = try await MediaFailure.launch(runner, request) { _ in }
         guard result.termination == .exited(0) else { throw .unsupportedInput(.unreadable) }
         let info: MediaInfo
@@ -212,6 +212,15 @@ extension MediaEngine {
         }
     }
 
+    /// The pass reads its `-i` inputs and writes only into the job's private staging folder, which also holds any
+    /// file an earlier pass wrote (D-M4-19).
+    static func sandbox(_ stage: FFmpegStage, staged: URL) -> HelperSandbox {
+        let inputs = zip(stage.argv, stage.argv.dropFirst()).filter { $0.0 == "-i" }.map { _, value in
+            URL(filePath: value.hasPrefix("file:") ? String(value.dropFirst("file:".count)) : value)
+        }
+        return HelperSandbox(reads: inputs, writes: [staged.deletingLastPathComponent()])
+    }
+
     /// Filters that hold all output until the input has been read (03b §5.6: `palettegen` for GIF).
     static let wholeInputFilters: Set<String> = ["palettegen"]
 
@@ -248,7 +257,7 @@ extension MediaEngine {
             runner,
             SubprocessRequest(
                 executable: tools.ffmpeg, arguments: FFmpegArgs.capped(stage.argv, at: context.outputByteLimit),
-                stdoutLimit: 0)
+                stdoutLimit: 0, sandbox: Self.sandbox(stage, staged: plan.stagedFile))
         )
         let result = try await monitor.guarding { () async throws(JobError) in
             try await MediaFailure.launch(runner, request, spawned: context.spawned) { line in

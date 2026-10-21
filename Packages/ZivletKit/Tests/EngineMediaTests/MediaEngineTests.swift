@@ -78,6 +78,24 @@ struct MediaEngineTests {
         #expect(try await rig.engine.prepare(request, workspace: rig.workspace(request)).notes == [.alphaFlattened])
     }
 
+    /// ffprobe and ffmpeg parse untrusted media, so each runs sandboxed: it reads the input, and ffmpeg writes only
+    /// into the job's private staging folder.
+    @Test func helpersRunSandboxedToTheJobsFiles() async throws {
+        let rig = try MediaRig(probes: ["tone.wav": Self.wav])
+        let request = try rig.request("tone.wav", .wav, to: .mp3)
+        let workspace = rig.workspace(request)
+        let plan = try await rig.engine.prepare(request, workspace: workspace)
+        let probe = try #require(rig.runner.requests.first { $0.executable.lastPathComponent == "ffprobe" })
+        #expect(probe.sandbox == HelperSandbox(reads: [request.input.url]))
+        _ = try rig.staged(request, bytes: 321)
+        _ = try await rig.engine.execute(plan, context: ExecutionContext(outputByteLimit: 5_000_000))
+        let ffmpeg = try #require(rig.runner.requests.last { $0.arguments.contains("-progress") })
+        #expect(
+            ffmpeg.sandbox
+                == HelperSandbox(
+                    reads: [request.input.url], writes: [workspace.stagedFile.deletingLastPathComponent()]))
+    }
+
     /// A hostile, highly compressible input must not fill the volume: each pass gets `-fs` at the job's byte limit,
     /// and an output that reaches it is reported as a full disk rather than a short file.
     @Test func everyPassIsCappedAtTheOutputByteLimit() async throws {

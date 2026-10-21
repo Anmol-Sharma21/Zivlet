@@ -68,6 +68,22 @@ struct OrphanReaperTests {
         #expect(!FileManager.default.fileExists(atPath: staged.path) && store.all().isEmpty)
     }
 
+    /// A sandboxed helper is spawned as sandbox-exec, which then executes ffmpeg in the same process: the record can
+    /// hold the launcher's path while the process now runs one of Zivlet's helpers. Same PID and start time.
+    @Test(arguments: [
+        ("/x/Helpers/ffmpeg", true), ("/x/Helpers/ffprobe", true), ("/usr/bin/sandbox-exec", true),
+        ("/bin/zsh", false),
+    ])
+    func aHelperRecordedAsItsSandboxLauncherIsStillReaped(now: String, reaped: Bool) throws {
+        let (store, box) = try Self.store()
+        try store.write(
+            JobRecord(
+                job: JobID(), ownerPID: 100, stagedFile: box.dir.appending(path: ".zivlet-s"), childPID: 200,
+                childPath: "/usr/bin/sandbox-exec", childStart: 42))
+        let processes = FakeProcesses(alive: [200], paths: [200: now], starts: [200: 42])
+        #expect(OrphanReaper(store: store, processes: processes, currentPID: 1).reap().killed == (reaped ? 1 : 0))
+    }
+
     @Test func aRecycledPIDRunningSomethingElseIsLeftAlone() throws {
         let (store, box) = try Self.store()
         try store.write(
