@@ -51,6 +51,10 @@ let package = Package(
             ], swiftSettings: shell),
         // Writes the image fixtures for Fixtures/generate.sh (P1-60, D-M4-15); a dev tool, not shipped or gated.
         .executableTarget(name: "zivlet-fixtures", dependencies: ["CWebP"], swiftSettings: strict),
+        // Times one engine conversion for Scripts/bench.sh (P1-63); a dev tool, not shipped or gated.
+        .executableTarget(
+            name: "zivlet-bench", dependencies: ["ZivletCore", "ZivletEngineKit", "EngineImage", "EngineMedia"],
+            swiftSettings: strict),
         .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: strict),
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",

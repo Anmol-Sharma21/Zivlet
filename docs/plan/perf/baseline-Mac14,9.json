@@ -1,0 +1,19 @@
+{
+  "model": "Mac14,9",
+  "macos": "26A428",
+  "date": "20261021-214407",
+  "note": "27-only",
+  "metrics": {
+    "heic12mp_to_jpeg_ms": 29.5,
+    "mov1080p60s_to_mp4_s": 8.97,
+    "drop_to_admit_ms": 0.709,
+    "drop_to_hud_ms": 15.905,
+    "idle_wakeups": 0,
+    "idle_cpu_percent": 0.0,
+    "tap_to_wheel_p95_ms": 19.308
+  },
+  "slack": {
+    "drop_to_hud_ms": 6,
+    "tap_to_wheel_p95_ms": 4
+  }
+}

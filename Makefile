@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -107,3 +107,9 @@ matrix:
 
 matrix-subset:
 	ZIVLET_MATRIX=subset $(MAKE) matrix
+
+# P1-63, G-9: engine timings, drop → admit/HUD and tap → wheel from signposts, idle wake-ups; fails on a > 10 %
+# regression against docs/plan/perf/baseline-<model>.json (written by the first run). Needs make app and
+# make release-check first.
+bench:
+	$(ENV) $(NATIVE) Vendor/ensure-media.sh >/dev/null && Scripts/bench.sh

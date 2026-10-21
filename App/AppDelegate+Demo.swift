@@ -5,14 +5,14 @@ import ZivletWheel
 import ZivletWheelCore
 
 extension AppDelegate {
-    /// DEBUG: `-ZivletDemoWheel <mode>` shows the wheel without a drag; `-ZivletDemoConvert <path> <format>
+    /// DEBUG: `-ZivletDemoWheel <mode> [-ZivletDemoRepeat <n>]` shows the wheel without a drag (n times); `-ZivletDemoConvert <path> <format>
     /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
     /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, so end-to-end checks need no drag.
     func launchDemoIfRequested() {
         #if DEBUG
             do {
                 let arguments = ProcessInfo.processInfo.arguments
-                if let scenario = try DemoScenario.parse(arguments: arguments) { wheel?.showDemo(scenario) }
+                if let scenario = try DemoScenario.parse(arguments: arguments) { showDemo(scenario) }
                 if let pane = SettingsPane.demo(arguments: arguments) { settingsWindow.show(pane) }
                 if let dir = UITestFixture.directory(arguments: arguments) {
                     conversion.hud.show(try UITestFixture.snapshot(in: dir))
@@ -30,6 +30,25 @@ extension AppDelegate {
     }
 
     #if DEBUG
+        /// Shows the demo wheel `repeats` times, 200 ms shown and 200 ms hidden each, for the bench (P1-63).
+        private func showDemo(_ scenario: DemoScenario) {
+            guard scenario.repeats > 1 else {
+                wheel?.showDemo(scenario)
+                return
+            }
+            Task { [weak self] in
+                let gap = Duration.milliseconds(200)
+                for index in 0..<scenario.repeats {
+                    if index > 0 {
+                        self?.wheel?.hide()
+                        guard (try? await Task.sleep(for: gap)) != nil else { return }  // cancelled: stop
+                    }
+                    self?.wheel?.showDemo(scenario)
+                    guard (try? await Task.sleep(for: gap)) != nil else { return }
+                }
+            }
+        }
+
         private func runDemo(_ demo: DemoConversion) {
             let selection = WheelSelection(mode: .convert, target: .convert(demo.target), urls: [demo.url])
             guard let started = handle(selection, near: nil), let delay = demo.cancelAfter else { return }

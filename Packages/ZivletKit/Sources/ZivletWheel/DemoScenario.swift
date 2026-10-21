@@ -8,20 +8,25 @@ import ZivletWheelCore
         case unknownMode(String)
         case missingValue(String)
         case badHighlight(String)
+        case badRepeat(String)
     }
 
     /// DEBUG launch arguments that show the wheel at screen centre without a drag, so screenshots can be automated:
-    /// `-ZivletDemoWheel convert|tools|actions [-ZivletDemoFiles a.png,Photos/] [-ZivletDemoHighlight 2]`.
-    /// File names need not exist; a trailing "/" makes a folder.
+    /// `-ZivletDemoWheel convert|tools|actions [-ZivletDemoFiles a.png,Photos/] [-ZivletDemoHighlight 2]
+    /// [-ZivletDemoRepeat 50]`. File names need not exist; a trailing "/" makes a folder. The repeat count (1…1000)
+    /// shows and hides the wheel that many times, for the bench's trigger→frame timing (P1-63).
     public struct DemoScenario: Sendable, Equatable {
         public static let wheelFlag = "-ZivletDemoWheel"
         public static let filesFlag = "-ZivletDemoFiles"
         public static let highlightFlag = "-ZivletDemoHighlight"
+        public static let repeatFlag = "-ZivletDemoRepeat"
+        static let maxRepeats = 1_000
         static let sampleBytes: Int64 = 2_400_000
 
         public let mode: WheelMode
         public let payload: DragPayload
         public let highlight: Int?
+        public let repeats: Int
 
         /// Nil when the wheel flag is absent.
         public static func parse(
@@ -34,13 +39,18 @@ import ZivletWheelCore
                 guard let index = Int(raw), index >= 0 else { throw .badHighlight(raw) }
                 return index
             }
+            let repeats = try value(after: repeatFlag, in: arguments).map { raw throws(DemoScenarioError) in
+                guard let count = Int(raw), (1...maxRepeats).contains(count) else { throw .badRepeat(raw) }
+                return count
+            }
             let payload = makePayload(names ?? sampleNames(mode), registry: registry)
-            return DemoScenario(mode: mode, payload: payload, highlight: highlight)
+            return DemoScenario(mode: mode, payload: payload, highlight: highlight, repeats: repeats ?? 1)
         }
 
         /// The default sample selection for a mode (status-menu demo items).
         public static func sample(_ mode: WheelMode, registry: FormatRegistry = .standard) -> DemoScenario {
-            DemoScenario(mode: mode, payload: makePayload(sampleNames(mode), registry: registry), highlight: nil)
+            DemoScenario(
+                mode: mode, payload: makePayload(sampleNames(mode), registry: registry), highlight: nil, repeats: 1)
         }
 
         static func sampleNames(_ mode: WheelMode) -> [String] {

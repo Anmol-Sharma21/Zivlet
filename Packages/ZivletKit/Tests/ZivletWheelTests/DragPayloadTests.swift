@@ -132,6 +132,19 @@ struct DemoScenarioTests {
         #expect(demo.payload.hubItems.first?.byteCount == nil)
     }
 
+    /// The bench (P1-63) times trigger→frame over 50 shows in one launch.
+    @Test func theWheelCanBeShownRepeatedly() throws {
+        let once = try #require(try DemoScenario.parse(arguments: ["S", "-ZivletDemoWheel", "convert"]))
+        #expect(once.repeats == 1)
+        let args = ["S", "-ZivletDemoWheel", "convert", "-ZivletDemoRepeat", "50"]
+        #expect(try DemoScenario.parse(arguments: args)?.repeats == 50)
+        for bad in ["0", "-3", "x", "1001"] {
+            #expect(throws: DemoScenarioError.badRepeat(bad)) {
+                try DemoScenario.parse(arguments: ["S", "-ZivletDemoWheel", "convert", "-ZivletDemoRepeat", bad])
+            }
+        }
+    }
+
     @Test func badValuesAreTypedErrors() {
         #expect(throws: DemoScenarioError.unknownMode("spin")) {
             try DemoScenario.parse(arguments: ["S", "-ZivletDemoWheel", "spin"])
