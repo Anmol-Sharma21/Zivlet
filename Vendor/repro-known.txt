@@ -1,0 +1,2 @@
+# Staged media files that may differ between two clean builds (Vendor/repro-check.sh).
+# One per line: <path relative to the stage> <reason with the evidence>. Keep this list empty when possible.

@@ -4,6 +4,7 @@
 # Sources come from Vendor/fetch.sh (verified tarballs); this script never downloads. ZIVLET_VENDOR_WORK moves the
 # whole work tree (src, build, prefix, out, logs) elsewhere, as the reproducibility check does.
 set -euo pipefail
+source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${ZIVLET_VENDOR_WORK:-$ROOT/Vendor}
 SRC=$WORK/src; BLD=$WORK/build; PREFIX=$WORK/prefix; OUT=$WORK/out/media; LOGS=$WORK/logs
@@ -88,7 +89,10 @@ ffmpeg_args() {
     FFARGS=(--prefix="$OUT" --arch=aarch64 --target-os=darwin --cc="$CC" --cxx="$CXX"
         --enable-gpl --enable-version3 --enable-shared --disable-static --install-name-dir=@rpath
         --pkg-config-flags=--static --extra-libs=-liconv
-        "--extra-cflags=$CFLAGS -I$PREFIX/include" "--extra-ldflags=$LDFLAGS -L$PREFIX/lib -Wl,-dead_strip"
+        "--extra-cflags=$CFLAGS -I$PREFIX/include"
+        # -oso_prefix: libvorbis objects carry DWARF, so the linker's debug map names their archive; an absolute
+        # path there changes libavcodec's LC_UUID with the work-tree path (found by repro-check.sh, A8).
+        "--extra-ldflags=$LDFLAGS -L$PREFIX/lib -Wl,-dead_strip -Wl,-oso_prefix,$WORK/"
         "--extra-ldexeflags=-Wl,-rpath,@executable_path/../Frameworks"
         --disable-autodetect --enable-videotoolbox --enable-audiotoolbox --enable-zlib --enable-bzlib --enable-iconv
         --enable-libx264 --enable-libvpx --enable-libsvtav1 --enable-libdav1d --enable-libopus --enable-libvorbis

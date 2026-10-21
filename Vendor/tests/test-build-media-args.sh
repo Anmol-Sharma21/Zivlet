@@ -14,6 +14,7 @@ for flag in --enable-gpl --enable-version3 --enable-shared --disable-static "--i
 done
 if grep -qF -- "--enable-nonfree" <<<"$cfg"; then fail "nonfree must never be enabled"; fi
 grep -qF -- "-ffile-prefix-map=" <<<"$cfg" || fail "no path map"
+grep -qF -- "-Wl,-oso_prefix," <<<"$cfg" || fail "no debug-map path prefix (reproducible LC_UUID)"
 grep -qF -- "-mmacosx-version-min=26.0" <<<"$cfg" || fail "no deployment target"
 grep -qF -- "--enable-encoder=libx264," <<<"$cfg" || fail "encoder allow-list not passed from encoders.txt"
 # Every encoder name the planners emit (FFmpegRequirements) must be in the allow-list, by configure name.
