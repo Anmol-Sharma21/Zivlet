@@ -4,6 +4,7 @@
 # first, then strips local symbols (strip -x). Run Vendor/verify-media.sh on the result.
 # Usage: Vendor/stage-media.sh
 set -euo pipefail
+source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${ZIVLET_VENDOR_WORK:-$ROOT/Vendor}
 BUILT=$WORK/out/media; STAGE=$WORK/out/media-stage; DSYM=$WORK/out/media-dsym

@@ -6,6 +6,7 @@
 # A component whose stamp equals its cache key (cache-key.sh) and whose output exists prints "up to date".
 # Usage: Vendor/vendor.sh [component...]    (default: all three, then out/KEY is written)
 set -euo pipefail
+source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${ZIVLET_VENDOR_WORK:-$ROOT/Vendor}
 OUT=$WORK/out

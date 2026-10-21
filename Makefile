@@ -2,19 +2,21 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 ENV := source Scripts/env.sh &&
+# Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
+NATIVE := Vendor/ensure-native.sh &&
 
 .PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack
 
 test:
-	$(ENV) cd "$$KIT" && swift test
+	$(ENV) $(NATIVE) cd "$$KIT" && swift test
 
 # Opt-in: run planned argv through a real ffmpeg (ZIVLET_FFMPEG_DIR holds ffmpeg and ffprobe).
 smoke:
 	$(ENV) : "$${ZIVLET_FFMPEG_DIR:?set ZIVLET_FFMPEG_DIR to a directory with ffmpeg and ffprobe}" && \
-	cd "$$KIT" && swift test --filter FFmpegSmokeTests
+	$(NATIVE) cd "$$KIT" && swift test --filter FFmpegSmokeTests
 
 coverage:
-	Scripts/coverage.sh
+	$(ENV) $(NATIVE) Scripts/coverage.sh
 
 lint:
 	$(ENV) swift format lint --strict --recursive Packages/ZivletKit/Sources Packages/ZivletKit/Tests App
@@ -24,7 +26,7 @@ format:
 	$(ENV) swift format format --in-place --recursive Packages/ZivletKit/Sources Packages/ZivletKit/Tests App
 
 app:
-	$(ENV) /opt/homebrew/bin/xcodegen generate --spec project.yml && \
+	$(ENV) $(NATIVE) /opt/homebrew/bin/xcodegen generate --spec project.yml && \
 	xcodebuild -project Zivlet.xcodeproj -scheme Zivlet -configuration Debug \
 	  -derivedDataPath build/DerivedData CODE_SIGN_IDENTITY=- build 2>&1 | grep -v -e DVTPlugIn -e CoreSimulator -e CoreDevice
 
@@ -38,7 +40,7 @@ convert-demo:
 
 # P1-21: build Release and fail if any binary in it names a Homebrew tool path.
 release-check:
-	Scripts/check-release-paths.sh
+	$(ENV) $(NATIVE) Scripts/check-release-paths.sh
 
 # Vendored sources and builds (10a). vendor-test runs every script test; vendor-fetch downloads and verifies sources.
 vendor-test:

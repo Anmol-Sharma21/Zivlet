@@ -4,6 +4,7 @@
 # Usage: Vendor/build-rs.sh [--test]     --test runs the crate's tests first.
 # Crates download into Vendor/downloads/cargo-home and are checked against the committed Cargo.lock (--locked).
 set -euo pipefail
+source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${ZIVLET_VENDOR_WORK:-$ROOT/Vendor}
 OUT=$WORK/out; CRATE=$WORK/rs/zivlet-svg; STAGING=$WORK/build/native/CZivletSVG
@@ -36,10 +37,10 @@ fi
 cargo rustc --locked --release --lib --crate-type staticlib --target "$TARGET" --manifest-path "$CRATE/Cargo.toml"
 
 rm -rf "$STAGING"
-mkdir -p "$STAGING/Headers"
+mkdir -p "$STAGING/Headers/CZivletSVG" # own directory: two module maps must not collide in the products folder
 cp "$CARGO_TARGET_DIR/$TARGET/release/libzivlet_svg.a" "$STAGING/libCZivletSVG.a"
-cp "$CRATE/include/zivlet_svg.h" "$STAGING/Headers/"
-cat >"$STAGING/Headers/module.modulemap" <<'MAP'
+cp "$CRATE/include/zivlet_svg.h" "$STAGING/Headers/CZivletSVG/"
+cat >"$STAGING/Headers/CZivletSVG/module.modulemap" <<'MAP'
 module CZivletSVG {
     header "zivlet_svg.h"
     link "CZivletSVG"

@@ -31,7 +31,10 @@ let package = Package(
         .target(name: "ZivletWheel", dependencies: ["ZivletWheelCore", "ZivletTrigger"], swiftSettings: shell),
         .target(name: "ZivletEngineKit", dependencies: ["ZivletCore"], swiftSettings: strict),
         .target(name: "EngineMedia", dependencies: ["ZivletEngineKit"], swiftSettings: strict),
-        .target(name: "EngineImage", dependencies: ["ZivletEngineKit"], swiftSettings: strict),
+        // Built by Vendor/ensure-native.sh before every make target that reads this manifest (D-M4-9).
+        .binaryTarget(name: "CWebP", path: "../../Vendor/out/CWebP.xcframework"),
+        .binaryTarget(name: "CZivletSVG", path: "../../Vendor/out/CZivletSVG.xcframework"),
+        .target(name: "EngineImage", dependencies: ["ZivletEngineKit", "CWebP", "CZivletSVG"], swiftSettings: strict),
         .target(
             name: "ZivletRuntime", dependencies: ["ZivletEngineKit", "EngineMedia", "EngineImage"],
             swiftSettings: strict),
@@ -54,7 +57,8 @@ let package = Package(
             name: "EngineMediaTests", dependencies: ["EngineMedia", "TestSupport", "EngineTestSupport"], resources: [.copy("Goldens")],
             swiftSettings: strict),
         .testTarget(
-            name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport"], swiftSettings: strict),
+            name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG"],
+            swiftSettings: strict),
         .testTarget(
             name: "ZivletRuntimeTests", dependencies: ["ZivletRuntime", "EngineTestSupport"], swiftSettings: strict),
     ],

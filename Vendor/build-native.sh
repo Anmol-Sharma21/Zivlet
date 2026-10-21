@@ -4,6 +4,7 @@
 #   libwebp: libwebp.a + libwebpmux.a + libwebpdemux.a + libsharpyuv.a (built by build-media.sh with the same
 #   flags) -> libCWebP.a + headers + module map -> Vendor/out/CWebP.xcframework, content hash in CWebP.sha256.
 set -euo pipefail
+source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${ZIVLET_VENDOR_WORK:-$ROOT/Vendor}
 PREFIX=$WORK/prefix; OUT=$WORK/out; STAGING=$WORK/build/native
@@ -19,11 +20,12 @@ build_libwebp() {
     fi
     local dir=$STAGING/CWebP
     rm -rf "$dir"
-    mkdir -p "$dir/Headers/webp"
+    # Headers/<module>/: each xcframework's module map gets its own directory in the products' include folder.
+    mkdir -p "$dir/Headers/CWebP/webp"
     xcrun libtool -static -o "$dir/libCWebP.a" "$PREFIX/lib/libwebp.a" "$PREFIX/lib/libwebpmux.a" \
         "$PREFIX/lib/libwebpdemux.a" "$PREFIX/lib/libsharpyuv.a"
-    cp "$PREFIX"/include/webp/{decode,encode,types,mux,mux_types,demux}.h "$dir/Headers/webp/"
-    cat >"$dir/Headers/module.modulemap" <<'MAP'
+    cp "$PREFIX"/include/webp/{decode,encode,types,mux,mux_types,demux}.h "$dir/Headers/CWebP/webp/"
+    cat >"$dir/Headers/CWebP/module.modulemap" <<'MAP'
 module CWebP {
     header "webp/encode.h"
     header "webp/decode.h"

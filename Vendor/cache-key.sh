@@ -6,6 +6,7 @@
 #   CZivletSVG  build-rs.sh, xcframework.sh, rust-toolchain.txt, the zivlet-svg crate (manifest, lock, sources)
 #   all         the three keys together (written to Vendor/out/KEY and into the pack tarball name)
 set -euo pipefail
+source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 if [[ "${1:-}" == "--root" ]]; then ROOT=$(cd "$2" && pwd); shift 2; fi
 COMPONENT=${1:-all}

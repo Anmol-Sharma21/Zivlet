@@ -22,8 +22,15 @@ appears next to the original, and you never open an app window.
 
 ## Build
 
-You need Xcode 27 at `/Applications/Xcode.app` and XcodeGen (`brew install xcodegen`). Export `DEVELOPER_DIR` before
-you run `swift`, `xcodebuild` or `make`. (`Scripts/env.sh` falls back to the same path, but don't rely on it.)
+You need Xcode 27 at `/Applications/Xcode.app`, XcodeGen and the tools that build the vendored libraries (libwebp,
+the resvg-based SVG renderer and, for `make vendor`, FFmpeg with its codecs):
+
+```sh
+brew install xcodegen cmake meson ninja autoconf automake libtool pkgconf rust
+```
+
+`Vendor/check-tools.sh` names anything missing. Export `DEVELOPER_DIR` before you run `swift`, `xcodebuild` or `make`.
+(`Scripts/env.sh` falls back to the same path, but don't rely on it.)
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -36,6 +43,8 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 | Lint | `make lint` (`swift format lint --strict` plus a log-privacy check). `make format` fixes formatting |
 | App | `make app` (XcodeGen generates `Zivlet.xcodeproj` from `project.yml`, then xcodebuild builds an ad-hoc-signed Debug app under `build/DerivedData`) |
 | ffmpeg smoke test (opt-in) | `ZIVLET_FFMPEG_DIR=<dir> make smoke` (`<dir>` must contain `ffmpeg` and `ffprobe`) |
+| Vendored libraries | `make test`, `coverage`, `app` and `release-check` first build `CWebP` and `CZivletSVG` into `Vendor/out` when they are missing or stale (about 25 s on a clean clone). Sources are downloaded into `Vendor/downloads` and checked against the SHA-256 in `Vendor/versions.lock` |
+| Media helpers | `make vendor` builds FFmpeg 9.0.2 and its codec libraries (about 3 minutes clean) and stages and checks them; `make vendor-test` runs the vendor script tests |
 
 Zivlet doesn't bundle ffmpeg yet. A Debug build looks for a development ffmpeg in this order:
 
