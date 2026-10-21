@@ -1,4 +1,5 @@
 import AVFoundation
+import EngineImage
 import Foundation
 import Testing
 import ZivletCore
@@ -21,7 +22,7 @@ enum PropertyChecks {
         async throws
     {
         switch (source, FormatRegistry.standard.format(pair.target).category) {
-        case (.image(let facts), .pdf): try pdf(output.url, source: facts)
+        case (.image(let facts), .pdf): try pdf(output.url, pair: pair, source: facts)
         case (.image(let facts), _): try raster(output.url, pair: pair, source: facts)
         case (.media(let facts), _): try await media(output.url, pair: pair, source: facts, tools: tools)
         }
@@ -41,9 +42,11 @@ enum PropertyChecks {
         #expect(out.frames == frames, "\(out.frames) frames, expected \(frames)")
     }
 
-    static func pdf(_ url: URL, source: ImageFacts) throws {
+    /// Images → PDF: one page per frame for a multi-page TIFF (capped), one page for everything else.
+    static func pdf(_ url: URL, pair: ConversionPair, source: ImageFacts) throws {
         let pages = try #require(ImageFacts.pdfPages(url), "Core Graphics cannot open the PDF")
-        #expect(source.frames == 1 ? pages == 1 : pages >= 1, "\(pages) pages")
+        let expected = pair.source == .tiff ? min(source.frames, ImagePlanner.maxPDFPages) : 1
+        #expect(pages == expected, "\(pages) pages, expected \(expected)")
     }
 
     static func media(_ url: URL, pair: ConversionPair, source: MediaFacts, tools: MediaTools) async throws {

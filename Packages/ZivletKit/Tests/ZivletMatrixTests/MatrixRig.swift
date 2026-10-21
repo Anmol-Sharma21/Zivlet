@@ -90,12 +90,29 @@ actor MatrixRig {
         }
     }
 
+    /// A targeted case: `input` dropped under `name`, with the image colour option.
+    nonisolated func convert(_ input: URL, as name: String, to target: FormatID, colour: ImageColourOption)
+        async throws -> MatrixOutput
+    {
+        let engines = engines.map { engine in
+            engine is ImageEngine ? ImageEngine(options: ImageOptions(colour: colour)) : engine
+        }
+        switch try await run(input, to: target, named: name, engines: engines) {
+        case .converted(let output): return output
+        case .refused(let error): throw MatrixFailure("\(name) → \(target.rawValue) failed: \(error)")
+        }
+    }
+
     /// One drop of `input` onto `target`, from a fresh folder. `copying: false` drops the file where it is, for
     /// symlinks and FIFOs that admission must refuse before anything is written.
-    nonisolated func run(_ input: URL, to target: FormatID, copying: Bool = true) async throws -> MatrixRun {
+    nonisolated func run(
+        _ input: URL, to target: FormatID, copying: Bool = true, named name: String? = nil,
+        engines chosen: [any Engine]? = nil
+    ) async throws -> MatrixRun {
+        let engines = chosen ?? engines
         let folder = FileManager.default.temporaryDirectory.appending(path: "zivlet-matrix-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let dropped = copying ? folder.appending(path: input.lastPathComponent) : input
+        let dropped = copying ? folder.appending(path: name ?? input.lastPathComponent) : input
         if copying { try FileManager.default.copyItem(at: input, to: dropped) }
         let scheduler = JobScheduler(engines: engines, records: nil)
         let service = ConversionService(

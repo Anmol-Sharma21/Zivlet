@@ -36,6 +36,11 @@ struct ImageFacts: Sendable, Equatable {
         ![.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo)
     }
 
+    /// The first page's media box in points, or nil when Core Graphics cannot open the PDF.
+    static func pdfPageSize(_ url: URL) -> CGSize? {
+        CGPDFDocument(url as CFURL)?.page(at: 1)?.getBoxRect(.mediaBox).size
+    }
+
     /// Page count of a PDF, or nil when Core Graphics cannot open it.
     static func pdfPages(_ url: URL) -> Int? {
         CGPDFDocument(url as CFURL).map(\.numberOfPages)
