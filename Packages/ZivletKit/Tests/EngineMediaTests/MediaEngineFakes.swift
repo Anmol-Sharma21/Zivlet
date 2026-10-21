@@ -55,7 +55,7 @@ struct MediaRig {
     init(
         probes: [String: String], ffmpeg: SubprocessResult = FakeRunner.result(MediaRig.progress),
         encoders: [String] = HomebrewLists.encoders, locates: Bool = true, delay: Duration? = nil,
-        integrity: CountingIntegrity = CountingIntegrity()
+        integrity: CountingIntegrity = CountingIntegrity(), playability: any PlayabilityChecking = FakePlayability(true)
     ) throws {
         dir = FileManager.default.temporaryDirectory.appending(path: "zivlet-media-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -75,7 +75,7 @@ struct MediaRig {
         locator = EngineLocator(
             bundledHelpers: dir, environment: [:], developmentDirectories: [], isExecutable: { _ in locates })
         self.integrity = integrity
-        engine = MediaEngine(locator: locator, runner: runner, integrity: integrity)
+        engine = MediaEngine(locator: locator, runner: runner, integrity: integrity, playability: playability)
     }
 
     func input(_ name: String, _ format: FormatID) throws -> InputItem {

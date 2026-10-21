@@ -49,17 +49,20 @@ public struct MediaEngine: Engine {
     let runner: any ProcessRunning
     let registry: FormatRegistry
     let stall: StallPolicy
+    let playability: any PlayabilityChecking
 
     public init(
         locator: EngineLocator = EngineLocator(), runner: any ProcessRunning = SubprocessRunner(),
         integrity: any HelperIntegrityChecking = SignedHelperCheck(), capabilityCache: URL? = nil,
-        registry: FormatRegistry = .standard, stall: StallPolicy = .standard
+        registry: FormatRegistry = .standard, stall: StallPolicy = .standard,
+        playability: any PlayabilityChecking = AVPlayability()
     ) {
         self.toolbox = MediaToolbox(
             locator: locator, runner: runner, integrity: integrity, cacheDirectory: capabilityCache)
         self.runner = runner
         self.registry = registry
         self.stall = stall
+        self.playability = playability
     }
 
     /// Audio, video and GIF on both sides; the catalog decides which of those pairs exist.
@@ -129,8 +132,14 @@ public struct MediaEngine: Engine {
         } catch {
             throw .verificationFailed("The output could not be read back.")
         }
-        let expected = plan.stages.compactMap { $0.ffmpeg?.expectedDurationMicros }.last
-        try MediaVerifier.check(info, target: output.format, expectedMicros: expected, registry: registry)
+        let last = plan.stages.compactMap(\.ffmpeg).last
+        try MediaVerifier.check(
+            info, target: output.format, expectedMicros: last?.expectedDurationMicros,
+            expectedStreams: MediaVerifier.expectedStreams(last?.argv ?? []), registry: registry)
+        guard MediaVerifier.playableTargets.contains(output.format) else { return }
+        guard await playability.isPlayable(output.url, as: output.format) else {
+            throw .verificationFailed("The \(output.format.rawValue.uppercased()) output can't be played by macOS.")
+        }
     }
 }
 

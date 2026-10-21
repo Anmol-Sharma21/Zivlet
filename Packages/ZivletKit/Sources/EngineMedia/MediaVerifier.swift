@@ -3,22 +3,36 @@ import Foundation
 import ZivletCore
 import ZivletEngineKit
 
-/// Output checks after a run (03b §5.9): the container the target promises, the expected stream kind, WebM codecs,
-/// and the duration within max(0.25 s, 1 %) of the plan.
+/// Output checks after a run (03b §5.9): the container the target promises, the expected stream kind, as many video,
+/// audio and subtitle streams as the plan maps (data streams a muxer adds, such as `tmcd`, do not count), WebM codecs,
+/// and the duration within max(0.25 s, 1 %) of the plan. `MediaEngine.verify` then asks AVFoundation whether an MP4
+/// or MOV plays.
 enum MediaVerifier {
     static let minimumToleranceMicros: Int64 = 250_000
     static let webmVideo: Set<String> = ["vp8", "vp9", "av1"]
     static let webmAudio: Set<String> = ["opus", "vorbis"]
+    static let countedKinds: Set<StreamKind> = [.video, .audio, .subtitle]
+    static let playableTargets: Set<FormatID> = [.mp4, .mov]
 
-    static func check(_ info: MediaInfo, target: FormatID, expectedMicros: Int64?, registry: FormatRegistry)
-        throws(JobError)
-    {
+    /// Streams the argv maps (`-map` values); a filter graph without `-map` makes one.
+    static func expectedStreams(_ argv: [String]) -> Int {
+        max(argv.filter { $0 == "-map" }.count, 1)
+    }
+
+    static func check(
+        _ info: MediaInfo, target: FormatID, expectedMicros: Int64?, expectedStreams: Int, registry: FormatRegistry
+    ) throws(JobError) {
         guard MediaProbe.confirms(info, source: target) else {
             throw .verificationFailed("The output is not a \(target.rawValue.uppercased()) file.")
         }
         let isAudio = registry.format(target).category == .audio
         guard isAudio ? info.primaryAudio != nil : info.primaryVideo != nil else {
             throw .verificationFailed(isAudio ? "The output has no audio." : "The output has no video.")
+        }
+        let found = info.streams.filter { countedKinds.contains($0.kind) }.count
+        guard found == expectedStreams else {
+            throw .verificationFailed(
+                "The output has \(found) stream\(found == 1 ? "" : "s"), expected \(expectedStreams).")
         }
         if target == .webm { try checkWebM(info) }
         if let expectedMicros, let actual = info.durationMicros {
