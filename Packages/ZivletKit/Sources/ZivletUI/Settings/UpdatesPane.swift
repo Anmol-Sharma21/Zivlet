@@ -20,7 +20,7 @@ struct UpdatesPane: View {
                     Button("Check Now") { model.commands.checkForUpdates?() }
                         .disabled(model.commands.checkForUpdates == nil)
                     if model.commands.checkForUpdates == nil {
-                        Text("Updates aren't set up in this build.").foregroundStyle(.secondary)
+                        Text("Updates aren't set up in this build yet.").foregroundStyle(.secondary)
                     }
                 }
             }

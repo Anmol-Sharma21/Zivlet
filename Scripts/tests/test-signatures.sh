@@ -21,12 +21,14 @@ assert_contains "$app_info" "runtime"
 
 out=$("$ROOT/Scripts/verify-signatures.sh" "$T/Zivlet.app" --require-developer-id 2>&1 || true)
 assert_contains "$out" "Developer ID signature required (owner step O-1)"
+# The ad-hoc app turns library validation off (to load the ad-hoc Sparkle.framework); a release must not.
+assert_contains "$out" "library validation is off"
 assert_fails "$ROOT/Scripts/verify-signatures.sh" "$T/Zivlet.app" --require-developer-id
 
-# --helpers-only leaves the app's own signature alone.
+# --nested-only leaves the app's own signature alone.
 before=$(codesign -dvvv "$T/Zivlet.app" 2>&1 | grep '^CDHash=')
-"$ROOT/Scripts/sign-app.sh" --helpers-only - "$T/Zivlet.app" >/dev/null
-assert_eq "$(codesign -dvvv "$T/Zivlet.app" 2>&1 | grep '^CDHash=')" "$before" "app CDHash after --helpers-only"
+"$ROOT/Scripts/sign-app.sh" --nested-only - "$T/Zivlet.app" >/dev/null
+assert_eq "$(codesign -dvvv "$T/Zivlet.app" 2>&1 | grep '^CDHash=')" "$before" "app CDHash after --nested-only"
 
 printf 'x' >> "$T/Zivlet.app/Contents/Frameworks/libavutil.61.dylib"
 out=$("$ROOT/Scripts/verify-signatures.sh" "$T/Zivlet.app" 2>&1 || true)

@@ -29,7 +29,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
     private lazy var settings = SettingsWiring(conversions: conversions)
-    lazy var settingsWindow = SettingsWindowWiring(store: settings.store, conversions: conversions) {
+    private let updater = UpdaterWiring()
+    lazy var settingsWindow = SettingsWindowWiring(
+        store: settings.store, conversions: conversions, checkForUpdates: updater.checkForUpdates
+    ) {
         [weak self] in self?.trigger?.trace.lines ?? []
     }
     private lazy var actions = ActionWiring(
@@ -67,6 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         wheel.onDragEnded = { [weak trigger] in trigger?.receive(.dropHandled) }
         wheel.delegate = self
+        updater.start(with: settings.settings.updates)
+        settings.updater = updater
         wireMenu(wheel)
         self.wheel = wheel
         self.trigger = trigger
@@ -127,7 +132,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             },
             settings: { [weak self] in self?.settingsWindow.show() },
-            practice: { [weak self] in self?.onboarding.show(.practiceConvert) })
+            practice: { [weak self] in self?.onboarding.show(.practiceConvert) },
+            checkForUpdates: updater.checkForUpdates)
         menu.install(wheel: wheel)
         actions.onFinished = { [menu] in menu.refreshRecent() }
     }

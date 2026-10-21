@@ -11,6 +11,8 @@ final class SettingsWiring {
     let feedback = SystemWheelFeedback()
     private let conversions: ConversionService
     private weak var trigger: TriggerHost?
+    /// Set before `attach`; follows Settings › Updates (D-M4-11).
+    var updater: UpdaterWiring?
     private var applied: Settings?
     private var observer: Task<Void, Never>?
     /// `-ZivletRevealResults NO` on the command line (demo scripts) turns reveal off for that run only.
@@ -40,6 +42,7 @@ final class SettingsWiring {
         let previous = applied
         applied = settings
         if previous?.trigger != settings.trigger { applyTrigger(settings.trigger, wasPaused: previous?.trigger.paused) }
+        if previous?.updates != settings.updates { updater?.apply(settings.updates) }
         feedback.apply(FeedbackSettings(sound: settings.feedback.sound, haptics: settings.feedback.haptics))
         if previous?.output.fallbackFolder != settings.output.fallbackFolder {
             let folder = URL(filePath: settings.output.fallbackFolder, directoryHint: .isDirectory)

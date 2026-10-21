@@ -28,6 +28,7 @@ Besides these, the app links only Apple system frameworks and the Swift runtime 
 | zimg | 3.0.6 | WTFPL | inside libavfilter | |
 | libwebp (+ mux, demux, sharpyuv) | 1.6.0 | BSD-3-Clause | static library linked into the app (`CWebP`) and inside libavcodec | WebP output (the in-app writer lands in M4 stream B) |
 | resvg / usvg / tiny-skia and their crates | 0.47.0 | resvg Apache-2.0 OR MIT; tiny-skia BSD-3-Clause; the other crates MIT, Apache-2.0, Zlib or BSD (the full list is in `rust-crates.txt` in the app) | static library linked into the app (`CZivletSVG`, through Zivlet's own `zivlet-svg` crate, GPL-3.0-or-later) | SVG input (used from M4 stream B); only `data:` image references are loaded |
+| Sparkle | 2.10.0 | MIT (includes bsdiff, BSD-2-Clause) | `Contents/Frameworks/Sparkle.framework` (from its Swift package, checksum-verified; thinned to arm64, XPC services removed) | Updates. Started only when the build has a real feed and EdDSA public key; this repository's builds have neither, so the updater never runs. The pinned tarball's release tools sign the appcast. Full LICENSE reproduced |
 
 Sounds and images that are Zivlet's own, so no third-party licence applies:
 
@@ -59,7 +60,6 @@ Tools used during development, not distributed with Zivlet:
 | libimagequant | 4.x | GPL-3.0-or-later | static | PNG quantisation |
 | oxipng | 10.x | MIT | static | Lossless PNG optimisation |
 | krilla / pdf-writer | 0.8 / 0.15 | MIT OR Apache-2.0 | static | PDF writing |
-| Sparkle | 2.10.0 | MIT (includes bsdiff, BSD-2-Clause) | framework | Updates. The pinned tarball is already fetched and licence-checked (its release tools sign updates); the framework ships with the updater (M4 F2). Full LICENSE reproduced |
 | swift-argument-parser | 1.x | Apache-2.0 WITH Swift-exception | Swift package | Command-line interface |
 | swift-subprocess | 1.x | Apache-2.0 WITH Swift-exception | Swift package | |
 | ZIPFoundation | 0.9 | MIT | Swift package | |

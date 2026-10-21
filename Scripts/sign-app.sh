@@ -2,15 +2,18 @@
 # Signs Zivlet.app inside-out (P0-38, 11 §7.2): libraries in Contents/Frameworks, then the helpers in
 # Contents/Helpers (identifier app.zivlet.helper.<name>), then nested frameworks (their inner bundles and
 # executables first), then the app with Config/Zivlet.entitlements. Always the hardened runtime; a secure timestamp
-# when the identity is a real certificate. Ad-hoc helpers also get Config/HelperAdHoc.entitlements, because library
-# validation cannot match the Team ID of ad-hoc files (they have none).
-# Usage: Scripts/sign-app.sh [--helpers-only] <identity|-> <Zivlet.app>
+# when the identity is a real certificate. Ad-hoc signatures use Config/HelperAdHoc.entitlements for the helpers and
+# Config/ZivletAdHoc.entitlements for the app, because library validation cannot match the Team ID of ad-hoc files
+# (they have none).
+# --nested-only signs everything inside the app but not the app itself (the Xcode embed phase: Xcode signs the app
+# afterwards).
+# Usage: Scripts/sign-app.sh [--nested-only] <identity|-> <Zivlet.app>
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-HELPERS_ONLY=0
-if [[ "${1:-}" == "--helpers-only" ]]; then HELPERS_ONLY=1; shift; fi
-IDENTITY=${1:?usage: sign-app.sh [--helpers-only] <identity|-> <app>}
-APP=${2:?usage: sign-app.sh [--helpers-only] <identity|-> <app>}
+NESTED_ONLY=0
+if [[ "${1:-}" == "--nested-only" ]]; then NESTED_ONLY=1; shift; fi
+IDENTITY=${1:?usage: sign-app.sh [--nested-only] <identity|-> <app>}
+APP=${2:?usage: sign-app.sh [--nested-only] <identity|-> <app>}
 CONTENTS=$APP/Contents
 [[ -d "$CONTENTS" ]] || { echo "error: $APP is not an app bundle" >&2; exit 1; }
 
@@ -19,6 +22,9 @@ FLAGS="--force --options runtime"
 [[ "$IDENTITY" != "-" ]] && FLAGS="$FLAGS --timestamp"
 HELPER_FLAGS=""
 [[ "$IDENTITY" == "-" ]] && HELPER_FLAGS="--entitlements $ROOT/Config/HelperAdHoc.entitlements"
+# The app keeps library validation on with a real identity; ad-hoc it cannot load the ad-hoc Sparkle.framework.
+APP_ENTITLEMENTS=$ROOT/Config/Zivlet.entitlements
+[[ "$IDENTITY" == "-" ]] && APP_ENTITLEMENTS=$ROOT/Config/ZivletAdHoc.entitlements
 
 sign() {
     local out
@@ -60,7 +66,7 @@ sign_frameworks() {
 
 sign_libraries
 sign_helpers
-if ((HELPERS_ONLY)); then echo "Signed the helpers in $APP with ${IDENTITY}"; exit 0; fi
 sign_frameworks
-sign --entitlements "$ROOT/Config/Zivlet.entitlements" "$APP"
+if ((NESTED_ONLY)); then echo "Signed the nested code in $APP with ${IDENTITY}"; exit 0; fi
+sign --entitlements "$APP_ENTITLEMENTS" "$APP"
 echo "Signed $APP with ${IDENTITY}"

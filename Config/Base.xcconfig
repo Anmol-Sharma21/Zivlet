@@ -13,3 +13,7 @@ DEVELOPMENT_TEAM =
 GENERATE_INFOPLIST_FILE = NO
 MARKETING_VERSION = 0.0.1
 CURRENT_PROJECT_VERSION = 1
+// Every Xcode build here is ad-hoc (above), and library validation refuses the ad-hoc Sparkle.framework in an ad-hoc
+// app ("different Team IDs"). Xcode writes this exception into the signed entitlements; a Developer ID build is
+// re-signed by Scripts/sign-app.sh with Config/Zivlet.entitlements, which keeps library validation on.
+RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES

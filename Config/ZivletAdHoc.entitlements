@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+The app's entitlements for ad-hoc signatures made by Scripts/sign-app.sh (the release dry run). Under the hardened
+runtime, library validation refuses the ad-hoc Sparkle.framework in an ad-hoc app ("different Team IDs"), because
+neither has a Team ID. Xcode builds get the same exception from RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION in
+Base.xcconfig. A Developer ID build is signed with Zivlet.entitlements instead, and the Developer ID signature gate
+(verify-signatures.sh) fails if library validation is off.
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

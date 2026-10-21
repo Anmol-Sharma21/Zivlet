@@ -12,6 +12,10 @@ configFiles:
 packages:
   ZivletKit:
     path: Packages/ZivletKit
+  # P1-53, D-M4-11: Sparkle 2 (MIT). Its SwiftPM binary target is checksum-verified by SwiftPM.
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
 targets:
   Zivlet:
     type: application
@@ -20,6 +24,8 @@ targets:
     dependencies:
       - package: ZivletKit
         product: ZivletKit
+      - package: Sparkle
+        product: Sparkle
     info:
       path: App/Info.plist
       properties:
@@ -31,6 +37,13 @@ targets:
         LSMinimumSystemVersion: "26.0"
         LSApplicationCategoryType: public.app-category.utilities
         NSHumanReadableCopyright: "Copyright © 2026 Zivlet contributors. GPL-3.0-or-later."
+        # Sparkle (D-M4-11): the updater starts only when both values are real (UpdaterConfiguration); checks and
+        # downloads follow Settings › Updates, so the plist defaults are off and Sparkle never asks on its own.
+        SUFeedURL: $(ZIVLET_FEED_URL)
+        SUPublicEDKey: $(SPARKLE_PUBLIC_ED_KEY)
+        SUEnableAutomaticChecks: false
+        SUAutomaticallyUpdate: false
+        SUVerifyUpdateBeforeExtraction: true
     entitlements:
       path: Config/Zivlet.entitlements
     settings:

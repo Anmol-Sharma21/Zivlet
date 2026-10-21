@@ -4,3 +4,7 @@ OTHER_CODE_SIGN_FLAGS = --options=runtime
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG
 // One binary: library validation under the hardened runtime rejects a separate ad-hoc Zivlet.debug.dylib.
 ENABLE_DEBUG_DYLIB = NO
+// Sparkle (D-M4-11, owner steps O-2, O-3). `$()` keeps `//` from starting a comment. The `.invalid` placeholder and
+// the empty key keep the updater off; Debug builds always keep them (the owner sets Release.xcconfig).
+ZIVLET_FEED_URL = https:/$()/updates.zivlet.invalid/stable/appcast.xml
+SPARKLE_PUBLIC_ED_KEY =

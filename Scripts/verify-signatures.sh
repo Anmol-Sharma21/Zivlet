@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Signature gate (P1-52, 11 §7.3). Every Mach-O in the app must pass `codesign --verify --strict` and carry the
 # hardened runtime flag. With --require-developer-id, every file must also have the same Team ID and a secure
-# timestamp, and Gatekeeper (`spctl`) must accept the app (that needs notarization, owner step O-1). Without the flag
-# an ad-hoc signed app is reported, not failed (05 §8 fallback).
+# timestamp, the app must keep library validation on, and Gatekeeper (`spctl`) must accept the app (that needs
+# notarization, owner step O-1). Without the flag an ad-hoc signed app is reported, not failed (05 §8 fallback).
 # Usage: Scripts/verify-signatures.sh <Zivlet.app> [--require-developer-id]
 set -euo pipefail
 APP=${1:?usage: verify-signatures.sh <app> [--require-developer-id]}
@@ -32,6 +32,10 @@ done < <(find "$APP" -type f -print0)
 codesign --verify --strict --deep "$APP" 2>/dev/null || problem "the app's seal is broken (codesign --verify --deep)"
 
 if [[ "$REQUIRE_ID" == "--require-developer-id" ]]; then
+    # Ad-hoc builds need it off to load Sparkle (Config/ZivletAdHoc.entitlements); a Developer ID build must not.
+    if codesign -d --entitlements - --xml "$APP" 2>/dev/null | grep -q "disable-library-validation"; then
+        problem "library validation is off in the app (sign it with Config/Zivlet.entitlements)"
+    fi
     distinct=$(tr ' ' '\n' <<<"$teams" | { grep -v '^$' || true; } | sort -u)
     if ((adhoc)) || [[ -z "$distinct" || "$distinct" == "not set" ]]; then
         echo "verify-signatures: Developer ID signature required (owner step O-1)" >&2

@@ -3,3 +3,7 @@ ONLY_ACTIVE_ARCH = NO
 DEAD_CODE_STRIPPING = YES
 STRIP_INSTALLED_PRODUCT = YES
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+// Sparkle (D-M4-11, owner steps O-2, O-3). `$()` keeps `//` from starting a comment. The `.invalid` placeholder and
+// the empty key keep the updater off; the owner puts the final feed and the EdDSA public key here (Release only).
+ZIVLET_FEED_URL = https:/$()/updates.zivlet.invalid/stable/appcast.xml
+SPARKLE_PUBLIC_ED_KEY =

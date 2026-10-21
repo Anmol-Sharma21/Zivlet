@@ -13,13 +13,18 @@ final class SettingsWindowWiring {
     private let store: SettingsStore
     private let conversions: ConversionService
     private let triggerTrace: () -> [String]
+    private let checkForUpdates: (() -> Void)?
     private var controller: SettingsWindowController?
     private var model: SettingsModel?
     private var observer: Task<Void, Never>?
 
-    init(store: SettingsStore, conversions: ConversionService, triggerTrace: @escaping () -> [String]) {
+    init(
+        store: SettingsStore, conversions: ConversionService, checkForUpdates: (() -> Void)?,
+        triggerTrace: @escaping () -> [String]
+    ) {
         self.store = store
         self.conversions = conversions
+        self.checkForUpdates = checkForUpdates
         self.triggerTrace = triggerTrace
     }
 
@@ -53,6 +58,7 @@ final class SettingsWindowWiring {
                 return store.current
             },
             chooseFallbackFolder: { [weak self] in self?.chooseFallbackFolder() },
+            checkForUpdates: checkForUpdates,
             copyDiagnostics: { [weak self] in self?.copyDiagnostics() },
             openAcknowledgements: Self.acknowledgements.map { url in { NSWorkspace.shared.open(url) } })
     }

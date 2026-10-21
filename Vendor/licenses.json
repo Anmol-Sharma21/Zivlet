@@ -12,7 +12,7 @@
     { "name": "lame", "version": "3.100", "spdx": "LGPL-2.0-or-later", "source": "src", "files": ["COPYING"], "ships": "inside libavcodec", "url": "https://lame.sourceforge.io" },
     { "name": "libwebp", "version": "1.6.0", "spdx": "BSD-3-Clause", "source": "src", "files": ["COPYING", "PATENTS"], "ships": "static, in the app executable (CWebP) and inside libavcodec", "url": "https://chromium.googlesource.com/webm/libwebp" },
     { "name": "zimg", "version": "3.0.6", "spdx": "WTFPL", "source": "src", "files": ["COPYING"], "ships": "inside libavfilter", "url": "https://github.com/sekrit-twc/zimg" },
-    { "name": "sparkle", "version": "2.10.0", "spdx": "MIT", "source": "tarball", "files": ["LICENSE"], "ships": "not yet bundled; release tools only until the updater lands (F2)", "url": "https://sparkle-project.org" },
+    { "name": "sparkle", "version": "2.10.0", "spdx": "MIT", "source": "tarball", "files": ["LICENSE"], "ships": "Contents/Frameworks/Sparkle.framework (arm64, no XPC services; started only with a real feed and key), and its release tools sign the appcast", "url": "https://sparkle-project.org" },
     { "name": "resvg", "version": "0.47.0", "spdx": "Apache-2.0 OR MIT", "source": "crate", "files": ["LICENSE-MIT", "LICENSE-APACHE"], "ships": "static, in the app executable (CZivletSVG, with its crate tree)", "url": "https://github.com/linebender/resvg" }
   ]
 }
