@@ -78,6 +78,11 @@ let package = Package(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
         .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings"], swiftSettings: strict),
         .testTarget(name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport"], swiftSettings: shell),
+        // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.
+        .testTarget(
+            name: "ZivletMatrixTests",
+            dependencies: ["ZivletRuntime", "ZivletCore", "ZivletEngineKit", "EngineMedia", "EngineImage"],
+            swiftSettings: strict),
     ],
     swiftLanguageModes: [.v6]
 )

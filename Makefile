@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -96,3 +96,12 @@ fixtures-check:
 
 fixtures-test:
 	@for t in Fixtures/tests/test-*.sh; do bash "$$t" || exit 1; done
+
+# P1-61: every Phase 1 pair (+ SVG) through the real pipeline with the vendored ffmpeg and the small fixtures.
+# ZIVLET_MATRIX=subset (default, one pair per source and target, for PRs) or full (all 161, nightly).
+matrix:
+	$(ENV) $(NATIVE) Vendor/ensure-media.sh >/dev/null && Fixtures/generate.sh --set small >/dev/null && \
+	cd "$$KIT" && env -u ZIVLET_FFMPEG_DIR ZIVLET_MATRIX="$${ZIVLET_MATRIX:-subset}" swift test --filter ZivletMatrixTests
+
+matrix-subset:
+	ZIVLET_MATRIX=subset $(MAKE) matrix
