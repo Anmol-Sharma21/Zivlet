@@ -7,7 +7,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${ZIVLET_VENDOR_WORK:-$ROOT/Vendor}
 OUT=$WORK/out
 PARTS="KEY media-stage media-dsym CWebP.xcframework CWebP.sha256 CWebP.key CZivletSVG.xcframework
-CZivletSVG.sha256 CZivletSVG.key"
+CZivletSVG.sha256 CZivletSVG.key licenses"
 
 [[ -s "$OUT/KEY" ]] || { echo "error: $OUT/KEY missing; run make vendor first" >&2; exit 1; }
 key=$(tr -d '[:space:]' <"$OUT/KEY")

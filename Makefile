@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test
+.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -67,3 +67,12 @@ vendor-unpack:
 # Shell tests of the release and bundle scripts (some need make vendor and make app first).
 script-test:
 	@for t in Scripts/tests/test-*.sh; do bash "$$t" || exit 1; done
+
+# P1-51: licence manifest against the lock, allowed licences, licence files, no nonfree ffmpeg; then the texts that
+# ship in Contents/Resources/Licenses.
+licence-gate:
+	$(ENV) Scripts/licence-gate.sh && Scripts/collect-licences.sh
+
+# Corresponding source for a release: make source-bundle VERSION=0.1.0 (writes build/release/).
+source-bundle:
+	$(ENV) Scripts/source-bundle.sh "$${VERSION:?set VERSION, e.g. 0.1.0}"

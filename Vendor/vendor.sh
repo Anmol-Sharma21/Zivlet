@@ -57,4 +57,7 @@ components=("${@:-${ALL[@]}}")
 "$ROOT/Vendor/check-tools.sh"
 if [[ " ${components[*]} " == *" media "* ]]; then "$ROOT/Vendor/fetch.sh" --src "$WORK/src" >/dev/null; fi
 for c in "${components[@]}"; do ensure "$c"; done
-if (($# == 0)); then "$ROOT/Vendor/cache-key.sh" >"$OUT/KEY"; fi
+if (($# == 0)); then
+    "$ROOT/Vendor/cache-key.sh" >"$OUT/KEY"
+    LICENSES_OUT=$OUT/licenses "$ROOT/Scripts/collect-licences.sh" # the texts the app ships (P1-51)
+fi
