@@ -11,7 +11,7 @@ public actor ConversionService {
     private let feed: AsyncStream<BatchSnapshot>.Continuation
     private let scheduler: JobScheduler
     private let engines: [any Engine]
-    private let factory: JobRequestFactory
+    private var factory: JobRequestFactory
     private var batches: [BatchID: BatchSnapshot] = [:]
     private var listener: Task<Void, Never>?
     private let loadMonitor: SystemLoadMonitor?
@@ -67,6 +67,11 @@ public actor ConversionService {
             if await engine.availability(of: pair).isAvailable { available.insert(pair.target) }
         }
         return catalog.distinctTargets.subtracting(available)
+    }
+
+    /// Settings changed the folder used when a source folder is read-only (01-prd FR-17); later drops use it.
+    public func use(fallbackFolder: URL) {
+        factory = factory.with(fallbackFolder: fallbackFolder)
     }
 
     public func cancel(_ batch: BatchID) async {

@@ -9,6 +9,11 @@ public enum WheelTheme: String, Sendable, CaseIterable {
         self = preference.flatMap(WheelTheme.init(rawValue:)) ?? .glass
     }
 
+    /// A `-ZivletWheelTheme` launch argument (DEBUG demos) wins over the theme chosen in Settings.
+    public static func preferred(settings: WheelTheme, defaults: UserDefaults = .standard) -> WheelTheme {
+        defaults.string(forKey: WheelAppearance.themeKey).flatMap(WheelTheme.init(rawValue:)) ?? settings
+    }
+
     /// Solid is forced under Reduce Transparency or Increase Contrast (03a §2.7).
     public static func resolve(preference: WheelTheme, reduceTransparency: Bool, increaseContrast: Bool) -> WheelTheme {
         reduceTransparency || increaseContrast ? .solid : preference
@@ -29,12 +34,12 @@ public struct WheelAppearance: Sendable, Equatable {
         self.reduceMotion = reduceMotion
     }
 
-    /// Reads the theme preference (launch arguments `-ZivletWheelTheme solid` land here too) and the system
+    /// Reads the theme preference (Settings, or a `-ZivletWheelTheme solid` launch argument) and the system
     /// accessibility switches.
-    public static func current(defaults: UserDefaults = .standard) -> WheelAppearance {
+    public static func current(defaults: UserDefaults = .standard, settings: WheelTheme = .glass) -> WheelAppearance {
         let workspace = NSWorkspace.shared
         let theme = WheelTheme.resolve(
-            preference: WheelTheme(preference: defaults.string(forKey: themeKey)),
+            preference: WheelTheme.preferred(settings: settings, defaults: defaults),
             reduceTransparency: workspace.accessibilityDisplayShouldReduceTransparency,
             increaseContrast: workspace.accessibilityDisplayShouldIncreaseContrast)
         return WheelAppearance(

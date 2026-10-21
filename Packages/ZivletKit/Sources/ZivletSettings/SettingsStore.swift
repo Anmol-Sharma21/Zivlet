@@ -6,7 +6,9 @@ import os
 /// line naming the group (never its value). An update that makes a group invalid keeps that group as it was.
 @MainActor
 public final class SettingsStore {
-    /// The M3 "Reveal results in Finder" key; read once into `output.revealResults`, then removed.
+    /// The M3 "Reveal results in Finder" key; a stored value is read once into `output.revealResults`, then
+    /// removed. As a launch argument (`-ZivletRevealResults NO`, used by the demo scripts) it is an override for that
+    /// run only and is never migrated.
     public static let legacyRevealKey = "ZivletRevealResults"
 
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "settings")
@@ -15,10 +17,14 @@ public final class SettingsStore {
     private let defaults: UserDefaults
     private var subscribers: [UUID: AsyncStream<Settings>.Continuation] = [:]
 
-    public init(defaults: UserDefaults = .standard) {
+    /// `launchArguments` is the argument domain (`-Key value` pairs); keys found there are not migrated.
+    public init(
+        defaults: UserDefaults = .standard,
+        launchArguments: [String: Any] = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+    ) {
         self.defaults = defaults
         current = Self.load(from: defaults)
-        migrateLegacyReveal()
+        if launchArguments[Self.legacyRevealKey] == nil { migrateLegacyReveal() }
     }
 
     /// A new stream of every later change; each subscriber gets its own.

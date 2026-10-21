@@ -35,6 +35,11 @@ public struct JobRequestFactory: Sendable {
         self.catalog = catalog
     }
 
+    /// A copy that sends read-only-folder outputs to `fallbackFolder`.
+    public func with(fallbackFolder: URL) -> JobRequestFactory {
+        JobRequestFactory(fallbackFolder: fallbackFolder, registry: registry, catalog: catalog)
+    }
+
     public func requests(for urls: [URL], target: FormatID) -> RequestPlan {
         var requests: [JobRequest] = []
         var rejections: [RequestRejection] = []

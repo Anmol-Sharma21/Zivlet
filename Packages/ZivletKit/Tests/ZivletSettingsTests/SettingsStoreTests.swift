@@ -109,6 +109,14 @@ struct SettingsStoreTests {
         #expect(!SettingsStore(defaults: defaults).current.output.revealResults)
     }
 
+    @Test func aLaunchArgumentOverrideIsNotMigrated() throws {
+        let defaults = try freshDefaults()
+        defaults.set(false, forKey: "ZivletRevealResults")
+        let store = SettingsStore(defaults: defaults, launchArguments: ["ZivletRevealResults": "NO"])
+        #expect(store.current.output.revealResults)
+        #expect(defaults.data(forKey: "settings.output.v1") == nil)
+    }
+
     @Test func changesAreStreamed() async throws {
         let store = SettingsStore(defaults: try freshDefaults())
         var iterator = store.changes.makeAsyncIterator()
@@ -124,5 +132,19 @@ struct SettingsStoreTests {
         store.update { $0.with(\.trigger.paused, true) }
         #expect(await first.next()?.trigger.paused == true)
         #expect(await second.next()?.trigger.paused == true)
+    }
+}
+
+@Suite("Settings → trigger configuration (D2)")
+struct TriggerGroupConfigTests {
+    @Test func theTriggerGroupBecomesTheMachineConfig() throws {
+        let bindings = try TriggerBindings(convert: .control, tools: .command, actions: .shift)
+        var group = TriggerGroup()
+        group.bindings = bindings
+        group.retapClosesWheel = false
+        group.honorsModifierHeldAtDragStart = true
+        let config = group.config
+        #expect(config.bindings == bindings && !config.retapClosesWheel && config.honorsModifierHeldAtDragStart)
+        #expect(config.detectionWindow == TriggerConfig().detectionWindow)
     }
 }

@@ -2,6 +2,7 @@ import AppKit
 import ZivletActions
 import ZivletCore
 import ZivletRuntime
+import ZivletSettings
 import ZivletTrigger
 import ZivletTriggerHost
 import ZivletWheel
@@ -15,15 +16,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Debug builds only: `-ZivletFlagsMonitor YES` adds the global `flagsChanged` monitor for spike P-T2 (off by
     /// default, 03a §1.8). Its permission behaviour is unknown, so Release never reads the default.
     static let flagsMonitorKey = "ZivletFlagsMonitor"
-    /// "Reveal results in Finder" (03a §4.5), default on; `-ZivletRevealResults NO` turns it off.
-    static let revealResultsKey = "ZivletRevealResults"
     static let quitLimit = Duration.seconds(2)
 
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "app")
     private let conversions = ConversionService.standard()
     private let undoHistory = UndoHistory()
     private let hud = ResultHUD()
-    private lazy var actions = ActionWiring(undoHistory: undoHistory) { [weak self] batch in
+    private lazy var settings = SettingsWiring(conversions: conversions)
+    private lazy var actions = ActionWiring(
+        undoHistory: undoHistory, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
+    ) { [weak self] batch in
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
     private var trigger: TriggerHost?
@@ -34,11 +36,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        UserDefaults.standard.register(defaults: [Self.revealResultsKey: true])
         reapOrphans()
         let reader = DragPayloadReader()
-        let wheel = WheelController(reader: reader)
-        let config = TriggerConfig()
+        let wheel = WheelController(
+            reader: reader, feedback: settings.feedback,
+            appearance: { [settings] in WheelAppearance.current(settings: settings.wheelTheme) })
+        let config = settings.settings.trigger.config
         let trigger = TriggerHost(
             config: config,
             reader: SystemInputReader(pointerInsideWheel: { [weak wheel] in wheel?.isPointerInside ?? false }),
@@ -51,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenu = StatusMenu(bindings: config.bindings, wheel: wheel)
         self.wheel = wheel
         self.trigger = trigger
-        trigger.start()
+        settings.attach(trigger)
         wireHUD()
         observeConversions()
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
@@ -133,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { [undoHistory] in await undoHistory.record(snapshot.batch, outputs: published) }
         }
         let outputs = published.map(\.url)
-        if !outputs.isEmpty, UserDefaults.standard.bool(forKey: Self.revealResultsKey) {
+        if !outputs.isEmpty, settings.revealsResults {
             NSWorkspace.shared.activateFileViewerSelecting(outputs)
         }
     }

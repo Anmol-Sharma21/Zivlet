@@ -11,24 +11,40 @@ public protocol WheelFeedback: AnyObject {
     func dropAccepted()
 }
 
-/// Trackpad haptics plus the synthesized tick on highlight changes (14 §2.4).
+/// The user's Sound and Haptics switches (03a §2.7: separate, both on by default).
+public struct FeedbackSettings: Sendable, Equatable {
+    public static let standard = FeedbackSettings(sound: true, haptics: true)
+
+    public let sound: Bool
+    public let haptics: Bool
+
+    public init(sound: Bool, haptics: Bool) {
+        self.sound = sound
+        self.haptics = haptics
+    }
+}
+
+/// Trackpad haptics plus the synthesized tick on highlight changes (14 §2.4), each behind its own setting.
 public final class SystemWheelFeedback: WheelFeedback {
     private let performer: any NSHapticFeedbackPerformer
     private let tick: TickSound
-    private let hapticsEnabled: Bool
+    private var settings: FeedbackSettings
 
     public init(
         performer: any NSHapticFeedbackPerformer = NSHapticFeedbackManager.defaultPerformer,
-        tick: TickSound = TickSound(), hapticsEnabled: Bool = true
+        tick: TickSound = TickSound(), settings: FeedbackSettings = .standard
     ) {
         self.performer = performer
         self.tick = tick
-        self.hapticsEnabled = hapticsEnabled
+        self.settings = settings
     }
+
+    /// New switches apply from the next event.
+    public func apply(_ settings: FeedbackSettings) { self.settings = settings }
 
     public func highlightChanged() {
         haptic(.alignment)
-        tick.play()
+        if settings.sound { tick.play() }
     }
 
     public func modeSwitched() { haptic(.levelChange) }
@@ -37,7 +53,7 @@ public final class SystemWheelFeedback: WheelFeedback {
 
     /// `.now`: the highlight is already a frame behind the pointer (14 §2.4).
     private func haptic(_ pattern: NSHapticFeedbackManager.FeedbackPattern) {
-        guard hapticsEnabled else { return }
+        guard settings.haptics else { return }
         performer.perform(pattern, performanceTime: .now)
     }
 }

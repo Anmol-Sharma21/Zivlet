@@ -59,3 +59,12 @@ extension TriggerGroup: Codable {
         try container.encode(paused, forKey: .paused)
     }
 }
+
+extension TriggerGroup {
+    /// The trigger machine's configuration for this group; timing numbers keep their defaults (03a §1.5).
+    public var config: TriggerConfig {
+        TriggerConfig(
+            bindings: bindings, honorsModifierHeldAtDragStart: honorsModifierHeldAtDragStart,
+            retapClosesWheel: retapClosesWheel)
+    }
+}

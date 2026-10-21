@@ -55,6 +55,13 @@ struct AppearanceTests {
         #expect(WheelTheme(preference: nil) == .glass && WheelTheme(preference: "chrome") == .glass)
     }
 
+    @Test func theSettingsThemeIsUsedUnlessALaunchArgumentNamesOne() throws {
+        let defaults = try #require(UserDefaults(suiteName: "zivlet-tests-\(UUID().uuidString)"))
+        #expect(WheelTheme.preferred(settings: .solid, defaults: defaults) == .solid)
+        defaults.set("glass", forKey: WheelAppearance.themeKey)
+        #expect(WheelTheme.preferred(settings: .solid, defaults: defaults) == .glass)
+    }
+
     @Test func tickToneIsAShortMonoWAV() throws {
         let wav = ToneSynth.wav(duration: .milliseconds(24))
         #expect(String(decoding: wav.prefix(4), as: UTF8.self) == "RIFF")

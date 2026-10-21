@@ -48,6 +48,23 @@ struct RequestsAndCopyTests {
         #expect(plan.requests.first?.destination == downloads)
     }
 
+    @Test func theServiceUsesTheFallbackFolderFromSettings() async throws {
+        let box = try Sandbox()
+        let locked = box.dir.appending(path: "locked")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
+        try Data("x".utf8).write(to: locked.appending(path: "a.heic"))
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: locked.path) }
+        let chosen = box.dir.appending(path: "Chosen", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: chosen, withIntermediateDirectories: false)
+        let scheduler = JobScheduler(engines: [FakeEngine()], lanes: .standard(performanceCores: 2), records: nil)
+        let service = ConversionService(scheduler: scheduler, factory: JobRequestFactory(fallbackFolder: box.dir))
+        await service.use(fallbackFolder: chosen)
+        let batch = await service.convert([locked.appending(path: "a.heic")], to: .jpg)
+        let last = try #require(await service.snapshots(until: batch).last)
+        #expect(last.outputs.map { $0.url.deletingLastPathComponent().lastPathComponent } == ["Chosen"])
+    }
+
     static let everyError: [JobError] = [
         .pairNotSupported(.mp3, .png), .unsupportedInput(.notAFile), .unsupportedInput(.unreadable),
         .unsupportedInput(.unknownFormat), .unsupportedInput(.contentMismatch), .unsupportedInput(.noAudioTrack),

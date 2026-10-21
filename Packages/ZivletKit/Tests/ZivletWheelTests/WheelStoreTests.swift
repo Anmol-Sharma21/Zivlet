@@ -124,6 +124,28 @@ struct WheelStoreTests {
         #expect(ticks.count == 2)
     }
 
+    @Test func soundOffPlaysNothingAndHapticsStay() {
+        let haptics = FakeHaptics()
+        let ticks = TickLog()
+        let system = SystemWheelFeedback(performer: haptics, tick: TickSound(isEnabled: true, play: ticks.play))
+        system.apply(FeedbackSettings(sound: false, haptics: true))
+        system.highlightChanged()
+        #expect(ticks.count == 0 && haptics.patterns == [.alignment])
+    }
+
+    @Test func hapticsOffPerformsNothingAndSoundStays() {
+        let haptics = FakeHaptics()
+        let ticks = TickLog()
+        let system = SystemWheelFeedback(performer: haptics, tick: TickSound(isEnabled: true, play: ticks.play))
+        system.apply(FeedbackSettings(sound: true, haptics: false))
+        system.highlightChanged()
+        system.modeSwitched()
+        #expect(ticks.count == 1 && haptics.patterns.isEmpty)
+        system.apply(.standard)
+        system.rejected()
+        #expect(haptics.patterns == [.generic])
+    }
+
     @Test func realTickSoundLoadsTheSynthesizedTone() {
         let sound = TickSound(isEnabled: true)
         #expect(sound.isLoaded)

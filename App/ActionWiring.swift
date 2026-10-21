@@ -5,7 +5,7 @@ import ZivletRuntime
 import os
 
 /// Wires a drop on an action petal to `ActionService` and its result to the action HUD (P1-44, P1-45). Float stays
-/// hidden until its shelf exists (D-M4-13). The terminal is Terminal until Settings stores a choice (stream D).
+/// hidden until its shelf exists (D-M4-13). The terminal is the one chosen in Settings.
 final class ActionWiring {
     static let unavailableActions: Set<ActionID> = [.pinFloating]
 
@@ -13,8 +13,10 @@ final class ActionWiring {
     private let service: ActionService
     private let hud = ActionHUD()
 
-    init(undoHistory: UndoHistory, undo: @escaping (BatchID) async -> UndoReply) {
-        service = ActionService(undoHistory: undoHistory)
+    init(
+        undoHistory: UndoHistory, terminalID: @escaping () -> String, undo: @escaping (BatchID) async -> UndoReply
+    ) {
+        service = ActionService(undoHistory: undoHistory, terminalID: terminalID)
         hud.onUndo = undo
     }
 
