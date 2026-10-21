@@ -126,11 +126,12 @@ enum SmokeCases {
             "mp4__avi", synth: video + tone(44_100) + ["-c:v", "libx264", "-c:a", "aac"], .mp4, .avi,
             Fx.info(h264, aacMono), streams: ["video:mpeg4", "audio:mp3"], requires: ["libx264", "libmp3lame"]),
         SmokeCase(
+            // PQ, BT.2020 tagged in the HEVC bitstream; VideoToolbox, since the bundled build has no libx265.
             "mov-hdr__webm",
-            synth: video + ["-c:v", "libx265", "-pix_fmt", "yuv420p10le", "-color_trc", "smpte2084"]
-                + ["-color_primaries", "bt2020", "-colorspace", "bt2020nc"],
+            synth: video + ["-c:v", "hevc_videotoolbox", "-profile:v", "main10", "-pix_fmt", "p010le"]
+                + ["-bsf:v", "hevc_metadata=transfer_characteristics=16:colour_primaries=9:matrix_coefficients=9"],
             .mov, .webm, Fx.info(Fx.video(0, "hevc", 64, 64, fps: 10, pixFmt: "yuv420p10le", hdr: true)),
-            streams: ["video:vp9"], requires: ["libx265", "zscale", "tonemap", "libvpx-vp9"]),
+            streams: ["video:vp9"], requires: ["hevc_videotoolbox", "zscale", "tonemap", "libvpx-vp9"]),
         // No colour tags in the bitstream or container; only the probe facts say PQ (D-M4-12).
         SmokeCase(
             "mov-hdr-untagged__webm",

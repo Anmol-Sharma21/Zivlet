@@ -11,6 +11,22 @@ import ZivletEngineKit
 enum MediaIntegration {
     static let tools: MediaTools? = try? EngineLocator().locateMediaTools()
 
+    /// Ogg Vorbis with libvorbis (the bundled build has no native `vorbis` encoder, D-M4-2), else the native one
+    /// (Homebrew's build has no libvorbis).
+    static func oggRecipes(_ tone: [String]) -> [(args: [String], needs: [String])] {
+        [
+            (tone + ["-c:a", "libvorbis", "-ac", "2"], ["libvorbis"]),
+            (tone + ["-c:a", "vorbis", "-strict", "experimental", "-ac", "2"], ["vorbis"]),
+        ]
+    }
+
+    /// The first recipe for `format` whose encoders this ffmpeg has.
+    static func synthesis(_ format: FormatID, capabilities: FFmpegCapabilities) -> (args: [String], needs: [String])? {
+        let tone = ["-f", "lavfi", "-i", "sine=d=1:sample_rate=44100"]
+        let recipes = format == .ogg ? oggRecipes(tone) : [synthesis(format)]
+        return recipes.first { capabilities.missing(encoders: $0.needs).isEmpty }
+    }
+
     /// lavfi synthesis per source format: 1 s, 64 × 48, 10 fps, a 44.1 kHz tone.
     static func synthesis(_ format: FormatID) -> (args: [String], needs: [String]) {
         let video = ["-f", "lavfi", "-i", "testsrc=d=1:s=64x48:r=10"]
@@ -20,7 +36,7 @@ enum MediaIntegration {
         case .m4a: return (tone + ["-c:a", "aac"], ["aac"])
         case .wav: return (tone + ["-c:a", "pcm_s16le"], [])
         case .flac: return (tone + ["-c:a", "flac"], ["flac"])
-        case .ogg: return (tone + ["-c:a", "vorbis", "-strict", "experimental", "-ac", "2"], ["vorbis"])
+        case .ogg: return oggRecipes(tone)[0]
         case .opus: return (tone + ["-c:a", "libopus"], ["libopus"])
         case .aiff: return (tone + ["-c:a", "pcm_s16be"], [])
         case .wma: return (tone + ["-c:a", "wmav2"], ["wmav2"])
@@ -52,8 +68,7 @@ actor FixtureFactory {
     private static func synthesize(
         _ format: FormatID, into dir: URL, tools: MediaTools, capabilities: FFmpegCapabilities
     ) async throws -> URL? {
-        let (args, needs) = MediaIntegration.synthesis(format)
-        guard capabilities.missing(encoders: needs).isEmpty else { return nil }
+        guard let (args, _) = MediaIntegration.synthesis(format, capabilities: capabilities) else { return nil }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appending(path: "source.\(FormatRegistry.standard.format(format).canonicalExtension)")
         let request = SubprocessRequest(
