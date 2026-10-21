@@ -241,6 +241,10 @@ Module placement (proposed, settled in P2-197): a new AppKit module **`ZivletNot
 geometry and state, below both `ZivletUI` (Notch HUD) and `ZivletActions` (tray), so neither has to import the other.
 Size 0 MB: system frameworks and our own code.
 
+> **Update 2026-10-22 (spike P2-197).** Settled as two modules, pure `ZivletNotchCore` and AppKit `ZivletNotch`; the
+> spike results, the states and the rules are in [19-notch.md](19-notch.md), the M5a plan in
+> [12-implementation-plan-m5a-notch.md](../plan/12-implementation-plan-m5a-notch.md).
+
 ### 2a.4 Notch HUD (P2-116)
 
 The Notch HUD shows job progress, results and action toasts on the island instead of in the HUD card near the drop.
