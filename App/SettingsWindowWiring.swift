@@ -6,18 +6,21 @@ import ZivletUI
 import os
 
 /// Builds the Settings window on first use and keeps it in step with the store (D3): writes go through the store,
-/// changes made elsewhere refresh the panes, and the helper versions are asked for once per opening.
+/// changes made elsewhere refresh the panes, and the helper versions are asked for once per opening. Copy
+/// Diagnostics (P1-48) puts a redacted local report on the pasteboard; nothing is sent anywhere.
 final class SettingsWindowWiring {
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "settings")
     private let store: SettingsStore
     private let conversions: ConversionService
+    private let triggerTrace: () -> [String]
     private var controller: SettingsWindowController?
     private var model: SettingsModel?
     private var observer: Task<Void, Never>?
 
-    init(store: SettingsStore, conversions: ConversionService) {
+    init(store: SettingsStore, conversions: ConversionService, triggerTrace: @escaping () -> [String]) {
         self.store = store
         self.conversions = conversions
+        self.triggerTrace = triggerTrace
     }
 
     func show(_ pane: SettingsPane = .general) {
@@ -50,7 +53,26 @@ final class SettingsWindowWiring {
                 return store.current
             },
             chooseFallbackFolder: { [weak self] in self?.chooseFallbackFolder() },
+            copyDiagnostics: { [weak self] in self?.copyDiagnostics() },
             openAcknowledgements: Self.acknowledgements.map { url in { NSWorkspace.shared.open(url) } })
+    }
+
+    private func copyDiagnostics() {
+        let settingsJSON = store.current.diagnosticsJSON
+        let trace = triggerTrace()
+        Task { [conversions, logger] in
+            let helpers = await conversions.helperVersions()
+            let sources = await DiagnosticsCollector().collect(
+                settingsJSON: settingsJSON, triggerTrace: trace, helpers: helpers)
+            do {
+                let report = try await Diagnostics.build(sources)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(report, forType: .string)
+                logger.notice("Diagnostics copied: \(report.count, privacy: .public) characters")
+            } catch {
+                logger.error("Diagnostics not built: \(String(describing: error), privacy: .private)")
+            }
+        }
     }
 
     /// `Contents/Resources/Licenses/index.html`, when the build collected the licences (A13).

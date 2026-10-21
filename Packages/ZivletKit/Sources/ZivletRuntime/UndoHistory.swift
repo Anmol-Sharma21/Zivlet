@@ -9,7 +9,7 @@ public enum UndoStoreError: Error, Sendable, Equatable {
 /// The undo log on disk: `~/Library/Application Support/Zivlet/undo.json` (03a §4.7). A missing file is an empty
 /// log; an unreadable one is logged and treated as empty, so a damaged file never blocks conversions.
 public struct UndoStore: Sendable {
-    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "undo")
+    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "actions")
 
     public let file: URL
 

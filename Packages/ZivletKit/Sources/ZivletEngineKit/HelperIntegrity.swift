@@ -7,7 +7,7 @@ import os
 /// inside the app bundle and carry a valid signature over every architecture; when the app itself has a Team ID,
 /// the helper must be signed by the same team. Damage is reported as `JobError.engineDamaged`.
 public enum HelperIntegrity {
-    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "engine")
+    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "media")
     static let flags = SecCSFlags(rawValue: kSecCSStrictValidate | kSecCSCheckAllArchitectures)
 
     /// What a helper must satisfy: a Team ID to match (nil for an ad-hoc signed app) and the bundle it must live in.

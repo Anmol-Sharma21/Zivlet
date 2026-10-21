@@ -29,7 +29,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
     private lazy var settings = SettingsWiring(conversions: conversions)
-    lazy var settingsWindow = SettingsWindowWiring(store: settings.store, conversions: conversions)
+    lazy var settingsWindow = SettingsWindowWiring(store: settings.store, conversions: conversions) {
+        [weak self] in self?.trigger?.trace.lines ?? []
+    }
     private lazy var actions = ActionWiring(
         undoHistory: undoHistory, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
     ) { [weak self] batch in

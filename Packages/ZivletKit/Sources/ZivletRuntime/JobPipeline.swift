@@ -87,12 +87,18 @@ struct JobPipeline: Sendable {
         await noted(admissionNotes + plan.notes)
         let lane = plan.lanes.first ?? .cpu
         let output = try await services.gates.semaphore(for: lane).withPermit { () async throws(JobError) in
-            try await execute(engine, plan: plan, record: record)
+            try await JobSignposts.interval("execute") { () async throws(JobError) in
+                try await execute(engine, plan: plan, record: record)
+            }
         }
         await report(.verifying)
-        try await engine.verify(output, plan: plan)
+        try await JobSignposts.interval("verify") { () async throws(JobError) in
+            try await engine.verify(output, plan: plan)
+        }
         guard await beginPublishing() else { throw .cancelled }
-        return try services.publisher.publish(output, for: request)
+        return try JobSignposts.interval("publish") { () throws(JobError) in
+            try services.publisher.publish(output, for: request)
+        }
     }
 
     /// Progress travels through an ordered stream and is drained before `execute` returns, so the scheduler never

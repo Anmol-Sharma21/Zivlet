@@ -15,6 +15,16 @@ func freshDefaults() throws -> UserDefaults {
 @Suite("Settings store: defaults, validation, migration (D1, 03b §8.1)")
 @MainActor
 struct SettingsStoreTests {
+    /// Copy Diagnostics (P1-48) shows the settings as JSON with plain slashes, so redaction can find the paths.
+    @Test func diagnosticsJSONHasEveryGroupAndPlainSlashes() throws {
+        let json = Settings.defaults.with(\.output.fallbackFolder, "/Users/someone/Exports").diagnosticsJSON
+        for group in ["trigger", "feedback", "output", "actions", "updates", "onboarding"] {
+            #expect(json.contains("\"\(group)\""))
+        }
+        #expect(json.contains("/Users/someone/Exports") && !json.contains(#"\/"#))
+        #expect(try JSONSerialization.jsonObject(with: Data(json.utf8)) is [String: Any])
+    }
+
     @Test func freshStoreHasTheDocumentedDefaults() throws {
         let settings = SettingsStore(defaults: try freshDefaults()).current
         #expect(settings.feedback.sound && settings.feedback.haptics && settings.feedback.theme == .glass)

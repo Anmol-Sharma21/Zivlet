@@ -50,12 +50,16 @@ public struct ImageEngine: Engine {
         }
         let url = request.input.url
         let isSVG = request.input.format == .svg
-        let probe = try await BlockingWork.run { _ throws(JobError) in
-            try isSVG ? SVGRenderer.probe(url) : ImageReader.probe(url)
+        let probe = try await JobSignposts.interval("probe") { () async throws(JobError) in
+            try await BlockingWork.run { _ throws(JobError) in
+                try isSVG ? SVGRenderer.probe(url) : ImageReader.probe(url)
+            }
         }
-        return try ImagePlanner.plan(
-            request, probe: probe, staged: workspace.stagedFile, writableTypes: writableTypes, options: options,
-            registry: registry)
+        return try JobSignposts.interval("plan") { () throws(JobError) in
+            try ImagePlanner.plan(
+                request, probe: probe, staged: workspace.stagedFile, writableTypes: writableTypes, options: options,
+                registry: registry)
+        }
     }
 
     /// Waits for decode budget (G-15), runs the stages, then gives it back. Frames are decoded one at a time, so the

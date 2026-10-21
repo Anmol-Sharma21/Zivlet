@@ -3,6 +3,7 @@ import EngineMedia
 import Foundation
 import ZivletCore
 import ZivletEngineKit
+import os
 
 /// The one entry point the app uses (P1-33): dropped URLs + target → a batch, observed as `BatchSnapshot`s.
 /// Refused items appear in the snapshot as failed rows, so a drop always ends with a finished snapshot.
@@ -48,8 +49,11 @@ public actor ConversionService {
             scheduler: JobScheduler(engines: engines), engines: engines, loadMonitor: SystemLoadMonitor())
     }
 
+    /// The `drop→admit` signpost covers checking the drop and handing its jobs to the scheduler (10 §8.7).
     @discardableResult
     public func convert(_ urls: [URL], to target: FormatID) async -> BatchID {
+        let signposter = JobSignposts.signposter
+        let admission = signposter.beginInterval("drop→admit", id: signposter.makeSignpostID())
         listen()
         let batch = BatchID()
         let plan = factory.requests(for: urls, target: target)
@@ -57,6 +61,7 @@ public actor ConversionService {
         batches[batch] = snapshot
         feed.yield(snapshot)
         await scheduler.submit(plan.requests, as: batch)
+        signposter.endInterval("drop→admit", admission)
         return batch
     }
 

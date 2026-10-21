@@ -48,10 +48,12 @@ final class HostRig {
 
     init(
         config: TriggerConfig = TriggerConfig(), flags: Bool = false,
-        summary: DragSummary = DragSummary(itemCount: 1, acceptedModes: Set(WheelMode.allCases))
+        summary: DragSummary = DragSummary(itemCount: 1, acceptedModes: Set(WheelMode.allCases)),
+        signpost: TriggerFrameSignpost = TriggerFrameSignpost()
     ) {
         host = TriggerHost(
             config: config, reader: input, scheduler: scheduler, listensToFlagsChanged: flags,
+            frameSignpost: signpost,
             probe: { [probes] count in
                 probes.record(count)
                 return summary

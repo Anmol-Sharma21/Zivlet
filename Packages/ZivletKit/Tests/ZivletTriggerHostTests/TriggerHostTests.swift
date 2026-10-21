@@ -32,6 +32,24 @@ struct TriggerHostTests {
             rig.scheduler.current == SamplingPlan(events: [.mouseDown, .mouseUp], sampling: true, escapeHotkey: true))
     }
 
+    @Test func aShowBeginsTheTriggerToFrameSignpost() async {
+        let signpost = TriggerFrameSignpost()
+        let rig = HostRig(signpost: signpost)
+        await rig.startFileDrag()
+        #expect(!signpost.isPending)
+        rig.event(.frame, at: 70, mods: .shift)
+        #expect(signpost.isPending)
+        #expect(signpost.end() && !signpost.isPending && !signpost.end())
+    }
+
+    @Test func theHostKeepsATraceOfStateChangesForDiagnostics() async {
+        let rig = HostRig()
+        await rig.startFileDrag()
+        rig.event(.frame, at: 70, mods: .shift)
+        #expect(rig.host.trace.entries.map(\.to) == ["pressed", "detecting", "live", "wheel"])
+        #expect(rig.host.trace.entries.last?.uptime == .milliseconds(70))
+    }
+
     @Test func fileTypesAreReadOncePerChangeCountAndNeverWhileIdle() async {
         let rig = HostRig()
         rig.event(.frame, at: 0, count: 9)

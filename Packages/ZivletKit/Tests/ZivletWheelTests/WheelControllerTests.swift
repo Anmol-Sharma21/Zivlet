@@ -25,11 +25,13 @@ final class WheelRig {
     let controller: WheelController
     private(set) var dragEnds = 0
 
+    let signpost = TriggerFrameSignpost()
+
     init() {
         reader = DragPayloadReader(pasteboard: pasteboard)
         controller = WheelController(
             reader: reader, feedback: feedback, screens: { [WheelRig.screen] },
-            appearance: { Fixtures.appearance })
+            appearance: { Fixtures.appearance }, frameSignpost: signpost)
         controller.delegate = log
         controller.onDragEnded = { [unowned self] in dragEnds += 1 }
     }
@@ -84,6 +86,18 @@ struct WheelControllerTests {
         #expect(rig.controller.store.model?.slices.first?.target == .convert(.jpg))
         #expect(rig.controller.store.model?.idleHubLabel == "a.png\n1.2 KB")
         #expect(rig.controller.store.model?.hubIsCompact == false)
+        rig.controller.hide()
+    }
+
+    /// trigger→frame (P1-24): the interval the host began ends once the shown wheel draws its first frame.
+    @Test func theFirstFrameEndsTheTriggerToFrameSignpost() async throws {
+        let rig = WheelRig()
+        let temp = try TempItems()
+        await rig.drag([try temp.file("a.png")])
+        rig.signpost.begin()
+        rig.controller.apply(.show(.convert, at: Point2D(x: 700, y: 400)))
+        for _ in 0..<100 where rig.signpost.isPending { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(!rig.signpost.isPending)
         rig.controller.hide()
     }
 

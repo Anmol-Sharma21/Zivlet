@@ -111,8 +111,12 @@ public struct MediaEngine: Engine {
         if case .unavailable(let missing) = gate {
             throw .routeUnavailable(request.input.format, request.target, missing)
         }
-        let info = try await probe(request.input.url, format: request.input.format, tools: resolved.tools)
-        let planned = try Self.plan(request, info: info, staged: workspace.stagedFile, resolved: resolved)
+        let info = try await JobSignposts.interval("probe") { () async throws(JobError) in
+            try await probe(request.input.url, format: request.input.format, tools: resolved.tools)
+        }
+        let planned = try JobSignposts.interval("plan") { () throws(JobError) in
+            try Self.plan(request, info: info, staged: workspace.stagedFile, resolved: resolved)
+        }
         let notes = GIFPlanner.notes(source: request.input.format, target: request.target, info: info)
         return try Self.executionPlan(planned, request: request, staged: workspace.stagedFile, notes: notes)
     }

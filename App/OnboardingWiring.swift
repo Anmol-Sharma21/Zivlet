@@ -10,7 +10,7 @@ final class OnboardingWiring {
     /// DEBUG: `-ZivletResetOnboarding YES` starts onboarding from the beginning.
     static let resetKey = "ZivletResetOnboarding"
 
-    private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "onboarding")
+    private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "app")
     private let store: SettingsStore
     private var controller: OnboardingWindowController?
     private(set) var model: OnboardingModel?

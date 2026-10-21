@@ -11,21 +11,26 @@ public final class TriggerHost {
     public private(set) var plan = SamplingPlan.off
     /// The running payload probe; tests await it.
     public private(set) var probeTask: Task<Void, Never>?
+    /// The last 50 state changes, for Copy Diagnostics (P1-48).
+    public private(set) var trace = TriggerTrace()
     public var onWheelEffect: (TriggerEffect) -> Void = { _ in }
 
     private let reader: any InputReading
     private let scheduler: any TriggerScheduling
     private let probe: PayloadProbe
     private let baseEvents: Set<MonitoredEvent>
+    private let frameSignpost: TriggerFrameSignpost
     private var dragEvents: Set<MonitoredEvent> = []
     private var sampling = false
     private var fileTypes: (changeCount: Int, present: Bool)?
 
     public init(
         config: TriggerConfig = TriggerConfig(), reader: any InputReading, scheduler: any TriggerScheduling,
-        listensToFlagsChanged: Bool = false, probe: @escaping PayloadProbe
+        listensToFlagsChanged: Bool = false, frameSignpost: TriggerFrameSignpost = .shared,
+        probe: @escaping PayloadProbe
     ) {
         machine = TriggerMachine(config: config)
+        self.frameSignpost = frameSignpost
         self.reader = reader
         self.scheduler = scheduler
         self.probe = probe
@@ -59,6 +64,9 @@ public final class TriggerHost {
 
     private func step(_ event: TriggerEvent) {
         let result = machine.step(event)
+        if let entry = TriggerTrace.entry(event: event, from: machine.state, step: result, uptime: reader.uptime) {
+            trace = trace.recording(entry)
+        }
         machine = result.next
         result.effects.forEach(execute)
         applyPlanIfChanged()
@@ -72,7 +80,10 @@ public final class TriggerHost {
         case .startSampler: sampling = true
         case .stopSampler: sampling = false
         case .probePayload(let count): startProbe(count)
-        case .show, .switchTo, .reject, .hide: onWheelEffect(effect)
+        case .show:
+            frameSignpost.begin()  // trigger→frame; the wheel ends it at its first frame
+            onWheelEffect(effect)
+        case .switchTo, .reject, .hide: onWheelEffect(effect)
         }
     }
 

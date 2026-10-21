@@ -34,14 +34,18 @@ public final class WheelController {
     private let appearance: @MainActor () -> WheelAppearance
     private(set) var payload: DragPayload?
     private var generation = 0
+    private let frameSignpost: TriggerFrameSignpost
+    private var firstFrame: FirstFrameWatch?
 
     public init(
         reader: DragPayloadReader, builder: SliceBuilder = SliceBuilder(),
         feedback: any WheelFeedback = SystemWheelFeedback(),
         screens: @escaping @MainActor () -> [ScreenFrame] = WheelController.systemScreens,
-        appearance: @escaping @MainActor () -> WheelAppearance = { WheelAppearance.current() }
+        appearance: @escaping @MainActor () -> WheelAppearance = { WheelAppearance.current() },
+        frameSignpost: TriggerFrameSignpost = .shared
     ) {
         self.reader = reader
+        self.frameSignpost = frameSignpost
         self.builder = builder
         self.screens = screens
         self.appearance = appearance
@@ -107,6 +111,8 @@ public final class WheelController {
         panel.ignoresMouseEvents = false
         panel.alphaValue = 0
         panel.orderFrontRegardless()
+        firstFrame?.cancel()
+        firstFrame = FirstFrameWatch(view: panel.contentView) { [frameSignpost] in frameSignpost.end() }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = WheelTiming.fadeIn
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -120,6 +126,7 @@ public final class WheelController {
         /// DEBUG demo: the scenario's wheel at the centre of the first screen's visible frame, no drag needed.
         public func showDemo(_ scenario: DemoScenario) {
             guard let visible = screens().first?.visibleFrame else { return logger.error("Demo wheel: no screens") }
+            frameSignpost.begin()  // no tap in the demo: the interval starts at the show
             show(scenario.mode, at: Point2D(x: visible.midX, y: visible.midY), payload: scenario.payload)
             if let slot = scenario.highlight { store.pointer(.slot(slot)) }
         }

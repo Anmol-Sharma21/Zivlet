@@ -85,3 +85,14 @@ public struct Settings: Sendable, Equatable {
         return copy
     }
 }
+
+extension Settings: Encodable {
+    /// Every group as sorted, indented JSON with plain slashes, for Copy Diagnostics (P1-48), which removes the
+    /// folder names before anything leaves the app.
+    public var diagnosticsJSON: String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        guard let data = try? encoder.encode(self) else { return "(settings could not be encoded)" }
+        return String(decoding: data, as: UTF8.self)
+    }
+}
