@@ -10,6 +10,9 @@
 > - The menu-bar Recent list stays at **20** (PRD §6.6, FR-39), not 10.
 > - The CLI subset is M, not S. swift-argument-parser is already budgeted (10 §9/§10), so its +0.83 MB is not new size.
 > - The notch tray (owner pick, after this report) has no prototype here. Spike P2-197 gates it.
+
+> **Update 2026-10-22 (owner, after M4).** The Drop Box with the notch tray moves to the front of the first public beta
+> (0.5), and a new pick, the Notch HUD, shares the notch island with it. §2a describes both in our own words.
 > - PRD §6.7 ("never copies") must change if the box keeps owned copies of promise/clipping content.
 
 Date: 2026-10-21. Status: proposal for the owner. Scope: the four "app" picks from the owner's list
@@ -39,7 +42,7 @@ Prototype folders are listed in §8.
 
 | Feature | What the user gets | Main modules (02 §4) | New deps (licence, size) | Effort | Phase |
 |---|---|---|---|---|---|
-| Drop Box | One big floating box. Collect files from many places, then Share, AirDrop, Copy, Move to…, Copy to…, Zip or drag them all out at once. It grows out of the planned **Float** action. | `ZivletActions` (panel, views), new pure `ZivletShelfCore`, `ZivletUI` (coordinator for Zip/Convert-all) | None. AppKit, QuickLookThumbnailing, Foundation bookmarks: 0 MB | **L** (P2-55 was L; bulk actions add M) | **P2** (beta). Shake-to-open is opt-in in P2, on by default after trace QA. |
+| Drop Box | One big floating box. Collect files from many places, then Share, AirDrop, Copy, Move to…, Copy to…, Zip or drag them all out at once. It grows out of the planned **Float** action. | `ZivletActions` (panel, views), new pure `ZivletShelfCore`, `ZivletUI` (coordinator for Zip/Convert-all) | None. AppKit, QuickLookThumbnailing, Foundation bookmarks: 0 MB | **L** (P2-55 was L; bulk actions add M) | **P2, first in beta 0.5** (owner, 2026-10-22), with the notch tray and the Notch HUD (§2a). Shake-to-open is opt-in in P2, on by default after trace QA. |
 | Custom Wheels | Choose which slices show in each wheel and their order. Hide or show slices. Built-in presets. Accent colour per wheel and an optional colour per slice. Import and export. | New pure `ZivletPresets` (planned in 02 §5.2 for 1.x), `ZivletWheelCore` (cap and apply), `ZivletWheel` (colours), `ZivletUI` (Wheels pane) | None: 0 MB | **M + M** | **P2:** hide, order, per-mode accent, 12-slice cap rule. **P3:** per-slice colours, presets, import and export, pinned preset slices. Moved up from B4-16 (P4). |
 | History | A recent-jobs window and menu with Reveal, Undo, Re-run, Remove and Clear. Retention setting and a "don't keep history" switch. | `ZivletRuntime` (`HistoryLog` grows out of `UndoLog`), `ZivletUI` (History window, menu) | None. JSON + Foundation: 0 MB (SwiftData rejected, §4.3) | **M** | **P1** already has Recent results (20 entries, 24 h undo). **P2:** History window, re-run, retention. |
 | `zivlet` CLI | `zivlet convert/tool/formats/info/history/box/wheel`, `--json` output, NDJSON progress, fixed exit codes, Homebrew cask. | `zivlet-cli` (thin executable) + `ZivletCLIKit` (testable commands); shares `ZivletCore` Catalog, `ZivletRuntime`, `ZivletEngines` | swift-argument-parser 1.7.2 (Apache-2.0 with Runtime Library Exception, GPL-compatible): **+0.83 MB stripped**, measured | **M** (P3-31) + **S** early subset | **P2 (late):** `formats`, `info`, `convert` headless, also usable as a test harness. **P3:** `tool`, `wheel`, `history`, `box`, cask, completions. |
@@ -195,7 +198,94 @@ Folder `shelf.kibB/`. Build: `swiftc -O src/shelf.swift -o shelf && ./shelf $D/r
 | Interplay with the wheel trigger | Drags that start in our own windows are allowed (14 §1 table), so a stack dragged out of the box can open the wheel. Covered by trigger tests. |
 
 **Dependencies:** P1-44/45 (Actions), P1-15 (undo), EngineArchive (P2) for Zip, the P2-56 Services entry, P-CLI for
-`zivlet box`. **Effort:** L in total (P2-55 L, plus about M for bulk actions, ownership and auto-clear). **Phase:** P2.
+`zivlet box`. **Effort:** L in total (P2-55 L, plus about M for bulk actions, ownership and auto-clear). **Phase:** P2, first in beta 0.5 (2026-10-22, §2a).
+
+---
+
+## 2a. Notch island: shared panel, Notch HUD, notch tray
+
+Added 2026-10-22, after M4. The owner moved the notch Drop Box to the front of the first public beta and picked a new
+feature, the **Notch HUD** ([00-decisions.md](00-decisions.md) OWN-PLAN-3 and OWN-HUD-1). This section is our own
+design, written in our own words. No prototype exists yet: spike **P2-197** comes first and gates every row here.
+Where a value below is a default, the assistant proposed it and the owner may change it.
+
+### 2a.1 Order of work (first beta)
+
+P2-197 notch spike → P2-115 NotchIsland core + P2-116 Notch HUD → P2-141 shelf core → P2-55 Drop Box panel (replaces
+Float) → P2-142 bulk actions → P2-143 notch tray → then OCR, lock/unlock and the PDF basics. The choosable picker
+style (Wheel or Bar) and place (at the cursor or at the notch) stays in the last phase and reuses the same panel.
+
+### 2a.2 Prior art, in our own words
+
+Several notch utilities treat the dark strip around the camera housing as a small live surface: a compact shape that
+shows an icon or a ring, grows when the pointer comes near, and shrinks back on its own. Media and timer apps use it
+for a glanceable status with a couple of controls. What we take as goals: glanceable progress where the eye already
+goes, more detail only on hover, and nothing that steals focus. We do not take widgets, media controls or calendar
+features: they are out of scope. No code, strings or assets come from any of these apps.
+
+### 2a.3 NotchIsland: the shared panel (P2-115)
+
+| Part | Behaviour |
+|---|---|
+| Window | A non-activating, borderless panel at a level above the menu bar, on all Spaces, including full-screen Spaces (P2-197 proves this on 26.x). It takes no focus when it appears; like today's HUD card, it becomes key only after a click into it (D-M4-16) |
+| Geometry | The notch rectangle comes from `NSScreen.safeAreaInsets.top` and the gap between `auxiliaryTopLeftArea` and `auxiliaryTopRightArea`. A pure `NotchGeometry` turns those into the collapsed and expanded frames, so it is tested in `swift test` with recorded screen values (14″ and 16″ notches, no notch, scaled modes) |
+| Shapes | **Collapsed:** a strip just wider than the notch, the same height, with content in the two "ears" beside the camera. **Expanded:** grows down and out from the notch to a card about the size of today's HUD card (360 × 108 pt) |
+| Displays without a notch | External displays, a closed lid, or a Mac without a notch: the island becomes a **top-centre pill** under the menu bar on the display where the drop happened (the drop point's screen, as `HUDLayout.screen(for:)` picks it today) |
+| Hover | A tracking area on our own panel: no Accessibility or Input Monitoring. Hover expands after a short intent delay and holds the island open; leaving restarts the collapse timer |
+| Click-through | Only the drawn shape takes clicks; the rest of the panel passes them through, so menu-bar items beside the notch keep working. The expanded card never covers menu-bar items beyond its own width |
+| Motion | The collapsed ↔ expanded change springs out of the notch; with Reduce Motion it is a cross-fade only |
+| Accessibility | One AX group that reads the same text as the current HUD card; buttons keep their labels; Increase Contrast uses the solid style |
+| Users | The Notch HUD (P2-116), the notch tray (P2-143) and, in the last phase, the picker at the notch. One panel per display; the users share it through a small arbiter so a tray and a HUD never fight over the island (the tray wins during a drag, the HUD returns after) |
+
+Module placement (proposed, settled in P2-197): a new AppKit module **`ZivletNotch`** holds the panel and the pure
+geometry and state, below both `ZivletUI` (Notch HUD) and `ZivletActions` (tray), so neither has to import the other.
+Size 0 MB: system frameworks and our own code.
+
+### 2a.4 Notch HUD (P2-116)
+
+The Notch HUD shows job progress, results and action toasts on the island instead of in the HUD card near the drop.
+It re-hosts the content the HUD already has in `ZivletUI` (`HUDCopy`, `ResultCardModel` with its buttons and timings,
+the action HUD content, `FileDragSource` for drag-out, `ThumbnailLoader`). Only the container and the collapsed and
+expanded layouts are new, so the existing copy, timing and undo tests keep applying.
+
+| State | Collapsed island | Expanded on hover |
+|---|---|---|
+| Working | The file's icon in one ear, a progress ring in the other (indeterminate when the fraction is unknown) | Today's working line: name, percent, time left, stage; Cancel |
+| Done | Icon with a check mark | "Saved photo.jpg"-style line, sizes before → after, **Open**, **Show in Finder**, **Undo**; drag the result out of the card |
+| Failed | Icon with a warning mark | The failure card's reason, **Retry**, Show Details when there are details, Close |
+| Action toast | A short label in the ear: "Copied", "Moved" | "Moved 3 items" with **Undo**, as the action HUD's toast |
+| Several jobs | "3 jobs" with a combined ring | A list: one row per job with its own ring or result and its own buttons |
+| Waiting for input | Icon with a dot | The card that asks (for example a model download offer in Phase 3); it stays until answered |
+
+Timing: the island collapses and leaves after the same linger times as today's HUD (success card 4 s; action toast
+1.5 s, or 4 s when it offers Undo). While hovered it stays, and leaving restarts the full linger. Failures and cards
+that ask stay until closed, as today.
+
+Settings › General (defaults proposed by the assistant): "Show progress and results: **At the notch** | Bottom-right
+corner". The default is "At the notch" on Macs with a built-in notch and the current HUD placement elsewhere. With "At
+the notch" chosen, a drop on a display without a notch uses the top-centre pill on that display.
+
+### 2a.5 Notch tray (P2-143)
+
+The tray is the Drop Box's primary home (OWN-APP-2) and uses the same island. During a file drag, the pure
+`NotchProximity` detector (fed by the existing permission-free drag sampler) expands the island into a drop target;
+dropping stashes the items in the current box. Hover or click reopens it later as a compact box view, with the full
+Drop Box panel (§2.3) one click away. When the wheel and the tray are both targets, the wheel wins. The 05 row P2-143
+holds the acceptance.
+
+### 2a.6 Open points and risks
+
+| Item | Note |
+|---|---|
+| **OWN-HUD-2** (open) | The owner described today's HUD as "bottom-right". The current card opens below and to the right of the **drop point**, clamped 12 pt inside the screen (`HUDLayout`, 03a §4.5); it is not pinned to the screen's bottom-right corner. The second choice should say what it does. Recommendation: keep today's placement and label it "Near the drop"; a fixed corner is a small extra if the owner prefers it |
+| Full screen and Spaces | Panels above the menu bar in full-screen Spaces are the main unknown; P2-197 measures it on 26.x. Fallback: the pill, then today's HUD card |
+| Menu bar hidden or auto-hidden | The island must not reveal or block the menu bar; it shows only while a job or toast is live, or on hover |
+| Several displays, lid closed | The drop's display decides; a closed lid means no notch, so the pill |
+| Screen sharing | The island shows file names at the top centre of the shared screen, as the HUD card does today near the drop; no new exposure, but worth a line in the privacy notes |
+| Apple changes | Notch metrics come only from public `NSScreen` APIs; no private calls, no hard-coded sizes beyond tested fallbacks |
+
+**Dependencies:** P2-197 (spike), the `ZivletUI` HUD (M4), `ZivletSettings` (one new key), the drag sampler (tray).
+**Effort:** P2-115 M, P2-116 M (ESTIMATE). **Size:** 0 MB. **FR:** FR-150 (reserved for the Notch HUD), FR-133 (tray).
 
 ---
 
@@ -516,6 +606,8 @@ integration and benchmark harness for the nightly matrix). P3 for the rest, the 
 
 | Proposed ID | Title | Module(s) | Deps | Size | Phase |
 |---|---|---|---|---|---|
+| P2-115 | NotchIsland core (§2a.3): panel, `NotchGeometry`, hover, pill fallback, Reduce Motion fade, arbiter | ZivletNotch (new, proposed) | P2-197 | M | P2, 0.5 (first) |
+| P2-116 | Notch HUD (§2a.4): HUD content on the island, states, linger rules, Settings › General choice | ZivletUI, ZivletNotch, ZivletSettings | P2-115 | M | P2, 0.5 (first) |
 | P2-55a | Drop Box core: `ZivletShelfCore` model, JSON store, bookmark rules, Trash detection | ZivletShelfCore (new, pure) | P1-44 | M | P2 |
 | P2-55b | Drop Box panel: states, dock, grid and list, QL, keyboard, AX | ZivletActions | P2-55a | L (was P2-55) | P2 |
 | P2-55c | Bulk actions: Share picker, AirDrop, Copy, Move to / Copy to with undo, Zip via coordinator, owned copies, auto-clear | ZivletActions, ZivletUI | P2-55b, P1-45, EngineArchive | M | P2 |
@@ -530,6 +622,7 @@ integration and benchmark harness for the nightly matrix). P3 for the rest, the 
 The changes to 02 §4.1 that this implies:
 
 - Add `ZivletShelfCore` (domain, pure, P2).
+- Add `ZivletNotch` (shell, AppKit panel + pure geometry, P2; proposed in §2a.3).
 - Bring `ZivletPresets` forward from 1.x to P2.
 - Add `ZivletCLIKit` (front-end library, P2).
 - Change `zivlet-cli` from "P3" to "P2 subset, P3 complete".
@@ -547,6 +640,8 @@ The changes to 02 §4.1 that this implies:
 5. **History:** default retention 30 days, max 500 entries, excluded from Time Machine, and "Off" still keeps 24 h
    undo data. Confirm all four.
 6. **CLI early subset in P2** (proposed), and the Homebrew tap: own tap first, then the main cask repo after 1.0?
+7. **Notch HUD second placement** (OWN-HUD-2, §2a.6): keep today's "near the drop" placement under that name, or a
+   fixed bottom-right corner? (Added 2026-10-22; items 1–6 were adopted on 2026-10-21.)
 
 ---
 

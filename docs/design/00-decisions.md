@@ -100,7 +100,7 @@ All 29 items are adopted as recommended. Where the challenge pass amended a reco
 
 | ID | Decision adopted |
 |---|---|
-| OWN-PLAN-1 | Phase 2 ships as three public betas (0.5 / 0.6 / 0.7); apply the challenge re-sizes; keep the §4.3 cut list ready (Phase 2 is about 2× its original size) |
+| OWN-PLAN-1 | Phase 2 ships as three public betas (0.5 / 0.6 / 0.7); apply the challenge re-sizes; keep the §4.3 cut list ready (Phase 2 is about 2× its original size). Contents of 0.5 and 0.7 amended on 2026-10-22 (OWN-PLAN-3) |
 | OWN-PLAN-2 | Make Searchable, Remove Blank Pages and Page Size stay in 0.7; visual signature stays at the start of Phase 3 |
 | OWN-W-1 | Actions wheel grows to 9 (ZIP, LOCK, RENAME added); Lock/Unlock is one slot |
 | OWN-PDF-1 | Allow non-ASCII PDF passwords, with a warning and an "opens on Mac" check result |
@@ -136,4 +136,22 @@ All 29 items are adopted as recommended. Where the challenge pass amended a reco
 |---|---|
 | Languages | English, Hindi, Hinglish and mixes of them |
 | Output | **Both files** for Hindi/Hinglish: one in Roman script and one in Devanagari (English words kept in Roman); one file for pure English |
-| Design | Pending in `docs/design/16-transcription.md` (not yet written). The roadmap only reserves the slot: P3-111, FR-138, a `TRANSCRIBE` slice, History kind `transcribe`, CLI verb `zivlet transcribe` |
+| Design | [16-transcription.md](16-transcription.md) with its evidence in [16a-transcription-evidence.md](16a-transcription-evidence.md) (imported 2026-10-22); task and PRD rows in [05b-task-additions-transcription.md](../plan/05b-task-additions-transcription.md), not yet merged into 05/01b. It fills slot P3-111 (FR-138, `TRANSCRIBE` slice, History kind `transcribe`, CLI verb `zivlet transcribe`) in Phase 3 wave 3B |
+| Owner decisions | OWN-TR-8, OWN-TR-9 (word timing) and OWN-TR-10 adopted as defaults on 2026-10-22 (section below). OWN-TR-1 … OWN-TR-7 are still open at their recommendations (16 §14) |
+
+## Owner decisions, 2026-10-22: Drop Box first, Notch HUD, transcription defaults
+
+Date: 2026-10-22, after M4 (see [11-m4-record.md](../plan/11-m4-record.md)). OWN-PLAN-3 and OWN-HUD-1 are the
+owner's decisions, given in chat. The row marked "defaults (assistant's)" holds values the assistant proposed; the
+owner may change them. The OWN-TR-8 … OWN-TR-10 rows were the assistant's recommendations in
+[16-transcription.md](16-transcription.md) §14; they were applied as defaults because the owner did not object, and
+are not explicit owner choices.
+
+| ID | Decision | Consequences |
+|---|---|---|
+| OWN-PLAN-3 | **The notch Drop Box moves to the first public beta (0.5), right after M4.** New order: notch spike P2-197 → NotchIsland core (P2-115) + Notch HUD (P2-116) → shelf core P2-141 → Drop Box panel replacing Float P2-55 → bulk actions P2-142 → notch tray P2-143 → then the earlier 0.5 contents (OCR, lock/unlock, PDF basics) → the rest of Phase 2 as planned. The choosable picker style (Wheel or Bar) and place (at cursor or at the notch) stays **last** | 17-feature-roadmap §4.1–§4.3 and §5 updated: the Drop Box rows and spike P2-197 leave wave 2C for 2A; 0.7 no longer carries the Drop Box. The notch tray is no longer a cut candidate unless the owner says so. OWN-APP-2 (notch tray as the box's primary home) stands. Beta numbering is unchanged (an interpretation: if the owner wants a notch-only beta before the OCR/lock work, that is a renumbering, not a scope change) |
+| OWN-HUD-1 | **New pick: Notch HUD.** Progress and results show at the notch instead of "the bottom-right HUD" (the owner's words; OWN-HUD-2 notes where today's card actually opens). Collapsed island: file icon + progress ring. Hover expands to details (for example "Converting… 40%", time left, Cancel). Done: "Saved photo.jpg", sizes, Open / Show in Finder / Undo, drag-out of the result. Failure card with the reason and Retry. Action toasts (Copied; Moved + Undo) too. Several jobs: "3 jobs" with a list on hover. Auto-collapse after the toast time; stays while hovered | Design in 17e-app §2a; task rows P2-115 (NotchIsland panel, shared) and P2-116 (Notch HUD), FR-150 reserved; size 0 MB (system frameworks, own code). The NotchIsland panel is shared infrastructure for the Notch HUD, the notch tray (P2-143) and the last-phase picker at the notch. The HUD content (copy, buttons, timings, drag-out) is reused from `ZivletUI` |
+| OWN-HUD-1 defaults (assistant's) | On by default on Macs with a notch. Settings › General: "Show progress and results: At the notch \| Bottom-right corner". On a display without a notch (external displays, or a Mac without one) the island becomes a top-centre pill on the display where the drop happened. Reduce Motion → fade only | Open point OWN-HUD-2 (17e-app §2a.6): today's HUD card opens below and to the right of the drop point (HUDLayout, 03a §4.5), not in a fixed bottom-right corner. The second choice should either keep today's placement under a label that says so, or become a fixed corner; owner to confirm |
+| OWN-TR-8 (default) | With the Hindi & Hinglish pack installed, Auto routes **every** file through the Hinglish model (option (a)); Apple English is used only without the pack or when Language = English | 16 §0, §2.1, §5.3; 05b TR-14, FR-143 |
+| OWN-TR-9 (default) | Word timing (DTW, with flash attention off) only when subtitles or text timestamps are requested; Text-only jobs keep the faster path | 16 §5.2, §14; 05b TR-21, FR-146, NFR-25. The punctuation half of OWN-TR-9 stays open until the owner sees samples (TR-42) |
+| OWN-TR-10 (default) | Hinglish mode (the mixedcode token) stays on in Auto; the "Hindi" language option is the choice for formal Hindi and is named in the Change… menu | 16 §4.3, §14; 05b TR-31 |

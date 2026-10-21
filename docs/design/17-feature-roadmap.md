@@ -10,15 +10,21 @@
 
 Date: 2026-10-21. Status: **approved by the owner 2026-10-21** (00-decisions); its §14 decisions are adopted at their
 recommendations.
+
 Companions: [01b-prd-additions.md](../plan/01b-prd-additions.md) (FR-90…FR-141, NFR-21…24) and
 [05-task-list.md §9](../plan/05-task-list.md) (05-format rows, milestones M5a/b/c, effort tally).
+
+> **Update 2026-10-22** (owner, after M4; [00-decisions.md](00-decisions.md) OWN-PLAN-3, OWN-HUD-1): the notch Drop Box
+> and the new **Notch HUD** lead the first beta (§4.2); the notch tray leaves the cut list; picker style and place stay
+> last. §1, §2, §4–§9, §10, §12 and §14 are updated; the earlier wording is in git history.
 
 Inputs:
 - `docs/design/00-decisions.md`, `10-tech-strategy.md` (§9 size, §10 licences, §12 roadmap), `12`, `13`, `14`;
   `docs/plan/01-prd.md`, `02-architecture.md`, `03a`, `03b`, `05-task-list.md`, `09-m3-record.md` (M3 is code complete).
 - The owner's picks with interpretation: [00-decisions.md](00-decisions.md) (2026-10-21 section).
 - Cluster research with prototypes (docs/design 17a–17e): `17a-pdf.md`, `17b-lock.md`, `17c-image.md`, `17d-media-ai.md`, `17e-app.md`.
-- Transcription: `docs/design/16-transcription.md` **does not exist yet**. Only the slot is reserved (§7).
+- Transcription: [16-transcription.md](16-transcription.md) and [16a-transcription-evidence.md](16a-transcription-evidence.md)
+  (imported 2026-10-22) fill the slot reserved in §7.
 
 Principles held throughout:
 - local and offline;
@@ -39,18 +45,14 @@ DOC, EST. Every PROBED number still has to be re-run on macOS 26.x.
 - Every YES pick gets a phase, a module, an engine, an effort, a licence and a size cost (§5).
 - Phase 1 (to M4, private alpha) is **unchanged**. One pure task, the catalog cap rule (P2-100), may start during Phase 1.
 - Phase 2 becomes **three public betas**, ordered by the owner's priorities:
-  - **0.5:** OCR copy-text, lock/unlock for Office/ZIP/any file, and the PDF basics (lock, unlock, merge, split,
-    compress);
+  - **0.5:** first the Drop Box with the notch tray and the Notch HUD (owner, 2026-10-22), then OCR copy-text,
+    lock/unlock for Office/ZIP/any file, and the PDF basics (lock, unlock, merge, split, compress);
   - **0.6:** images, the top three multi-file features (combine into one PDF, reel, stitch), share presets, remove
     silences;
-  - **0.7:** Drop Box with the notch tray, custom wheels, history, archives, searchable PDF, blank pages, page size.
-- Phase 3 (1.0) adds:
-  - visual signatures;
-  - JPEG XL (only if the size gate allows);
-  - legacy Office unlock;
-  - custom-wheel colours and import/export;
-  - the full CLI;
-  - the **transcription slot**, with translation.
+  - **0.7:** documents, custom wheels, history, archives, searchable PDF, blank pages, page size.
+- Phase 3 (1.0) adds visual signatures; JPEG XL (only if the size gate allows); legacy Office unlock; custom-wheel
+  colours and import/export; the full CLI; and **transcription** ([16-transcription.md](16-transcription.md)), with
+  translation.
 - Phase 4 (1.x) adds meeting notes with speaker labels, "ask in plain words", digital signatures (gated), smart crop and
   lossless page resize.
 
@@ -111,8 +113,9 @@ RAR creation and unRAR stay out (§10).
 | Custom wheels: choose slices and order ("which we need and which we don't"), colours | YES | P2c v1, P3 v2 |
 | History of recent conversions | YES | P2c: P2-145 |
 | Command-line tool | YES | P2c subset, P3 complete |
-| Drop box → notch tray ("a big box… temporary") | YES | P2c: P2-141/142/143 + P2-55 |
-| Transcription (EN/HI/Hinglish, two script files) | YES, designed separately | P3 slot (§7) |
+| Drop box → notch tray ("a big box… temporary") | YES; first in 0.5 (owner, 2026-10-22) | P2a: P2-197 spike, P2-141/142/143 + P2-55 |
+| Notch HUD: progress and results at the notch (2026-10-22 pick) | YES | P2a: P2-115 NotchIsland core, P2-116 Notch HUD |
+| Transcription (EN/HI/Hinglish, two script files) | YES, designed in 16 | P3 wave 3B (§7) |
 | Translate transcript, meeting summary with speakers | YES | P3 (translate), P4 (notes) |
 | Ask in plain words | YES **[confirm]** | P4: P4-102 |
 | Watch folders; video/audio extras group (highlights, extract audio, normalise, screen recording → GIF) | LATER | not scheduled (§13) |
@@ -132,16 +135,9 @@ RAR creation and unRAR stay out (§10).
 
 1. **Owner priority first, then dependencies.** Within a wave, rows follow the priority tiers in §2. A row only moves
    earlier when its dependencies are already in that wave.
-2. **Build shared pieces once, in the wave that first needs them.** Examples:
-   - password sheet (P2-101);
-   - OCR core (P2-103);
-   - PDF pre-flight and verify (P2-105);
-   - `ResizeSpec` (P2-123);
-   - preset table (P2-131);
-   - keep-list model (P2-134);
-   - shelf core (P2-141);
-   - catalog cap rule (P2-100);
-   - model packs (P3-109).
+2. **Build shared pieces once, in the wave that first needs them.** Examples: password sheet (P2-101); OCR core
+   (P2-103); PDF pre-flight and verify (P2-105); `ResizeSpec` (P2-123); preset table (P2-131); keep-list model
+   (P2-134); shelf core (P2-141); NotchIsland panel (P2-115); catalog cap rule (P2-100); model packs (P3-109).
 3. **The catalog cap rule comes before any new slice.** The owner's tools take the PDF and video tool lists to 12–13
    (§8.1). P2-100 lands first.
 4. **No new engine without a measured prototype.** Every Phase 2 feature has prototype evidence in a cluster report.
@@ -164,15 +160,19 @@ RAR creation and unRAR stay out (§10).
 | Phase / wave | Release | Original 05 rows in this release | Added rows (17) | Weeks (EST) | Exit |
 |---|---|---|---|---|---|
 | Phase 1 (to M4) | alpha 0.1 | all P1 rows (unchanged) | P2-100 may start early | as 05 | 05 M4 |
-| **2A** | **beta 0.5** | P2-01 worker, P2-10 ZivletRS, P2-12, P2-13 qpdf, P2-19 libarchive, P2-30 tool window, P2-31, P2-33, P2-39, P2-41, P2-43, P2-51 Vision base, P2-57 | P2-100…114, spikes P2-190/192/193 | ≈ 3 (orig.) + 7 + 1 | M5a |
+| **2A** | **beta 0.5** | P2-55 (→ Drop Box, first), P2-01 worker, P2-10 ZivletRS, P2-12, P2-13 qpdf, P2-19 libarchive, P2-30 tool window, P2-31, P2-33, P2-39, P2-41, P2-43, P2-51 Vision base, P2-57 | P2-115/116 (NotchIsland, Notch HUD), P2-141…143 (Drop Box, notch tray), P2-100…114, spikes P2-197 (first), P2-190/192/193 | ≈ 4.5 (orig.) + 11 + 1 | M5a |
 | **2B** | **beta 0.6** | P2-03/04 spikes, P2-11 SVG, P2-18 subtitles, P2-23 extras, P2-32, P2-34…38, P2-40, P2-42 (→ Combine v1), P2-44…50 | P2-120…135, spikes P2-191/194/195/196/199 | ≈ 3 + 9 + 1 | M5b |
-| **2C** | **beta 0.7 (= M5)** | P2-02, P2-05/06, P2-14…17, P2-20…22 (documents), P2-55 (→ Drop Box), P2-56, P2-60, P2-61 | P2-140…153, spikes P2-197/198 | ≈ 4 + 9 + 1 | M5c = 05 M5 |
+| **2C** | **beta 0.7 (= M5)** | P2-02, P2-05/06, P2-14…17, P2-20…22 (documents), P2-56, P2-60, P2-61 | P2-140, P2-144…153, spike P2-198 | ≈ 2.5 + 6 + 1 | M5c = 05 M5 |
 | **3A** | 1.0 track | P3-01…11 documents, P3-20…28 tools | P3-100…107, P3-113 (gate) | 05 + ≈ 6 | — |
-| **3B** | 1.0 track | P3-30…35 platform | P3-108…112 (incl. transcription slot), spikes P3-190…192 | 05 + ≈ 2.5 + transcription | 05 M6 |
+| **3B** | 1.0 track | P3-30…35 platform | P3-108…112 (P3-111 = transcription, TR-10…TR-43 in [05b](../plan/05b-task-additions-transcription.md)), spikes P3-190…192, TR-01…TR-07 | 05 + ≈ 2.5 + ≈ 11 (transcription, 55.5 d) | 05 M6 |
 | **4** | 1.x | B4 backlog | P4-100…111 | ≈ 8.5 | per-feature addendum |
 
-Phase 2 (one engineer) becomes ≈ 38 weeks across three betas, instead of 8–10 weeks. Each beta is a coherent,
-announceable increment, and the owner's top-priority features ship in the first one.
+Phase 2 (one engineer) becomes ≈ 38 weeks across three betas, instead of 8–10 weeks; the two Notch HUD rows added on
+2026-10-22 bring it to ≈ 39 (EST). Each beta is a coherent, announceable increment, and the owner's top-priority
+features ship in the first one.
+
+2026-10-22 split (EST, 05 §9.10 tally): P2-141/142/143 (13.5 d) and P2-55 (7.5 d) move from 2C to 2A and P2-115/116
+(6 d) are new, so 2A ≈ 54.5 added days (≈ 11 weeks; P2-55 counts as orig.) and 2C ≈ 30 (≈ 6). Spikes stay separate.
 
 > [challenge] The "orig." column is not on the same scale as the "added" column (see §1). On 05's own tally, the
 > original rows per wave are about 2A ≈ 7.6 weeks, 2B ≈ 10 weeks and 2C ≈ 13.6 weeks (31 in total). Read the whole
@@ -186,15 +186,24 @@ announceable increment, and the owner's top-priority features ship in the first 
 
 ### 4.2 Order inside each wave (owner priority, then dependency)
 
-**2A (beta 0.5)**
-1. P2-100 catalog cap rule.
-2. P2-01 worker → P2-103 OCR core → **P2-104 Copy Text**.
-3. P2-30 tool window → P2-101 password sheet + P2-102 policy tests.
-4. P2-13 qpdf → P2-105 pre-flight/verify → **P2-106 PDF lock/unlock** → P2-107 encrypted inputs.
-5. P2-108 Office crypto → **P2-109 Office lock/unlock**.
-6. P2-19 libarchive → P2-113 NFC patch → P2-110 ZIP passwords → **P2-111 lock any file** → P2-112 unlock-then-convert.
-7. P2-114 slot label refinement.
-8. P2-43 merge (qpdf first), P2-39 split (ranges), P2-33 compress (pre-flight guard), P2-41 extract (all formats).
+**2A (beta 0.5)**, reordered by the owner on 2026-10-22 (OWN-PLAN-3): the notch Drop Box comes first.
+1. P2-197 notch spike (P-N1): panel above the menu bar in full screen, drag-near-notch detection, no TCC prompt.
+2. P2-115 **NotchIsland core** (shared panel, geometry, pill fallback) + P2-116 **Notch HUD**.
+3. P2-141 shelf core → P2-55 **Drop Box panel** (replaces Float) → P2-142 bulk actions → P2-143 **notch tray**.
+4. P2-100 catalog cap rule.
+5. P2-01 worker → P2-103 OCR core → **P2-104 Copy Text**.
+6. P2-30 tool window → P2-101 password sheet + P2-102 policy tests.
+7. P2-13 qpdf → P2-105 pre-flight/verify → **P2-106 PDF lock/unlock** → P2-107 encrypted inputs.
+8. P2-108 Office crypto → **P2-109 Office lock/unlock**.
+9. P2-19 libarchive → P2-113 NFC patch → P2-110 ZIP passwords → **P2-111 lock any file** → P2-112 unlock-then-convert.
+10. P2-114 slot label refinement.
+11. P2-43 merge (qpdf first), P2-39 split (ranges), P2-33 compress (pre-flight guard), P2-41 extract (all formats).
+
+Dependency notes for the new order:
+- **P2-142's Zip button** depended on P2-147 (2C). The box ships its other bulk actions first; Zip joins once libarchive
+  writing exists in 2A (P2-19 → P2-111), so the dependency becomes P2-111.
+- **Steps 1–3 need no XPC worker (P2-01)**: app-side AppKit and pure models; the Notch HUD re-hosts `ZivletUI` content.
+- **No new slice**: BOX replaces FLOAT in the same Actions slot, so rule 3 still holds with P2-100 at step 4.
 
 **2B (beta 0.6)**
 1. P2-123 ResizeSpec + **Resize** → P2-124 **Rename**.
@@ -210,12 +219,11 @@ announceable increment, and the owner's top-priority features ship in the first 
 1. PDF suite completion (owner priority): P2-150 **Make Searchable**, P2-152 **Remove Blank Pages**, P2-151 **Page
    Size**.
 2. Documents P2-14…22 → P2-153 Combine v2 (Office inputs).
-3. P2-141 shelf core → P2-55 Drop Box panel → P2-142 bulk actions → P2-143 **notch tray**.
-4. P2-144 custom wheels v1.
-5. P2-145 history.
-6. P2-147 archive creation → P2-148 peek → P2-149 archive convert.
-7. P2-140 size estimates (tier 0).
-8. P2-146 CLI subset.
+3. P2-144 custom wheels v1.
+4. P2-145 history.
+5. P2-147 archive creation → P2-148 peek → P2-149 archive convert.
+6. P2-140 size estimates (tier 0).
+7. P2-146 CLI subset. (The Drop Box rows moved to the front of 2A on 2026-10-22.)
 
 **3A (1.0 track, first)**
 1. P3-100/101 **visual signature**: the last item of the owner's PDF suite. Its placement UI is reused by P3-21
@@ -227,7 +235,7 @@ announceable increment, and the owner's top-priority features ship in the first 
 6. P3-107 wheels v2.
 
 **3B (1.0 track, second)**
-1. P3-109 model packs → **P3-111 transcription slot** → P3-112 translate.
+1. P3-109 model packs → **P3-111 transcription** (TR-10…TR-43, [16](16-transcription.md)) → P3-112 translate.
 2. P3-110 AI capability gate.
 3. P3-108 CLI owner verbs (with P3-31).
 
@@ -238,7 +246,9 @@ The owner's priority-1 and priority-2 rows are never cut. They are:
 - all lock/unlock in 2A;
 - PDF lock, unlock, merge, split and compress;
 - Combine v1, Reel and Stitch;
-- Resize and Rename.
+- Resize and Rename;
+- the Drop Box, the notch tray and the Notch HUD (owner decision 2026-10-22: the notch tray is no longer a cut
+  candidate unless the owner says so).
 
 Cut in this order, from first to last:
 
@@ -247,10 +257,11 @@ Cut in this order, from first to last:
 | 1 | P2-140 size estimates tier 0 | P4 (with tiers 1–2) | 3 d |
 | 2 | P2-148 peek, P2-149 archive convert | P3 | 6 d |
 | 3 | P2-127 GIF, P2-128 contact sheet | P3 | 2 d |
-| 4 | P2-143 notch tray (keep the floating Drop Box) | P3 | 7.5 d |
-| 5 | P2-153 Combine v2 (Office inputs) | P3 | 3 d |
-| 6 | P2-151/152 page size, blank pages | P3 (the original 17a-pdf.md placement) | 4 d |
-| 7 | P2-150 Make Searchable | P3 (owner asked twice: cut last) | 3 d |
+| 4 | P2-153 Combine v2 (Office inputs) | P3 | 3 d |
+| 5 | P2-151/152 page size, blank pages | P3 (the original 17a-pdf.md placement) | 4 d |
+| 6 | P2-150 Make Searchable | P3 (owner asked twice: cut last) | 3 d |
+
+The former item 4 (P2-143 notch tray, 7.5 d) was removed on 2026-10-22 (OWN-PLAN-3).
 
 ### 4.4 Optional pulls into an earlier beta (owner's call, OWN-PLAN-2)
 
@@ -273,8 +284,17 @@ Columns:
 
 ### 5.1 Wave 2A — beta 0.5
 
+The first six rows are the owner's 2026-10-22 reorder (OWN-PLAN-3, OWN-HUD-1). Their priority tier stays 2 (picked);
+"built first" records the owner's order, not a new tier.
+
 | Feature | Pri | Module(s) | Engine | Effort | Licence | Size Δ | FR | Tasks |
 |---|---|---|---|---|---|---|---|---|
+| **NotchIsland core** (shared panel above the menu bar: notch geometry, collapsed/expanded island, hover, top-centre pill on displays without a notch, Reduce Motion fade) | 2, built first | **ZivletNotch** (new, proposed: AppKit panel + pure geometry and state) | AppKit `NSPanel`; `NSScreen.safeAreaInsets`, `auxiliaryTopLeftArea` / `auxiliaryTopRightArea` | M | system + GPL-3.0+ (own) | 0 | 133, 150 | P2-115 |
+| **Notch HUD** (progress ring, hover details, done/failure cards, action toasts, "n jobs" list, drag-out; Settings › General placement choice) | 2, built first | ZivletUI (HUD content reused), ZivletNotch, ZivletSettings | existing `ZivletUI` HUD models on the NotchIsland panel | M | system + GPL-3.0+ (own) | **0 MB** | 150 | P2-116 |
+| Drop Box core (+ opt-in shake) | 2, built first | **ZivletShelfCore** (new), Trigger | Foundation bookmarks + JSON | M | system | 0 | 132 | P2-141 |
+| Drop Box panel (replaces Float) | 2, built first | Actions | AppKit `NSPanel`, QuickLookThumbnailing | L (orig.) | system | 0 | 132 | P2-55 |
+| Drop Box bulk actions (Share, AirDrop, Copy, Move/Copy to, Convert all; Zip once P2-111 lands) | 2, built first | Actions, UI | `NSSharingServicePicker`, Move action, EngineArchive | M | system | 0 | 132 | P2-142 |
+| **Notch tray** (island expands while dragging near the notch; pill on non-notch displays) | 2, built first | Actions, TriggerHost, Trigger, ZivletNotch | NotchIsland panel + existing permission-free drag sampler | L | system | 0 | 133 | P2-143 |
 | Catalog visibility + 12-cap + combining rule | infra | Core, WheelCore | own | M | GPL-3.0+ | 0 | 90, 91 | P2-100 |
 | Password sheet + policy (no recovery, no storing) | 1 | UI, Core, tests | SwiftUI `SecureField`, `SecCreateSharedWebCredentialPassword` | M + S | system | 0 | 96 | P2-101/102 |
 | OCR core (Hindi-first order, warm-up, worker-pinned) | 1 | EngineVision | Vision `RecognizeDocumentsRequest` | M | system | 0 | 104 | P2-103 |
@@ -330,10 +350,6 @@ Columns:
 | **Remove blank pages** (detector + review) | 1 | EnginePDF, UI | Quartz render + own detector + qpdf page selection | M | system + Apache-2.0 | 0 | 110 | P2-152 |
 | **Resize pages** v1 (A4/Letter…, Fit/Fill/Actual) | 1 | EnginePDF | Quartz redraw | S | system | 0 | 111 | P2-151 |
 | Combine v2: Word/Excel/PowerPoint/MD/TXT inputs, contents page | 1 | EnginePDF, EngineDocs | existing → PDF routes + qpdf | M | as routes | 0 | 118 | P2-153 |
-| Drop Box core (+ opt-in shake) | 2 | **ZivletShelfCore** (new), Trigger | Foundation bookmarks + JSON | M | system | 0 | 132 | P2-141 |
-| Drop Box panel (replaces Float) | 2 | Actions | AppKit `NSPanel`, QuickLookThumbnailing | L (orig.) | system | 0 | 132 | P2-55 |
-| Drop Box bulk actions (Share, AirDrop, Copy, Move/Copy to, Zip, Convert all) | 2 | Actions, UI | `NSSharingServicePicker`, Move action, EngineArchive | M | system | 0 | 132 | P2-142 |
-| **Notch tray** (island expands while dragging near the notch; pill on non-notch displays) | 2 | Actions, TriggerHost, Trigger | AppKit panel + existing permission-free drag sampler; `NSScreen.safeAreaInsets` / auxiliary areas | L | system | 0 | 133 | P2-143 |
 | Custom wheels v1 (hide, order, per-wheel accent) | 2 | **ZivletPresets** (new, pulled from 1.x), WheelCore, UI | own | M | GPL-3.0+ | 0 | 134 | P2-144 |
 | History (window, Re-run, retention, Undo) | 2 | Runtime, UI | JSON actor (SwiftData rejected: deleted paths linger) | M | system | 0 | 135 | P2-145 |
 | CLI subset (`formats`, `info`, `convert`) | 2 | **ZivletCLIKit** (new), zivlet-cli | swift-argument-parser 1.7.2 | S | Apache-2.0 + RLE | +0.83 MB (measured) | 136 | P2-146 |
@@ -355,8 +371,9 @@ Columns:
 >   `kMDItemPixelWidth/Height`, `kMDItemDurationSeconds`). Skip any item with `SF_DATALESS` or
 >   `ubiquitousItemDownloadingStatus != .current`. Do header and content probes only after the drop. Where data is
 >   missing, keep the provisional label or estimate.
-> - **Notch tray.** It has no prototype yet, and 17e-app.md has no notch design. It is the only Phase 2 L-size item with no
->   evidence. Keep it behind spike P2-197 and cut-list item 4.
+> - **Notch tray.** It has no prototype yet. It is the only Phase 2 L-size item with no evidence. Keep it behind spike
+>   P2-197. (2026-10-22: the row moved to §5.1, 17e-app §2a now holds the notch island design, and the tray is no
+>   longer on the cut list.)
 
 ### 5.4 Phase 3 (1.0)
 
@@ -372,7 +389,7 @@ Columns:
 | CLI owner verbs (lock, pdf, archive, text, resize, rename, fit, …) + cask | 2 | zivlet-cli | ArgumentParser | M (+ P3-31 M) | Apache-2.0 | 0 | 136 | P3-108, P3-31 |
 | Model-pack infrastructure (verified, data-only) | 3 | Runtime, UI | URLSession on user click, SHA-256 pin | M | system | 0 | 137 | P3-109 |
 | AI capability gate + PCC ban | 3 | Core, **EngineAI** (new) | Foundation Models / Translation availability | S | system | 0 | 137 | P3-110 |
-| **Transcription (reserved slot)** | 3 | per 16-transcription.md | per 16 (whisper.cpp spikes running) | per 16 | per 16 | per 16 (models = downloads) | 138 | P3-111 |
+| **Transcription** (EN/HI/Hinglish; Roman + Devanagari files; TXT/SRT/VTT) | 3 | **ZivletTranscript** (new, pure), **EngineSpeech** (new), EngineSubtitles, `zivlet-whisper` helper (new) | Apple `SpeechTranscriber` for English without the pack; whisper.cpp v1.9.5 + Trelis Hinglish model (our ggml q5_0 conversion, 1.08 GB pack) + Silero VAD | ≈ 55.5 d (16 §13) | system + MIT (whisper.cpp, Silero) + Apache-2.0 (model, download) | **+7–7.5 MB** (≈ +2 MB if shaders move to the pack, OWN-TR-3); models are downloads | 138, 142–149 | P3-111 (TR-01…TR-43) |
 | Translate transcript → English | 3 | EngineAI, UI | Apple Translation (offline packs managed by macOS) | S | system | 0 | 139 | P3-112 |
 | Encrypted 7z via 7-Zip helper (gate) | 2 | Vendor, EngineArchive | `7zz` 26.x built without RAR codecs | M | LGPL-2.1+ / BSD-3 | **+2–3 MB** (gate OWN-ARC-2) | 131 | P3-113 |
 
@@ -422,7 +439,7 @@ P2-100 catalog cap ──────────────┬─ every new sl
 P2-01 worker ──┬─ P2-103 OCR core ─┬─ P2-104 COPY TEXT ─ P2-150 SEARCHABLE
                │                   └─ P2-126 REMOVE BG ─ P3-101 SIGN (image import), P3-103
                ├─ P2-108 Office crypto ─ P2-109 Office LOCK ─ P3-104 legacy, P3-106, P4-109
-               └─ P3-109 model packs ─ P3-111 TRANSCRIBE (slot) ─ P3-112 TRANSLATE ─ P4-101 NOTES
+               └─ P3-109 model packs ─ P3-111 TRANSCRIBE (16) ─ P3-112 TRANSLATE ─ P4-101 NOTES
                                                               └─ P4-100 diarisation ─┘
 P2-30 tool window ─ P2-101 password sheet ─┬─ P2-106 PDF LOCK ─ P2-107 encrypted inputs
                                            ├─ P2-109, P2-110, P2-111 LOCK any ─ P3-105 DMG
@@ -437,16 +454,25 @@ P2-123 ResizeSpec ─ P2-122 STITCH, P2-127 GIF, P2-128 THUMBNAILS, P2-132 image
 P2-131 presets ─ P2-133 Instagram ─ P2-121 REEL (+P2-46 join video) ; P2-140 estimates ; P4-102 Ask
 P2-49 trim audio ─ P2-134 keep list ─ P2-135 NO SILENCE (keep list reused by transcript remap)
 P1-15 UndoLog ─ P2-124 RENAME, P2-145 HISTORY
+P2-197 notch spike ─ P2-115 NotchIsland ─┬─ P2-116 NOTCH HUD
+                                        ├─ P2-143 NOTCH tray
+                                        └─ picker at the notch (last phase)
 P2-141 shelf core ─ P2-55 Drop Box panel ─ P2-142 bulk actions ─ P2-143 NOTCH tray
 ```
 
 ---
 
-## 7. Transcription slot (reserved; designed separately)
+## 7. Transcription slot (designed in 16)
 
-- **Status:**
-  - `docs/design/16-transcription.md` does not exist yet. whisper.cpp spikes and an EN/HI/Hinglish
-    corpus are in progress as local prototypes (not published).
+- **Status (2026-10-22):**
+  - Designed in [16-transcription.md](16-transcription.md), evidence in
+    [16a-transcription-evidence.md](16a-transcription-evidence.md), rows in
+    [05b-task-additions-transcription.md](../plan/05b-task-additions-transcription.md) (not yet merged into 05/01b).
+  - Engines: Apple `SpeechTranscriber` for English when no pack is installed; whisper.cpp v1.9.5 in a new signed helper
+    `zivlet-whisper` with the Trelis Hinglish model (Apache-2.0, our own ggml q5_0 conversion) as a 1.08 GB "Hindi &
+    Hinglish" pack. Modules `ZivletTranscript` (pure) and `EngineSpeech`.
+  - Defaults adopted 2026-10-22: OWN-TR-8 (a), OWN-TR-9 (word timing), OWN-TR-10 ([00-decisions.md](00-decisions.md)).
+  - It stays in Phase 3 wave 3B, after P3-109; 16 did not pull it into Phase 2.
   - Owner answers (2026-10-21): English, Hindi, Hinglish and mixes. Two transcript files for Hindi/Hinglish (Roman,
     and Devanagari with English words kept in Roman). One file for pure English. TTS or freely licensed recordings
     only, labelled.
@@ -458,7 +484,7 @@ P2-141 shelf core ─ P2-55 Drop Box panel ─ P2-142 bulk actions ─ P2-143 NO
   - the History kind `transcribe` (language, model id);
   - the CLI verb `zivlet transcribe`;
   - FR-138;
-  - module name `EngineAI` or a separate `EngineSpeech`: 16's choice.
+  - module name: 16 chose a separate `EngineSpeech` (16 §6).
 - **What dependents need from 16** (media-ai §9):
   - segments with timestamps (word times if available) and a language tag per segment;
   - both script forms per segment;
@@ -497,7 +523,8 @@ The cap is 12 (FR-27/FR-90). New items are in **bold**. (P3) or (P4) marks the p
 Notes:
 - **Instagram presets live inside FIT FOR…** (Reel 9:16, 4:5, 1:1 sit beside WhatsApp, Gmail, Discord and Custom).
   That saves a slot in every media list.
-- **Meeting notes** is also an option in the TRANSCRIBE sheet, so it doesn't need a default slot.
+- **Meeting notes** is reached from the TRANSCRIBE progress card's Change… menu or a setting, not a sheet (TRANSCRIBE
+  is one drop with no dialog, 16 §4.1), so it doesn't need a default slot.
 - **CREATE PDF is retired into COMBINE PDF.** The label is MERGE PDF when every item is a PDF. The output names keep
   parity: `Images.pdf`, `Merged.pdf`, `Combined.pdf`.
 - **Lock · Unlock is one slot** (`tools.protect`). The label refines from the header probe (FR-92). This keeps the
@@ -546,6 +573,7 @@ through the ZivletUI coordinator, which keeps dependency rule R3.
 | W-6 | **FIT FOR… dwell ring**: holding over the slice ≈ 350 ms opens an outer ring of presets. Dropping on the parent uses the last preset | 95 | new geometry beyond r 125.92 conflicts with edge clamping (FR-24). Spike **P2-196**; the fallback is a compact picker after the drop |
 | W-7 | Custom layouts filter and order the catalog's offer; per-wheel accent; per-slice colours with an automatic outline below 3:1 | 134 | colour never the only cue |
 | W-8 | Notch tray is a second drop surface during drags. The wheel wins when both are hit. Trays appear only near the notch | 133 | spike **P2-197** (full screen, menu bar, Apple changes) |
+| W-9 | **Notch HUD** (2026-10-22): job progress, results and action toasts show on the NotchIsland at the notch (or a top-centre pill on the drop's display) instead of the HUD card near the drop; a Settings › General choice | 150 | spike **P2-197**; must never cover the wheel or the menu bar beyond the island |
 
 > [challenge] W-3 and W-5 need a probe before the drop. They must follow the pre-drop metadata-only rule (§5.3
 > challenge): no content reads of dataless or TCC-protected items during a drag. W-5's second line also has to fit the
@@ -557,7 +585,7 @@ through the ZivletUI coordinator, which keeps dependency rule R3.
 
 | Item | Δ installed | Status |
 |---|---|---|
-| All system-framework features (Vision, PDFKit/Quartz, Translation, Foundation Models, AppKit shelf/notch, hdiutil) | 0 | — |
+| All system-framework features (Vision, PDFKit/Quartz, Translation, Foundation Models, AppKit shelf/notch, Notch HUD, hdiutil) | 0 | — |
 | qpdf native crypto instead of OpenSSL | 0 vs budget; measured dylib 3.6 MB (budget 4.5 expected) | saves 4.8 MB vs the Homebrew build |
 | libarchive formats, AES ZIP | 0 (budgeted 1.8 MB) | — |
 | oxipng + imagequant | 0 (≈ 0.75 MB measured inside the 4–6 MB ZivletRS row) | — |
@@ -571,6 +599,7 @@ through the ZivletUI coordinator, which keeps dependency rule R3.
 | 7-Zip `7zz` helper | +2–3 MB | **gate OWN-ARC-2** |
 | swift-asn1 (PAdES) | +0.3–0.6 MB | P4 gate |
 | Speaker pack (CoreML), transcription models, Translation packs | 0 (downloads; Translation packs managed by macOS) | P3/P4, user-initiated |
+| `zivlet-whisper` helper (transcription, Phase 3) | +7–7.5 MB (≈ +2 MB if the Metal shaders move to the pack) | **OWN-TR-3**, 16 §8; measured minimal helper 6.7 MB installed / 1.56 MB gzip |
 
 Recommendation:
 - Ship the ungated set.
@@ -597,6 +626,9 @@ Recommendation:
 | libjxl 0.12 (gate) | BSD-3-Clause + PATENTS grant | yes | static |
 | 7-Zip `7zz` without RAR codecs (gate) | LGPL-2.1-or-later + BSD-3-Clause | yes (separate helper) | helper + source |
 | swift-asn1 (P4 gate) | Apache-2.0 | yes | SPM |
+| whisper.cpp v1.9.5 + ggml (transcription helper, P3) | MIT | yes | static in `zivlet-whisper`; our mixedcode patch proposed MIT (16 §9) |
+| Trelis/whisper-hinglish-preview, our ggml q5_0 conversion (P3) | Apache-2.0 (NOTICE credits Trelis, ARTPARK-IISc Whisper-Vaani, OpenAI Whisper) | yes | user-initiated download (pack), never bundled |
+| Silero VAD v6.2.0 ggml (P3) | MIT | yes | in the same pack |
 | FluidAudio-style diarisation code / models (P4) | Apache-2.0 code; models need a per-model audit (pyannote community-1 is CC-BY-4.0: attribution) | yes with attribution (AI-S2 confirms) | data-only download |
 | msoffcrypto-tool, pyzipper, python-docx/openpyxl/pptx, poppler, pdfium | MIT / GPL | n/a | **test oracles only, never shipped** |
 | **Never:** unRAR code, RAR writer, Ghostscript (AGPL, 25–40 MB), Private Cloud Compute model, network TSA by default | — | — | CI/licence gate |
@@ -692,7 +724,7 @@ Recommendation:
 | R4 | libarchive writes NFD names (certain) | Certain / Medium | P2-113 patch + NFC test, release blocker |
 | R5 | Non-ASCII PDF passwords: Preview can't open AES-256 files that qpdf and poppler accept | Medium / Medium | Warning + "opens on Mac" check (OWN-PDF-1) |
 | R6 | Wheel overcrowding: three lists at the 12-cap | Medium / Medium | Visibility rule, Instagram inside FIT FOR…, one lock slot, custom wheels, usability test before 0.6 |
-| R7 | Notch tray: panel above the menu bar in full screen, accidental opens, Apple changes to notch areas | Medium / Medium | Spike P2-197; recorded-trace thresholds; floating panel fallback (cut-list item 4) |
+| R7 | Notch tray and Notch HUD: panel above the menu bar in full screen, accidental opens, Apple changes to notch areas; both now ship first, in 0.5 | Medium / Medium | Spike P2-197 first in 2A; recorded-trace thresholds; the floating Drop Box panel and today's HUD card stay as fallbacks (Settings choice), since the tray is no longer on the cut list (OWN-PLAN-3) |
 | R8 | PDFKit silent failures leak into tools (RC4, no encryption, dead forms) | Was certain / High | qpdf-first rule, `PDFVerify` on every output (FR-107) |
 | R9 | Foundation Models hallucinates plans or action items; limited availability; Hindi unsupported | High / Medium | Validator + confirm card; "AI-generated" label; translate first; English summaries; transcript-only fallback |
 | R10 | Size creep beyond 70 MB | High / Low–Medium | Per-row Δ, ungated ≈ 71–72 MB, gates for JXL and 7zz, measure at P1-52 |
@@ -749,25 +781,19 @@ Recommendation:
 | OWN-PDF-5 [challenge] | Honour PDF permission bits when only the user password (or none) is known? | Yes. Copy Text/Searchable ask for the owner password when extraction is disallowed; Merge/Split/Organize/Page Size/No Blanks do the same when assembly/modification is disallowed; Compress keeps the encryption as is |
 | OWN-OCR-1 [challenge] | If macOS 26.x has no Hindi in Vision: hide Hindi below 27, or add an optional Tesseract `hin` pack (Apache-2.0; adds code, so it can't be a data-only pack)? | Hide below 27 and say why; revisit only if P2-190 fails on 26.x |
 | OWN-PICK-1 [challenge] | Confirm the interpretations "JPEG XL" (not Excel output) and "remove *image* background" (not PDF background/watermark removal) | Confirm |
+| OWN-PLAN-3 (2026-10-22) | Order of the first beta | **Decided by the owner:** notch Drop Box first in 0.5 (P2-197 → P2-115 + P2-116 → P2-141 → P2-55 → P2-142 → P2-143), then the earlier 0.5 contents; picker style and place last; the notch tray leaves the cut list |
+| OWN-HUD-1 (2026-10-22) | Notch HUD | **Decided by the owner:** yes. Defaults proposed by the assistant: on for Macs with a notch; Settings › General "Show progress and results: At the notch \| Bottom-right corner"; pill on displays without a notch; Reduce Motion → fade |
+| OWN-HUD-2 (open) | Today's HUD card opens below-right of the drop point, not in a fixed corner. Name the second choice for what it does, or move it to a fixed bottom-right corner? | Keep today's placement and label it "Near the drop" (17e-app §2a.6) |
 
 ---
 
 ## 15. Sources
 
-- Cluster reports (prototypes and measurements, 2026-10-21):
-  - `17a-pdf.md` §1–§7;
-  - `17b-lock.md` §1–§15;
-  - `17c-image.md` §0–§7;
-  - `17d-media-ai.md` §0–§12, including dated web sources for platform limits;
-  - `17e-app.md` §1–§7.
-- Repository docs (read only):
-  - `docs/design/00-decisions.md`;
-  - `10-tech-strategy.md` §9, §10, §12;
-  - `13-image-pdf-engine.md` §4, §6, §8;
-  - `docs/plan/01-prd.md` §5.9, §6, §7, §10;
-  - `02-architecture.md` §4–§5;
-  - `05-task-list.md`;
-  - `09-m3-record.md`.
+- Cluster reports (prototypes and measurements, 2026-10-21): `17a-pdf.md` §1–§7; `17b-lock.md` §1–§15;
+  `17c-image.md` §0–§7; `17d-media-ai.md` §0–§12, including dated web sources for platform limits; `17e-app.md` §1–§7.
+- Repository docs (read only): `docs/design/00-decisions.md`; `10-tech-strategy.md` §9, §10, §12;
+  `13-image-pdf-engine.md` §4, §6, §8; `docs/plan/01-prd.md` §5.9, §6, §7, §10; `02-architecture.md` §4–§5;
+  `05-task-list.md`; `09-m3-record.md`. Added 2026-10-22: `16-transcription.md`, `16a-transcription-evidence.md`.
 - Current code (read only): `Packages/ZivletKit/Sources/ZivletCore/Catalog/ToolTable.swift`, which holds today's
   per-format tool lists. Those lists are the basis for the §8.1 counts.
 - Owner inputs: the owner picks and the transcription owner answers, both recorded in [00-decisions.md](00-decisions.md) (2026-10-21 section).
