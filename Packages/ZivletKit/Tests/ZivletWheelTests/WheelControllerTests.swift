@@ -165,6 +165,20 @@ struct WheelControllerTests {
         rig.controller.hide()
     }
 
+    @Test func dropCarriesTheOptionKeyStateAtRelease() async throws {
+        let rig = WheelRig()
+        let temp = try TempItems()
+        let urls = [try temp.file("a.png")]
+        await rig.drag(urls)
+        rig.controller.isOptionHeld = { true }
+        rig.controller.apply(.show(.actions, at: Point2D(x: 700, y: 400)))
+        _ = rig.controller.dragUpdated(at: rig.viewPoint(90, .pi / 2), offered: .copy)
+        #expect(rig.controller.performDrop(from: rig.pasteboard))
+        let selection = try #require(rig.log.selections.first)
+        #expect(selection.optionHeld && selection.mode == .actions && selection.urls == urls)
+        rig.controller.hide()
+    }
+
     @Test func dropIsRefusedWhenTheItemsChangedOrNothingIsHighlighted() async throws {
         let rig = WheelRig()
         let temp = try TempItems()

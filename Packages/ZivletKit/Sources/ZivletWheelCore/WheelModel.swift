@@ -46,9 +46,9 @@ public struct WheelModel: Sendable, Equatable {
         WheelModel(mode: mode, content: content, idleHubLabel: idleHubLabel, hubIsCompact: hubIsCompact)
     }
 
-    public func selection(urls: [URL]) -> WheelSelection? {
+    public func selection(urls: [URL], optionHeld: Bool = false) -> WheelSelection? {
         guard let target = dropTarget, !urls.isEmpty else { return nil }
-        return WheelSelection(mode: mode, target: target, urls: urls)
+        return WheelSelection(mode: mode, target: target, urls: urls, optionHeld: optionHeld)
     }
 
     private static func slot(of hit: HitResult) -> Int? {

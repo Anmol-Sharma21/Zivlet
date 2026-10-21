@@ -35,7 +35,7 @@ extension WheelController: WheelDropHandling {
             logger.error("Drop refused: the dragged items changed since the wheel opened")
             return false
         }
-        guard let selection = store.model?.selection(urls: urls) else { return false }
+        guard let selection = store.model?.selection(urls: urls, optionHeld: isOptionHeld()) else { return false }
         store.dropAccepted()
         delegate?.wheelController(self, didSelect: selection)
         return true

@@ -20,7 +20,7 @@ let package = Package(
             name: "ZivletKit",
             targets: [
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "EngineMedia", "EngineImage",
-                "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel",
+                "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions",
             ])
     ],
     targets: [
@@ -38,6 +38,8 @@ let package = Package(
         .target(
             name: "ZivletRuntime", dependencies: ["ZivletEngineKit", "EngineMedia", "EngineImage"],
             swiftSettings: strict),
+        // Copy, Copy Path, AirDrop, Move, Terminal (02 §6): AppKit side effects behind small ports.
+        .target(name: "ZivletActions", dependencies: ["ZivletCore", "ZivletRuntime"], swiftSettings: shell),
         .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: strict),
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
@@ -61,6 +63,8 @@ let package = Package(
             resources: [.copy("Goldens")], swiftSettings: strict),
         .testTarget(
             name: "ZivletRuntimeTests", dependencies: ["ZivletRuntime", "EngineTestSupport"], swiftSettings: strict),
+        .testTarget(
+            name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
     ],
     swiftLanguageModes: [.v6]
 )

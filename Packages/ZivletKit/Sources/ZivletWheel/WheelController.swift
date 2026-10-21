@@ -18,6 +18,8 @@ public final class WheelController {
     public private(set) var isPointerInside = false
     /// Targets this machine cannot produce (probed engines, 03a §3.5); their slices are left off (FR-08).
     public var capabilities = CapabilitySnapshot.full
+    /// Whether ⌥ is down at drop; the event state needs no permission. Replaced in tests.
+    public var isOptionHeld: @MainActor () -> Bool = { NSEvent.modifierFlags.contains(.option) }
     func isPointerInsideWheel(_ inside: Bool) { isPointerInside = inside }
     public let store: WheelStore
     let panel = WheelPanel()

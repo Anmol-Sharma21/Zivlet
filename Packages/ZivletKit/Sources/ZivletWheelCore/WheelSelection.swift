@@ -1,16 +1,19 @@
 import Foundation
 import ZivletCore
 
-/// What a drop on a slice asks for. M2 logs it; M3 turns it into a job request.
+/// What a drop on a slice asks for: a job request for Convert and Tools, an action request for Actions.
 public struct WheelSelection: Sendable, Equatable, Codable {
     public let mode: WheelMode
     public let target: SliceTarget
     public let urls: [URL]
+    /// ⌥ was down at release (read from the event state, no permission needed). Copy Path quotes for the shell.
+    public let optionHeld: Bool
 
-    public init(mode: WheelMode, target: SliceTarget, urls: [URL]) {
+    public init(mode: WheelMode, target: SliceTarget, urls: [URL], optionHeld: Bool = false) {
         self.mode = mode
         self.target = target
         self.urls = urls
+        self.optionHeld = optionHeld
     }
 
     /// One line for logs and the dev HUD, for example "Convert → JPG · 2 items". Contains no paths.
