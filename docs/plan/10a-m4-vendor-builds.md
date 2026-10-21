@@ -462,7 +462,7 @@ CWebP.xcframework`.
 
 | Field | Value |
 |---|---|
-| Goal | Our own Rust crate (GPL-3.0-or-later) exposing a C ABI over resvg 0.47.0: `zivlet_svg_render(bytes, len, scale, max_edge, out)` → premultiplied RGBA8 + size, `zivlet_svg_free`. Only `data:` image hrefs resolve; `resources_dir = None`; system fonts loaded once per process. Static library, `panic = "abort"`, LTO, `--remap-path-prefix` for `$CARGO_HOME` and the crate dir |
+| Goal | Our own Rust crate (GPL-3.0-or-later) exposing a C ABI over resvg 0.47.0: `zivlet_svg_render(bytes, len, scale, max_edge, out)` → premultiplied RGBA8 + size, `zivlet_svg_free`. Only `data:` image hrefs resolve; `resources_dir = None`; system fonts loaded once per process. Static library, `panic = "abort"` (changed to unwind with the panic caught at the C boundary, D-M4-18), LTO, `--remap-path-prefix` for `$CARGO_HOME` and the crate dir |
 | 05 rows | P2-10 subset (resvg only; krilla-svg, oxipng, imagequant stay in P2-10) pulled into M4 by the M4 brief |
 | Verified | Prototype on 2026-10-21: clean compile 18 s (crates cached; first fetch + compile 32 s while FFmpeg built in parallel), `libzivlet_svg.a` 4.4 MB, linked into a C test and stripped: +2.15 MB. Gradient + Helvetica text rendered (240 × 160 at 2×); a 100,000 × 100,000 SVG capped to 8192 × 8192; non-SVG input → error 1; a `file` href was not drawn, a `data:` PNG was. `strings` found no `/Users/`, `/private/tmp` or `cargo-home` |
 

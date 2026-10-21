@@ -168,7 +168,7 @@ record.
 
 ## Task F8 — M4 exit check and alpha (P1-65)
 
-### Automated (agent, `Scripts/m4-exit.sh`)
+### Automated (agent, `Scripts/m4-exit.sh`, `make m4-exit`; results in [11 §4](11-m4-record.md))
 
 | # | Check | Expected |
 |---|---|---|
