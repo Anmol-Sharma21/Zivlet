@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -122,3 +122,7 @@ ci-local:
 # steps O-1 and O-2 are skipped with their messages). VERSION defaults to 0.1.0-dryrun.
 release-dry-run:
 	$(ENV) Scripts/release-local.sh "$${VERSION:-0.1.0-dryrun}"
+
+# 10h F8: the automated M4 exit rows X1–X9 in order, one log each under build/m4-exit (ROWS=X1,X4 picks rows).
+m4-exit:
+	$(ENV) Scripts/m4-exit.sh $${ROWS:+--only "$$ROWS"}
