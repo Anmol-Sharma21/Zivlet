@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 ENV := source Scripts/env.sh &&
 
-.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media
+.PHONY: test smoke coverage lint format app demo release-check convert-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack
 
 test:
 	$(ENV) cd "$$KIT" && swift test
@@ -50,3 +50,14 @@ vendor-fetch:
 # Builds FFmpeg and the codec libraries from the fetched sources (about 3 minutes clean; does not fetch).
 vendor-media:
 	$(ENV) Vendor/build-media.sh
+
+# Every vendor output (media stage, CWebP, CZivletSVG), rebuilding only what is missing or stale (cache key).
+vendor:
+	$(ENV) Vendor/vendor.sh
+
+vendor-pack:
+	$(ENV) Vendor/pack.sh
+
+# Restores a packed vendor tree: make vendor-unpack TARBALL=Vendor/out/zivlet-vendor-<key>.tar.xz
+vendor-unpack:
+	$(ENV) Vendor/unpack.sh "$${TARBALL:?set TARBALL to a zivlet-vendor-<key>.tar.xz}"
