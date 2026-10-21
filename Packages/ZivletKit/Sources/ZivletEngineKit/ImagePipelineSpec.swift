@@ -18,7 +18,8 @@ public enum ImageOutputKind: String, Sendable, Codable {
 }
 
 /// One ImageIO / Quartz pass (03b §6.1–6.2): which frames of `source` to write, as which type, with which settings.
-/// `expectedSize` is the displayed size (EXIF orientation applied) that verification compares against.
+/// `expectedSize` is the displayed size (EXIF orientation applied) that verification compares against. `webp` set
+/// means libwebp writes the frames instead of ImageIO (D-M4-8).
 /// Invariant: at least one frame, frame indices non-negative, quality (when set) in 0...1.
 public struct ImagePipelineSpec: Sendable, Codable, Equatable {
     public let source: URL
@@ -29,10 +30,11 @@ public struct ImagePipelineSpec: Sendable, Codable, Equatable {
     public let quality: Double?
     public let tiffLZW: Bool
     public let expectedSize: PixelSize
+    public let webp: WebPOptions?
 
     public init(
         source: URL, destinationType: String, output: ImageOutputKind, frames: [Int], flattenAlpha: Bool,
-        quality: Double?, tiffLZW: Bool, expectedSize: PixelSize
+        quality: Double?, tiffLZW: Bool, expectedSize: PixelSize, webp: WebPOptions? = nil
     ) throws(PlanError) {
         guard !frames.isEmpty, frames.allSatisfy({ $0 >= 0 }) else { throw .noFrames }
         if let quality, !(0...1).contains(quality) { throw .badQuality }
@@ -44,12 +46,13 @@ public struct ImagePipelineSpec: Sendable, Codable, Equatable {
         self.quality = quality
         self.tiffLZW = tiffLZW
         self.expectedSize = expectedSize
+        self.webp = webp
     }
 }
 
 extension ImagePipelineSpec {
     private enum CodingKeys: String, CodingKey {
-        case source, destinationType, output, frames, flattenAlpha, quality, tiffLZW, expectedSize
+        case source, destinationType, output, frames, flattenAlpha, quality, tiffLZW, expectedSize, webp
     }
 
     public init(from decoder: any Decoder) throws {
@@ -62,7 +65,8 @@ extension ImagePipelineSpec {
                 flattenAlpha: c.decode(Bool.self, forKey: .flattenAlpha),
                 quality: c.decodeIfPresent(Double.self, forKey: .quality),
                 tiffLZW: c.decode(Bool.self, forKey: .tiffLZW),
-                expectedSize: c.decode(PixelSize.self, forKey: .expectedSize))
+                expectedSize: c.decode(PixelSize.self, forKey: .expectedSize),
+                webp: c.decodeIfPresent(WebPOptions.self, forKey: .webp))
         } catch let error as PlanError {
             throw DecodingError.dataCorrupted(
                 .init(codingPath: c.codingPath, debugDescription: "Invalid image spec", underlyingError: error))

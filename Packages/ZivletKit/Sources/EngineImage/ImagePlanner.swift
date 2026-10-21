@@ -79,7 +79,10 @@ public enum ImagePlanner {
         let pixels = probe.pixelSize.width.multipliedReportingOverflow(by: probe.pixelSize.height)
         guard probe.pixelSize.width > 0, probe.pixelSize.height > 0 else { throw .unsupportedInput(.unreadable) }
         guard !pixels.overflow, pixels.partialValue <= maxPixels else { throw .unsupportedInput(.tooLarge) }
-        let frames = frames(source: source, target: target, probe: probe)
+        let webp = target == .webp ? WebPPlanner.options(tier: options.tier, probe: probe) : nil
+        let frames =
+            webp.map { WebPPlanner.frames(probe: probe, animated: $0.animated) }
+            ?? frames(source: source, target: target, probe: probe)
         let flatten = opaqueTargets.contains(target) && probe.hasAlpha
         let notes =
             (flatten ? [PlanNote.alphaFlattened] : []) + (frames.count < probe.frameCount ? [.firstFrameOnly] : [])
@@ -88,7 +91,7 @@ public enum ImagePlanner {
                 source: request.input.url, destinationType: registry.format(target).contentTypes[0],
                 output: target == .pdf ? .pdf : .raster, frames: frames, flattenAlpha: flatten,
                 quality: lossy.contains(target) ? quality(options.tier) : nil, tiffLZW: target == .tiff,
-                expectedSize: target == .pdf ? probe.pageSize : probe.displaySize)
+                expectedSize: target == .pdf ? probe.pageSize : probe.displaySize, webp: webp)
             return try ExecutionPlan(
                 engine: .image, stages: [.image(spec)], stageWeights: [1], lanes: [.cpu], outputFormat: target,
                 stagedFile: staged, notes: notes)
@@ -104,16 +107,16 @@ public enum ImagePlanner {
     }
 }
 
-/// Route gate for images (03a §3.5): SVG input and WebP output need engines M3 does not ship yet (index D-M3-7,
-/// D-M3-8); every other raster target needs ImageIO to list its type as writable. PDF goes through Quartz.
+/// Route gate for images (03a §3.5): SVG input needs the renderer M3 does not ship yet (index D-M3-7); WebP is
+/// written by the linked libwebp (D-M4-8) and PDF by Quartz; every other raster target needs ImageIO to list its type
+/// as writable.
 public enum ImageRoutes {
     public static func missing(
         source: FormatID, target: FormatID, writableTypes: Set<String>, registry: FormatRegistry = .standard
     ) -> [String]? {
         if source == .svg { return ["svg renderer"] }
-        if target == .pdf { return nil }
+        if target == .pdf || target == .webp { return nil }
         let type = registry.format(target).contentTypes[0]
-        if writableTypes.contains(type) { return nil }
-        return target == .webp ? ["libwebp"] : ["ImageIO \(type) encoder"]
+        return writableTypes.contains(type) ? nil : ["ImageIO \(type) encoder"]
     }
 }

@@ -37,7 +37,7 @@ public enum PlanNote: String, Sendable, Codable, Equatable {
 }
 
 public enum PlanError: Error, Equatable, Sendable {
-    case noStages, countMismatch, badWeights, noFrames, badQuality
+    case noStages, countMismatch, badWeights, noFrames, badQuality, badMethod
 }
 
 /// A pure, Codable plan (02 §7.3, ADR-06): stages with progress weights and one scheduler lane each, the output

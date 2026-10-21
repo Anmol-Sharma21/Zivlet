@@ -89,8 +89,7 @@ struct ImagePlannerTests {
         #expect(Self.probe(orientation: 0).orientation == 1 && Self.probe(orientation: 9).orientation == 1)
     }
 
-    @Test func webpOutputAndSVGInputAreTypedUnavailable() {
-        #expect(throws: JobError.routeUnavailable(.png, .webp, ["libwebp"])) { try Self.plan(.png, .webp) }
+    @Test func svgInputIsTypedUnavailable() {
         #expect(throws: JobError.routeUnavailable(.svg, .png, ["svg renderer"])) { try Self.plan(.svg, .png) }
     }
 
@@ -130,9 +129,9 @@ struct ImagePlannerTests {
         do {
             let plan = try Self.plan(pair.source, pair.target)
             #expect(plan.outputFormat == pair.target)
-            #expect(pair.source != .svg && pair.target != .webp)
+            #expect(pair.source != .svg)
         } catch {
-            #expect(pair.source == .svg || pair.target == .webp, "\(pair): \(error)")
+            #expect(pair.source == .svg, "\(pair): \(error)")
         }
     }
 }
