@@ -5,7 +5,7 @@
 source "$(dirname "$0")/../../Vendor/tests/lib.sh"
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 WF=$ROOT/.github/workflows
-for name in ci nightly vendor; do assert_file "$WF/$name.yml"; done
+for name in ci nightly vendor release; do assert_file "$WF/$name.yml"; done
 
 read -r -d '' CHECKER <<'RUBY' || true
 problems = []
@@ -45,6 +45,32 @@ check.(((nightly["on"] || nightly[true]) || {}).key?("schedule"), "nightly: no s
 vendor = YAML.safe_load(File.read(File.join(ARGV[0], "vendor.yml")))
 paths = (((vendor["on"] || vendor[true]) || {}).values.compact.map { |t| t["paths"] }).flatten.compact
 check.(paths.include?("Vendor/**"), "vendor: not triggered by Vendor/**")
+# Release (P1-53): protected environment, write access to contents only, dry run by default, secrets only in the
+# env of the steps that need them (never in workflow or job env, never pasted into a run script).
+rtext = File.read(File.join(ARGV[0], "release.yml"))
+release = YAML.safe_load(rtext)
+rtriggers = release["on"] || release[true] || {}
+check.(Array(rtriggers.dig("push", "tags")).include?("v*"), "release: not triggered by v* tags")
+dry = rtriggers.dig("workflow_dispatch", "inputs", "dry_run") || {}
+check.(dry["type"] == "boolean" && dry["default"] == true, "release: dry_run must be a boolean defaulting to true")
+check.(release["permissions"] == { "contents" => "write" }, "release: permissions must be contents: write only")
+check.(!(release["env"] || {}).to_s.include?("secrets."), "release: secrets in workflow env")
+release["jobs"].each do |job_name, job|
+  environment = job["environment"].is_a?(Hash) ? job["environment"]["name"] : job["environment"]
+  check.(environment == "release", "release/#{job_name}: must use environment: release")
+  check.(Array(job["runs-on"]).include?("zivlet-release"), "release/#{job_name}: not on the zivlet-release runner")
+  check.(job["permissions"].nil?, "release/#{job_name}: job changes permissions")
+  check.(!(job["env"] || {}).to_s.include?("secrets."), "release/#{job_name}: secrets in job env")
+  job["steps"].each do |step|
+    check.(!step["run"].to_s.include?("secrets."), "release/#{job_name}: secret in a run script: #{step["name"]}")
+    if (step["env"] || {}).to_s.include?("secrets.")
+      check.(step["name"].to_s =~ /mode|notar|appcast/i, "release/#{job_name}: secrets in step: #{step["name"]}")
+    end
+  end
+end
+%w[sign-app.sh verify-signatures.sh notarize.sh make-dmg.sh size-gate.sh source-bundle.sh sbom.sh make-appcast.sh
+   vm-smoke.sh].each { |s| check.(rtext.include?("Scripts/#{s}"), "release: does not run Scripts/#{s}") }
+check.(rtext.include?("gh release create") && rtext.include?("--draft"), "release: no draft release")
 if problems.empty? then puts "workflows OK" else puts problems; exit 1 end
 RUBY
 out=$(/usr/bin/ruby -ryaml -e "$CHECKER" "$WF" 2>&1) || fail "$out"

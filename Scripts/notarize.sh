@@ -2,6 +2,8 @@
 # Notarizes and staples a release file (P1-53). Credentials, one of:
 #   ZIVLET_NOTARY_PROFILE                              a `notarytool store-credentials` keychain profile
 #   NOTARY_KEY_ID + NOTARY_ISSUER_ID + NOTARY_KEY_PATH an App Store Connect API key (.p8)
+#   NOTARY_KEY_ID + NOTARY_ISSUER_ID + NOTARY_KEY_P8   the same with the .p8 text (a release workflow secret), written
+#                                                      to a private temporary file that is removed on exit
 # Submits with `notarytool submit --wait`, fails on any status but Accepted and prints the notary log, then staples
 # and validates: the DMG itself, or for a zip the app it was made from, which Gatekeeper must then call
 # "Notarized Developer ID". Without credentials: exit 3 naming owner step O-1.
@@ -27,6 +29,11 @@ credentials() {
         CREDS=(--keychain-profile "$ZIVLET_NOTARY_PROFILE")
     elif [[ -n "${NOTARY_KEY_ID:-}" && -n "${NOTARY_ISSUER_ID:-}" && -f "${NOTARY_KEY_PATH:-}" ]]; then
         CREDS=(--key "$NOTARY_KEY_PATH" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
+    elif [[ -n "${NOTARY_KEY_ID:-}" && -n "${NOTARY_ISSUER_ID:-}" && -n "${NOTARY_KEY_P8:-}" ]]; then
+        KEY_DIR=$(mktemp -d "${TMPDIR:-/tmp}/zivlet-notary.XXXXXX")
+        trap 'rm -rf "$KEY_DIR"' EXIT
+        (umask 077 && printf '%s\n' "$NOTARY_KEY_P8" >"$KEY_DIR/AuthKey.p8")
+        CREDS=(--key "$KEY_DIR/AuthKey.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
     else
         echo "$OWNER_STEP" >&2
         exit 3

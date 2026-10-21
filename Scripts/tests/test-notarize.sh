@@ -62,6 +62,14 @@ assert_contains "$(cat "$FAKE_CALLS")" "stapler staple $T/Zivlet.app"
 assert_contains "$(cat "$FAKE_CALLS")" "spctl -a -vv -t exec $T/Zivlet.app"
 assert_fails clean_env "${api[@]}" FAKE_SPCTL="source=Developer ID" "$NOTARIZE" "$T/Zivlet.zip" "$T/Zivlet.app"
 
+# The release workflow passes the .p8 text (NOTARY_KEY_P8): it goes to a private temporary file, removed afterwards.
+: >"$FAKE_CALLS"
+out=$(clean_env NOTARY_KEY_ID=KEY1 NOTARY_ISSUER_ID=ISSUER1 NOTARY_KEY_P8="fake key text" FAKE_STATUS=Accepted \
+    "$NOTARIZE" "$T/Zivlet-0.1.0.dmg" 2>&1) || fail "NOTARY_KEY_P8 failed: $out"
+keyfile=$(grep -o -e "--key [^ ]*" "$FAKE_CALLS" | head -1 | cut -d" " -f2)
+[[ -n "$keyfile" ]] || fail "no --key passed for NOTARY_KEY_P8"
+assert_no_file "$keyfile"
+
 # Refusals: a zip needs the app to staple, a missing file, another file type, a missing key file.
 assert_fails clean_env "${api[@]}" "$NOTARIZE" "$T/Zivlet.zip"
 assert_fails clean_env "${api[@]}" "$NOTARIZE" "$T/missing.dmg"

@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -117,3 +117,8 @@ bench:
 # P0-07: the run steps of .github/workflows/ci.yml, in order, on this Mac (the self-hosted runner runs the same).
 ci-local:
 	$(ENV) Scripts/ci-local.sh
+
+# P0-38 dry run: the release workflow's steps on this Mac with an ad-hoc signature, into build/release (the owner
+# steps O-1 and O-2 are skipped with their messages). VERSION defaults to 0.1.0-dryrun.
+release-dry-run:
+	$(ENV) Scripts/release-local.sh "$${VERSION:-0.1.0-dryrun}"
