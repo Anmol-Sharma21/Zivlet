@@ -93,7 +93,14 @@ enum ImageReader {
             orientation: properties[kCGImagePropertyOrientation] as? Int ?? 1,
             hasAlpha: properties[kCGImagePropertyHasAlpha] as? Bool ?? false,
             dpiWidth: PDFPageGeometry.dpi(properties[kCGImagePropertyDPIWidth]),
-            dpiHeight: PDFPageGeometry.dpi(properties[kCGImagePropertyDPIHeight]))
+            dpiHeight: PDFPageGeometry.dpi(properties[kCGImagePropertyDPIHeight]), hasGainMap: hasGainMap(source))
+    }
+
+    /// No encoder Zivlet writes with keeps a gain map, so such a source is decoded to standard range and says so.
+    static func hasGainMap(_ source: CGImageSource) -> Bool {
+        [kCGImageAuxiliaryDataTypeISOGainMap, kCGImageAuxiliaryDataTypeHDRGainMap].contains { type in
+            CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, type) != nil
+        }
     }
 }
 

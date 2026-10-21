@@ -49,6 +49,11 @@ struct BatchPresentationTests {
         #expect(shown.notes == ["Long clips make very large GIFs; this one is \(length)."])
     }
 
+    @Test func anHDRPictureSaysItWasSavedInStandardRange() {
+        let shown = BatchPresentation.make(Self.snapshot([.succeeded(Self.output)], notes: [.hdrToneMapped]))
+        #expect(shown.notes == ["The HDR picture was saved in standard range."])
+    }
+
     @Test func partialSuccessNamesTheFirstFailure() {
         let shown = BatchPresentation.make(Self.snapshot([.succeeded(Self.output), .failed(.diskFull)]))
         #expect(shown.phase == .partial && shown.title == "Saved 1 of 2 files")

@@ -15,11 +15,13 @@ public struct ImageProbe: Sendable, Equatable {
     public let dpiHeight: Double
     /// Set for an SVG source; `pixelSize` is then the size it renders at.
     public let svg: SVGGeometry?
+    /// An HDR gain map (ISO 21496-1 or Apple's) rides with the first frame.
+    public let hasGainMap: Bool
 
     public init(
         typeIdentifier: String, frameCount: Int, pixelSize: PixelSize, orientation: Int, hasAlpha: Bool,
         dpiWidth: Double = PDFPageGeometry.defaultDPI, dpiHeight: Double = PDFPageGeometry.defaultDPI,
-        svg: SVGGeometry? = nil
+        svg: SVGGeometry? = nil, hasGainMap: Bool = false
     ) {
         self.typeIdentifier = typeIdentifier
         self.frameCount = frameCount
@@ -29,6 +31,7 @@ public struct ImageProbe: Sendable, Equatable {
         self.dpiWidth = dpiWidth
         self.dpiHeight = dpiHeight
         self.svg = svg
+        self.hasGainMap = hasGainMap
     }
 
     /// Orientations 5–8 rotate by 90°, so the displayed size swaps width and height.
@@ -108,7 +111,8 @@ public enum ImagePlanner {
                 expectedSize: target == .pdf ? probe.pageSize : probe.displaySize, webp: webp,
                 svg: probe.svg == nil
                     ? nil : try SVGRasterOptions(scale: SVGGeometry.scale, maxEdge: SVGGeometry.maxEdge),
-                colour: options.colour == .webSRGB && target != .pdf ? .convertToSRGB : .keep)
+                colour: options.colour == .webSRGB && target != .pdf ? .convertToSRGB : .keep,
+                decodeToSDR: probe.hasGainMap)
             return try ExecutionPlan(
                 engine: .image, stages: [.image(spec)], stageWeights: [1], lanes: [.cpu], outputFormat: target,
                 stagedFile: staged, notes: notes)
@@ -120,6 +124,7 @@ public enum ImagePlanner {
     static func notes(target: FormatID, probe: ImageProbe, frames: [Int], flatten: Bool) -> [PlanNote] {
         (flatten ? [.alphaFlattened] : []) + (frames.count < probe.frameCount ? [.firstFrameOnly] : [])
             + (probe.svg != nil && target == .pdf ? [.svgRasterizedInPDF] : [])
+            + (probe.hasGainMap ? [.hdrToneMapped] : [])
     }
 }
 

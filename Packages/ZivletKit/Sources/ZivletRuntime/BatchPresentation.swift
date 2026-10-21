@@ -68,6 +68,7 @@ public struct BatchPresentation: Sendable, Equatable {
         case .alphaFlattened: "Transparency was flattened onto white."
         case .firstFrameOnly: "Only the first frame or page was kept."
         case .svgRasterizedInPDF: "The drawing was saved as a picture inside the PDF."
+        case .hdrToneMapped: "The HDR picture was saved in standard range."
         case .longGIF(let seconds): "Long clips make very large GIFs; this one is \(minutes(seconds))."
         }
     }

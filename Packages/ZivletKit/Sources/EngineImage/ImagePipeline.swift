@@ -66,7 +66,7 @@ enum ImagePipeline {
         try WebPWriter.write(job, to: staged, cancel: cancel) { (position: Int) throws(JobError) -> CGImage in
             let index = spec.frames[position]
             budget = try budget.admitting(source, index)
-            return try oriented(source, index)
+            return try oriented(source, index, standardRange: spec.decodeToSDR)
         }
     }
 
@@ -81,11 +81,12 @@ enum ImagePipeline {
         let metadata = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any] ?? [:]
         let orientation = metadata[kCGImagePropertyOrientation] as? Int ?? 1
         let converts = spec.colour == .convertToSRGB
-        guard converts || spec.flattenAlpha || OrientationPolicy.bakes(orientation, into: spec.destinationType) else {
+        let decodes = converts || spec.decodeToSDR || spec.flattenAlpha
+        guard decodes || OrientationPolicy.bakes(orientation, into: spec.destinationType) else {
             CGImageDestinationAddImageFromSource(destination, source, index, encode as CFDictionary)
             return
         }
-        let upright = try oriented(source, index)
+        let upright = try oriented(source, index, standardRange: spec.decodeToSDR)
         let image =
             converts
             ? try redrawn(upright, into: RGBAFrame.srgb, flatten: spec.flattenAlpha)
@@ -109,15 +110,18 @@ enum ImagePipeline {
         return properties
     }
 
-    /// Full-size decode with the EXIF orientation applied; keeps the source's bit depth and colour space.
-    static func oriented(_ source: CGImageSource, _ index: Int) throws(JobError) -> CGImage {
+    /// Full-size decode with the EXIF orientation applied; keeps the source's bit depth and colour space, or decodes
+    /// standard range when `standardRange` (an HDR gain-map source).
+    static func oriented(_ source: CGImageSource, _ index: Int, standardRange: Bool = false) throws(JobError)
+        -> CGImage
+    {
         let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any] ?? [:]
         let width = properties[kCGImagePropertyPixelWidth] as? Int ?? 0
         let height = properties[kCGImagePropertyPixelHeight] as? Int ?? 0
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceThumbnailMaxPixelSize: max(width, height, 1), kCGImageSourceShouldCacheImmediately: true,
-        ]
+        ].merging(standardRange ? [kCGImageSourceDecodeRequest: kCGImageSourceDecodeToSDR] : [:]) { _, new in new }
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary) else {
             throw .unsupportedInput(.unreadable)
         }

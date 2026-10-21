@@ -40,11 +40,13 @@ public struct ImagePipelineSpec: Sendable, Codable, Equatable {
     public let webp: WebPOptions?
     public let svg: SVGRasterOptions?
     public let colour: ImageColour
+    /// Frames are decoded as standard range (an HDR gain-map source, 03b §6.3).
+    public let decodeToSDR: Bool
 
     public init(
         source: URL, destinationType: String, output: ImageOutputKind, frames: [Int], flattenAlpha: Bool,
         quality: Double?, tiffLZW: Bool, expectedSize: PixelSize, webp: WebPOptions? = nil,
-        svg: SVGRasterOptions? = nil, colour: ImageColour = .keep
+        svg: SVGRasterOptions? = nil, colour: ImageColour = .keep, decodeToSDR: Bool = false
     ) throws(PlanError) {
         guard !frames.isEmpty, frames.allSatisfy({ $0 >= 0 }) else { throw .noFrames }
         if let quality, !(0...1).contains(quality) { throw .badQuality }
@@ -59,12 +61,14 @@ public struct ImagePipelineSpec: Sendable, Codable, Equatable {
         self.webp = webp
         self.svg = svg
         self.colour = colour
+        self.decodeToSDR = decodeToSDR
     }
 }
 
 extension ImagePipelineSpec {
     private enum CodingKeys: String, CodingKey {
-        case source, destinationType, output, frames, flattenAlpha, quality, tiffLZW, expectedSize, webp, svg, colour
+        case source, destinationType, output, frames, flattenAlpha, quality, tiffLZW, expectedSize, webp, svg, colour,
+            decodeToSDR
     }
 
     public init(from decoder: any Decoder) throws {
@@ -80,7 +84,8 @@ extension ImagePipelineSpec {
                 expectedSize: c.decode(PixelSize.self, forKey: .expectedSize),
                 webp: c.decodeIfPresent(WebPOptions.self, forKey: .webp),
                 svg: c.decodeIfPresent(SVGRasterOptions.self, forKey: .svg),
-                colour: c.decodeIfPresent(ImageColour.self, forKey: .colour) ?? .keep)
+                colour: c.decodeIfPresent(ImageColour.self, forKey: .colour) ?? .keep,
+                decodeToSDR: c.decodeIfPresent(Bool.self, forKey: .decodeToSDR) ?? false)
         } catch let error as PlanError {
             throw DecodingError.dataCorrupted(
                 .init(codingPath: c.codingPath, debugDescription: "Invalid image spec", underlyingError: error))
