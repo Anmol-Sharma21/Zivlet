@@ -23,6 +23,8 @@ public final class WheelController {
     func isPointerInsideWheel(_ inside: Bool) { isPointerInside = inside }
     public let store: WheelStore
     let panel = WheelPanel()
+    /// Where the wheel's panel is on screen (global, y up), for things placed beside it.
+    public var panelFrame: CGRect { panel.frame }
 
     let reader: DragPayloadReader
     let builder: SliceBuilder

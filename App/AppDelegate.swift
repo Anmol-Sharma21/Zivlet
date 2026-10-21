@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var wheel: WheelController?
     private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory)
     private lazy var onboarding = OnboardingWiring(store: settings.store)
+    private lazy var coach = CoachWiring(store: settings.store)
     #if DEBUG
         private let debugHUD = DebugHUD()
     #endif
@@ -51,7 +52,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             scheduler: SystemTriggerScheduler(),
             listensToFlagsChanged: Self.debugFlagsMonitorEnabled(),
             probe: { count in await reader.summary(changeCount: count) })
-        trigger.onWheelEffect = { [weak wheel] effect in wheel?.apply(effect) }
+        trigger.onWheelEffect = { [weak wheel, coach] effect in
+            guard let wheel else { return }
+            wheel.apply(effect)
+            coach.observe(effect, wheel: wheel)
+        }
         wheel.onDragEnded = { [weak trigger] in trigger?.receive(.dropHandled) }
         wheel.delegate = self
         wireMenu(wheel)
