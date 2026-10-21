@@ -1,10 +1,10 @@
 import Foundation
 
-/// `zivlet-fixtures --set small|full --out <absolute dir>`: writes the image fixtures of one set into `<dir>` and
-/// lists them on stdout, one `<name> hash|probe` line each (Fixtures/generate.sh hashes the `hash` ones). Not
-/// shipped; not a gated module.
+/// `zivlet-fixtures --set small|full|hostile --out <absolute dir>`: writes the image fixtures of one set into
+/// `<dir>` and lists them on stdout, one `<name> hash|probe` line each (Fixtures/generate.sh hashes the `hash`
+/// ones). Not shipped; not a gated module.
 enum FixtureTool {
-    static let usage = "zivlet-fixtures --set small|full --out <absolute directory>"
+    static let usage = "zivlet-fixtures --set small|full|hostile --out <absolute directory>"
 
     static func run(_ arguments: [String]) throws(FixtureError) -> [String] {
         let (set, out) = try parse(arguments)
@@ -13,10 +13,11 @@ enum FixtureTool {
         } catch {
             throw .writing(out.lastPathComponent)
         }
-        for recipe in ImageRecipes.all {
+        let recipes = set.name == FixtureSet.hostile.name ? HostileImages.all : ImageRecipes.all
+        for recipe in recipes {
             try recipe.make(set, out.appending(path: recipe.name))
         }
-        return ImageRecipes.all.map { "\($0.name) \(ImageRecipes.unhashed.contains($0.name) ? "probe" : "hash")" }
+        return recipes.map { "\($0.name) \(ImageRecipes.unhashed.contains($0.name) ? "probe" : "hash")" }
     }
 
     static func parse(_ arguments: [String]) throws(FixtureError) -> (FixtureSet, URL) {

@@ -10,9 +10,11 @@ struct FixtureSet: Sendable {
 
     static let small = FixtureSet(name: "small", still: (64, 48), photo: (64, 48), animation: (32, 24))
     static let full = FixtureSet(name: "full", still: (1024, 768), photo: (4032, 3024), animation: (256, 192))
+    /// The hostile corpus's image files (`HostileImages`); sizes are part of each file's bytes.
+    static let hostile = FixtureSet(name: "hostile", still: (1, 1), photo: (1, 1), animation: (1, 1))
 
     static func named(_ name: String) -> FixtureSet? {
-        [small, full].first { $0.name == name }
+        [small, full, hostile].first { $0.name == name }
     }
 }
 

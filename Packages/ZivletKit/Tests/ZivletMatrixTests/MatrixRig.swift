@@ -84,24 +84,38 @@ actor MatrixRig {
     /// Copies the fixture into a fresh folder and converts it through `ConversionService` (request → probe → plan →
     /// execute → verify → publish).
     nonisolated func convert(_ pair: ConversionPair, fixture: URL) async throws -> MatrixOutput {
+        switch try await run(fixture, to: pair.target) {
+        case .converted(let output): return output
+        case .refused(let error): throw MatrixFailure("\(pair.testDescription) failed: \(error)")
+        }
+    }
+
+    /// One drop of `input` onto `target`, from a fresh folder. `copying: false` drops the file where it is, for
+    /// symlinks and FIFOs that admission must refuse before anything is written.
+    nonisolated func run(_ input: URL, to target: FormatID, copying: Bool = true) async throws -> MatrixRun {
         let folder = FileManager.default.temporaryDirectory.appending(path: "zivlet-matrix-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let input = folder.appending(path: fixture.lastPathComponent)
-        try FileManager.default.copyItem(at: fixture, to: input)
+        let dropped = copying ? folder.appending(path: input.lastPathComponent) : input
+        if copying { try FileManager.default.copyItem(at: input, to: dropped) }
         let scheduler = JobScheduler(engines: engines, records: nil)
         let service = ConversionService(
             scheduler: scheduler, engines: engines, factory: JobRequestFactory(fallbackFolder: folder))
-        let batch = await service.convert([input], to: pair.target)
+        let batch = await service.convert([dropped], to: target)
         var last: BatchSnapshot?
         for await snapshot in service.snapshots where snapshot.batch == batch {
             last = snapshot
             if snapshot.isFinished { break }
         }
-        guard let last, let output = last.outputs.first else {
-            let reason = last?.failures.first.map { "\($0.error)" } ?? "no result"
-            try? FileManager.default.removeItem(at: folder)
-            throw MatrixFailure("\(pair.testDescription) failed: \(reason)")
+        if let last, let output = last.outputs.first {
+            return .converted(MatrixOutput(url: output.url, folder: folder, notes: last.items.flatMap(\.notes)))
         }
-        return MatrixOutput(url: output.url, folder: folder, notes: last.items.flatMap(\.notes))
+        try? FileManager.default.removeItem(at: folder)
+        return .refused(last?.failures.first?.error ?? .internalInvariant("the batch never finished"))
     }
+}
+
+/// How one drop ended.
+enum MatrixRun: Sendable {
+    case converted(MatrixOutput)
+    case refused(JobError)
 }

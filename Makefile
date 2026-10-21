@@ -97,10 +97,12 @@ fixtures-check:
 fixtures-test:
 	@for t in Fixtures/tests/test-*.sh; do bash "$$t" || exit 1; done
 
-# P1-61: every Phase 1 pair (+ SVG) through the real pipeline with the vendored ffmpeg and the small fixtures.
-# ZIVLET_MATRIX=subset (default, one pair per source and target, for PRs) or full (all 161, nightly).
+# P1-61, P1-62: every Phase 1 pair (+ SVG) through the real pipeline with the vendored ffmpeg and the small
+# fixtures, then the hostile corpus. ZIVLET_MATRIX=subset (default, one pair per source and target, for PRs) or full
+# (all 161, nightly).
 matrix:
 	$(ENV) $(NATIVE) Vendor/ensure-media.sh >/dev/null && Fixtures/generate.sh --set small >/dev/null && \
+	Fixtures/hostile/generate.sh >/dev/null && \
 	cd "$$KIT" && env -u ZIVLET_FFMPEG_DIR ZIVLET_MATRIX="$${ZIVLET_MATRIX:-subset}" swift test --filter ZivletMatrixTests
 
 matrix-subset:
