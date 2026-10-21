@@ -3,7 +3,7 @@
 #   Vendor/out/media-stage/Helpers/{ffmpeg,ffprobe} -> Contents/Helpers/
 #   Vendor/out/media-stage/Frameworks/*.dylib      -> Contents/Frameworks/
 #   Vendor/out/licenses/                            -> Contents/Resources/Licenses/   (when collected, A13)
-# then signs the copies inside-out with the build's identity; Xcode signs the app itself afterwards.
+# then signs the copies with Scripts/sign-app.sh --helpers-only; Xcode signs the app itself afterwards.
 # Without a stage, Release fails and Debug warns: a Debug app still finds ZIVLET_FFMPEG_DIR or Homebrew (D-M3-19).
 set -euo pipefail
 : "${SRCROOT:?run from Xcode}" "${TARGET_BUILD_DIR:?}" "${CONTENTS_FOLDER_PATH:?}" "${CONFIGURATION:?}"
@@ -24,22 +24,6 @@ ditto "$STAGE/Helpers" "$CONTENTS/Helpers"
 ditto "$STAGE/Frameworks" "$CONTENTS/Frameworks"
 if [[ -d "$LICENSES" ]]; then ditto "$LICENSES" "$CONTENTS/Resources/Licenses"; fi
 
-# Libraries first, then the helpers that load them (inside-out). Ad-hoc helpers need library validation off,
-# because ad-hoc files have no Team ID to match (Config/HelperAdHoc.entitlements).
-# Extra flags go in plain strings because bash 3.2 (the macOS /bin/bash) rejects empty arrays under set -u.
-lib_flags="--options runtime"; helper_flags="--options runtime"
-if [[ "$IDENTITY" == "-" ]]; then
-    helper_flags="$helper_flags --entitlements $SRCROOT/Config/HelperAdHoc.entitlements"
-else
-    lib_flags="$lib_flags --timestamp"; helper_flags="$helper_flags --timestamp"
-fi
-sign() { codesign --force --sign "$IDENTITY" "$@" 2>&1 | { grep -v "replacing existing signature" || true; }; }
-for lib in "$CONTENTS"/Frameworks/lib*.dylib; do
-    # shellcheck disable=SC2086 # fixed flag words
-    sign $lib_flags "$lib"
-done
-for helper in ffmpeg ffprobe; do
-    # shellcheck disable=SC2086
-    sign $helper_flags --identifier "app.zivlet.helper.$helper" "$CONTENTS/Helpers/$helper"
-done
+# One signing path for Xcode builds and the release pipeline (D-M4-10): libraries, then helpers, inside-out.
+"$SRCROOT/Scripts/sign-app.sh" --helpers-only "$IDENTITY" "$(dirname "$CONTENTS")" >/dev/null
 echo "Embedded media helpers from $STAGE (signed with ${IDENTITY})"
