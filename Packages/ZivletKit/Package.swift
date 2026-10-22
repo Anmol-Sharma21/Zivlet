@@ -64,6 +64,11 @@ let package = Package(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
             swiftSettings: strict),
 
+        // Display fixtures, a fake display provider and a manual clock for the notch and HUD test bundles.
+        .target(
+            name: "NotchTestSupport", dependencies: ["ZivletNotch", "ZivletNotchCore", "ZivletCore"],
+            path: "Tests/NotchTestSupport", swiftSettings: strict),
+
         .testTarget(name: "ZivletCoreTests", dependencies: ["ZivletCore"], swiftSettings: strict),
         .testTarget(
             name: "ZivletTriggerTests", dependencies: ["ZivletTrigger", "TestSupport"], swiftSettings: strict),
@@ -87,9 +92,11 @@ let package = Package(
         .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings"], swiftSettings: strict),
         .testTarget(name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport"], swiftSettings: shell),
         .testTarget(
-            name: "ZivletNotchCoreTests", dependencies: ["ZivletNotchCore", "ZivletCore"], swiftSettings: strict),
+            name: "ZivletNotchCoreTests", dependencies: ["ZivletNotchCore", "ZivletCore", "NotchTestSupport"],
+            swiftSettings: strict),
         .testTarget(
-            name: "ZivletNotchTests", dependencies: ["ZivletNotch", "ZivletNotchCore", "ZivletCore"],
+            name: "ZivletNotchTests",
+            dependencies: ["ZivletNotch", "ZivletNotchCore", "ZivletCore", "NotchTestSupport"],
             swiftSettings: shell),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.
         .testTarget(
