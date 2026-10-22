@@ -1,5 +1,6 @@
 import AppKit
 import ZivletCore
+import ZivletNotch
 import ZivletRuntime
 import os
 
@@ -41,14 +42,18 @@ public final class ResultHUD {
     private var lingers: [BatchID: Task<Void, Never>] = [:]
     private var timers: [BatchID: LingerTimer] = [:]
     private var undos: [BatchID: Task<Void, Never>] = [:]
-    private let now: () -> Duration = { .seconds(ProcessInfo.processInfo.systemUptime) }
+    private let clock: any MonotonicClock
     /// Built at launch and again after each drop that used it, so a drop only places and fills a panel (≤ 50 ms,
     /// P1-40).
     private var spare: HUDPanel?
     private var refill: Task<Void, Never>?
 
-    public init(screens: @escaping () -> [CGRect] = { NSScreen.screens.map(\.visibleFrame) }) {
+    public init(
+        screens: @escaping () -> [CGRect] = { NSScreen.screens.map(\.visibleFrame) },
+        clock: any MonotonicClock = SystemClock()
+    ) {
         self.screens = screens
+        self.clock = clock
         spare = makePanel()
     }
 
@@ -69,7 +74,7 @@ public final class ResultHUD {
         guard snapshot.isFinished, timers[snapshot.batch] == nil,
             let duration = ResultCardModel(snapshot).lingers
         else { return }
-        timers[snapshot.batch] = LingerTimer(duration: duration).started(at: now())
+        timers[snapshot.batch] = LingerTimer(duration: duration).started(at: clock.now())
         scheduleExpiry(snapshot.batch)
     }
 
@@ -139,22 +144,26 @@ public final class ResultHUD {
     /// Hovering holds a lingering card; leaving restarts its full linger.
     private func hover(_ batch: BatchID, inside: Bool) {
         guard let timer = timers[batch] else { return }
-        timers[batch] = inside ? timer.hovered(at: now()) : timer.unhovered(at: now())
+        timers[batch] = inside ? timer.hovered(at: clock.now()) : timer.unhovered(at: clock.now())
         scheduleExpiry(batch)
     }
 
-    /// Closes the card when its timer runs out, unless it was hovered, undone or closed meanwhile.
+    /// Closes the card when its timer runs out, unless it was hovered, undone or closed meanwhile. The sleep is on
+    /// the same clock as `now` (D-N11), so a linger that spans system sleep has passed on wake; a sleep that ends
+    /// before the deadline sleeps again.
     private func scheduleExpiry(_ batch: BatchID) {
         lingers.removeValue(forKey: batch)?.cancel()
         guard let deadline = timers[batch]?.deadline else { return }
-        let wait = max(.zero, deadline - now())
+        let clock = self.clock
         lingers[batch] = Task { [weak self] in
-            do {
-                try await Task.sleep(for: wait)
-            } catch {
-                return  // rescheduled or closed meanwhile
+            while clock.now() < deadline {
+                do {
+                    try await clock.sleep(until: deadline)
+                } catch {
+                    return  // rescheduled or closed meanwhile
+                }
             }
-            guard let self, let timer = self.timers[batch], timer.expired(at: self.now()) else { return }
+            guard let self, let timer = self.timers[batch], timer.expired(at: clock.now()) else { return }
             self.board = self.board.expiring(batch)
             if !self.board.snapshots.contains(where: { $0.batch == batch }) { self.close(batch) }
         }
@@ -189,7 +198,7 @@ public final class ResultHUD {
         guard !reply.canRetry, let snapshot = board.snapshots.first(where: { $0.batch == batch }),
             let duration = ResultCardModel(snapshot).lingers
         else { return }
-        timers[batch] = LingerTimer(duration: duration).started(at: now())
+        timers[batch] = LingerTimer(duration: duration).started(at: clock.now())
         scheduleExpiry(batch)
     }
 }

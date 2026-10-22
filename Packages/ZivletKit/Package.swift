@@ -80,7 +80,8 @@ let package = Package(
             name: "ZivletEngineKitTests", dependencies: ["ZivletEngineKit", "EngineTestSupport"],
             swiftSettings: strict),
         .testTarget(
-            name: "EngineMediaTests", dependencies: ["EngineMedia", "TestSupport", "EngineTestSupport"], resources: [.copy("Goldens")],
+            name: "EngineMediaTests", dependencies: ["EngineMedia", "TestSupport", "EngineTestSupport"],
+            resources: [.copy("Goldens")],
             swiftSettings: strict),
         .testTarget(
             name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG"],
@@ -90,7 +91,8 @@ let package = Package(
         .testTarget(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
         .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings"], swiftSettings: strict),
-        .testTarget(name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport"], swiftSettings: shell),
+        .testTarget(
+            name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport", "NotchTestSupport"], swiftSettings: shell),
         .testTarget(
             name: "ZivletNotchCoreTests", dependencies: ["ZivletNotchCore", "ZivletCore", "NotchTestSupport"],
             swiftSettings: strict),
