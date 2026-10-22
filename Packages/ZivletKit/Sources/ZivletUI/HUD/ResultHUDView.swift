@@ -23,23 +23,9 @@ struct ResultHUDView: View {
     }
 
     private func working(_ snapshot: BatchSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(HUDCopy.title(target: snapshot.target)).font(.headline).lineLimit(1)
-            Text(HUDCopy.working(snapshot)).font(.callout).foregroundStyle(HUDInk.secondary).lineLimit(1)
-                .truncationMode(.middle)
-            if snapshot.isIndeterminate {
-                ProgressView().progressViewStyle(.linear)
-            } else {
-                ProgressView(value: snapshot.fraction)
-            }
-            HStack {
-                Spacer()
-                Button("Cancel", action: cancel)
-            }
-            .controlSize(.small)
-        }
-        .padding(14)
-        .frame(width: HUDLayout.size.width, height: HUDLayout.size.height, alignment: .topLeading)
-        .hudGlass()
+        WorkingContent(snapshot: snapshot, width: HUDLayout.contentWidth, cancel: cancel)
+            .padding(HUDLayout.padding)
+            .frame(width: HUDLayout.size.width, height: HUDLayout.size.height, alignment: .topLeading)
+            .hudGlass()
     }
 }

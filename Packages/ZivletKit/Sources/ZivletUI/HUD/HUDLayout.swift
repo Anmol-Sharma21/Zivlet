@@ -5,6 +5,10 @@ import AppKit
 /// the screens.
 public enum HUDLayout {
     public static let size = CGSize(width: 360, height: 108)
+    /// The inset of the HUD's content inside its glass panel.
+    static let padding: CGFloat = 14
+    /// The content's own width inside the padding; the island lays the same content out at this width too.
+    static let contentWidth = size.width - 2 * padding
     static let margin: CGFloat = 12
     static let offset: CGFloat = 16
     static let cascade: CGFloat = 24
