@@ -46,6 +46,21 @@ struct IslandHostsTests {
         hosts.close()
     }
 
+    @Test func everyAppliedSurfaceIsReportedWithItsFrame() async throws {
+        let provider = try FakeDisplayProvider.notchOnly()
+        let hosts = IslandHosts(provider: provider, clock: ManualClock(), animation: .instant)
+        var reported: [(UInt32, IslandSurface, CGRect)] = []
+        hosts.onSurface = { reported.append(($0, $1, $2)) }
+        hosts.register(FakeClient(), as: .hud)
+        hosts.request(IslandRequest(client: .hud, display: 1, resting: .collapsed, hoverSurface: .expanded), from: .hud)
+        hosts.request(nil, from: .hud)
+        await hosts.host(on: 1)?.animationsSettled()
+        let collapsed = IslandLayout.frame(.collapsed, on: provider.displays[0]).cgRect
+        #expect(reported.map(\.0) == [1, 1] && reported.map(\.1) == [.collapsed, .hidden])
+        #expect(reported.first?.2 == collapsed && reported.last?.2 == .zero)
+        hosts.close()
+    }
+
     @Test func theAccessibilityActionOpensOnlyItsOwnDisplaysIsland() throws {
         let hosts = IslandHosts(
             provider: try FakeDisplayProvider.notchAndExternal(), clock: ManualClock(), animation: .instant)

@@ -18,6 +18,8 @@ public final class IslandHosts {
     private var reduceMotion = false
     private var wheelShowing = false
     private var watch: Task<Void, Never>?
+    /// Each surface a display's island applies, with its frame (global, y up; `.zero` when hidden).
+    public var onSurface: (UInt32, IslandSurface, CGRect) -> Void = { _, _, _ in }
     /// The current displays, the menu-bar display first.
     public private(set) var displayIDs: [UInt32] = []
 
@@ -135,6 +137,7 @@ public final class IslandHosts {
         let host = IslandHost(display: display, client: router, motion: animation, clock: clock, pointer: pointer)
         let id = display.id
         host.onEvent = { [weak self] event in self?.step(event, on: id) }
+        host.onSurface = { [weak self] surface, frame in self?.onSurface(id, surface, frame) }
         hosts[id] = host
         routers[id] = router
         var machine = IslandMachine()

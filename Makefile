@@ -40,7 +40,7 @@ settings-demo:
 
 # Debug only: one conversion through the drop path without a drag (FILE=/abs/in.ext TO=png [CANCEL_MS=300]).
 convert-demo:
-	Scripts/demo-convert.sh "$${FILE:?set FILE to an absolute input path}" "$${TO:?set TO to a target format}" "$${CANCEL_MS:-}"
+	Scripts/demo-convert.sh "$${FILE:?set FILE to an absolute input path}" "$${TO:?set TO to a target format}" "$${CANCEL_MS:-}" "$${PLACEMENT:-}"
 
 # Debug only: one action through the drop path without a drag (FILE=/abs/path ACTION=copyFilePath [OPTION=YES]).
 # ACTION is copyTo, copyFilePath or openInTerminal; AirDrop and Move need a person.

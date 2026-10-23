@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Debug-build end-to-end check without a drag (M3): run one file through the drop path, then check the result.
-# Usage: Scripts/demo-convert.sh /abs/input.ext <format> [cancel-after-ms]
+# Usage: Scripts/demo-convert.sh /abs/input.ext <format> [cancel-after-ms] [notch|nearDrop]
 # Needs `make app` first. Without a cancel delay: exactly one output beside the input and no staging left.
-# With one: the batch reports a cancel, and neither an output nor a staging file is left.
+# With one: the batch reports a cancel, and neither an output nor a staging file is left. The fourth argument picks
+# where progress and results show for this run only (-ZivletHUDPlacement); the island's log lines are printed.
 source "$(dirname "$0")/env.sh"
 INPUT="${1:?usage: demo-convert.sh /abs/input.ext <format> [cancel-after-ms]}"
 TO="${2:?usage: demo-convert.sh /abs/input.ext <format> [cancel-after-ms]}"
 CANCEL="${3:-}"
+PLACEMENT="${4:-}"
 APP="$REPO_ROOT/build/DerivedData/Build/Products/Debug/Zivlet.app"
 DIR="$(dirname "$INPUT")"
 NAME="$(basename "$INPUT")"
@@ -18,6 +20,7 @@ pkill -x Zivlet || true
 START="$(date '+%Y-%m-%d %H:%M:%S')"
 ARGS=(-ZivletDemoConvert "$INPUT" "$TO" -ZivletRevealResults NO)
 if [[ -n "$CANCEL" ]]; then ARGS+=(-ZivletDemoCancelAfter "$CANCEL"); fi
+if [[ -n "$PLACEMENT" ]]; then ARGS+=(-ZivletHUDPlacement "$PLACEMENT"); fi
 open -n "$APP" --args "${ARGS[@]}"
 LINE=""
 for _ in $(seq 1 120); do
@@ -37,10 +40,14 @@ done
 CARD="$(/usr/bin/log show --start "$START" --style compact \
     --predicate 'subsystem == "app.zivlet.Zivlet" AND eventMessage BEGINSWITH "Result card"' |
     grep -o 'Result card: .*' | tail -1 || true)"
+ISLAND="$(/usr/bin/log show --start "$START" --style compact \
+    --predicate 'subsystem == "app.zivlet.Zivlet" AND eventMessage BEGINSWITH "Island:"' |
+    grep -o 'Island: .*' || true)"
 pkill -x Zivlet || true
 if [[ -z "$LINE" ]]; then echo "error: no 'Conversion finished' log line within 60 s" >&2; exit 1; fi
 echo "$LINE"
 if [[ -n "$CARD" ]]; then echo "$CARD"; fi
+if [[ -n "$ISLAND" ]]; then echo "$ISLAND"; fi
 if [[ "$STAGING" != "0" ]]; then echo "error: $STAGING staging files left in $DIR after 3 s" >&2; exit 1; fi
 if [[ -n "$CANCEL" ]]; then
     if [[ "$LINE" != *"0 saved, 0 failed, 1 cancelled"* || -e "$OUT" ]]; then echo "error: cancel left a result" >&2; exit 1; fi

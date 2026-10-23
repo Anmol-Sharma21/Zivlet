@@ -11,7 +11,8 @@ import ZivletWheelCore
 import os
 
 /// Composition root only (02 ADR-02, 14 §3.1): builds the trigger host, the wheel, the conversion service, the result
-/// HUD, the actions and the status menu, and wires them. A drop on a conversion slice starts a batch (05 P1-33); a
+/// HUD, the notch island (one reader, one set of hosts, one Notch HUD), the actions and the status menu, and wires
+/// them. A drop on a conversion slice starts a batch (05 P1-33); a
 /// drop on an action petal runs the action (P1-44, P1-45).
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Debug builds only: `-ZivletFlagsMonitor YES` adds the global `flagsChanged` monitor for spike P-T2 (off by
@@ -22,27 +23,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "app")
     let conversions = ConversionService.standard()
     private let undoHistory = UndoHistory()
+    let island = IslandWiring()
     lazy var conversion = ConversionWiring(
-        conversions: conversions, undoHistory: undoHistory, menu: menu,
-        revealsResults: { [weak self] in self?.settings.revealsResults ?? false }
+        conversions: conversions, undoHistory: undoHistory, menu: menu, notch: island.hud,
+        revealsResults: { [weak self] in self?.settings.revealsResults ?? false },
+        defaultRoute: { [weak self] in self?.defaultRoute ?? .nearDrop }
     ) { [weak self] batch in
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
     private lazy var settings = SettingsWiring(conversions: conversions)
     private let updater = UpdaterWiring()
     lazy var settingsWindow = SettingsWindowWiring(
-        store: settings.store, conversions: conversions, checkForUpdates: updater.checkForUpdates
+        store: settings.store, conversions: conversions, displays: island.reader,
+        checkForUpdates: updater.checkForUpdates
     ) {
         [weak self] in self?.trigger?.trace.lines ?? []
     }
     private lazy var actions = ActionWiring(
-        undoHistory: undoHistory, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
+        undoHistory: undoHistory, notch: island.hud, route: { [weak self] in self?.defaultRoute ?? .nearDrop },
+        terminalID: { [weak self] in self?.settings.terminalID ?? "" }
     ) { [weak self] batch in
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
     private var trigger: TriggerHost?
     var wheel: WheelController?
-    private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory)
+    private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory, island: island)
     private lazy var onboarding = OnboardingWiring(store: settings.store)
     private lazy var coach = CoachWiring(store: settings.store)
     #if DEBUG
@@ -63,8 +68,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             scheduler: SystemTriggerScheduler(),
             listensToFlagsChanged: Self.debugFlagsMonitorEnabled(),
             probe: { count in await reader.summary(changeCount: count) })
-        trigger.onWheelEffect = { [weak wheel, coach] effect in
+        trigger.onWheelEffect = { [weak wheel, coach, island] effect in
             guard let wheel else { return }
+            island.wheel(effect)
             wheel.apply(effect)
             coach.observe(effect, wheel: wheel)
         }
@@ -137,6 +143,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.install(wheel: wheel)
         actions.onFinished = { [menu] in menu.refreshRecent() }
     }
+
+    /// The presenter a new batch or action goes to (D-M5a-2): the override or the setting, resolved for this Mac.
+    private var defaultRoute: HUDRoute { settings.defaultRoute(hasBuiltInNotch: island.hasBuiltInNotch) }
 
     /// Undo for conversions and Moves alike; the reply is the sentence the HUD shows.
     private func undo(_ batch: BatchID) async -> UndoReply {

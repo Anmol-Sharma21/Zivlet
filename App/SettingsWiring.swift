@@ -2,6 +2,7 @@ import AppKit
 import ZivletRuntime
 import ZivletSettings
 import ZivletTriggerHost
+import ZivletUI
 import ZivletWheel
 
 /// Applies `Settings` to the running parts (D2): trigger bindings and rules, Pause, Sound and Haptics, the wheel
@@ -17,6 +18,9 @@ final class SettingsWiring {
     private var observer: Task<Void, Never>?
     /// `-ZivletRevealResults NO` on the command line (demo scripts) turns reveal off for that run only.
     private let revealOverride: Bool? = SettingsWiring.launchOverride(SettingsStore.legacyRevealKey)
+    /// `-ZivletHUDPlacement notch|nearDrop` (demo scripts) picks the presenter for that run only (D-M5a-10).
+    private let placementOverride = PlacementOverride.parse(
+        UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain))
 
     init(store: SettingsStore = SettingsStore(), conversions: ConversionService) {
         self.store = store
@@ -26,6 +30,12 @@ final class SettingsWiring {
     var settings: Settings { store.current }
     var revealsResults: Bool { revealOverride ?? settings.output.revealResults }
     var terminalID: String { settings.actions.terminal }
+
+    /// Where a new batch or action shows: the override or the stored placement, resolved for this Mac.
+    func defaultRoute(hasBuiltInNotch: Bool) -> HUDRoute {
+        PlacementOverride.defaultRoute(
+            override: placementOverride, settings: settings, hasBuiltInNotch: hasBuiltInNotch)
+    }
     var wheelTheme: WheelTheme { WheelTheme(rawValue: settings.feedback.theme.rawValue) ?? .glass }
 
     /// Applies the current settings to `trigger` (starting it unless paused) and follows later changes.

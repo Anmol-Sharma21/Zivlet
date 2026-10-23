@@ -1,5 +1,6 @@
 import AppKit
 import ZivletActions
+import ZivletNotch
 import ZivletRuntime
 import ZivletSettings
 import ZivletUI
@@ -12,6 +13,7 @@ final class SettingsWindowWiring {
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "settings")
     private let store: SettingsStore
     private let conversions: ConversionService
+    private let displays: any DisplayGeometryProvider
     private let triggerTrace: () -> [String]
     private let checkForUpdates: (() -> Void)?
     private var controller: SettingsWindowController?
@@ -19,11 +21,12 @@ final class SettingsWindowWiring {
     private var observer: Task<Void, Never>?
 
     init(
-        store: SettingsStore, conversions: ConversionService, checkForUpdates: (() -> Void)?,
-        triggerTrace: @escaping () -> [String]
+        store: SettingsStore, conversions: ConversionService, displays: any DisplayGeometryProvider,
+        checkForUpdates: (() -> Void)?, triggerTrace: @escaping () -> [String]
     ) {
         self.store = store
         self.conversions = conversions
+        self.displays = displays
         self.checkForUpdates = checkForUpdates
         self.triggerTrace = triggerTrace
     }
@@ -42,6 +45,7 @@ final class SettingsWindowWiring {
         let model = SettingsModel(
             settings: store.current, installedTerminals: TerminalCatalog.installed(SystemWorkspace()),
             commands: commands())
+        model.follow(displays)
         let controller = SettingsWindowController(model: model)
         let changes = store.changes
         observer = Task { [weak model] in

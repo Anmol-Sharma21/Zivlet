@@ -5,37 +5,57 @@ import ZivletRuntime
 import ZivletUI
 import os
 
-/// The conversion side of the drop path (P1-33, P1-40): starts batches, shows them in the result HUD, records
-/// finished outputs for Undo, reveals them in Finder when Settings says so, and logs each batch once.
+/// The conversion side of the drop path (P1-33, P1-40): starts batches, shows each in the presenter its drop chose
+/// (today's card near the drop or the notch island, D-M5a-8), records finished outputs for Undo, reveals them in
+/// Finder when Settings says so, and logs each batch once.
 final class ConversionWiring {
     let conversions: ConversionService
     let hud = ResultHUD()
+    let notch: NotchHUD
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "app")
     private let undoHistory: UndoHistory
     private let menu: MenuWiring
     private let revealsResults: () -> Bool
+    private let defaultRoute: () -> HUDRoute
+    private let clock = ContinuousClock()
+    private let origin = ContinuousClock.now
+    private var routes = BatchRoutes(defaultRoute: .nearDrop)
     private var observer: Task<Void, Never>?
 
     init(
-        conversions: ConversionService, undoHistory: UndoHistory, menu: MenuWiring,
-        revealsResults: @escaping () -> Bool, undo: @escaping (BatchID) async -> UndoReply
+        conversions: ConversionService, undoHistory: UndoHistory, menu: MenuWiring, notch: NotchHUD,
+        revealsResults: @escaping () -> Bool, defaultRoute: @escaping () -> HUDRoute,
+        undo: @escaping (BatchID) async -> UndoReply
     ) {
         self.conversions = conversions
         self.undoHistory = undoHistory
         self.menu = menu
+        self.notch = notch
         self.revealsResults = revealsResults
-        hud.onCancel = { [conversions] batch in Task { await conversions.cancel(batch) } }
-        hud.onReveal = { urls in NSWorkspace.shared.activateFileViewerSelecting(urls) }
-        hud.onOpen = { urls in urls.forEach { NSWorkspace.shared.open($0) } }
-        hud.onCopy = { [logger] urls in
+        self.defaultRoute = defaultRoute
+        for presenter in [hud, notch] as [any HUDPresenter] { wire(presenter, undo: undo) }
+    }
+
+    /// Both presenters get the same closures; Retry goes through the routes so the new batch stays where it was.
+    private func wire(_ presenter: any HUDPresenter, undo: @escaping (BatchID) async -> UndoReply) {
+        presenter.onCancel = { [conversions] batch in Task { await conversions.cancel(batch) } }
+        presenter.onReveal = { urls in NSWorkspace.shared.activateFileViewerSelecting(urls) }
+        presenter.onOpen = { urls in urls.forEach { NSWorkspace.shared.open($0) } }
+        presenter.onCopy = { [logger] urls in
             if case .failed = ClipboardAction().copyItems(urls) { logger.error("Copy from the result card refused") }
         }
-        hud.onUndo = undo
-        hud.onRetry = { [hud, conversions] batch, anchor in
-            hud.prepare(near: anchor)
-            Task { await conversions.retry(batch) }
-        }
+        presenter.onUndo = undo
+        presenter.onRetry = { [weak self] batch, anchor in self?.retry(batch, anchor: anchor) }
     }
+
+    private func retry(_ batch: BatchID, anchor: CGPoint?) {
+        routes = routes.withDefaultRoute(defaultRoute()).retrying(batch, anchor: anchor, at: now).forgetting(batch)
+        Task { [conversions] in await conversions.retry(batch) }
+    }
+
+    private var now: Duration { origin.duration(to: clock.now) }
+
+    private func presenter(_ route: HUDRoute) -> any HUDPresenter { route == .notch ? notch : hud }
 
     func start() {
         let snapshots = conversions.snapshots
@@ -44,9 +64,10 @@ final class ConversionWiring {
         }
     }
 
-    /// A drop on a conversion slice; the HUD appears near `point` (nil = centre of the main screen).
+    /// A drop on a conversion slice: its route is the placement now; the HUD appears near `point` or at the island
+    /// of `point`'s display (nil = the main screen).
     func convert(_ urls: [URL], to format: FormatID, near point: CGPoint?) -> Task<BatchID, Never> {
-        hud.prepare(near: point)
+        routes = routes.enqueuing(point: point, at: now, route: defaultRoute())
         return Task { [conversions] in await conversions.convert(urls, to: format) }
     }
 
@@ -58,8 +79,13 @@ final class ConversionWiring {
         logger.notice("Result card: \(name, privacy: .private) · \(sizes, privacy: .public)")
     }
 
+    /// The first snapshot of a batch claims its route and prepares that presenter once; later ones look it up.
     private func present(_ snapshot: BatchSnapshot) {
-        hud.show(snapshot)
+        let claim: BatchRoutes.Claim
+        (routes, claim) = routes.withDefaultRoute(defaultRoute()).claiming(snapshot.batch)
+        let shown = presenter(claim.route)
+        if claim.isNew { shown.prepare(near: claim.point) }
+        shown.show(snapshot)
         menu.track(snapshot)
         guard snapshot.isFinished else { return }
         logger.notice("Conversion finished: \(BatchPresentation.logLine(snapshot), privacy: .public)")

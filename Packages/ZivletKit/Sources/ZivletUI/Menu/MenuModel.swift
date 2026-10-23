@@ -8,6 +8,8 @@ public enum MenuAction: Sendable, Equatable {
     case reveal(BatchID)
     case undo(BatchID)
     case settings, practice, togglePause, checkForUpdates, about, quit
+    /// Opens the notch island with the keyboard (D-N12).
+    case showProgress
 }
 
 /// One menu item as a value. A separator has the title "—"; `children` make a submenu.
@@ -47,16 +49,19 @@ public struct MenuState: Sendable, Equatable {
     public let batches: [MenuBatch]
     public let recent: [MenuRecent]
     public let canCheckForUpdates: Bool
+    /// The notch island shows something: "Show Progress and Results" is enabled.
+    public let islandHasItems: Bool
 
     public init(
         bindings: TriggerBindings, paused: Bool, batches: [MenuBatch], recent: [MenuRecent],
-        canCheckForUpdates: Bool = false
+        canCheckForUpdates: Bool = false, islandHasItems: Bool = false
     ) {
         self.bindings = bindings
         self.paused = paused
         self.batches = batches
         self.recent = recent
         self.canCheckForUpdates = canCheckForUpdates
+        self.islandHasItems = islandHasItems
     }
 
     public static func idle(bindings: TriggerBindings, paused: Bool = false, canCheckForUpdates: Bool = false)
@@ -107,7 +112,8 @@ public enum MenuModel {
 
     private static func commands(_ state: MenuState) -> [MenuEntry] {
         [
-            .separator, MenuEntry("Settings…", action: .settings, key: ","),
+            .separator, MenuEntry("Show Progress and Results", action: .showProgress, isEnabled: state.islandHasItems),
+            MenuEntry("Settings…", action: .settings, key: ","),
             MenuEntry("Practice…", action: .practice),
             MenuEntry(state.paused ? "Resume Zivlet" : "Pause Zivlet", action: .togglePause),
             MenuEntry("Check for Updates…", action: .checkForUpdates, isEnabled: state.canCheckForUpdates),

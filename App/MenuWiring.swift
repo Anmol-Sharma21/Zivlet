@@ -22,14 +22,16 @@ final class MenuWiring {
     var handlers = MenuHandlers()
     private let settings: SettingsStore
     private let undoHistory: UndoHistory
+    private let island: IslandWiring
     private var statusMenu: StatusMenu?
     private var active = ActiveBatches()
     private var recent: [MenuRecent] = []
     private var observer: Task<Void, Never>?
 
-    init(settings: SettingsStore, undoHistory: UndoHistory) {
+    init(settings: SettingsStore, undoHistory: UndoHistory, island: IslandWiring) {
         self.settings = settings
         self.undoHistory = undoHistory
+        self.island = island
     }
 
     func install(wheel: WheelController) {
@@ -61,7 +63,7 @@ final class MenuWiring {
         let current = settings.current
         return MenuState(
             bindings: current.trigger.bindings, paused: current.trigger.paused, batches: active.menuBatches,
-            recent: recent, canCheckForUpdates: handlers.checkForUpdates != nil)
+            recent: recent, canCheckForUpdates: handlers.checkForUpdates != nil, islandHasItems: island.hasItems)
     }
 
     private func perform(_ action: MenuAction) {
@@ -73,6 +75,7 @@ final class MenuWiring {
         case .practice: handlers.practice()
         case .togglePause: settings.update { $0.with(\.trigger.paused, !$0.trigger.paused) }
         case .checkForUpdates: handlers.checkForUpdates?()
+        case .showProgress: island.hosts.expandRequested()
         case .about:
             NSApplication.shared.activate()
             NSApplication.shared.orderFrontStandardAboutPanel(nil)

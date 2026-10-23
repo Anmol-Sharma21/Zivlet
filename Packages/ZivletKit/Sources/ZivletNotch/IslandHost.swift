@@ -13,6 +13,8 @@ import ZivletNotchCore
 public final class IslandHost {
     /// Events for this display's machine; IslandHosts sets it.
     public var onEvent: (IslandEvent) -> Void = { _ in }
+    /// Each surface as it is applied, with the frame it goes to (`.zero` when hidden); for the app's log lines.
+    public var onSurface: (IslandSurface, CGRect) -> Void = { _, _ in }
     /// The machine's curves; IslandHosts sets them before each step.
     public var curves = IslandMotion(reduceMotion: false)
 
@@ -132,9 +134,13 @@ public final class IslandHost {
         let mine = generation
         let previous = surface
         surface = target
-        guard target != .hidden else { return fadeOut(mine) }
+        guard target != .hidden else {
+            onSurface(.hidden, .zero)
+            return fadeOut(mine)
+        }
         refreshContent()
         let goal = targetFrame(target)
+        onSurface(target, goal)
         if !panel.isVisible || previous == .hidden {
             appear(at: goal, mine)
         } else {

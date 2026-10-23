@@ -25,8 +25,8 @@ struct MenuModelTests {
         let titles = MenuModel.make(state: .idle(bindings: .standard)).map(\.title)
         #expect(
             titles == [
-                "Zivlet is ready", "⇧: Convert · ⌘: Tools · ⌃: Actions", "—", "Settings…", "Practice…",
-                "Pause Zivlet", "Check for Updates…", "—", "About Zivlet", "Quit Zivlet",
+                "Zivlet is ready", "⇧: Convert · ⌘: Tools · ⌃: Actions", "—", "Show Progress and Results",
+                "Settings…", "Practice…", "Pause Zivlet", "Check for Updates…", "—", "About Zivlet", "Quit Zivlet",
             ])
     }
 
@@ -38,6 +38,14 @@ struct MenuModelTests {
         #expect(entries.first { $0.title == "Quit Zivlet" }?.keyEquivalent == "q")
         #expect(entries.first { $0.title == "Check for Updates…" }?.isEnabled == true)
         #expect(entries.map(\.action).contains(.practice) && entries.map(\.action).contains(.about))
+    }
+
+    @Test func showProgressAndResultsIsEnabledOnlyWhileTheIslandHasItems() {
+        let idle = MenuModel.make(state: .idle(bindings: .standard))
+        let show = idle.first { $0.title == "Show Progress and Results" }
+        #expect(show?.isEnabled == false && show?.action == .showProgress)
+        let busy = MenuState(bindings: .standard, paused: false, batches: [], recent: [], islandHasItems: true)
+        #expect(MenuModel.make(state: busy).first { $0.title == "Show Progress and Results" }?.isEnabled == true)
     }
 
     @Test func checkForUpdatesIsDisabledUntilTheUpdaterRuns() {
