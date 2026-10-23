@@ -97,6 +97,8 @@ extension IslandHost {
                 .frame(width: width).fixedSize(horizontal: false, vertical: true))
         measurer.layoutSubtreeIfNeeded()
         let height = measurer.fittingSize.height.rounded(.up)
+        // Let go of the content: a measurer that kept it would redraw off screen with every progress change.
+        measurer.rootView = AnyView(EmptyView())
         guard height != lastMeasuredHeight else { return }
         lastMeasuredHeight = height
         send(.contentHeightChanged(height, now: clock.now()))

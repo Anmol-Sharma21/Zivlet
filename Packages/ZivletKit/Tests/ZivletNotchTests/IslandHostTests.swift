@@ -130,6 +130,15 @@ struct IslandHostTests {
         host.close()
     }
 
+    @Test func theMeasurerLetsGoOfTheContentSoProgressDoesNotRedrawItOffScreen() throws {
+        let host = makeHost(try OffscreenDisplays.notch(), client: FakeClient(), log: EventLog())
+        host.contentChanged()
+        host.measurer.layoutSubtreeIfNeeded()
+        // An empty hosting view measures 10 pt; the fake client's three lines measure more than 20.
+        #expect(host.measurer.fittingSize.height < 20)
+        host.close()
+    }
+
     @Test func theHostIsPrewarmed() throws {
         let host = makeHost(try OffscreenDisplays.notch())
         #expect(host.isPrewarmed && !host.isVisible)
