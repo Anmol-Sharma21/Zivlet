@@ -1,7 +1,9 @@
+import CoreGraphics
 import Foundation
 
-/// Axis-aligned rectangle in global points, AppKit orientation (origin bottom-left). Keeps pure modules free of
-/// CoreGraphics; the `CGRect` bridge below is for the AppKit shells (`CGRect` comes with Foundation on Darwin).
+/// Axis-aligned rectangle in global points, AppKit orientation (origin bottom-left). Pure modules use it instead of
+/// `CGRect`; the bridge below is for the AppKit shells. It imports CoreGraphics so its `CGRect` is the one the shells
+/// see: through Foundation alone the Release build could not read the bridge back in other modules.
 public struct Rect2D: Sendable, Hashable, Codable {
     public let x: Double
     public let y: Double
@@ -33,6 +35,5 @@ extension Rect2D {
         self.init(x: rect.origin.x, y: rect.origin.y, width: rect.size.width, height: rect.size.height)
     }
 
-    /// Built from the C struct's own fields, so this module needs Foundation only.
     public var cgRect: CGRect { CGRect(origin: CGPoint(x: x, y: y), size: CGSize(width: width, height: height)) }
 }
