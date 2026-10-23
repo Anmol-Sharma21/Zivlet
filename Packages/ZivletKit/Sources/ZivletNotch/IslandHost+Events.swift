@@ -48,8 +48,12 @@ extension IslandHost {
     // MARK: Pointer
 
     /// After a frame change or an order-front AppKit sends no enter or exit to a resting pointer, so the host checks.
+    /// Edges count as inside: a pointer pushed against the top of the screen sits exactly on the island's top edge.
     func checkPointer() {
-        let inside = panel.isVisible && surface != .hidden && shapeOnScreen.contains(pointer())
+        let shape = shapeOnScreen
+        let point = pointer()
+        let onShape = (shape.minX...shape.maxX).contains(point.x) && (shape.minY...shape.maxY).contains(point.y)
+        let inside = panel.isVisible && surface != .hidden && onShape
         if inside { trackingEntered() } else { trackingExited() }
     }
 
@@ -104,21 +108,44 @@ extension IslandHost {
         send(.contentHeightChanged(height, now: clock.now()))
     }
 
+    /// Everything the chrome shows, at once (a content change, new geometry).
     func refreshContent() {
+        refreshAccessibility()
+        applyShapeStyle()
+        applyContent()
+    }
+
+    /// The island group's label, value and action: on every surface change, and whenever the client's spoken text
+    /// changes (progress), so the collapsed value matches what the expanded view shows (design/19 §5.5).
+    func refreshAccessibility() {
         let id = display.id
-        let shown = surface == .hidden ? chrome.surface : surface
+        let label = client.accessibilityLabel(display: id)
+        let value = client.accessibilityValue(display: id)
+        let action = client.accessibilityActionName
+        if chrome.accessibilityLabel != label { chrome.accessibilityLabel = label }
+        if chrome.accessibilityValue != value { chrome.accessibilityValue = value }
+        if chrome.accessibilityActionName != action { chrome.accessibilityActionName = action }
+    }
+
+    /// The surface's view; inside the transition's animation it cross-fades with the old one.
+    func applyContent() {
+        let shown = shownSurface
         chrome.surface = shown
-        chrome.content = client.content(for: shown, display: id)
-        chrome.accessibilityLabel = client.accessibilityLabel(display: id)
-        chrome.accessibilityValue = client.accessibilityValue(display: id)
-        chrome.accessibilityActionName = client.accessibilityActionName
-        let hasNotch = NotchGeometry.hasNotch(display)
+        chrome.content = client.content(for: shown, display: display.id)
+    }
+
+    /// The corners, the inset under the housing and scrolling, all from the display; animated with the shape.
+    func applyShapeStyle() {
+        let shown = shownSurface
         chrome.contentTopInset = IslandLayout.contentTopInset(on: display)
-        chrome.topRadius = hasNotch ? 0 : radius(shown)
+        chrome.topRadius = NotchGeometry.hasNotch(display) ? 0 : radius(shown)
         chrome.bottomRadius = radius(shown)
         chrome.scrolls =
             shown == .expanded && IslandLayout.contentScrolls(contentHeight: contentHeightShown, on: display)
     }
+
+    /// While hidden (fading out) the last surface stays drawn.
+    private var shownSurface: IslandSurface { surface == .hidden ? chrome.surface : surface }
 
     private var contentHeightShown: Double { lastMeasuredHeight ?? 0 }
 

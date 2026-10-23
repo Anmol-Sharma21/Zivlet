@@ -1,8 +1,9 @@
 import AppKit
 import NotchTestSupport
 import SwiftUI
-import ZivletNotch
 import ZivletNotchCore
+
+@testable import ZivletNotch
 
 /// A client whose content is a few lines of text; it records what the island tells it.
 @MainActor

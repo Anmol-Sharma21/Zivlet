@@ -8,9 +8,11 @@ public enum IslandAnimation: Sendable, Equatable {
     case slow(Double)
     case motion
 
-    /// The SwiftUI animation for `curve` (nil = no animation), how long until it counts as done, and whether the
-    /// shape may change size in view (not under Reduce Motion, D-N5).
-    func timing(for curve: IslandMotion.Curve) -> (animation: Animation?, seconds: Double, resizes: Bool) {
+    /// The SwiftUI animation (nil = none), how long until it counts as done, and whether the shape may change size
+    /// in view (not under Reduce Motion, D-N5).
+    typealias Timing = (animation: Animation?, seconds: Double, resizes: Bool)
+
+    func timing(for curve: IslandMotion.Curve) -> Timing {
         switch self {
         case .instant: return (nil, 0, true)
         case .slow(let seconds): return (.linear(duration: seconds), seconds, true)

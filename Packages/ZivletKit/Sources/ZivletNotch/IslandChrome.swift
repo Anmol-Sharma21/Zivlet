@@ -1,11 +1,13 @@
 import SwiftUI
 import ZivletNotchCore
 
-/// What the island draws, set by its host: the shape's rectangle inside the panel (top-left origin), its corners, the
-/// client's content for the surface and the accessibility text of the island group.
+/// What the island draws, set by its host: the shape's rectangle, its corners, the client's content for the surface
+/// and the accessibility text of the island group.
 @Observable
 final class IslandChromeModel {
     var panelSize = CGSize(width: 1, height: 1)
+    /// The shape from the panel's top centre: x from the centre line, y down from the top edge. Every surface hangs
+    /// from the same centre, so growing or shrinking the panel about it does not move the drawing.
     var shapeRect = CGRect.zero
     var opacity = 0.0
     var topRadius = 0.0
@@ -30,13 +32,13 @@ struct IslandChrome: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack(alignment: .top) {
             Color.clear
             island
                 .frame(width: model.shapeRect.width, height: model.shapeRect.height)
-                .offset(x: model.shapeRect.minX, y: model.shapeRect.minY)
+                .offset(x: model.shapeRect.midX, y: model.shapeRect.minY)
         }
-        .frame(width: model.panelSize.width, height: model.panelSize.height, alignment: .topLeading)
+        .frame(width: model.panelSize.width, height: model.panelSize.height, alignment: .top)
         .environment(\.colorScheme, .dark)
     }
 
@@ -45,7 +47,7 @@ struct IslandChrome: View {
     private var island: some View {
         ZStack(alignment: .top) {
             shape.fill(Color.black)
-            if contrast == .increased { shape.stroke(Color.white.opacity(0.5), lineWidth: 1) }
+            if contrast == .increased { shape.strokeBorder(Color.white.opacity(0.5), lineWidth: 1) }
             content
                 .padding(.top, model.contentTopInset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

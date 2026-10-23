@@ -11,12 +11,12 @@ import ZivletNotchCore
 /// token, and a completion that finds a newer one does nothing, so a stale fade never orders out a live island and a
 /// stale shrink never clips an expanded card.
 public final class IslandHost {
-    /// Events for this display's machine; IslandHosts sets it.
-    public var onEvent: (IslandEvent) -> Void = { _ in }
+    /// Events for this display's machine; only IslandHosts sets it.
+    var onEvent: (IslandEvent) -> Void = { _ in }
     /// Each surface as it is applied, with the frame it goes to (`.zero` when hidden); for the app's log lines.
-    public var onSurface: (IslandSurface, CGRect) -> Void = { _, _ in }
+    var onSurface: (IslandSurface, CGRect) -> Void = { _, _ in }
     /// The machine's curves; IslandHosts sets them before each step.
-    public var curves = IslandMotion(reduceMotion: false)
+    var curves = IslandMotion(reduceMotion: false)
 
     public private(set) var display: DisplayGeometry
     public private(set) var surface: IslandSurface = .hidden
@@ -80,13 +80,23 @@ public final class IslandHost {
         flush()
     }
 
-    /// New geometry under the same display ID: the current surface is laid out again at once.
+    /// New geometry under the same display ID: the current surface is laid out again at once, its insets, corners
+    /// and scrolling follow the new housing, and the content is measured again. A running completion was worked out
+    /// for the old geometry, so it is dropped.
     public func update(display: DisplayGeometry) {
         self.display = display
         guard surface != .hidden else { return }
+        generation += 1
+        completion?.task.cancel()
+        completion = nil
+        isShrinking = false
         let target = targetFrame(surface)
         setPanelFrame(target)
-        setShape(target)
+        withTransaction(Transaction(animation: nil)) {
+            applyShapeStyle()
+            setShape(target)
+        }
+        contentChanged()
         checkPointer()
     }
 
@@ -138,7 +148,7 @@ public final class IslandHost {
             onSurface(.hidden, .zero)
             return fadeOut(mine)
         }
-        refreshContent()
+        refreshAccessibility()
         let goal = targetFrame(target)
         onSurface(target, goal)
         if !panel.isVisible || previous == .hidden {
@@ -152,7 +162,11 @@ public final class IslandHost {
         setPanelFrame(goal)
         let start = NotchGeometry.housing(of: display)?.cgRect ?? goal
         let timing = motion.timing(for: curves.expand)
-        withTransaction(Transaction(animation: nil)) { setShape(timing.resizes ? start : goal) }
+        withTransaction(Transaction(animation: nil)) {
+            applyShapeStyle()
+            applyContent()
+            setShape(timing.resizes ? start : goal)
+        }
         panel.orderFrontRegardless()
         animate(timing, mine) { [self] in
             setShape(goal)
@@ -162,22 +176,42 @@ public final class IslandHost {
         checkPointer()
     }
 
+    /// The new content, corners and shape move together in one animation; the old content cross-fades out.
     private func reshape(to goal: CGRect, _ mine: Int) {
         let container = panel.frame.union(goal)
         let shrinks = container != goal
-        let curve = shrinks ? curves.collapse : curves.expand
+        let timing = motion.timing(for: shrinks ? curves.collapse : curves.expand)
+        guard timing.resizes else { return crossFade(to: goal, timing, mine) }
         if container != panel.frame { setPanelFrame(container) }
         isShrinking = shrinks
-        let timing = motion.timing(for: curve)
         animate(timing, mine) { [self] in
+            applyShapeStyle()
+            applyContent()
             setShape(goal)
             chrome.opacity = 1
         } then: { [self] in
             isShrinking = false
             guard shrinks else { return }
-            setPanelFrame(goal)
-            setShape(goal)
+            let settled = targetFrame(surface)
+            setPanelFrame(settled)
+            setShape(settled)
             checkPointer()
+        }
+        checkPointer()
+    }
+
+    /// Reduce Motion (D-N5): the frame, the shape and the corners change at once; only the content cross-fades.
+    private func crossFade(to goal: CGRect, _ timing: IslandAnimation.Timing, _ mine: Int) {
+        isShrinking = false
+        setPanelFrame(goal)
+        withTransaction(Transaction(animation: nil)) {
+            applyShapeStyle()
+            setShape(goal)
+        }
+        animate(timing, mine) { [self] in
+            applyContent()
+            chrome.opacity = 1
+        } then: {
         }
         checkPointer()
     }
@@ -194,10 +228,10 @@ public final class IslandHost {
         }
     }
 
-    /// Runs `changes` in the curve's animation (size changes without one under Reduce Motion), then `finish` once the
-    /// animation is done, unless a newer surface change came first.
+    /// Runs `changes` in the curve's animation, then `finish` once the animation is done, unless a newer surface
+    /// change (or new geometry) came first.
     private func animate(
-        _ timing: (animation: Animation?, seconds: Double, resizes: Bool), _ mine: Int,
+        _ timing: IslandAnimation.Timing, _ mine: Int,
         _ changes: () -> Void, then finish: @escaping () -> Void
     ) {
         withAnimation(timing.animation) { changes() }
@@ -215,20 +249,35 @@ public final class IslandHost {
         IslandLayout.frame(target, on: display, contentHeight: contentHeight).cgRect
     }
 
-    private func setPanelFrame(_ rect: CGRect) {
+    /// Resizes the panel around the shape: the shape stays where it is on screen, so growing the panel before an
+    /// expansion does not move the island sideways for a frame.
+    func setPanelFrame(_ rect: CGRect) {
+        let drawn = drawnShapeOnScreen
         panel.setFrame(rect, display: false)
         chrome.panelSize = rect.size
         hosting?.frame = CGRect(origin: .zero, size: rect.size)
         tracking.frame = CGRect(origin: .zero, size: rect.size)
+        withTransaction(Transaction(animation: nil)) { setShape(drawn) }
     }
 
-    /// Moves the drawn shape and the tracking area to `rect` (global points).
+    /// Moves the drawn shape and the tracking area to `rect` (global points). The chrome holds it from the panel's
+    /// top centre, which every surface shares, so a panel resized about that centre leaves the drawing alone.
     private func setShape(_ rect: CGRect) {
-        let origin = panel.frame.origin
-        chrome.shapeRect = CGRect(
-            x: rect.minX - origin.x, y: panel.frame.maxY - rect.maxY, width: rect.width, height: rect.height)
-        tracking.setShape(rect.offsetBy(dx: -origin.x, dy: -origin.y))
+        let frame = panel.frame
+        let local = CGRect(x: rect.minX - frame.midX, y: frame.maxY - rect.maxY, width: rect.width, height: rect.height)
+        if chrome.shapeRect != local { chrome.shapeRect = local }
+        tracking.setShape(rect.offsetBy(dx: -frame.minX, dy: -frame.minY))
     }
+
+    /// The shape as the chrome draws it, in global points.
+    var drawnShapeOnScreen: CGRect {
+        let local = chrome.shapeRect
+        let frame = panel.frame
+        return CGRect(x: frame.midX + local.minX, y: frame.maxY - local.maxY, width: local.width, height: local.height)
+    }
+
+    /// The island group's accessibility value as the chrome holds it.
+    public var accessibilityValue: String { chrome.accessibilityValue }
 
     /// The shape's target rectangle in global points: what the pointer is checked against.
     var shapeOnScreen: CGRect { targetFrame(surface) }
