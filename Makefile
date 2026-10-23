@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit notch-demo notch-timing notch-idle
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -48,6 +48,18 @@ action-demo:
 	Scripts/demo-action.sh "$${FILE:?set FILE to an absolute path}" "$${ACTION:?set ACTION to copyTo, copyFilePath or openInTerminal}" "$${OPTION:-NO}"
 
 # P1-21, P1-50: build Release with the vendored helpers; fail on a Homebrew path or an incomplete bundle.
+notch-demo:
+	$(ENV) Scripts/demo-notch.sh
+
+notch-timing:
+	$(ENV) $(NATIVE) cd "$$KIT" && swift test --filter NotchHUDTimingTests
+
+notch-idle:
+	$(ENV) Scripts/notch-idle.sh
+
+m5a-exit:
+	Scripts/m5a-exit.sh
+
 release-check:
 	$(ENV) $(NATIVE) Vendor/ensure-media.sh && Scripts/check-release-paths.sh
 
