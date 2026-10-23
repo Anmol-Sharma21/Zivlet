@@ -16,11 +16,19 @@ struct NotchIcon: View {
         }
     }
 
-    /// The system icon for the name's type; a name without a known extension gets the generic document icon.
+    /// The system icon for the name's type; a name without a known extension gets the generic document icon. One
+    /// image per type: the tab redraws with every visible progress step, and a new image each time would make
+    /// SwiftUI draw the icon again as well.
     static func image(for name: String) -> NSImage {
         let type = UTType(filenameExtension: (name as NSString).pathExtension) ?? .data
-        return NSWorkspace.shared.icon(for: type)
+        if let known = icons[type] { return known }
+        let icon = NSWorkspace.shared.icon(for: type)
+        icons[type] = icon
+        return icon
     }
+
+    /// Icons already asked for, per type; main-actor state, a few entries at most.
+    private static var icons: [UTType: NSImage] = [:]
 }
 
 /// The progress ring (design/19 §5.5): fill white, track white at 0.4, so it meets the 3:1 of WCAG 1.4.11.
