@@ -150,6 +150,62 @@ struct IslandHostsTests {
         hosts.close()
     }
 
+    @Test func aRequestForADisplayThatArrivesLaterIsShownWhenItArrives() async throws {
+        let provider = try FakeDisplayProvider.notchOnly()
+        let hosts = IslandHosts(provider: provider, clock: ManualClock(), animation: .instant)
+        hosts.register(FakeClient(), as: .hud)
+        hosts.request(IslandRequest(client: .hud, display: 2, resting: .collapsed, hoverSurface: .expanded), from: .hud)
+        #expect(hosts.visibleDisplays.isEmpty)
+        provider.set([try OffscreenDisplays.notch(), try OffscreenDisplays.plain()])
+        #expect(await eventually { hosts.surface(on: 2) == .collapsed })
+        #expect(hosts.visibleDisplays == [2] && hosts.hasItems)
+        hosts.close()
+    }
+
+    @Test func anEmptyDisplayListKeepsEveryIslandUntilDisplaysReturn() async throws {
+        let provider = try FakeDisplayProvider.notchOnly()
+        let hosts = IslandHosts(provider: provider, clock: ManualClock(), animation: .instant)
+        let client = FakeClient()
+        hosts.register(client, as: .hud)
+        hosts.request(IslandRequest(client: .hud, display: 1, resting: .collapsed, hoverSurface: .expanded), from: .hud)
+        provider.set([])
+        provider.set([try OffscreenDisplays.notch()])
+        #expect(await eventually { client.displayChanges.last?.ids == [1] })
+        #expect(client.displayChanges.allSatisfy { !$0.ids.isEmpty })
+        #expect(hosts.surface(on: 1) == .collapsed && hosts.hasItems)
+        hosts.close()
+    }
+
+    @Test func aDragFromTheIslandHoldsItUntilTheDragEnds() async throws {
+        let clock = ManualClock()
+        let hosts = IslandHosts(provider: try FakeDisplayProvider.notchOnly(), clock: clock, animation: .instant)
+        let client = FakeClient()
+        hosts.register(client, as: .hud)
+        hosts.request(IslandRequest(client: .hud, display: 1, resting: .toast, hoverSurface: .expanded), from: .hud)
+        hosts.host(on: 1)?.trackingEntered()
+        await clock.advance(by: .milliseconds(200))
+        hosts.dragBegan(on: 1)
+        hosts.host(on: 1)?.trackingExited()
+        await clock.advance(by: .seconds(1))
+        #expect(hosts.surface(on: 1) == .expanded && client.held.last == true)
+        hosts.dragEnded(on: 1)
+        await clock.advance(by: .seconds(1))
+        #expect(hosts.surface(on: 1) == .toast && client.held.last == false)
+        hosts.close()
+    }
+
+    @Test func theAccessibilityTextFollowsTheClientWithoutANewSurface() throws {
+        let hosts = IslandHosts(
+            provider: try FakeDisplayProvider.notchOnly(), clock: ManualClock(), animation: .instant)
+        let client = FakeClient()
+        hosts.register(client, as: .hud)
+        hosts.request(IslandRequest(client: .hud, display: 1, resting: .collapsed, hoverSurface: .expanded), from: .hud)
+        client.lines = 7
+        hosts.accessibilityChanged(on: 1)
+        #expect(hosts.host(on: 1)?.accessibilityValue == "7 lines")
+        hosts.close()
+    }
+
     @Test func twoSubscribersBothSeeEachChange() async throws {
         let provider = try FakeDisplayProvider.notchOnly()
         let first = provider.changes

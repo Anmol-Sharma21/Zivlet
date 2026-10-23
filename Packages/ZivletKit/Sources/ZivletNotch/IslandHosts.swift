@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import ZivletNotchCore
+import os
 
 /// The island's owner (D-N8, D-M5a-9): built once by the app from one provider and given to every client. It keeps
 /// a pre-warmed host and a machine per display, the arbiter between clients, and alone handles display changes
@@ -18,6 +19,7 @@ public final class IslandHosts {
     private var reduceMotion = false
     private var wheelShowing = false
     private var watch: Task<Void, Never>?
+    private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
     /// Each surface a display's island applies, with its frame (global, y up; `.zero` when hidden).
     public var onSurface: (UInt32, IslandSurface, CGRect) -> Void = { _, _, _ in }
     /// The current displays, the menu-bar display first.
@@ -45,9 +47,15 @@ public final class IslandHosts {
 
     /// Sets `client`'s request on its display, or withdraws all of its requests when nil. The winner of each display
     /// it touches goes to that display's machine; the host measures the winner's content first.
+    /// A request for a display that has no host yet is kept and shown when that display arrives.
     public func request(_ request: IslandRequest?, from client: IslandClientID) {
-        if let request, request.client != client { return }
-        let before = Dictionary(uniqueKeysWithValues: displayIDs.map { ($0, arbiter.winner(on: $0)) })
+        if let request, request.client != client {
+            return Self.logger.error("Island request from one client filed as another; ignored")
+        }
+        if let request, !displayIDs.contains(request.display) {
+            Self.logger.error("Island request for display \(request.display) before it is known; kept until it arrives")
+        }
+        let before = Dictionary(displayIDs.map { ($0, arbiter.winner(on: $0)) }) { first, _ in first }
         arbiter = arbiter.updating(client, request)
         for id in displayIDs {
             let winner = arbiter.winner(on: id)
@@ -66,6 +74,14 @@ public final class IslandHosts {
 
     /// The client's content changed on `display` (new text, Show Details, an undo reply): re-measured and redrawn.
     public func contentChanged(on display: UInt32) { hosts[display]?.contentChanged() }
+
+    /// A drag of the client's content out of the island started or ended (D-N13): the island and its lingers are
+    /// held until it ends.
+    public func dragBegan(on display: UInt32) { step(.dragBegan(now: clock.now()), on: display) }
+    public func dragEnded(on display: UInt32) { step(.dragEnded(now: clock.now()), on: display) }
+
+    /// The client's spoken text changed (progress) without a new surface or height: only the text is copied.
+    public func accessibilityChanged(on display: UInt32) { hosts[display]?.refreshAccessibility() }
 
     /// "Show Progress and Results" (D-N12): the island with items, the menu-bar display first, opens and takes keys.
     public func expandRequested() {
@@ -114,7 +130,13 @@ public final class IslandHosts {
 
     /// Hosts of removed displays are destroyed, new displays get a pre-warmed host, the others are laid out again;
     /// every client learns the new set and the replacement of each removed display (the menu-bar display).
+    ///
+    /// An empty list (sleep, a reconfiguration in progress, every screen rejected) changes nothing: the islands and
+    /// the requests stay until a list with a display arrives, so nothing a client filed is lost.
     func displaysChanged(_ displays: [DisplayGeometry]) {
+        guard !displays.isEmpty else {
+            return Self.logger.error("Display change with no displays: the islands wait for the next one")
+        }
         let ids = displays.map(\.id)
         let removed = displayIDs.filter { !ids.contains($0) }
         for id in removed { remove(id) }
@@ -145,6 +167,7 @@ public final class IslandHosts {
         if wheelShowing { machine = machine.handling(.wheelShown(now: clock.now())).0 }
         machines[id] = machine
         host.curves = machine.motion
+        if let waiting = arbiter.winner(on: id) { route(waiting, on: id) }
     }
 
     private func remove(_ id: UInt32) {
