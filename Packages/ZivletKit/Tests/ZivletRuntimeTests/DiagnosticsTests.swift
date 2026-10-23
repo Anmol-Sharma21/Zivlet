@@ -35,6 +35,14 @@ struct DiagnosticsTests {
         #expect(DiagnosticsRedaction.redact("in /Users/x/Downloads", home: "/Users/x") == "in ~/…/Downloads")
     }
 
+    @Test func theDisplaysSectionListsEachDisplayAndTheNotchLatch() async throws {
+        let line = "display 1: frame 0 0 1800 1169 · safe top 38 · housing 790 1131 220 38 · built in"
+        let report = try await Diagnostics.build(.fake.with(displays: [line], builtInNotchSeen: true))
+        #expect(report.contains("## Displays\n\n\(line)\nbuilt-in notch seen: yes\n"))
+        let unseen = try await Diagnostics.build(.fake)
+        #expect(unseen.contains("## Displays\n\nbuilt-in notch seen: no\n"))
+    }
+
     @Test func reportHasEverySectionAndNoNetworkFields() async throws {
         let report = try await Diagnostics.build(.fake)
         for section in ["Zivlet", "macOS", "Helpers", "Capabilities", "Settings", "Recent log", "Trigger trace"] {

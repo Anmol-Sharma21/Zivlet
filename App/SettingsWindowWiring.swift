@@ -1,6 +1,7 @@
 import AppKit
 import ZivletActions
 import ZivletNotch
+import ZivletNotchCore
 import ZivletRuntime
 import ZivletSettings
 import ZivletUI
@@ -8,7 +9,8 @@ import os
 
 /// Builds the Settings window on first use and keeps it in step with the store (D3): writes go through the store,
 /// changes made elsewhere refresh the panes, and the helper versions are asked for once per opening. Copy
-/// Diagnostics (P1-48) puts a redacted local report on the pasteboard; nothing is sent anywhere.
+/// Diagnostics (P1-48) puts a redacted local report on the pasteboard, with every display's geometry (design/19
+/// §3.3); nothing is sent anywhere.
 final class SettingsWindowWiring {
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "settings")
     private let store: SettingsStore
@@ -70,10 +72,13 @@ final class SettingsWindowWiring {
     private func copyDiagnostics() {
         let settingsJSON = store.current.diagnosticsJSON
         let trace = triggerTrace()
+        let displayLines = displays.displays.map(\.diagnosticsLine)
+        let notchSeen = displays.hasBuiltInNotch
         Task { [conversions, logger] in
             let helpers = await conversions.helperVersions()
             let sources = await DiagnosticsCollector().collect(
-                settingsJSON: settingsJSON, triggerTrace: trace, helpers: helpers)
+                settingsJSON: settingsJSON, triggerTrace: trace, helpers: helpers
+            ).with(displays: displayLines, builtInNotchSeen: notchSeen)
             do {
                 let report = try await Diagnostics.build(sources)
                 NSPasteboard.general.clearContents()

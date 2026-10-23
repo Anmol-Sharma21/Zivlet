@@ -73,3 +73,26 @@ public struct DisplayGeometry: Sendable, Equatable, Codable {
         guard mayBeNegative || value >= 0 else { throw Invalid.negative(field: name) }
     }
 }
+
+// Copy Diagnostics (design/19 §3.3, Q15): every value of a display on one line, so other Macs' notch sizes can be
+// recorded as fixtures. Numbers and the housing only; no display names.
+extension DisplayGeometry {
+    public var diagnosticsLine: String {
+        let parts = [
+            "display \(id): frame \(Self.text(frame))", "visible \(Self.text(visibleFrame))",
+            "safe top \(Self.text(safeAreaTop))", "aux left \(Self.text(auxiliaryTopLeft))",
+            "aux right \(Self.text(auxiliaryTopRight))", "housing \(Self.text(NotchGeometry.housing(of: self)))",
+        ]
+        return (parts + (isBuiltIn ? ["built in"] : [])).joined(separator: " · ")
+    }
+
+    private static func text(_ rect: Rect2D?) -> String {
+        guard let rect else { return "none" }
+        return [rect.x, rect.y, rect.width, rect.height].map(text).joined(separator: " ")
+    }
+
+    /// Whole points without a fraction, others as Swift prints them.
+    private static func text(_ value: Double) -> String {
+        value == value.rounded() && abs(value) < 1e9 ? String(Int(value)) : String(value)
+    }
+}

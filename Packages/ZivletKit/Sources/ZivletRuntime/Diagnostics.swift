@@ -28,10 +28,15 @@ public struct DiagnosticsSources: Sendable, Equatable {
     public let trigger: [String]
     /// The home folder, so paths under it are shown as `~/…`.
     public let home: String
+    /// One line per display (`DisplayGeometry.diagnosticsLine`), the menu-bar display first.
+    public let displays: [String]
+    /// The notch latch (design/19 §3.2): this Mac has shown a built-in display with a notch.
+    public let builtInNotchSeen: Bool
 
     public init(
         version: String, build: String, macOS: String, model: String, helpers: [HelperReport], capabilities: String,
-        settings: String, log: [String], trigger: [String], home: String
+        settings: String, log: [String], trigger: [String], home: String, displays: [String] = [],
+        builtInNotchSeen: Bool = false
     ) {
         self.version = version
         self.build = build
@@ -43,12 +48,22 @@ public struct DiagnosticsSources: Sendable, Equatable {
         self.log = log
         self.trigger = trigger
         self.home = home
+        self.displays = displays
+        self.builtInNotchSeen = builtInNotchSeen
     }
 
     public func with(log: [String]) -> DiagnosticsSources {
         DiagnosticsSources(
             version: version, build: build, macOS: macOS, model: model, helpers: helpers,
-            capabilities: capabilities, settings: settings, log: log, trigger: trigger, home: home)
+            capabilities: capabilities, settings: settings, log: log, trigger: trigger, home: home,
+            displays: displays, builtInNotchSeen: builtInNotchSeen)
+    }
+
+    public func with(displays: [String], builtInNotchSeen: Bool) -> DiagnosticsSources {
+        DiagnosticsSources(
+            version: version, build: build, macOS: macOS, model: model, helpers: helpers,
+            capabilities: capabilities, settings: settings, log: log, trigger: trigger, home: home,
+            displays: displays, builtInNotchSeen: builtInNotchSeen)
     }
 
     /// Fixed sources for tests and previews.
@@ -86,12 +101,15 @@ public enum Diagnostics {
             ("Helpers", sources.helpers.map(helperLine).joined(separator: "\n")),
             ("Capabilities", sources.capabilities),
             ("Settings", sources.settings),
+            ("Displays", (sources.displays + [notchLine(sources.builtInNotchSeen)]).joined(separator: "\n")),
             ("Recent log", sources.log.suffix(logLimit).joined(separator: "\n")),
             ("Trigger trace", sources.trigger.joined(separator: "\n")),
         ]
         let text = sections.map { "## \($0.0)\n\n\($0.1.isEmpty ? "(none)" : $0.1)\n" }.joined(separator: "\n")
         return DiagnosticsRedaction.redact("# Zivlet diagnostics\n\n" + text, home: sources.home)
     }
+
+    static func notchLine(_ seen: Bool) -> String { "built-in notch seen: \(seen ? "yes" : "no")" }
 
     static func helperLine(_ helper: HelperReport) -> String {
         let version = helper.version ?? "not found"
