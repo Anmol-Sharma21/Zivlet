@@ -144,8 +144,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions.onFinished = { [menu] in menu.refreshRecent() }
     }
 
-    /// The presenter a new batch or action goes to (D-M5a-2): the override or the setting, resolved for this Mac.
-    private var defaultRoute: HUDRoute { settings.defaultRoute(hasBuiltInNotch: island.hasBuiltInNotch) }
+    /// The presenter a new batch or action goes to (D-M5a-2): the override or the setting, resolved for this Mac, and
+    /// near the drop while the island has no display to draw on.
+    private var defaultRoute: HUDRoute {
+        settings.defaultRoute(hasBuiltInNotch: island.hasBuiltInNotch).usable(islandHasDisplay: island.canShow)
+    }
 
     /// Undo for conversions and Moves alike; the reply is the sentence the HUD shows.
     private func undo(_ batch: BatchID) async -> UndoReply {

@@ -2,16 +2,23 @@ import AppKit
 import SwiftUI
 
 /// Makes its content a drag source for several file URLs at once (P1-41 drag-out): SwiftUI's own drag supports one
-/// item, so an AppKit view starts the session with one dragging item per file.
+/// item, so an AppKit view starts the session with one dragging item per file. `onDrag` hears the session begin
+/// (true) and end (false), so the notch island can hold while a drag from it is in flight (D-N13).
 struct FileDragSource: NSViewRepresentable {
     let urls: [URL]
     let image: NSImage
+    var onDrag: (Bool) -> Void = { _ in }
 
-    func makeNSView(context: Context) -> DragSourceView { DragSourceView(urls: urls, image: image) }
+    func makeNSView(context: Context) -> DragSourceView {
+        let view = DragSourceView(urls: urls, image: image)
+        view.onDrag = onDrag
+        return view
+    }
 
     func updateNSView(_ view: DragSourceView, context: Context) {
         view.urls = urls
         view.image = image
+        view.onDrag = onDrag
     }
 }
 
@@ -20,6 +27,7 @@ final class DragSourceView: NSView, NSDraggingSource {
     var image: NSImage {
         didSet { needsDisplay = true }
     }
+    var onDrag: (Bool) -> Void = { _ in }
 
     init(urls: [URL], image: NSImage) {
         self.urls = urls
@@ -57,5 +65,11 @@ final class DragSourceView: NSView, NSDraggingSource {
         -> NSDragOperation
     {
         context == .outsideApplication ? [.copy, .link, .generic] : []
+    }
+
+    func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) { onDrag(true) }
+
+    func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+        onDrag(false)
     }
 }

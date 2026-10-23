@@ -7,12 +7,14 @@ import ZivletRuntime
 struct NotchExpanded: View {
     let model: NotchHUDModel
     let display: UInt32
+    /// A drag of the result thumbnail began or ended.
+    let drag: (Bool) -> Void
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
         let items = model.board.ordered(on: display)
         if items.count == 1, let item = items.first {
-            NotchCard(model: model, item: item, act: act)
+            NotchCard(model: model, item: item, drag: drag, act: act)
         } else {
             NotchList(model: model, display: display, act: act)
         }
@@ -28,6 +30,7 @@ struct NotchCard: View {
 
     let model: NotchHUDModel
     let item: NotchHUDItem
+    let drag: (Bool) -> Void
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
@@ -41,7 +44,9 @@ struct NotchCard: View {
             WorkingContent(snapshot: snapshot, width: Self.contentWidth) { act(.cancel, id) }
         case .batch(let snapshot):
             if let state = model.cards[snapshot.batch] {
-                ResultCardContent(model: ResultCardModel(snapshot), state: state, width: Self.contentWidth) {
+                ResultCardContent(
+                    model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, onDrag: drag
+                ) {
                     act(NotchHUD.Press($0), id)
                 }
             }

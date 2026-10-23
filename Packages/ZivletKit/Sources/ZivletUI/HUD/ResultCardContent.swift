@@ -9,6 +9,8 @@ struct ResultCardContent: View {
     let state: CardState
     /// The width of the content itself, inside the surface's padding.
     let width: CGFloat
+    /// A drag of the thumbnail began (true) or ended (false); the island holds while it runs (D-N13).
+    var onDrag: (Bool) -> Void = { _ in }
     let act: (ResultCardModel.Button) -> Void
 
     var body: some View {
@@ -45,7 +47,7 @@ struct ResultCardContent: View {
 
     private func thumbnail(_ url: URL) -> some View {
         let image = state.thumbnail ?? ThumbnailLoader.placeholder(for: url)
-        return FileDragSource(urls: state.remaining(model.outputs), image: image)
+        return FileDragSource(urls: state.remaining(model.outputs), image: image, onDrag: onDrag)
             .frame(width: ThumbnailLoader.side * 0.75, height: ThumbnailLoader.side * 0.75)
             .accessibilityLabel("Result file. Drag it to use it elsewhere.")
     }

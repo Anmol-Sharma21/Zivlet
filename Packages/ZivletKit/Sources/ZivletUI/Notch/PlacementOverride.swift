@@ -6,6 +6,10 @@ public enum HUDRoute: Sendable, Equatable {
 
     /// A resolved placement; `.automatic` never reaches here, and would mean the notch.
     init(_ placement: HUDPlacement) { self = placement == .nearDrop ? .nearDrop : .notch }
+
+    /// The island cannot show anything without a display (every screen asleep or rejected): the card near the drop
+    /// takes over, so a result is never filed where nothing draws it.
+    public func usable(islandHasDisplay: Bool) -> HUDRoute { self == .notch && !islandHasDisplay ? .nearDrop : self }
 }
 
 /// The demo's `-ZivletHUDPlacement notch|nearDrop` (D-M5a-10): read by the app's settings wiring for one run, never

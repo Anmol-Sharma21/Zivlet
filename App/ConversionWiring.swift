@@ -83,7 +83,12 @@ final class ConversionWiring {
     private func present(_ snapshot: BatchSnapshot) {
         let claim: BatchRoutes.Claim
         (routes, claim) = routes.withDefaultRoute(defaultRoute()).claiming(snapshot.batch)
-        let shown = presenter(claim.route)
+        let route = claim.isNew ? claim.route.usable(islandHasDisplay: notch.canShow) : claim.route
+        if route != claim.route {
+            logger.error("The island has no display: this batch shows near the drop")
+            routes = routes.rerouting(snapshot.batch, to: route)
+        }
+        let shown = presenter(route)
         if claim.isNew { shown.prepare(near: claim.point) }
         shown.show(snapshot)
         menu.track(snapshot)

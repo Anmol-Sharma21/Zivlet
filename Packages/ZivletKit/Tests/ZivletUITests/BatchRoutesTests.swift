@@ -68,4 +68,12 @@ struct BatchRoutesTests {
         routes = routes.forgetting(a).withDefaultRoute(card)
         #expect(routes.route(of: a) == nil && routes.defaultRoute == card)
     }
+
+    @Test func aBatchCanBeReroutedWhenItsPresenterCannotShowIt() {
+        let a = BatchID()
+        var routes = BatchRoutes(defaultRoute: notch).enqueuing(point: nil, at: .seconds(1), route: notch)
+        (routes, _) = routes.claiming(a)
+        routes = routes.rerouting(a, to: card)
+        #expect(routes.route(of: a) == card && routes.claiming(a).1.route == card)
+    }
 }

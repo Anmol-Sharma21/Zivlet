@@ -26,6 +26,9 @@ final class IslandWiring {
 
     var hasBuiltInNotch: Bool { reader.hasBuiltInNotch }
     var hasItems: Bool { hosts.hasItems }
+    /// The island can draw: there is a display now and the Notch HUD has one to show on. When this is false a new
+    /// batch or action goes near the drop instead (the route falls back), so nothing is filed where nothing draws.
+    var canShow: Bool { !reader.displays.isEmpty && hud.canShow }
 
     /// The wheel's effects as the trigger sends them: the island steps aside while the wheel shows (W-8).
     func wheel(_ effect: TriggerEffect) {

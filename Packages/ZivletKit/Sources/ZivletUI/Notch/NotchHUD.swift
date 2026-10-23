@@ -57,6 +57,7 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     private(set) var anchors: [BatchID: CGPoint] = [:]
     var undos: [NotchHUDItemID: Task<Void, Never>] = [:]
     private var expiry: (deadline: Duration, task: Task<Void, Never>)?
+    private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
 
     public init(hosts: IslandHosts, provider: any DisplayGeometryProvider, clock: any MonotonicClock = SystemClock()) {
         self.hosts = hosts
@@ -64,6 +65,15 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
         self.clock = clock
         announce = { [weak hosts] in hosts?.announce($0.text, highPriority: $0.highPriority) }
         hosts.register(self, as: .hud)
+    }
+
+    /// The island has a display to show on. The app sends a batch or an action near the drop when it does not.
+    public var canShow: Bool { display(for: nil) != nil }
+
+    /// A drag of the result thumbnail out of the island started or ended: the island and its lingers hold until it
+    /// ends (D-N13).
+    public func dragChanged(_ began: Bool, display: UInt32) {
+        if began { hosts?.dragBegan(on: display) } else { hosts?.dragEnded(on: display) }
     }
 
     /// VoiceOver or Switch Control started or stopped: toasts that start afterwards linger three times as long.
@@ -76,13 +86,16 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     public func show(_ snapshot: BatchSnapshot) {
         let id = NotchHUDItemID.batch(snapshot.batch)
         let known = board.item(id)
-        var drop: (point: CGPoint?, interval: OSSignpostIntervalState)?
+        let drop: (point: CGPoint?, interval: OSSignpostIntervalState)? =
+            known == nil && !pending.isEmpty ? pending.removeFirst() : nil
+        guard let display = board.display(of: id) ?? display(for: drop?.point ?? nil) else {
+            if let interval = drop?.interval { signposter.endInterval("drop→island", interval) }
+            return Self.logger.error("Notch HUD has no display for a batch; it is not shown")
+        }
         if known == nil {
-            drop = pending.isEmpty ? nil : pending.removeFirst()
             anchors[snapshot.batch] = drop?.point ?? nil
             if model.cards[snapshot.batch] == nil { model.cards[snapshot.batch] = CardState() }
         }
-        let display = board.display(of: id) ?? display(for: drop?.point ?? nil)
         apply(board.updating(snapshot, display: display, now: clock.now()))
         if let interval = drop?.interval { signposter.endInterval("drop→island", interval) }
         let wasFinished = known?.snapshot?.isFinished ?? false
@@ -96,10 +109,13 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
 
     public func show(_ result: ActionResult, near point: CGPoint?) {
         if case .cancelled = result { return }
+        guard let display = display(for: point) else {
+            return Self.logger.error("Notch HUD has no display for an action result; it is not shown")
+        }
         let actionModel = ActionHUDModel()
         actionModel.present(result)
         model.actions[board.nextAction] = actionModel
-        apply(board.updating(result, display: display(for: point), now: clock.now()))
+        apply(board.updating(result, display: display, now: clock.now()))
     }
 
     func close(_ id: NotchHUDItemID) {
@@ -127,8 +143,11 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
         let changed = displays.filter {
             old.request(on: $0) != next.request(on: $0) || old.shapes(on: $0) != next.shapes(on: $0)
         }
-        if next.redraw || !changed.isEmpty || old.toastLines != next.toastLines { model.board = next }
+        let redrawn = next.redraw || !changed.isEmpty || old.toastLines != next.toastLines
+        if redrawn { model.board = next }
         for display in displays.sorted() { sync(display, from: old, to: next) }
+        // The spoken value follows what is drawn (progress at most every 250 ms), not only new surfaces (§5.5).
+        if redrawn { for display in next.displays { hosts?.accessibilityChanged(on: display) } }
         for announcement in next.announcements { announce(announcement) }
         scheduleExpiry()
     }
@@ -163,10 +182,10 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
         expiry = (deadline, task)
     }
 
-    /// The display that holds `point`, else the menu-bar display.
-    private func display(for point: CGPoint?) -> UInt32 {
+    /// The display that holds `point`, else the menu-bar display; nil when the island has no display at all.
+    private func display(for point: CGPoint?) -> UInt32? {
         let shown = IslandLayout.display(for: point.map { Point2D(x: $0.x, y: $0.y) }, in: provider.displays)
-        return shown?.id ?? hosts?.displayIDs.first ?? 0
+        return shown?.id ?? hosts?.displayIDs.first
     }
 
     private func loadThumbnail(_ url: URL, for batch: BatchID) {

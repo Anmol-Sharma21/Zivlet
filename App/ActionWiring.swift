@@ -29,16 +29,22 @@ final class ActionWiring {
         hud.onUndo = undo
     }
 
-    /// The presenter for the placement now; the notch HUD's undo closure is set by the conversion wiring.
-    private var presenter: any ActionPresenter { route() == .notch ? notch : hud }
+    /// The presenter for `route`; the notch HUD's undo closure is set by the conversion wiring. The island without a
+    /// display hands the result to the card near the drop.
+    private func presenter(_ route: HUDRoute) -> any ActionPresenter {
+        route.usable(islandHasDisplay: notch.canShow) == .notch ? notch : hud
+    }
 
-    /// Runs the action and shows its result near `point`; the task's value is the result (for the DEBUG demo).
+    private var presenter: any ActionPresenter { presenter(route()) }
+
+    /// Runs the action and shows its result near `point`, where the placement at the drop says; the task's value is
+    /// the result (for the DEBUG demo).
     @discardableResult
     func run(_ action: ActionID, urls: [URL], optionHeld: Bool, near point: CGPoint?) -> Task<ActionResult, Never> {
-        let presenter = self.presenter
+        let route = self.route()
         return Task { [service, logger, onFinished] in
             let result = await service.perform(action, urls: urls, optionHeld: optionHeld)
-            presenter.show(result, near: point)
+            self.presenter(route).show(result, near: point)
             Self.log(result, action: action, logger: logger)
             onFinished()
             return result

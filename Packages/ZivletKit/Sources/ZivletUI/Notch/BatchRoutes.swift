@@ -50,6 +50,13 @@ public struct BatchRoutes: Sendable, Equatable {
 
     public func route(of batch: BatchID) -> Route? { routes[batch] }
 
+    /// The batch's presenter cannot show it (the island has no display): its later snapshots go to `route`.
+    public func rerouting(_ batch: BatchID, to route: Route) -> BatchRoutes {
+        var next = self
+        next.routes[batch] = route
+        return next
+    }
+
     /// Retry pressed on `source`: its new batch goes where the source went, opening at `anchor`.
     public func retrying(_ source: BatchID, anchor: CGPoint?, at time: Duration) -> BatchRoutes {
         enqueuing(point: anchor, at: time, route: routes[source] ?? defaultRoute)

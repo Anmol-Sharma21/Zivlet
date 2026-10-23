@@ -14,7 +14,9 @@ extension NotchHUD: IslandClient {
         case .hidden: return AnyView(EmptyView())
         case .collapsed: return AnyView(NotchTab(model: model, display: display))
         case .toast: return AnyView(NotchToast(model: model, display: display, act: act))
-        case .expanded: return AnyView(NotchExpanded(model: model, display: display, act: act))
+        case .expanded:
+            let drag: (Bool) -> Void = { [weak self] began in self?.dragChanged(began, display: display) }
+            return AnyView(NotchExpanded(model: model, display: display, drag: drag, act: act))
         }
     }
 
