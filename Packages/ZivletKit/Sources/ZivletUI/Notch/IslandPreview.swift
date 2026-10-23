@@ -2,8 +2,9 @@ import Foundation
 import ZivletCore
 import ZivletRuntime
 
-// Debug builds only: Release must not show made-up jobs.
-#if DEBUG
+// Debug builds, and the optimised CPU measurement build of `make notch-idle CONFIG=release` (D-ND3): a shipped
+// Release build must not show made-up jobs, and `make release-check` fails when its binary has the flag.
+#if DEBUG || ZIVLET_ISLAND_PREVIEW
     /// `-ZivletIslandPreview <state>` puts one made-up job on the Notch HUD without a drop or a conversion, for the
     /// demo screenshots and the idle-CPU row of the exit runner (plan 12b N13): a job resting at 40 %, a job whose
     /// progress changes ten times a second, a job of unknown length, the working card opened, a saved result and a

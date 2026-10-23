@@ -54,8 +54,9 @@ notch-demo:
 notch-timing:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test --filter NotchHUDTimingTests
 
+# X6 idle CPU per island state: CONFIG=debug (make app's build) or CONFIG=release (an optimised measurement build).
 notch-idle:
-	$(ENV) Scripts/notch-idle.sh
+	$(ENV) CONFIG=$${CONFIG:-debug} Scripts/notch-idle.sh
 
 m5a-exit:
 	Scripts/m5a-exit.sh

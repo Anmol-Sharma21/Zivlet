@@ -8,7 +8,8 @@ extension AppDelegate {
     /// DEBUG: `-ZivletDemoWheel <mode> [-ZivletDemoRepeat <n>]` shows the wheel without a drag (n times); `-ZivletDemoConvert <path> <format>
     /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
     /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, and `-ZivletIslandPreview <state>` puts a made-up
-    /// job on the notch island, so end-to-end checks need no drag.
+    /// job on the notch island, so end-to-end checks need no drag. The island preview alone also exists in the CPU
+    /// measurement build (`ZIVLET_ISLAND_PREVIEW`, D-ND3); a shipped Release build has none of these.
     func launchDemoIfRequested() {
         #if DEBUG
             do {
@@ -19,7 +20,6 @@ extension AppDelegate {
                     conversion.hud.show(try UITestFixture.snapshot(in: dir))
                 }
                 if let demo = try DemoConversion.parse(arguments: arguments) { runDemo(demo) }
-                if let preview = try IslandPreview.parse(arguments: arguments) { try runIslandPreview(preview) }
                 if let demo = try DemoAction.parse(arguments: arguments) {
                     let selection = WheelSelection(
                         mode: .actions, target: .action(demo.action), urls: [demo.url], optionHeld: demo.optionHeld)
@@ -29,25 +29,17 @@ extension AppDelegate {
                 logger.error("Demo arguments refused: \(String(describing: error), privacy: .private)")
             }
         #endif
+        launchIslandPreviewIfRequested()
     }
 
-    #if DEBUG
-        /// Shows the demo wheel `repeats` times, 200 ms shown and 200 ms hidden each, for the bench (P1-63).
-        private func showDemo(_ scenario: DemoScenario) {
-            guard scenario.repeats > 1 else {
-                wheel?.showDemo(scenario)
-                return
-            }
-            Task { [weak self] in
-                let gap = Duration.milliseconds(200)
-                for index in 0..<scenario.repeats {
-                    if index > 0 {
-                        self?.wheel?.hide()
-                        guard (try? await Task.sleep(for: gap)) != nil else { return }  // cancelled: stop
-                    }
-                    self?.wheel?.showDemo(scenario)
-                    guard (try? await Task.sleep(for: gap)) != nil else { return }
+    #if DEBUG || ZIVLET_ISLAND_PREVIEW
+        private func launchIslandPreviewIfRequested() {
+            do {
+                if let preview = try IslandPreview.parse(arguments: ProcessInfo.processInfo.arguments) {
+                    try runIslandPreview(preview)
                 }
+            } catch {
+                logger.error("Island preview refused: \(String(describing: error), privacy: .private)")
             }
         }
 
@@ -75,6 +67,29 @@ extension AppDelegate {
                     } catch {
                         return logger.error("Island preview stopped: \(String(describing: error), privacy: .private)")
                     }
+                }
+            }
+        }
+    #else
+        private func launchIslandPreviewIfRequested() {}
+    #endif
+
+    #if DEBUG
+        /// Shows the demo wheel `repeats` times, 200 ms shown and 200 ms hidden each, for the bench (P1-63).
+        private func showDemo(_ scenario: DemoScenario) {
+            guard scenario.repeats > 1 else {
+                wheel?.showDemo(scenario)
+                return
+            }
+            Task { [weak self] in
+                let gap = Duration.milliseconds(200)
+                for index in 0..<scenario.repeats {
+                    if index > 0 {
+                        self?.wheel?.hide()
+                        guard (try? await Task.sleep(for: gap)) != nil else { return }  // cancelled: stop
+                    }
+                    self?.wheel?.showDemo(scenario)
+                    guard (try? await Task.sleep(for: gap)) != nil else { return }
                 }
             }
         }

@@ -3,7 +3,35 @@
 # ffmpeg. Builds the Release app into build/ReleaseCheck, scans every Mach-O file in it, then checks the bundled
 # helpers and their libraries (P1-50, Scripts/check-bundle.sh), every signature (P1-52, report-only while
 # ad-hoc) and the installed size (P1-52).
+# Plan 14 D-ND3: the same scan refuses the island preview's launch flag, so a shipped build can never show made-up
+# jobs (only the CPU measurement build of notch-idle.sh CONFIG=release compiles it in).
+# Usage: Scripts/check-release-paths.sh              build and check the Release app
+#        Scripts/check-release-paths.sh --scan-only FILE   only the scans, on one file (script tests)
 source "$(dirname "$0")/env.sh"
+PREVIEW_FLAG="-ZivletIslandPreview"
+
+# Prints what is wrong with one Mach-O file; exits 1 when anything is. Every byte is searched (grep -a), also data
+# after the last segment, which strings skips in a universal file.
+scan_file() {
+    local file=$1 label=$2 found=0
+    if LC_ALL=C grep -aoE "(/opt/homebrew|/usr/local/bin)[[:graph:]]*" "$file"; then
+        echo "error: Homebrew path in $label" >&2
+        found=1
+    fi
+    if LC_ALL=C grep -qaF -- "$PREVIEW_FLAG" "$file"; then
+        echo "error: the island preview flag $PREVIEW_FLAG is in $label (Release must not show made-up jobs)" >&2
+        found=1
+    fi
+    return "$found"
+}
+
+if [[ "${1:-}" == --scan-only ]]; then
+    file=${2:?--scan-only needs a file}
+    [[ -f "$file" ]] || { echo "error: no file $file" >&2; exit 2; }
+    scan_file "$file" "$file"
+    exit $?
+fi
+
 cd "$REPO_ROOT"
 DERIVED="$REPO_ROOT/build/ReleaseCheck"
 LOG="$DERIVED/xcodebuild.log"
@@ -22,14 +50,11 @@ if [[ ! -d "$APP" ]]; then echo "error: Release build reported success but $APP 
 found=0
 while IFS= read -r -d '' file; do
     if file -b "$file" | grep -q "Mach-O"; then
-        if strings -a "$file" | grep -E "/opt/homebrew|/usr/local/bin"; then
-            echo "error: Homebrew path in ${file#"$APP/"}" >&2
-            found=1
-        fi
+        scan_file "$file" "${file#"$APP/"}" || found=1
     fi
 done < <(find "$APP" -type f -print0)
 if (( found )); then exit 1; fi
-echo "Release build contains no Homebrew path."
+echo "Release build contains no Homebrew path and no island preview."
 "$REPO_ROOT/Scripts/check-bundle.sh" "$APP"
 "$REPO_ROOT/Scripts/verify-signatures.sh" "$APP"
 "$REPO_ROOT/Scripts/size-gate.sh" "$APP"
