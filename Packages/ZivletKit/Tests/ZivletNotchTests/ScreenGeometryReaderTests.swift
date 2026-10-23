@@ -48,6 +48,27 @@ struct ScreenGeometryReaderTests {
         #expect(lines.count == 1 && lines[0].contains("frame.width"))
     }
 
+    @Test func aSecondScreenWithTheSameNumberIsSkippedWithOneErrorLine() {
+        var lines: [String] = []
+        let displays = ScreenGeometryReader.geometries([Self.external, Self.external], log: { lines.append($0) })
+        #expect(displays.map(\.id) == [2])
+        #expect(lines.count == 1 && lines[0].contains("Display 2"))
+    }
+
+    @Test func aSubscriberWhoseWatchEndsIsDropped() async throws {
+        let suite = "app.zivlet.tests.notch-latch.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let reader = ScreenGeometryReader(defaults: defaults, screens: { [Self.external] })
+        let stream = reader.changes
+        let watch = Task { for await _ in stream {} }
+        #expect(reader.subscriberCount == 1)
+        watch.cancel()
+        #expect(await eventually { reader.subscriberCount == 0 })
+        reader.reload()  // nothing left to yield into
+        #expect(reader.subscriberCount == 0)
+    }
+
     @Test func theNotchLatchIsStoredAndSurvivesTheLidClosing() throws {
         let suite = "app.zivlet.tests.notch-latch.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

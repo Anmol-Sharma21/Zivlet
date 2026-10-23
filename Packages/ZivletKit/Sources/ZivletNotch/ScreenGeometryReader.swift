@@ -57,12 +57,22 @@ public final class ScreenGeometryReader: DisplayGeometryProvider {
         for continuation in subscribers.values { continuation.finish() }
     }
 
+    /// A new stream for one subscriber. It keeps only the newest list, and it is dropped from the fan-out when its
+    /// watch ends (the Settings window takes a new one each time it opens).
     public var changes: AsyncStream<[DisplayGeometry]> {
-        let (stream, continuation) = AsyncStream.makeStream(of: [DisplayGeometry].self)
-        subscribers[nextSubscriber] = continuation
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: [DisplayGeometry].self, bufferingPolicy: .bufferingNewest(1))
+        let id = nextSubscriber
         nextSubscriber += 1
+        subscribers[id] = continuation
+        continuation.onTermination = { [weak self] _ in
+            Task { @MainActor in self?.subscribers[id] = nil }
+        }
         return stream
     }
+
+    /// Streams still being watched; for the tests.
+    var subscriberCount: Int { subscribers.count }
 
     /// Reads the screens again and tells every subscriber.
     public func reload() {
@@ -71,15 +81,27 @@ public final class ScreenGeometryReader: DisplayGeometryProvider {
     }
 
     private func read() {
+        let hadDisplays = !displays.isEmpty
         displays = Self.geometries(screens()) { Self.logger.error("\($0, privacy: .public)") }
+        if hadDisplays && displays.isEmpty {
+            Self.logger.fault("No usable display: the island keeps its state until one returns")
+        }
         let seen = NotchGeometry.builtInNotchSeen(before: hasBuiltInNotch, displays: displays)
         if seen && !hasBuiltInNotch { defaults.set(true, forKey: Self.latchKey) }
         hasBuiltInNotch = seen
     }
 
-    /// Every valid screen, in order; each invalid one is skipped with one line to `log` (no names, no paths).
+    /// Every valid screen, in order; each invalid one, and a second screen with a number already seen, is skipped
+    /// with one line to `log` (no names, no paths).
     public static func geometries(_ raws: [Raw], log: (String) -> Void) -> [DisplayGeometry] {
-        raws.compactMap { geometry($0, log: log) }
+        var seen: Set<UInt32> = []
+        return raws.compactMap { raw in
+            guard seen.insert(raw.number).inserted else {
+                log("Display \(raw.number) skipped: its number is already in use")
+                return nil
+            }
+            return geometry(raw, log: log)
+        }
     }
 
     public static func geometry(_ raw: Raw, log: (String) -> Void) -> DisplayGeometry? {
@@ -102,10 +124,14 @@ public final class ScreenGeometryReader: DisplayGeometryProvider {
         return Rect2D(rect.offsetBy(dx: frame.minX, dy: frame.minY))
     }
 
+    /// A screen without a display number is skipped with an error line: it cannot be told apart from the others.
     public static func live() -> [Raw] {
-        NSScreen.screens.map { screen in
+        NSScreen.screens.compactMap { screen in
             let key = NSDeviceDescriptionKey("NSScreenNumber")
-            let number = (screen.deviceDescription[key] as? NSNumber)?.uint32Value ?? 0
+            guard let number = (screen.deviceDescription[key] as? NSNumber)?.uint32Value else {
+                logger.error("A screen without a display number was skipped")
+                return nil
+            }
             return Raw(
                 number: number, frame: screen.frame, visible: screen.visibleFrame, safeTop: screen.safeAreaInsets.top,
                 left: screen.auxiliaryTopLeftArea, right: screen.auxiliaryTopRightArea,
