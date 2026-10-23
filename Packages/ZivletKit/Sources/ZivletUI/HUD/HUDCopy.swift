@@ -13,26 +13,39 @@ public enum HUDCopy {
     public static func working(
         name: String, index: Int, count: Int, fraction: Double?, eta: Duration?, bytes: Int64?
     ) -> String {
-        var parts = [name]
-        if count > 1 { parts.append("\(index) of \(count)") }
-        if let fraction {
-            parts.append("\(Int((fraction * 100).rounded(.down)))%")
-        } else if let bytes {
-            parts.append("\(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) written")
-        }
-        if let eta { parts.append(timeLeft(eta)) }
-        return parts.joined(separator: " · ")
+        LinePart.joined(
+            workingParts(name: name, index: index, count: count, fraction: fraction, eta: eta, bytes: bytes))
     }
 
-    /// The line for a running batch: its current item, the batch percent (or the item's bytes), the item's ETA.
-    public static func working(_ snapshot: BatchSnapshot) -> String {
-        guard let current = snapshot.current else { return "" }
+    /// The name gives way; " · 2 of 5 · 42% · about 1 min left" stays whole.
+    static func workingParts(
+        name: String, index: Int, count: Int, fraction: Double?, eta: Duration?, bytes: Int64?
+    ) -> [LinePart] {
+        var rest: [String] = []
+        if count > 1 { rest.append("\(index) of \(count)") }
+        if let fraction {
+            rest.append("\(Int((fraction * 100).rounded(.down)))%")
+        } else if let bytes {
+            rest.append("\(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) written")
+        }
+        if let eta { rest.append(timeLeft(eta)) }
+        let name = LinePart(text: name, givesWay: true)
+        guard !rest.isEmpty else { return [name] }
+        return [name, LinePart(text: " · " + rest.joined(separator: " · "), givesWay: false)]
+    }
+
+    /// The line for a running batch in its parts; empty when nothing runs yet.
+    static func workingParts(_ snapshot: BatchSnapshot) -> [LinePart] {
+        guard let current = snapshot.current else { return [] }
         let progress = snapshot.currentProgress
-        return working(
+        return workingParts(
             name: current.item.name, index: current.index + 1, count: snapshot.items.count,
             fraction: snapshot.isIndeterminate ? nil : snapshot.fraction, eta: progress?.eta,
             bytes: progress?.bytesWritten)
     }
+
+    /// The line for a running batch: its current item, the batch percent (or the item's bytes), the item's ETA.
+    public static func working(_ snapshot: BatchSnapshot) -> String { LinePart.joined(workingParts(snapshot)) }
 
     static let almostDone = Duration.seconds(10)
 

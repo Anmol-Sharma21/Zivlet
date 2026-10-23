@@ -30,6 +30,12 @@ extension NotchHUDBoard {
         return Self.line(item)
     }
 
+    /// The toast's line in its parts: the file name gives way, the sizes or the reason stay whole.
+    public func toastParts(on display: UInt32) -> [LinePart]? {
+        guard request(on: display)?.resting == .toast, let item = items[display]?.first else { return nil }
+        return Self.parts(item)
+    }
+
     /// The toast as a screen reader speaks it: separators as words.
     public func toastAccessibilityLabel(on display: UInt32) -> String? {
         toastLine(on: display).map(NotchHUDCopy.spoken)
@@ -116,13 +122,15 @@ extension NotchHUDBoard {
 
     /// The one-line form of an item: "Saved photo.jpg · 2.1 MB → 640 KB", the failure's title and reason, the
     /// action's toast, or the working line.
-    static func line(_ item: NotchHUDItem) -> String {
+    static func line(_ item: NotchHUDItem) -> String { LinePart.joined(parts(item)) }
+
+    static func parts(_ item: NotchHUDItem) -> [LinePart] {
         switch item.kind {
         case .batch(let snapshot):
-            guard snapshot.isFinished else { return HUDCopy.working(snapshot) }
-            return item.isFailure ? NotchHUDCopy.failure(snapshot) : NotchHUDCopy.saved(snapshot)
+            guard snapshot.isFinished else { return HUDCopy.workingParts(snapshot) }
+            return item.isFailure ? NotchHUDCopy.failureParts(snapshot) : NotchHUDCopy.savedParts(snapshot)
         case .action(let result):
-            return NotchHUDCopy.action(result)
+            return [LinePart(text: NotchHUDCopy.action(result), givesWay: false)]
         }
     }
 

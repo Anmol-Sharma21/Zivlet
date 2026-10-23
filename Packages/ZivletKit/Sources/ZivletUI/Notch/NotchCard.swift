@@ -19,17 +19,19 @@ struct NotchExpanded: View {
     }
 }
 
-/// One item's card: today's working view, result card or action card at 360 pt inside the 380 pt island (D-N10).
+/// One item's card: today's working view, result card or action card at the glass card's content width, centred in
+/// the 380 pt island (D-N10). The 24 pt sides keep the buttons clear of the 22 pt bottom corners.
 struct NotchCard: View {
-    static let padding: CGFloat = 10
-    static let contentWidth = IslandLayout.Metrics.expandedWidth - 2 * padding
+    static let contentWidth = HUDLayout.contentWidth
+    static let sideInset = (IslandLayout.Metrics.expandedWidth - contentWidth) / 2
+    static let verticalInset = HUDLayout.padding
 
     let model: NotchHUDModel
     let item: NotchHUDItem
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
-        content.padding(Self.padding)
+        content.padding(.horizontal, Self.sideInset).padding(.vertical, Self.verticalInset)
     }
 
     @ViewBuilder private var content: some View {

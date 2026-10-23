@@ -17,7 +17,8 @@ struct NotchList: View {
                 Text(more).font(.caption).foregroundStyle(NotchInk.secondary)
             }
         }
-        .padding(NotchCard.padding)
+        .padding(.horizontal, NotchCard.sideInset)
+        .padding(.vertical, NotchCard.verticalInset)
         .frame(width: IslandLayout.Metrics.expandedWidth, alignment: .topLeading)
     }
 
@@ -38,6 +39,7 @@ struct NotchListRow: View {
             glyph
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.title).font(.callout.weight(.semibold)).foregroundStyle(NotchInk.primary).lineLimit(1)
+                    .truncationMode(.middle)
                 if !row.detail.isEmpty {
                     Text(row.detail).font(.caption).foregroundStyle(NotchInk.secondary).lineLimit(1)
                         .truncationMode(.middle)

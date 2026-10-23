@@ -14,14 +14,27 @@ enum NotchHUDCopy {
     static func failedCount(_ count: Int) -> String { "\(count) failed" }
 
     /// "Saved photo.jpg · 2.1 MB → 640 KB": the owner's example in front of the card's size line.
-    static func saved(_ snapshot: BatchSnapshot) -> String {
-        ResultCardModel.sizeLine(snapshot).map { "Saved \($0)" } ?? BatchPresentation.make(snapshot).title
+    static func saved(_ snapshot: BatchSnapshot) -> String { LinePart.joined(savedParts(snapshot)) }
+
+    /// "Saved photo.jpg" gives way; " · 2.1 MB → 640 KB" stays whole.
+    static func savedParts(_ snapshot: BatchSnapshot) -> [LinePart] {
+        guard let line = ResultCardModel.sizeLine(snapshot), let split = line.range(of: " · ", options: .backwards)
+        else { return [LinePart(text: BatchPresentation.make(snapshot).title, givesWay: false)] }
+        return [
+            LinePart(text: "Saved \(line[..<split.lowerBound])", givesWay: true),
+            LinePart(text: String(line[split.lowerBound...]), givesWay: false),
+        ]
     }
 
     /// The card's title and subtitle on one line.
-    static func failure(_ snapshot: BatchSnapshot) -> String {
+    static func failure(_ snapshot: BatchSnapshot) -> String { LinePart.joined(failureParts(snapshot)) }
+
+    /// The reason stays (without its full stop before the separator); the name after it gives way.
+    static func failureParts(_ snapshot: BatchSnapshot) -> [LinePart] {
         let shown = BatchPresentation.make(snapshot)
-        return shown.subtitle.isEmpty ? shown.title : "\(shown.title) · \(shown.subtitle)"
+        guard !shown.subtitle.isEmpty else { return [LinePart(text: shown.title, givesWay: false)] }
+        let reason = shown.title.hasSuffix(".") ? String(shown.title.dropLast()) : shown.title
+        return [LinePart(text: reason, givesWay: false), LinePart(text: " · \(shown.subtitle)", givesWay: true)]
     }
 
     /// A finished batch, announced once: "Saved photo.jpg" (medium), or the failure card's title (high).

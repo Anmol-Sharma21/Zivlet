@@ -13,10 +13,9 @@ struct NotchToast: View {
     var body: some View {
         HStack(spacing: 8) {
             if let glyph = model.board.toastGlyph(on: display) { NotchSymbol(name: NotchSymbol.name(for: glyph)) }
-            if let line = model.board.toastLine(on: display) {
-                Text(line).font(.callout.weight(.medium)).foregroundStyle(NotchInk.primary).lineLimit(1)
-                    .truncationMode(.middle)
-                    .accessibilityLabel(model.board.toastAccessibilityLabel(on: display) ?? line)
+            if let parts = model.board.toastParts(on: display) {
+                PartedLine(parts: parts).font(.callout.weight(.medium)).foregroundStyle(NotchInk.primary)
+                    .accessibilityLabel(model.board.toastAccessibilityLabel(on: display) ?? LinePart.joined(parts))
             }
             Spacer(minLength: 0)
             if let id = undoable { Button("Undo") { act(.undo, id) }.controlSize(.small) }
