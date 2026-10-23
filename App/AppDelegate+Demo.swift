@@ -7,7 +7,8 @@ import ZivletWheelCore
 extension AppDelegate {
     /// DEBUG: `-ZivletDemoWheel <mode> [-ZivletDemoRepeat <n>]` shows the wheel without a drag (n times); `-ZivletDemoConvert <path> <format>
     /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
-    /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, so end-to-end checks need no drag.
+    /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, and `-ZivletIslandPreview <state>` puts a made-up
+    /// job on the notch island, so end-to-end checks need no drag.
     func launchDemoIfRequested() {
         #if DEBUG
             do {
@@ -18,6 +19,7 @@ extension AppDelegate {
                     conversion.hud.show(try UITestFixture.snapshot(in: dir))
                 }
                 if let demo = try DemoConversion.parse(arguments: arguments) { runDemo(demo) }
+                if let preview = try IslandPreview.parse(arguments: arguments) { try runIslandPreview(preview) }
                 if let demo = try DemoAction.parse(arguments: arguments) {
                     let selection = WheelSelection(
                         mode: .actions, target: .action(demo.action), urls: [demo.url], optionHeld: demo.optionHeld)
@@ -45,6 +47,34 @@ extension AppDelegate {
                     }
                     self?.wheel?.showDemo(scenario)
                     guard (try? await Task.sleep(for: gap)) != nil else { return }
+                }
+            }
+        }
+
+        /// Shows the preview's job on the Notch HUD, opens its card after a second when the state asks, and feeds
+        /// `.progress` a new snapshot ten times a second until the app quits.
+        private func runIslandPreview(_ preview: IslandPreview) throws {
+            let hud = island.hud
+            let first = try preview.first()
+            logger.notice("Island preview: \(preview.rawValue, privacy: .public)")
+            hud.prepare(near: nil)
+            hud.show(first)
+            if preview.opens {
+                Task { [island] in
+                    guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }
+                    island.hosts.expandRequested()
+                }
+            }
+            guard let tick = preview.tick else { return }
+            Task { [logger] in
+                var step = 0
+                while (try? await Task.sleep(for: tick)) != nil {
+                    step += 1
+                    do {
+                        hud.show(try preview.advanced(first, step: step))
+                    } catch {
+                        return logger.error("Island preview stopped: \(String(describing: error), privacy: .private)")
+                    }
                 }
             }
         }
