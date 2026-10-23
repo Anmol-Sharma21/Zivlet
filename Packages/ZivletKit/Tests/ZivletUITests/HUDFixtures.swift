@@ -59,3 +59,11 @@ extension HUDFx {
             .applying(.changed(batch, request.id, .failed(error))).applying(.finished(batch))
     }
 }
+
+extension BatchSnapshot {
+    /// The same batch with its first item running at `progress`.
+    func applyingProgress(_ progress: JobProgress) -> BatchSnapshot {
+        guard let job = items.first?.job else { return self }
+        return applying(.changed(batch, job, .running(progress)))
+    }
+}
