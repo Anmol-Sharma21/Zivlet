@@ -69,6 +69,25 @@ extension NotchHUDBoard {
         return list.filter(\.isFailure) + list.filter { !$0.isFailure }
     }
 
+    /// What a display lays out, without progress: when it changes, the island measures its card again.
+    struct ItemShape: Equatable {
+        let id: NotchHUDItemID
+        let working: Bool
+        let failure: Bool
+        let waits: Bool
+    }
+
+    func shapes(on display: UInt32) -> [ItemShape] {
+        (items[display] ?? []).map {
+            ItemShape(id: $0.id, working: $0.isWorking, failure: $0.isFailure, waits: $0.waits)
+        }
+    }
+
+    /// Each display's toast line: a new line redraws the island even when its shape stays.
+    var toastLines: [UInt32: String] {
+        Dictionary(uniqueKeysWithValues: displays.compactMap { id in toastLine(on: id).map { (id, $0) } })
+    }
+
     func item(_ id: NotchHUDItemID) -> NotchHUDItem? { items.values.joined().first { $0.id == id } }
 
     func display(of id: NotchHUDItemID) -> UInt32? { items.first { $0.value.contains { $0.id == id } }?.key }

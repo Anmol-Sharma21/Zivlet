@@ -31,6 +31,34 @@ struct IslandHostsTests {
         hosts.close()
     }
 
+    @Test func aWithdrawalOnOneDisplayKeepsTheClientsOtherIsland() async throws {
+        let hosts = IslandHosts(
+            provider: try FakeDisplayProvider.notchAndExternal(), clock: ManualClock(), animation: .instant)
+        hosts.register(FakeClient(), as: .hud)
+        for display: UInt32 in [1, 2] {
+            hosts.request(
+                IslandRequest(client: .hud, display: display, resting: .collapsed, hoverSurface: .expanded), from: .hud)
+        }
+        hosts.withdraw(.hud, on: 2)
+        await hosts.host(on: 2)?.animationsSettled()
+        #expect(hosts.surface(on: 1) == .collapsed && hosts.surface(on: 2) == .hidden)
+        #expect(hosts.visibleDisplays == [1])
+        hosts.close()
+    }
+
+    @Test func theAccessibilityActionOpensOnlyItsOwnDisplaysIsland() throws {
+        let hosts = IslandHosts(
+            provider: try FakeDisplayProvider.notchAndExternal(), clock: ManualClock(), animation: .instant)
+        hosts.register(FakeClient(), as: .hud)
+        for display: UInt32 in [1, 2] {
+            hosts.request(
+                IslandRequest(client: .hud, display: display, resting: .collapsed, hoverSurface: .expanded), from: .hud)
+        }
+        hosts.expandRequested(on: 2)
+        #expect(hosts.surface(on: 1) == .collapsed && hosts.surface(on: 2) == .expanded)
+        hosts.close()
+    }
+
     @Test func aHigherClientWinsAndHandsTheIslandBack() throws {
         let hosts = IslandHosts(
             provider: try FakeDisplayProvider.notchOnly(), clock: ManualClock(), animation: .instant)

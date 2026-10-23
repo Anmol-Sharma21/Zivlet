@@ -24,7 +24,8 @@ public struct NotchHUDBoard: Sendable, Equatable {
 
     private(set) var items: [UInt32: [NotchHUDItem]] = [:]
     private var held: Set<UInt32> = []
-    private var nextAction = 0
+    /// The id the next action result gets.
+    private(set) var nextAction = 0
     private var drawn: [UInt32: Drawn] = [:]
     /// The `now` of the last transition, for the stepped glyph.
     private(set) var now = Duration.zero

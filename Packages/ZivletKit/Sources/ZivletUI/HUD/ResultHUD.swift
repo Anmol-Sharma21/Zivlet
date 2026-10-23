@@ -21,13 +21,14 @@ public struct UndoReply: Sendable, Equatable {
 /// cascading 24 pt for each batch already on screen. Progress and Cancel while working; then the result card. A
 /// success leaves after 4 s, held while the pointer is over it; a failure stays until closed (`HUDBoard`). Every
 /// button acts on its own batch.
-public final class ResultHUD {
+public final class ResultHUD: HUDPresenter {
     public var onCancel: (BatchID) -> Void = { _ in }
     public var onReveal: ([URL]) -> Void = { _ in }
     public var onOpen: ([URL]) -> Void = { _ in }
     public var onCopy: ([URL]) -> Void = { _ in }
-    /// Re-submits a batch's failed items; the new batch opens where the failed card was.
-    public var onRetry: (BatchID) -> Void = { _ in }
+    /// Re-submits a batch's failed items: the source batch and the failed card's corner, where the wiring opens the
+    /// new batch (D-M5a-8).
+    public var onRetry: (BatchID, CGPoint?) -> Void = { _, _ in }
     /// Undoes a batch and returns the sentence to show in its place.
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
 
@@ -174,8 +175,7 @@ public final class ResultHUD {
             CGPoint(x: $0.frame.minX - HUDLayout.offset, y: $0.frame.maxY + HUDLayout.offset)
         }
         close(batch)
-        prepare(near: anchor)
-        onRetry(batch)
+        onRetry(batch, anchor)
     }
 
     /// Undo once: a press while the reply is pending is ignored. After the reply the success card lingers again.

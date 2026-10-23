@@ -103,7 +103,7 @@ struct ResultCardSnapshotTests {
     @Test func retryClosesTheFailedCardAndAsksForANewBatch() throws {
         let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
         var retried: [BatchID] = []
-        hud.onRetry = { retried.append($0) }
+        hud.onRetry = { batch, _ in retried.append(batch) }
         let snapshot = try HUDFx.failed(error: .stalled)
         hud.show(snapshot)
         hud.press(.retry, on: snapshot.batch)

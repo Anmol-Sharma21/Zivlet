@@ -36,7 +36,7 @@ final class ActionHUDModel {
 /// The action result panel (03b §7 "Success feedback", "Failure UI"): a toast that leaves after 1.5 s, or after 4 s
 /// when it offers Undo (held while the pointer is over it); a card stays until closed. Non-activating, near the drop
 /// point. Actions have this small panel of their own until results share the conversion HUD.
-public final class ActionHUD {
+public final class ActionHUD: ActionPresenter {
     public static let width: CGFloat = 340
     static let toastLinger = Duration.milliseconds(1_500)
     static let undoLinger = Duration.seconds(4)

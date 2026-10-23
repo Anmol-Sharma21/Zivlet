@@ -54,14 +54,25 @@ public final class IslandHosts {
         }
     }
 
+    /// Withdraws `client`'s request on one display only; its islands on other displays stay.
+    public func withdraw(_ client: IslandClientID, on display: UInt32) {
+        let before = arbiter.winner(on: display)
+        arbiter = arbiter.updating(client, on: display, nil)
+        let winner = arbiter.winner(on: display)
+        if winner != before { route(winner, on: display) }
+    }
+
     /// The client's content changed on `display` (new text, Show Details, an undo reply): re-measured and redrawn.
     public func contentChanged(on display: UInt32) { hosts[display]?.contentChanged() }
 
     /// "Show Progress and Results" (D-N12): the island with items, the menu-bar display first, opens and takes keys.
     public func expandRequested() {
         guard let id = displayIDs.first(where: { arbiter.winner(on: $0) != nil }) else { return }
-        step(.expandRequested(now: clock.now()), on: id)
+        expandRequested(on: id)
     }
+
+    /// The island group's accessibility action (D-N12): that display's island opens and takes keys.
+    public func expandRequested(on display: UInt32) { step(.expandRequested(now: clock.now()), on: display) }
 
     public func wheelShown() {
         wheelShowing = true
