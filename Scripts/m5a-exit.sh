@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 # The automated M5a exit rows X1–X7 (plan 12 §6), in order. Each row's output goes to build/m5a-exit/<row>.log and
 # one line per row says pass or fail; the script exits 1 when any row failed. The owner rows Q1–Q22 are not here:
-# docs/plan/qa/notch.md lists them. ZIVLET_M5A_EXIT_LOGS replaces build/m5a-exit and ZIVLET_M5A_LOG replaces
-# /usr/bin/log (script tests only); ZIVLET_M5A_BASE is the commit before M5a (default: the plan's baseline).
+# docs/plan/qa/notch.md lists them. ZIVLET_M5A_EXIT_LOGS replaces build/m5a-exit, ZIVLET_M5A_LOG replaces
+# /usr/bin/log and ZIVLET_M5A_FIXTURE the demo's HEIC fixture (script tests only); ZIVLET_M5A_BASE is the commit
+# before M5a (default: the plan's baseline).
+# Each row runs in its own bash process with errexit on: inside `if` bash ignores `set -e` for everything a row
+# calls, so a failing step (the 50 ms test, a demo) could otherwise leave the row passing on its last check.
 # Usage: Scripts/m5a-exit.sh [--only X1,X4,...] [--list]     --list prints the rows and commands without running.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 LOGS=${ZIVLET_M5A_EXIT_LOGS:-$REPO_ROOT/build/m5a-exit}
 LOG_TOOL=${ZIVLET_M5A_LOG:-/usr/bin/log}
 BASE=${ZIVLET_M5A_BASE:-1716912}
+FIXTURE=${ZIVLET_M5A_FIXTURE:-$REPO_ROOT/build/fixtures/small/srgb.heic}
 MAX_LINES=800
 ROWS="X1 X2 X3 X4 X5 X6 X7"
 
@@ -26,10 +31,12 @@ command_of() {
 
 ONLY=""
 LIST=0
+ROW=""
 while (($#)); do
     case "$1" in
         --only) ONLY=${2:?--only needs rows, e.g. X1,X4}; shift 2 ;;
         --list) LIST=1; shift ;;
+        --row) ROW=${2:?--row needs a row}; shift 2 ;;  # internal: one row, in its own process
         *) echo "error: unknown argument $1 (--only, --list)" >&2; exit 2 ;;
     esac
 done
@@ -47,12 +54,13 @@ if ((LIST)); then
     exit 0
 fi
 
-# A copy of the small HEIC fixture in a scratch folder of our own; prints its path.
+# A copy of the small HEIC fixture in a scratch folder of our own; prints its path. A missing fixture fails: an empty
+# stand-in would convert to a failure toast, and X2 would still find its signpost.
 demo_file() {
     local dir
-    dir=$(mktemp -d "${TMPDIR:-/tmp}/zivlet-m5a-demo.XXXXXX")
     make fixtures >/dev/null
-    cp "$REPO_ROOT/build/fixtures/small/srgb.heic" "$dir/srgb.heic" 2>/dev/null || touch "$dir/srgb.heic"
+    dir=$(mktemp -d "${TMPDIR:-/tmp}/zivlet-m5a-demo.XXXXXX")
+    cp "$FIXTURE" "$dir/srgb.heic" || { drop_demo_dir "$dir"; return 1; }
     echo "$dir/srgb.heic"
 }
 
@@ -89,11 +97,19 @@ near_the_drop() {
     fi
 }
 
-# X5: a request that could prompt fails the row; preflight checks are listed (D-M5a-5).
+# X5: a request that could prompt fails the row; preflight checks are listed (D-M5a-5). It watches the demos of
+# X2–X4, so it refuses to run without them, and a log reader that fails is a failure, not "no request".
 no_tcc_prompts() {
-    local lines asked
-    lines=$("$LOG_TOOL" show --start "$DEMO_START" --style compact --predicate 'subsystem == "com.apple.TCC"' \
-        2>/dev/null | grep -i 'zivlet' || true)
+    local stream lines asked
+    if [[ " $DEMO_ROWS " != *" X2 "* || " $DEMO_ROWS " != *" X3 "* || " $DEMO_ROWS " != *" X4 "* ]]; then
+        echo "X5 needs X2, X3 and X4 in the same run (it checks what their demos asked for)"
+        return 1
+    fi
+    stream=$("$LOG_TOOL" show --start "$DEMO_START" --style compact --predicate 'subsystem == "com.apple.TCC"') ||
+        { echo "log show failed (status $?)"; return 1; }
+    echo "TCC lines examined: $(grep -c . <<<"$stream" || true)"
+    [[ -n "$stream" ]] || echo "warning: the TCC stream was empty since $DEMO_START"
+    lines=$(grep -i 'zivlet' <<<"$stream" || true)
     echo "preflight checks (listed, not failing):"
     grep 'preflight=yes' <<<"$lines" || echo "(none)"
     asked=$(grep 'preflight=no' <<<"$lines" || true)
@@ -143,14 +159,21 @@ run_row() {
     esac
 }
 
-mkdir -p "$LOGS"
 cd "$REPO_ROOT"
+if [[ -n "$ROW" ]]; then
+    run_row "$ROW"
+    exit 0
+fi
+
+mkdir -p "$LOGS"
+export DEMO_START DEMO_ROWS=""
 DEMO_START=$(date '+%Y-%m-%d %H:%M:%S')
 failed=0
 for row in $selected; do
     [[ "$row" == X2 ]] && DEMO_START=$(date '+%Y-%m-%d %H:%M:%S')
+    [[ "$row" == X[234] ]] && DEMO_ROWS+=" $row"
     started=$SECONDS
-    if run_row "$row" >"$LOGS/$row.log" 2>&1; then
+    if bash "$SELF" --row "$row" >"$LOGS/$row.log" 2>&1; then
         echo "$row pass ($((SECONDS - started)) s)  $(command_of "$row")"
     else
         echo "$row FAIL ($((SECONDS - started)) s)  $(command_of "$row")  see $LOGS/$row.log"
