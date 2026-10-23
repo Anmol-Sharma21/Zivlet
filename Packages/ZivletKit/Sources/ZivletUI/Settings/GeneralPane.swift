@@ -37,6 +37,7 @@ struct GeneralPane: View {
                     }
                 }
             }
+            PlacementSection(model: model)
             Section("Actions") {
                 Picker("Open folders in", selection: model.binding(\.actions.terminal)) {
                     ForEach(model.terminalChoices) { Text($0.name).tag($0.id) }
@@ -50,6 +51,23 @@ struct GeneralPane: View {
         let home = NSHomeDirectory()
         guard path == home || path.hasPrefix(home + "/") else { return path }
         return "~" + path.dropFirst(home.count)
+    }
+}
+
+/// Where progress and results show (design/19 §6): the picker shows the resolved value; a choice is stored.
+struct PlacementSection: View {
+    let model: SettingsModel
+
+    var body: some View {
+        Section(PlacementCopy.section) {
+            Picker(
+                PlacementCopy.title,
+                selection: Binding(get: { model.shownPlacement }, set: { model.choosePlacement($0) })
+            ) {
+                Text(model.notchLabel).tag(HUDPlacement.notch)
+                Text(PlacementCopy.nearDropLabel).tag(HUDPlacement.nearDrop)
+            }
+        }
     }
 }
 

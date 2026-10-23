@@ -3,6 +3,7 @@ import SwiftUI
 import ZivletActions
 import ZivletCore
 import ZivletEngineKit
+import ZivletNotch
 import ZivletSettings
 import ZivletTrigger
 
@@ -40,7 +41,10 @@ public final class SettingsModel {
     public var helperVersions: [HelperVersion] = []
     /// Launch at login (D5); nil hides the row.
     public var loginItem: LoginItemModel?
+    /// The latch of design/19 §3.2: this Mac has shown a built-in display with a notch (D-M5a-11).
+    public var hasBuiltInNotch = false
     @ObservationIgnored let commands: SettingsCommands
+    @ObservationIgnored private var notchWatch: Task<Void, Never>?
 
     public init(settings: ZivletSettings.Settings, installedTerminals: [TerminalApp], commands: SettingsCommands) {
         self.settings = settings
@@ -58,6 +62,27 @@ public final class SettingsModel {
 
     public func setModifier(_ modifier: ModifierMask, for mode: WheelMode) {
         set(\.trigger.bindings, BindingEditing.set(modifier, for: mode, in: settings.trigger.bindings))
+    }
+
+    /// The placement the picker shows: the stored choice, with Automatic resolved for this Mac.
+    public var shownPlacement: HUDPlacement { settings.hud.placement.resolved(hasBuiltInNotch: hasBuiltInNotch) }
+
+    var notchLabel: String { PlacementCopy.notchLabel(hasBuiltInNotch: hasBuiltInNotch) }
+
+    /// A choice in the picker is stored as the explicit value, even when it equals what Automatic resolves to.
+    public func choosePlacement(_ placement: HUDPlacement) { set(\.hud.placement, placement) }
+
+    /// Reads the provider's notch latch now and after every display change.
+    public func follow(_ provider: any DisplayGeometryProvider) {
+        hasBuiltInNotch = provider.hasBuiltInNotch
+        let changes = provider.changes
+        notchWatch?.cancel()
+        notchWatch = Task { [weak self, weak provider] in
+            for await _ in changes {
+                guard let self, let provider else { return }
+                self.hasBuiltInNotch = provider.hasBuiltInNotch
+            }
+        }
     }
 
     func binding<Value>(_ path: WritableKeyPath<Settings, Value>) -> Binding<Value> {
