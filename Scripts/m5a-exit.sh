@@ -108,7 +108,7 @@ no_tcc_prompts() {
 # X7: every commit since BASE signed off and without Co-Authored-By; no changed source file at or over the limit;
 # no personal path added.
 hygiene() {
-    local commit status=0 file lines
+    local commit status=0 file lines scratch
     for commit in $(git rev-list "$BASE..HEAD"); do
         git log -1 --format=%B "$commit" | grep -q '^Signed-off-by: ' || { echo "not signed off: $commit"; status=1; }
         if git log -1 --format=%B "$commit" | grep -qi '^Co-Authored-By:'; then
@@ -121,7 +121,9 @@ hygiene() {
         lines=$(wc -l <"$file")
         ((lines < MAX_LINES)) || { echo "$file has $lines lines"; status=1; }
     done < <(git diff --name-only "$BASE..HEAD")
-    if git diff "$BASE..HEAD" | grep -E '^\+' | grep -E "/Users/$(whoami)([^a-z]|$)|/private/tmp/claude"; then
+    # Split so this line does not match itself.
+    scratch="/private/tmp/""claude"
+    if git diff "$BASE..HEAD" | grep -E '^\+' | grep -E "/Users/$(whoami)([^a-z]|$)|$scratch"; then
         echo "a personal path was added"
         status=1
     fi
