@@ -5,7 +5,7 @@ import ZivletNotchCore
 @Suite("Island machine: every event in every state")
 struct IslandMachineTableTests {
     enum State: String, CaseIterable {
-        case hidden, collapsed, toast, hoverExpanded, focusExpanded, dragHeld, pinned, keyed, suppressed
+        case hidden, collapsed, toast, hoverExpanded, focusExpanded, dragHeld, pinned, keyed, keyedLeaving, suppressed
     }
 
     static let t0 = Duration.seconds(100)
@@ -28,6 +28,8 @@ struct IslandMachineTableTests {
             ])
         case .pinned: return collapsed.after([.expandRequested(now: t0)])
         case .keyed: return hoverExpanded.after([.clicked(now: t0 + .seconds(1))])
+        case .keyedLeaving:
+            return hoverExpanded.after([.clicked(now: t0 + .seconds(1)), .pointerExited(now: t0 + .seconds(2))])
         case .suppressed: return collapsed.after([.wheelShown(now: t0)])
         }
     }

@@ -8,7 +8,7 @@ extension IslandMachineTableTests {
     static let table: [State: [String: Row]] = [
         .hidden: hiddenRows, .collapsed: restingRows(.collapsed), .toast: restingRows(.toast),
         .hoverExpanded: hoverExpandedRows, .focusExpanded: focusExpandedRows, .dragHeld: dragHeldRows,
-        .pinned: pinnedRows, .keyed: keyedRows, .suppressed: suppressedRows,
+        .pinned: pinnedRows, .keyed: keyedRows, .keyedLeaving: keyedLeavingRows, .suppressed: suppressedRows,
     ]
 
     static var hiddenRows: [String: Row] {
@@ -32,9 +32,9 @@ extension IslandMachineTableTests {
             "accessibilityUnfocused": Row(surface: resting, effects: same),
             "dragBegan": Row(surface: resting, effects: [.held(true)]),
             "dragEnded": Row(surface: resting, effects: same),
-            "expandRequested": Row(surface: .expanded, effects: [show(.expanded), .becomeKey]),
+            "expandRequested": Row(surface: .expanded, effects: [show(.expanded), .held(true), .becomeKey]),
             "tick": Row(surface: resting, effects: same),
-            "clicked": Row(surface: resting, effects: [.becomeKeyAllowed]),
+            "clicked": Row(surface: resting, effects: [.held(true), .becomeKeyAllowed]),
             "resignedKey": Row(surface: resting, effects: same),
             "escape": Row(surface: resting, effects: same),
             "wheelShown": Row(surface: resting, effects: same),
@@ -79,27 +79,42 @@ extension IslandMachineTableTests {
         expandedRows(["dragEnded": [.schedule(grace), .held(false)]])
     }
 
+    /// Opened by the menu command: it has the keyboard, so it holds; giving the keyboard back releases the hold.
     static var pinnedRows: [String: Row] {
         expandedRows(
             [
-                "request(nil)": [.hide, .cancelDeadline, .resignKey],
-                "pointerEntered": [.schedule(intent), .held(true)],
-                "accessibilityFocused": [.held(true)],
-                "dragBegan": [.held(true)],
+                "request(nil)": [.hide, .cancelDeadline, .held(false), .resignKey],
+                "pointerEntered": [.schedule(intent)],
                 "clicked": same,
-                "escape": [show(.collapsed), .resignKey],
+                "resignedKey": [.held(false)],
+                "escape": [show(.collapsed), .held(false), .resignKey],
             ], surfaces: ["request(nil)": .hidden, "escape": .collapsed])
     }
 
+    /// A click made the card key: the keyboard holds it past the pointer leaving, and goes back when it collapses.
     static var keyedRows: [String: Row] {
         expandedRows(
             [
                 "request(nil)": [.hide, .cancelDeadline, .held(false), .resignKey],
-                "pointerExited": [.schedule(grace), .held(false)],
+                "pointerExited": [.schedule(grace)],
                 "clicked": same,
                 "escape": [show(.collapsed), .held(false), .resignKey],
-                "wheelShown": [show(.collapsed), .held(false)],
+                "wheelShown": [show(.collapsed), .held(false), .resignKey],
             ], surfaces: ["request(nil)": .hidden, "escape": .collapsed, "wheelShown": .collapsed])
+    }
+
+    /// Keyed, and the pointer has left: the grace runs; when it ends the card collapses and the keyboard goes back.
+    static var keyedLeavingRows: [String: Row] {
+        expandedRows(
+            [
+                "request(nil)": [.hide, .cancelDeadline, .held(false), .resignKey],
+                "pointerEntered": [.cancelDeadline],
+                "tick": [show(.collapsed), .held(false), .resignKey],
+                "clicked": same,
+                "resignedKey": [.held(false)],
+                "escape": [show(.collapsed), .cancelDeadline, .held(false), .resignKey],
+                "wheelShown": [show(.collapsed), .cancelDeadline, .held(false), .resignKey],
+            ], surfaces: ["request(nil)": .hidden, "tick": .collapsed, "escape": .collapsed, "wheelShown": .collapsed])
     }
 
     static var suppressedRows: [String: Row] {

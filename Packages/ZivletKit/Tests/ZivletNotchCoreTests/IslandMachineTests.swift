@@ -103,7 +103,7 @@ struct IslandMachineTests {
 
     @Test func aClickAllowsTheKeyWindowOnce() {
         let (m, effects) = IslandMachine.showing(.collapsed, at: t0).handling(.clicked(now: t0))
-        #expect(m.isKeyed && effects == [.becomeKeyAllowed])
+        #expect(m.isKeyed && effects == [.held(true), .becomeKeyAllowed])
         #expect(m.handling(.clicked(now: t0 + .seconds(1))).1.isEmpty)
     }
 

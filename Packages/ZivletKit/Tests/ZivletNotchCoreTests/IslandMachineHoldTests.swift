@@ -50,6 +50,31 @@ struct IslandMachineHoldTests {
         #expect(effects.isEmpty && ended.surface == .expanded && ended.isHovered)
     }
 
+    @Test func theMenuCommandHoldsTheIslandSoASavedResultWaits() {
+        let (opened, effects) = IslandMachine.showing(.toast, at: t0).handling(.expandRequested(now: t0))
+        #expect(
+            opened.isHeld && effects == [.show(.expanded, display: 1, contentHeight: 108), .held(true), .becomeKey])
+        let (away, released) = opened.handling(.resignedKey(now: t0 + .seconds(3)))
+        #expect(!away.isHeld && released == [.held(false)] && away.surface == .expanded)
+    }
+
+    @Test func aClickedCardThatCollapsesAfterTheGraceGivesTheKeyboardBack() {
+        let m = IslandMachine.showing(.collapsed, at: t0).after([
+            .pointerEntered(now: t0), .tick(now: t0 + .milliseconds(150)), .clicked(now: t0 + .seconds(1)),
+            .pointerExited(now: t0 + .seconds(2)),
+        ])
+        #expect(m.isHeld && m.isKeyed)
+        let (next, effects) = m.handling(.tick(now: t0 + .milliseconds(2_300)))
+        #expect(next.surface == .collapsed && !next.isKeyed && !next.isHeld)
+        #expect(effects == [.show(.collapsed, display: 1, contentHeight: 108), .held(false), .resignKey])
+    }
+
+    @Test func aKeyedCardSentBackByANewRestingSurfaceGivesTheKeyboardBack() {
+        let m = IslandMachine.showing(.collapsed, at: t0).after([.clicked(now: t0)])
+        let (next, effects) = m.handling(.request(.hud(.toast), now: t0 + .seconds(1)))
+        #expect(next.surface == .toast && !next.isKeyed && effects.contains(.resignKey))
+    }
+
     @Test func aWithdrawalDuringADragWaitsForTheDragToEnd() {
         let m = IslandMachine.showing(.toast, at: t0).after([
             .pointerEntered(now: t0), .tick(now: t0 + .milliseconds(150)), .dragBegan(now: t0 + .seconds(1)),

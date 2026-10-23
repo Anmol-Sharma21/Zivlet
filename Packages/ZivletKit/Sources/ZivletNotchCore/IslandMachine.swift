@@ -35,8 +35,10 @@ public struct IslandMachine: Sendable, Equatable {
     public var isHovered: Bool { hover == .inside }
     public var motion: IslandMotion { IslandMotion(reduceMotion: reduceMotion) }
 
-    /// The pointer counts while it rests on the island or inside it; the grace after it leaves does not.
-    public var isHeld: Bool { isPointerHolding || isAccessibilityFocused || isDragging }
+    /// The pointer counts while it rests on the island or inside it; the grace after it leaves does not. The keyboard
+    /// counts too: a card opened by the menu command, the accessibility action or a click keeps the client's lingers
+    /// paused until it gives the keyboard back, so a keyboard-only person has time to reach its buttons (D-N12).
+    public var isHeld: Bool { isPointerHolding || isAccessibilityFocused || isDragging || isKeyed }
 
     /// The pending deadline, if any (intent or grace).
     public var deadline: Duration? {
@@ -106,7 +108,13 @@ public struct IslandMachine: Sendable, Equatable {
         if surface == .expanded { show(.expanded, into: &effects) }
     }
 
+    /// A move to a smaller surface while keyed also gives the keyboard back: the card it was typed into is gone
+    /// (design/19 §5.4), so keystrokes go to the person's app again.
     mutating func show(_ target: IslandSurface, into effects: inout EffectList) {
+        if isKeyed, target != .expanded, target != surface {
+            isKeyed = false
+            effects.key = .resignKey
+        }
         surface = target
         effects.surface = .show(target, display: request?.display ?? 0, contentHeight: contentHeight)
     }
