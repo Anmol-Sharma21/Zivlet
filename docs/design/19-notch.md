@@ -1,7 +1,7 @@
 # 19 — Notch island: spike P2-197, NotchIsland core and Notch HUD (M5a), notch Drop Box (M5b sketch)
 
 Date: 2026-10-22. Status: design for the owner, with spike evidence. Inputs: [00-decisions](00-decisions.md)
-(OWN-PLAN-3, OWN-HUD-1 and its defaults, OWN-HUD-2 open, OWN-APP-2), [17e-app §2 and §2a](17e-app.md),
+(OWN-PLAN-3, OWN-HUD-1 and its defaults, OWN-HUD-2 resolved 2026-10-23, OWN-UI-1, OWN-APP-2), [17e-app §2 and §2a](17e-app.md),
 [17-feature-roadmap](17-feature-roadmap.md) (W-8, W-9, R7), [01b-prd-additions](../plan/01b-prd-additions.md)
 (FR-132, FR-133, FR-150), [05-task-list](../plan/05-task-list.md) (P2-197, P2-115, P2-116, P2-141, P2-55, P2-142,
 P2-143), [02-architecture](../plan/02-architecture.md) (§4 modules, R1–R9, ADR-02), [11-m4-record](../plan/11-m4-record.md)
@@ -99,7 +99,7 @@ widgets, media, calendar and webcam features, swipe gestures, and any system-ind
 | D-N7 | Hidden means ordered out, with no timers and no display link; progress is redrawn only when the shown percent changes, at most 4 times a second, and the ring is a shape whose trim changes (no per-frame animation). A job of unknown length shows a **stepped glyph** (8 positions) advanced at most 4 times a second, not a continuous spinner | S8: idle ≈ 0, but a naive 10 Hz ring costs 1.65 %. A spinner is a per-frame animation and the costliest idle state; X6 measures the stepped glyph |
 | D-N8 | One host per display, **created and pre-warmed for every current display** at launch and on each display change (ordered out, so cheap); a job's island is on the display where its drop happened. `IslandHosts` alone owns display changes (§5.2) | 17e §2a.3 rule, OWN-HUD-1 default. Creating hosts on demand would build the panel and hosting view on the first drop's path on each display |
 | D-N9 | Pre-warm: each host builds its panel and content view when it is created (D-N8), off the drop path, as `ResultHUD` keeps a spare panel | S6: the first expand after a launch takes 35–53 ms to its first frame, the next ones 17–22 ms; the budget is 50 ms |
-| D-N10 | The island is solid black in both appearances, with white text (secondary text white at 0.8). No glass, so Reduce Transparency changes nothing; Increase Contrast adds a 1 pt white outline at 0.5 | Black continues the hardware housing; white on black is 21:1 and white at 0.8 on black about 13:1, above 4.5:1 over any backdrop (D-M4-22's worst case does not arise) |
+| D-N10 | The island is solid black in both appearances, with white text (secondary text white at 0.8). No glass, so Reduce Transparency changes nothing; Increase Contrast adds a 1 pt white outline at 0.5 | Black continues the hardware housing; white on black is 21:1 and white at 0.8 on black about 13:1, above 4.5:1 over any backdrop (D-M4-22's worst case does not arise) Superseded below the housing on 2026-10-23 by OWN-UI-1 (Liquid Glass in the notch design pass; the part that meets the notch stays black) |
 | D-N11 | **One clock.** The host reads `now` from `ContinuousClock` and sleeps until deadlines on the same clock; a sleep that wakes before its deadline reschedules. A linger that spans system sleep has therefore passed on wake, and the toast leaves at once; failures have no deadline and stay | `ResultHUD` (M4) reads `now` from `systemUptime`, which stops during system sleep, but sleeps with `Task.sleep(for:)`, whose clock keeps counting. After a wake the timer is not yet expired and nothing reschedules, so the card never leaves. The plan fixes `ResultHUD` too (task N8) |
 | D-N12 | **A path that needs no pointer.** A status-menu command "Show Progress and Results" (*new*) sends `expandRequested` and makes the island key, so Tab and Escape work at once. The status menu already lists Cancel for each running batch and Undo for recent results (M4). The collapsed island's accessibility group offers a custom action with the same name that sends `expandRequested` (reachable from VoiceOver's actions menu and Switch Control) | Cancel, Undo, Reveal, Open, Copy and Retry would otherwise sit behind hover, and keyboard focus arrives only after a click (G-M4-10). Keyboard-only, Voice Control and Switch Control users need a way in (WCAG 2.1.1, 2.5.1) |
 | D-N13 | **Holds.** The island and the client's lingers are held while the pointer is inside, while accessibility focus is inside, and while a drag that started in the island is in flight. With VoiceOver or Switch Control running (`NSWorkspace.isVoiceOverEnabled`, `isSwitchControlEnabled`), toast lingers are three times as long | A drag leaves the panel, so `pointerExited` would collapse the island under the drag. A 1.5 s or 4 s toast is too short to reach with a screen reader or a switch (WCAG 2.2.1). Voice Control cannot be detected with public API; for it the status menu's Undo has no time limit |
@@ -407,10 +407,8 @@ extension HUDPlacement {
 - **Settings › General**, section "Progress and results" (*new*): picker "Show progress and results:" with
   **At the notch** (on a Mac without a notch: **At the top of the screen**) and **Near the drop**. The selection shows
   the resolved value; choosing one stores it explicitly.
-- **OWN-HUD-2 stays open.** The owner called the alternative "Bottom-right corner"; today's card opens below and to
-  the right of the drop point (`HUDLayout`), not in a fixed corner. The label above names what it does; the label
-  text is one constant, so the owner's choice (keep "Near the drop", or a fixed bottom-right corner) is a one-line
-  change for the label and a small `HUDLayout` change for the corner.
+- **OWN-HUD-2 resolved (2026-10-23):** the owner chose the two labels above. "Near the drop" keeps today's card
+  below and to the right of the drop point (`HUDLayout`); there is no fixed bottom-right corner.
 - A change applies to jobs and actions that start afterwards; what is on screen stays where it is.
 - `hasBuiltInNotch` is the latch of §3.2, not "a notch display is connected now".
 - The demo's launch argument `-ZivletHUDPlacement notch|nearDrop` never enters `SettingsStore`: like

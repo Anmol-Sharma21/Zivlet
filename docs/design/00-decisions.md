@@ -155,3 +155,14 @@ are not explicit owner choices.
 | OWN-TR-8 (default) | With the Hindi & Hinglish pack installed, Auto routes **every** file through the Hinglish model (option (a)); Apple English is used only without the pack or when Language = English | 16 §0, §2.1, §5.3; 05b TR-14, FR-143 |
 | OWN-TR-9 (default) | Word timing (DTW, with flash attention off) only when subtitles or text timestamps are requested; Text-only jobs keep the faster path | 16 §5.2, §14; 05b TR-21, FR-146, NFR-25. The punctuation half of OWN-TR-9 stays open until the owner sees samples (TR-42) |
 | OWN-TR-10 (default) | Hinglish mode (the mixedcode token) stays on in Auto; the "Hindi" language option is the choice for formal Hindi and is named in the Change… menu | 16 §4.3, §14; 05b TR-31 |
+
+## Owner decisions, 2026-10-23: HUD placement labels, beta numbering, notch look
+
+Date: 2026-10-23, after M5a was built (see [13-m5a-record.md](../plan/13-m5a-record.md)). All three are the owner's
+decisions, given in chat.
+
+| ID | Decision | Consequences |
+|---|---|---|
+| OWN-HUD-2 (resolved) | The placement choices are **At the notch** (on a Mac without a notch: **At the top of the screen**) and **Near the drop** (today's card, below and to the right of the drop point). No fixed bottom-right corner | Matches what M5a built ([19-notch](19-notch.md) Settings section); the "Bottom-right corner" label in the OWN-HUD-1 defaults row is superseded. No `HUDLayout` change |
+| OWN-PLAN-4 | **Beta numbering stays:** 0.5 = the notch work (island, Notch HUD, Drop Box, tray) + OCR + lock/unlock + PDF basics; 0.6 and 0.7 unchanged. No notch-only beta | 17-feature-roadmap §4.1 stands as written on 2026-10-22 |
+| OWN-UI-1 | **The notch UI gets a design pass: minimal, clean, Liquid Glass, optimised.** The part that meets the hardware notch stays black so it continues the housing; toasts and the expanded card below it use Liquid Glass, blending from black at the top edge. Fewer words, one line per state, SF Symbols, no borders or dividers, corners that follow the notch's curve, spring motion | Supersedes D-N10 (solid black, no glass) for the surfaces below the housing. Reduce Transparency → solid surface; Reduce Motion → fades; Increase Contrast keeps its outline. Redraw only when something visible changes (also the planned fix for G-M5a-1), measured on a Release build. Owner reviews screenshots of every state before merge. Scheduled after M5a lands and before beta 0.5 |
