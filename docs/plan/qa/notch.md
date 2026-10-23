@@ -1,7 +1,7 @@
 # QA checklist: the notch island and the Notch HUD (M5a)
 
 Owner step OP-4 in [12](../12-implementation-plan-m5a-notch.md) §7, rows Q1–Q22 of
-[design/19](../../design/19-notch.md) §10. Unit and shell tests already cover the island's rules (layout, the
+[design/19](../../design/19-notch.md) §10, and Q23–Q26 added after the M5a review. Unit and shell tests already cover the island's rules (layout, the
 machine, the arbiter, the board, the presenter on off-screen displays) and the exit runner covers one conversion at
 the notch and one near the drop. These rows check what only real hardware, a real pointer and the system's
 assistive technologies show.
@@ -59,10 +59,18 @@ assistive technologies show.
 | Q21 | A failure while typing | Type in another app; let a conversion fail (convert a damaged file) | A toast with the error glyph, then the tab with the error glyph; no card opens by itself and the typing app keeps focus; hovering opens the card with Retry | |
 | Q22 | Sleep and wake | Sleep the Mac while a saved toast shows, and again while a failure waits in the tab; wake | On wake the saved toast is gone; the failure tab is still there (D-N11) | |
 
+## E. After the M5a review fixes ([13 §9](../13-m5a-record.md))
+
+| # | Check | Steps | Expected | Result |
+|---|---|---|---|---|
+| Q23 | The keyboard goes back when the card goes | Type in TextEdit; open a failure card by hover (`-ZivletIslandPreview failure`), click into its details text, then move the pointer away and wait for the card to collapse; type | The characters go to TextEdit, not to the island | |
+| Q24 | The card grows evenly | Hover the collapsed tab and the toast several times; record the screen and step through the first frames | The island grows from the housing to both sides at once, with no sideways jump; the corners round as it grows; the old content fades into the new | |
+| Q25 | Long names | Convert a file whose name is about 80 characters at the notch; let one with a long name fail; watch a long one run with the card open | The saved toast keeps the sizes and the extension; the failure toast keeps the whole reason, with no "." before the "·"; the working line keeps the percent and the time left | |
+| Q26 | A new display mode under the island | With a job collapsed, and again with the card open, change the built-in display's scaled resolution in System Settings › Displays | The island moves under the housing at once; no content sits behind the camera; the card's corners and inset match the new mode | |
+
 ## Known gaps to look at during the run
 
-- A card opened with "Show Progress and Results" or the accessibility action, with no pointer over it, still leaves
-  when a saved result's 4 s linger ends; only hover, VoiceOver focus or a drag hold it (D-N13). Note in Q18–Q20
-  whether this is a problem.
-- Dragging the thumbnail out of the island is held by the pointer being over the island when the drag starts; the
-  island does not yet get a separate drag-began event (Q4 says whether that is enough).
+- Show Progress and Results and the accessibility action now hold a saved result while the island has the keyboard
+  (D-M5a-19); clicking elsewhere gives the keyboard back and the full linger starts again. Note in Q18–Q20 whether
+  that is long enough.
+- A drag of the thumbnail now holds the island from the drag's start to its end (Q4).
