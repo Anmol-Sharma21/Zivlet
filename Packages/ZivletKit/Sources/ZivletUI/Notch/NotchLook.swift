@@ -53,5 +53,7 @@ enum NotchLook {
     enum Card {
         /// The working card's two rows without the card's insets: a text line, a gap and a 28 pt button row.
         static let workingHeight: CGFloat = 52
+        /// A reason of up to two lines and the file name with the buttons beside them, without the card's insets.
+        static let failureHeight: CGFloat = 52
     }
 }

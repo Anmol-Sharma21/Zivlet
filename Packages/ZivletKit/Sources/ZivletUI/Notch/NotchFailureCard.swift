@@ -12,22 +12,23 @@ struct NotchFailureCard: View {
     var body: some View {
         let lines = Self.lines(model)
         VStack(alignment: .leading, spacing: NotchLook.Spacing.s) {
-            HStack(alignment: .top, spacing: NotchLook.Spacing.s) {
-                NotchSymbol(name: NotchSymbol.failed)
-                VStack(alignment: .leading, spacing: NotchLook.Spacing.xs) {
-                    Text(lines.primary).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary).lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if !lines.secondary.isEmpty {
-                        Text(lines.secondary).font(NotchLook.TypeStyle.secondary).foregroundStyle(NotchInk.secondary)
-                            .lineLimit(1).truncationMode(.middle)
+            HStack(alignment: .bottom, spacing: NotchLook.Spacing.s) {
+                HStack(alignment: .top, spacing: NotchLook.Spacing.s) {
+                    NotchSymbol(name: NotchSymbol.failed)
+                    VStack(alignment: .leading, spacing: NotchLook.Spacing.xs) {
+                        Text(lines.primary).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary)
+                            .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        if !lines.secondary.isEmpty {
+                            Text(lines.secondary).font(NotchLook.TypeStyle.secondary)
+                                .foregroundStyle(NotchInk.secondary).lineLimit(1).truncationMode(.middle)
+                        }
+                        ForEach(model.notes, id: \.self) { NotchCaption(text: $0) }
+                        if let message = state.undoMessage { NotchCaption(text: message) }
                     }
-                    ForEach(model.notes, id: \.self) { NotchCaption(text: $0) }
-                    if let message = state.undoMessage { NotchCaption(text: message) }
                 }
-                Spacer(minLength: 0)
+                NotchButtonRow(presses: Self.presses(model, state: state)) { act(Self.button($0)) }
             }
             if state.showsDetails, let details = model.details { NotchDetailsBox(details: details) }
-            NotchButtonRow(presses: Self.presses(model, state: state)) { act(Self.button($0)) }
         }
         .frame(width: width, alignment: .topLeading)
     }
@@ -64,26 +65,31 @@ struct NotchActionCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: NotchLook.Spacing.s) {
             if let result = model.result {
-                HStack(alignment: .top, spacing: NotchLook.Spacing.s) {
-                    NotchSymbol(name: result.card == nil ? NotchSymbol.saved : NotchSymbol.failed)
-                    VStack(alignment: .leading, spacing: NotchLook.Spacing.xs) {
-                        Text(Self.title(result)).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary)
-                            .lineLimit(3).fixedSize(horizontal: false, vertical: true)
-                        ForEach(Array(Self.lines(result).enumerated()), id: \.offset) { _, line in
-                            Text(line).font(NotchLook.TypeStyle.secondary).foregroundStyle(NotchInk.secondary)
-                                .lineLimit(1).truncationMode(.middle)
-                        }
-                        if model.showsDetail, let detail = result.card?.detail {
-                            NotchCaption(text: detail).textSelection(.enabled)
-                        }
-                        if let message = model.undoMessage { NotchCaption(text: message) }
-                    }
-                    Spacer(minLength: 0)
+                HStack(alignment: .bottom, spacing: NotchLook.Spacing.s) {
+                    text(result)
+                    NotchButtonRow(presses: Self.presses(model), act: act)
                 }
-                NotchButtonRow(presses: Self.presses(model), act: act)
             }
         }
         .frame(width: width, alignment: .topLeading)
+    }
+
+    private func text(_ result: ActionResult) -> some View {
+        HStack(alignment: .top, spacing: NotchLook.Spacing.s) {
+            NotchSymbol(name: result.card == nil ? NotchSymbol.saved : NotchSymbol.failed)
+            VStack(alignment: .leading, spacing: NotchLook.Spacing.xs) {
+                Text(Self.title(result)).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary)
+                    .lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                ForEach(Array(Self.lines(result).enumerated()), id: \.offset) { _, line in
+                    Text(line).font(NotchLook.TypeStyle.secondary).foregroundStyle(NotchInk.secondary)
+                        .lineLimit(1).truncationMode(.middle)
+                }
+                if model.showsDetail, let detail = result.card?.detail {
+                    NotchCaption(text: detail).textSelection(.enabled)
+                }
+                if let message = model.undoMessage { NotchCaption(text: message) }
+            }
+        }
     }
 
     static func title(_ result: ActionResult) -> String { result.card?.title ?? result.toast ?? "" }
