@@ -21,13 +21,28 @@ public struct NotchHUDBoard: Sendable, Equatable {
     static let ringSteps = VisibleProgress.steps(lengthInPoints: NotchLook.Ring.strokeLength, scale: 2)
     static let barSteps = VisibleProgress.maxSteps
 
-    struct Drawn: Sendable, Equatable {
+    /// What a display draws: the tab, and while the card or the list is open, what each batch shows in it.
+    struct Picture: Sendable, Equatable {
         let tab: TabContent
+        let open: [VisibleKey?]?
+
+        /// The same layout: only the ring's step, the stepped glyph or an open card's text and bar may differ.
+        func sameShape(as other: Picture) -> Bool {
+            tab.sameShape(as: other.tab) && open?.count == other.open?.count
+        }
+
+        func sameSteps(as other: Picture) -> Bool { tab.ring.shown == other.tab.ring.shown && open == other.open }
+    }
+
+    struct Drawn: Sendable, Equatable {
+        let picture: Picture
         let at: Duration
     }
 
     private(set) var items: [UInt32: [NotchHUDItem]] = [:]
     private var held: Set<UInt32> = []
+    /// Displays whose card or list is open (the island's expanded surface).
+    private var open: Set<UInt32> = []
     /// The id the next action result gets.
     private(set) var nextAction = 0
     private var drawn: [UInt32: Drawn] = [:]
@@ -49,7 +64,25 @@ public struct NotchHUDBoard: Sendable, Equatable {
     }
 
     public func updating(_ snapshot: BatchSnapshot, display: UInt32, now: Duration) -> NotchHUDBoard {
-        transition(now) { $0.apply(snapshot, display: display) }
+        updating(snapshot, visible: Self.key(snapshot), display: display, now: now)
+    }
+
+    /// The same, with the snapshot's visible key worked out once by the caller.
+    func updating(_ snapshot: BatchSnapshot, visible: VisibleKey, display: UInt32, now: Duration) -> NotchHUDBoard {
+        transition(now) { $0.apply(snapshot, visible: visible, display: display) }
+    }
+
+    /// What the island draws or speaks for `snapshot` (19b §6.2).
+    static func key(_ snapshot: BatchSnapshot) -> VisibleKey {
+        VisibleKey(snapshot, ringSteps: ringSteps, barSteps: barSteps)
+    }
+
+    /// The display's island went to `surface`: while it is expanded, the open card or list redraws whenever what it
+    /// shows changes, not only at the ring's step.
+    public func showing(_ surface: IslandSurface, on display: UInt32, now: Duration) -> NotchHUDBoard {
+        transition(now) { board in
+            if surface == .expanded { board.open.insert(display) } else { board.open.remove(display) }
+        }
     }
 
     /// An action's result; a cancel shows nothing.
@@ -131,6 +164,7 @@ public struct NotchHUDBoard: Sendable, Equatable {
             let moving = board.items[removed] ?? []
             board.items[removed] = nil
             board.held.remove(removed)
+            board.open.remove(removed)
             board.drawn[removed] = nil
             if !moving.isEmpty { board.items[replacement, default: []].append(contentsOf: moving) }
         }
@@ -141,14 +175,16 @@ public struct NotchHUDBoard: Sendable, Equatable {
     /// The displays that have items.
     public var displays: [UInt32] { items.filter { !$0.value.isEmpty }.keys.sorted() }
 
-    /// The earliest linger deadline or stepped-glyph step; nil when nothing changes on its own.
+    /// The earliest linger deadline, stepped-glyph step or change held back by the 250 ms floor; nil when nothing
+    /// changes on its own.
     public var nextDeadline: Duration? {
         let all = items.values.joined()
         let lingers = all.compactMap { $0.linger?.deadline }
         let steps = all.filter(\.isWorking).compactMap { item in
             item.indeterminateSince.map { $0 + Self.stepInterval * (steps(since: $0) + 1) }
         }
-        return (lingers + steps).min()
+        let heldBack = drawn.keys.filter(holdsBack).compactMap { drawn[$0].map { $0.at + Self.stepInterval } }
+        return (lingers + steps + heldBack).min()
     }
 
     /// Whole steps of the stepped glyph since `since`.
@@ -168,14 +204,14 @@ extension NotchHUDBoard {
         return next
     }
 
-    private mutating func apply(_ snapshot: BatchSnapshot, display: UInt32) {
+    private mutating func apply(_ snapshot: BatchSnapshot, visible: VisibleKey, display: UInt32) {
         let id = NotchHUDItemID.batch(snapshot.batch)
         let found = locate(id)
         let old = found?.item
         let home = found?.display ?? display
         var item = old ?? NotchHUDItem(id: id, kind: .batch(snapshot))
         item.kind = .batch(snapshot)
-        item.visible = VisibleKey(snapshot, ringSteps: Self.ringSteps, barSteps: Self.barSteps)
+        item.visible = visible
         item.indeterminateSince = snapshot.isIndeterminate ? (item.indeterminateSince ?? now) : nil
         let wasFinished = old?.snapshot?.isFinished ?? false
         if snapshot.isFinished, !wasFinished {
@@ -249,26 +285,33 @@ extension NotchHUDBoard {
         replace(found, with: change(found.display, found.item))
     }
 
-    /// The display's tab is not the one last drawn: a step the 250 ms floor held back, which the next transition
-    /// draws even when its snapshot reads the same (19b §6.2).
-    func awaitsRedraw(on display: UInt32) -> Bool {
-        guard let tab = tab(on: display) else { return drawn[display] != nil }
-        guard let last = drawn[display], last.tab.sameShape(as: tab) else { return true }
-        return last.tab.ring.shown != tab.ring.shown
+    /// What the display draws now: its tab, and what each batch shows while the island is open.
+    private func picture(on display: UInt32) -> Picture? {
+        guard let tab = tab(on: display) else { return nil }
+        let keys = open.contains(display) ? items[display]?.map(\.visible) : nil
+        return Picture(tab: tab, open: keys)
     }
 
-    /// A tab redraws when its shape changes, or when its percent or step changes ≥ 250 ms after the last redraw.
+    /// The display draws less than it would now: a step or an open card's change that came within 250 ms of the
+    /// last redraw. `nextDeadline` wakes the HUD to draw it.
+    private func holdsBack(_ display: UInt32) -> Bool {
+        guard let picture = picture(on: display), let last = drawn[display] else { return false }
+        return last.picture.sameShape(as: picture) && !last.picture.sameSteps(as: picture)
+    }
+
+    /// A display redraws when its layout changes, or when its ring step, stepped glyph or open card changes ≥ 250 ms
+    /// after the last redraw.
     private mutating func updateDrawn() {
         redraw = false
         for display in Set(items.keys).union(drawn.keys) {
-            guard let tab = tab(on: display) else {
+            guard let picture = picture(on: display) else {
                 if drawn.removeValue(forKey: display) != nil { redraw = true }
                 continue
             }
-            if let last = drawn[display], last.tab.sameShape(as: tab) {
-                guard last.tab.ring.shown != tab.ring.shown, now - last.at >= Self.stepInterval else { continue }
+            if let last = drawn[display], last.picture.sameShape(as: picture) {
+                guard !last.picture.sameSteps(as: picture), now - last.at >= Self.stepInterval else { continue }
             }
-            drawn[display] = Drawn(tab: tab, at: now)
+            drawn[display] = Drawn(picture: picture, at: now)
             redraw = true
         }
     }

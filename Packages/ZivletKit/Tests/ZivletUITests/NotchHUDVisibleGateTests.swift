@@ -49,7 +49,9 @@ struct NotchHUDVisibleGateTests {
         #expect(rig.hosts.host(on: 1)?.accessibilityValue != spokenBefore)
     }
 
-    @Test func aStepThatCameTooSoonIsDrawnByTheNextSnapshot() async throws {
+    /// A step the 250 ms floor held back is drawn when the floor ends, by the HUD's own wake-up: no later snapshot is
+    /// needed, so a job whose snapshots stop (a stall, the last percent) never leaves the ring a step behind.
+    @Test func aStepThatCameTooSoonIsDrawnWhenTheFloorEnds() async throws {
         let rig = try NotchRig.notch()
         defer { rig.hosts.close() }
         let first = try HUDFx.running(Self.progress(0.40))
@@ -57,9 +59,25 @@ struct NotchHUDVisibleGateTests {
         await rig.clock.advance(by: .milliseconds(100))
         rig.hud.show(first.applyingProgress(Self.progress(0.41)))
         #expect(Self.publishedFraction(rig, first.batch) == 0.40)
-        await rig.clock.advance(by: .milliseconds(200))
-        rig.hud.show(first.applyingProgress(Self.progress(0.412)))
-        #expect(Self.publishedFraction(rig, first.batch) == 0.412)
+        #expect(rig.hud.board.nextDeadline == .milliseconds(250))
+        await rig.clock.advance(by: .milliseconds(150))
+        #expect(Self.publishedFraction(rig, first.batch) == 0.41)
+        #expect(rig.hud.board.nextDeadline == nil)
+    }
+
+    /// While the card is open its percent, bar and time left follow every visible change (at most every 250 ms),
+    /// not the collapsed ring's coarser step; the collapsed tab still follows the ring alone.
+    @Test func theOpenCardFollowsItsOwnPercentNotTheRingsStep() async throws {
+        let rig = try NotchRig.notch()
+        defer { rig.hosts.close() }
+        let first = try HUDFx.running(Self.progress(0.405))
+        rig.hud.show(first)
+        rig.hosts.expandRequested()
+        await rig.settled()
+        #expect(rig.hosts.surface(on: 1) == .expanded)
+        await rig.clock.advance(by: .milliseconds(300))
+        rig.hud.show(first.applyingProgress(Self.progress(0.411)))  // 41 %: the ring (84 steps) has not moved
+        #expect(Self.publishedFraction(rig, first.batch) == 0.411)
     }
 
     /// A new percent the ring cannot draw (34 of 84 steps from 40.5 % to 41.4 %) reaches the board once; the snapshots

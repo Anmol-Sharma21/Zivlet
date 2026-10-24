@@ -220,4 +220,7 @@ final class IslandClientRouter: IslandClient {
     func held(_ held: Bool, display: UInt32, now: Duration) { current?.held(held, display: display, now: now) }
     func closeRequested(display: UInt32) { current?.closeRequested(display: display) }
     func displaysChanged(_ ids: [UInt32], replacing: [UInt32: UInt32]) {}
+    func surfaceChanged(_ surface: IslandSurface, display: UInt32) {
+        current?.surfaceChanged(surface, display: display)
+    }
 }

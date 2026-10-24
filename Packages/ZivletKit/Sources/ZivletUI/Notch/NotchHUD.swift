@@ -88,7 +88,10 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     public func show(_ snapshot: BatchSnapshot) {
         let id = NotchHUDItemID.batch(snapshot.batch)
         let known = board.item(id)
-        if known != nil, !snapshot.isFinished, drawsNothingNew(snapshot, id) { return }
+        let key = NotchHUDBoard.key(snapshot)
+        // The island already draws and speaks what this snapshot would (G-M5a-1, 19b §6.2): the latest applied board
+        // has its key. A change that board holds back for the 250 ms floor is drawn at the board's deadline.
+        if let known, !snapshot.isFinished, known.visible == key { return }
         let drop: (point: CGPoint?, interval: OSSignpostIntervalState)? =
             known == nil && !pending.isEmpty ? pending.removeFirst() : nil
         guard let display = board.display(of: id) ?? display(for: drop?.point ?? nil) else {
@@ -99,22 +102,12 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
             anchors[snapshot.batch] = drop?.point ?? nil
             if model.cards[snapshot.batch] == nil { model.cards[snapshot.batch] = CardState() }
         }
-        apply(board.updating(snapshot, display: display, now: clock.now()))
+        apply(board.updating(snapshot, visible: key, display: display, now: clock.now()))
         if let interval = drop?.interval { signposter.endInterval("drop→island", interval) }
         let wasFinished = known?.snapshot?.isFinished ?? false
         if snapshot.isFinished, !wasFinished, let first = snapshot.outputs.first {
             loadThumbnail(first.url, for: snapshot.batch)
         }
-    }
-
-    /// The island already draws and speaks what `snapshot` would (G-M5a-1, 19b §6.2): the published board has its
-    /// key, or the latest applied board has it and drew nothing from it (a percent the ring cannot show). A step that
-    /// came within 250 ms of the last redraw still waits to be drawn, so the next snapshot gets through.
-    private func drawsNothingNew(_ snapshot: BatchSnapshot, _ id: NotchHUDItemID) -> Bool {
-        let key = VisibleKey(snapshot, ringSteps: NotchHUDBoard.ringSteps, barSteps: NotchHUDBoard.barSteps)
-        if model.board.item(id)?.visible == key { return true }
-        guard board.item(id)?.visible == key, let display = board.display(of: id) else { return false }
-        return !board.awaitsRedraw(on: display)
     }
 
     /// The batch leaves the island; the other items stay.

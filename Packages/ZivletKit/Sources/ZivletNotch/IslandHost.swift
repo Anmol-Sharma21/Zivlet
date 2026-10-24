@@ -153,6 +153,7 @@ public final class IslandHost {
         let mine = generation
         let previous = surface
         surface = target
+        client.surfaceChanged(target, display: display.id)
         guard target != .hidden else {
             onSurface(.hidden, .zero)
             return fadeOut(mine)

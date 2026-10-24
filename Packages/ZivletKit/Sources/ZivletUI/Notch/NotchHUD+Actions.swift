@@ -34,6 +34,11 @@ extension NotchHUD: IslandClient {
         apply(board.holding(held, display: display, now: now))
     }
 
+    /// The island opens or closes: an open card follows its own percent and time left (19b §6.2).
+    public func surfaceChanged(_ surface: IslandSurface, display: UInt32) {
+        apply(board.showing(surface, on: display, now: clock.now()))
+    }
+
     /// Escape on a closable card: everything on that display goes.
     public func closeRequested(display: UInt32) {
         for item in board.items[display] ?? [] {

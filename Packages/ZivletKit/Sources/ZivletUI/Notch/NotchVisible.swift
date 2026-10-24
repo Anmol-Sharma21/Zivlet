@@ -52,24 +52,47 @@ struct VisibleKey: Sendable, Equatable {
     /// "12.4 MB written" while the length is unknown.
     let written: String?
 
+    /// One pass over the items for the counts, one for the current item and one for the fraction; nothing is
+    /// allocated, since this runs for every progress snapshot (19b §6.2).
     init(_ snapshot: BatchSnapshot, ringSteps: Int, barSteps: Int) {
-        let progress = snapshot.currentProgress
-        let fraction = snapshot.isIndeterminate ? nil : snapshot.fraction
+        let counts = Counts(snapshot.items)
+        let current = snapshot.current
+        let progress: JobProgress? = if case .running(let value) = current?.item.state { value } else { nil }
+        let unknownLength = progress.map { $0.fraction == nil } ?? false
+        let fraction = unknownLength ? nil : snapshot.fraction
         finished = snapshot.isFinished
-        outputs = snapshot.outputs.count
-        failures = snapshot.failures.count
-        cancelled = snapshot.cancelledCount
-        current = snapshot.current?.item.name
-        index = snapshot.current?.index
+        outputs = counts.outputs
+        failures = counts.failures
+        cancelled = counts.cancelled
+        self.current = current?.item.name
+        index = current?.index
         count = snapshot.items.count
-        indeterminate = snapshot.isIndeterminate
+        indeterminate = unknownLength
         percent = fraction.map { Int(($0 * 100).rounded(.down)) }
         ring = fraction.map { VisibleProgress($0, steps: ringSteps) }
         bar = fraction.map { VisibleProgress($0, steps: barSteps) }
         timeLeft = progress?.eta.map(HUDCopy.timeLeft)
         shortTimeLeft = progress?.eta.map(HUDCopy.shortTimeLeft)
         written =
-            snapshot.isIndeterminate
+            unknownLength
             ? progress?.bytesWritten.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } : nil
+    }
+
+    /// Saved, failed and cancelled items, counted in one pass.
+    private struct Counts {
+        var outputs = 0
+        var failures = 0
+        var cancelled = 0
+
+        init(_ items: [BatchItem]) {
+            for item in items {
+                switch item.state {
+                case .succeeded: outputs += 1
+                case .failed: failures += 1
+                case .cancelled: cancelled += 1
+                case .queued, .preparing, .running, .verifying, .publishing: break
+                }
+            }
+        }
     }
 }

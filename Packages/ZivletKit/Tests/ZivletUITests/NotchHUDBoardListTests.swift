@@ -118,19 +118,19 @@ struct NotchHUDBoardListTests {
         #expect(soon.updating(at(0.41), display: 1, now: t0 + .milliseconds(260)).redraw)
     }
 
-    @Test func aStepTheFloorHeldBackAwaitsARedrawAndAPercentDoesNot() throws {
+    @Test func aStepTheFloorHeldBackHasADeadlineAndAPercentDoesNot() throws {
         let running = try HUDFx.running(JobProgress(fraction: 0.4048))  // step 34 of 84, 40 %
         let job = try #require(running.items.first?.job)
         func at(_ fraction: Double) -> BatchSnapshot {
             running.applying(.changed(running.batch, job, .running(JobProgress(fraction: fraction))))
         }
         let first = NotchHUDBoard().updating(running, display: 1, now: t0)
-        #expect(!first.awaitsRedraw(on: 1))
-        #expect(!first.updating(at(0.41), display: 1, now: t0 + .milliseconds(100)).awaitsRedraw(on: 1))
+        #expect(first.nextDeadline == nil)
+        #expect(first.updating(at(0.41), display: 1, now: t0 + .milliseconds(100)).nextDeadline == nil)
         let held = first.updating(at(0.417), display: 1, now: t0 + .milliseconds(100))  // step 35 within 250 ms
-        #expect(held.awaitsRedraw(on: 1))
-        #expect(!held.updating(at(0.417), display: 1, now: t0 + .milliseconds(260)).awaitsRedraw(on: 1))
-        #expect(!NotchHUDBoard().awaitsRedraw(on: 1))
+        #expect(held.nextDeadline == t0 + .milliseconds(250))
+        #expect(held.updating(at(0.417), display: 1, now: t0 + .milliseconds(260)).nextDeadline == nil)
+        #expect(NotchHUDBoard().nextDeadline == nil)
     }
 
     @Test func aNewPercentTheRingCannotDrawDoesNotRedraw() throws {  // 19b D-NL12: 84 steps of about 1.2 % each

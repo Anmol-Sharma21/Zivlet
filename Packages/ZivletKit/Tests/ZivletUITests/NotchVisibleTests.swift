@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import ZivletCore
+import ZivletNotchCore
 import ZivletRuntime
 
 @testable import ZivletUI
@@ -70,5 +71,37 @@ struct NotchVisibleTests {
             VisibleKey(running, ringSteps: 100, barSteps: 100) != VisibleKey(finished, ringSteps: 100, barSteps: 100))
         let saved = try HUDFx.finished(outputs: [("clip.png", before: 2, after: 1)])
         #expect(VisibleKey(saved, ringSteps: 100, barSteps: 100) != VisibleKey(finished, ringSteps: 100, barSteps: 100))
+    }
+}
+
+/// The board's redraw rule (19b §6.2): the collapsed tab redraws at the ring's step; an open card or list at every
+/// change of what it shows; both at most every 250 ms, and a change held back by that floor has a deadline.
+@Suite("Notch HUD board: what redraws and when")
+struct NotchHUDBoardRedrawTests {
+    private static func running(_ fraction: Double) throws -> BatchSnapshot {
+        try HUDFx.running(JobProgress(fraction: fraction, eta: .seconds(40)))
+    }
+
+    @Test func aPercentTheRingCannotShowRedrawsOnlyAnOpenIsland() throws {
+        let first = try Self.running(0.405)
+        let next = first.applyingProgress(JobProgress(fraction: 0.411, eta: .seconds(40)))
+        let collapsed = NotchHUDBoard().updating(first, display: 1, now: .zero)
+        #expect(!collapsed.updating(next, display: 1, now: .milliseconds(300)).redraw)
+        let open = collapsed.showing(.expanded, on: 1, now: .milliseconds(10))
+        #expect(open.redraw)  // opening draws the latest at once
+        #expect(open.updating(next, display: 1, now: .milliseconds(300)).redraw)
+        let closed = open.showing(.collapsed, on: 1, now: .milliseconds(20))
+        #expect(!closed.updating(next, display: 1, now: .milliseconds(300)).redraw)
+    }
+
+    @Test func aChangeHeldBackByTheFloorHasADeadline() throws {
+        let first = try Self.running(0.40)
+        let board = NotchHUDBoard().updating(first, display: 1, now: .zero)
+            .updating(
+                first.applyingProgress(JobProgress(fraction: 0.43, eta: .seconds(40))), display: 1,
+                now: .milliseconds(100))
+        #expect(!board.redraw && board.nextDeadline == .milliseconds(250))
+        let woken = board.expiring(now: .milliseconds(250))
+        #expect(woken.redraw && woken.nextDeadline == nil)
     }
 }
