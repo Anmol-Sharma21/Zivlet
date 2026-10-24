@@ -15,6 +15,14 @@ import ZivletNotchCore
         public enum Invalid: Error, Equatable {
             case missingValue(String)
             case unknown(String, String)
+
+            /// Safe to log in public: it names the flag, never the value given.
+            public var logDescription: String {
+                switch self {
+                case .missingValue(let flag): "no value for \(flag)"
+                case .unknown(let flag, _): "unknown value for \(flag)"
+                }
+            }
         }
 
         static let finishFlag = "-ZivletIslandFinish"
@@ -40,12 +48,12 @@ import ZivletNotchCore
 
         public static func parse(arguments: [String]) throws(Invalid) -> IslandShotFlags {
             let finish = try value(finishFlag, in: arguments).map { value throws(Invalid) in try settings(value) }
-            let pill = try value(pillFlag, in: arguments) == "YES"
+            let pill = try yesNo(pillFlag, in: arguments)
             let backdrop = try value(backdropFlag, in: arguments).map { value throws(Invalid) in
                 guard let backdrop = Backdrop(rawValue: value) else { throw .unknown(backdropFlag, value) }
                 return backdrop
             }
-            let reduceMotion = try value(reduceMotionFlag, in: arguments) == "YES"
+            let reduceMotion = try yesNo(reduceMotionFlag, in: arguments)
             return IslandShotFlags(finish: finish, pill: pill, backdrop: backdrop, reduceMotion: reduceMotion)
         }
 
@@ -55,6 +63,15 @@ import ZivletNotchCore
             case "solid": IslandFinish.Settings(reduceTransparency: true, increaseContrast: false)
             case "contrast": IslandFinish.Settings(reduceTransparency: false, increaseContrast: true)
             default: throw .unknown(finishFlag, value)
+            }
+        }
+
+        /// YES or NO, false when absent; anything else is refused rather than read as NO.
+        private static func yesNo(_ flag: String, in arguments: [String]) throws(Invalid) -> Bool {
+            switch try value(flag, in: arguments) {
+            case nil, "NO": return false
+            case "YES": return true
+            case let other?: throw .unknown(flag, other)
             }
         }
 

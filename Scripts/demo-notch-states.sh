@@ -57,6 +57,13 @@ quit_app() {
 }
 trap quit_app EXIT
 
+# The app's public refusal of a screenshot flag since $1 (App/IslandShots.swift), or nothing.
+refusals() {
+    /usr/bin/log show --start "$1" --style compact \
+        --predicate 'subsystem == "app.zivlet.Zivlet" AND eventMessage BEGINSWITH "Island screenshot flags refused"' |
+        grep -o 'refused: .*' || true
+}
+
 island_lines() {
     /usr/bin/log show --start "$1" --style compact \
         --predicate 'subsystem == "app.zivlet.Zivlet" AND eventMessage BEGINSWITH "Island:"' | grep -o 'Island: .*' || true
@@ -71,7 +78,7 @@ contrast() {
 
 # Captures one state; prints its frame, or fails when the surface or the frame never shows.
 capture() {
-    local file=$1 surface=$2 arguments=$3 start lines frame
+    local file=$1 surface=$2 arguments=$3 start lines frame refused
     quit_app
     start=$(date '+%Y-%m-%d %H:%M:%S')
     # shellcheck disable=SC2086 # the arguments are words on purpose
@@ -82,6 +89,9 @@ capture() {
         sleep 0.25
     done
     grep -q "^Island: $surface\$" <<<"$lines" || { echo "error: $file: no '$surface' surface" >&2; return 1; }
+    # A refused flag resets every flag: the picture would show the wrong finish or display kind.
+    refused=$(refusals "$start")
+    [[ -z "$refused" ]] || { echo "error: $file: screenshot flags $refused" >&2; return 1; }
     sleep "$SETTLE"
     frame=$(sed -n "/^Island: $surface\$/,\$p" <<<"$(island_lines "$start")" | grep -m1 '^Island: frame' |
         sed 's/^Island: frame //')

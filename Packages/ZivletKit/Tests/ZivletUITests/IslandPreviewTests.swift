@@ -80,5 +80,26 @@ import ZivletRuntime
                 try IslandShotFlags.parse(arguments: ["Z", "-ZivletIslandFinish", "frosted"])
             }
         }
+
+        /// A yes/no flag takes YES or NO only: "yes" or "true" used to mean NO without a word, and the capture saved the
+        /// wrong state.
+        @Test func aYesNoFlagRefusesAnythingButYESOrNO() throws {
+            #expect(try IslandShotFlags.parse(arguments: ["Z", "-ZivletIslandPill", "NO"]).pill == false)
+            #expect(throws: IslandShotFlags.Invalid.unknown("-ZivletIslandPill", "yes")) {
+                try IslandShotFlags.parse(arguments: ["Z", "-ZivletIslandPill", "yes"])
+            }
+            #expect(throws: IslandShotFlags.Invalid.unknown("-ZivletIslandReduceMotion", "true")) {
+                try IslandShotFlags.parse(arguments: ["Z", "-ZivletIslandReduceMotion", "true"])
+            }
+        }
+
+        /// The refusal can be logged in public (the capture script looks for it): it names the flag, not the value.
+        @Test func aRefusalNamesTheFlagButNotTheValue() {
+            let refusal = IslandShotFlags.Invalid.unknown("-ZivletIslandFinish", "/Users/someone/x")
+            #expect(refusal.logDescription == "unknown value for -ZivletIslandFinish")
+            #expect(
+                IslandShotFlags.Invalid.missingValue("-ZivletIslandPill").logDescription
+                    == "no value for -ZivletIslandPill")
+        }
     }
 #endif

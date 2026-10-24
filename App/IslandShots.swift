@@ -9,12 +9,13 @@
     enum IslandShots {
         private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
 
-        /// The flags from the launch arguments; refused flags are logged and ignored.
+        /// The flags from the launch arguments. A refusal is logged in public (it names the flag only), so
+        /// `demo-notch-states.sh` can fail the capture instead of saving the wrong state, and every flag is ignored.
         static func flags(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> IslandShotFlags {
             do {
                 return try IslandShotFlags.parse(arguments: arguments)
             } catch {
-                logger.error("Island screenshot flags refused: \(String(describing: error), privacy: .private)")
+                logger.error("Island screenshot flags refused: \(error.logDescription, privacy: .public)")
                 return IslandShotFlags()
             }
         }

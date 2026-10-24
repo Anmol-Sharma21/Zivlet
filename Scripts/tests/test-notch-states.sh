@@ -43,4 +43,12 @@ assert_eq "$(xcrun swift "$ROOT/Scripts/png-luminance.swift" "$T/grey.png" 0 0 4
 assert_eq "$(xcrun swift "$ROOT/Scripts/png-luminance.swift" "$T/grey.png" 0 0 2 2 4)" "0.216"
 status=0; xcrun swift "$ROOT/Scripts/png-luminance.swift" "$T/grey.png" 0 0 >/dev/null 2>&1 || status=$?
 assert_eq "$status" "2" "missing box arguments exit 2"
+# A point width that is not a positive number, or a box not wholly inside the image, is refused rather than read at
+# the wrong place or on a smaller region.
+for bad in "0 0 2 2 abc" "0 0 2 2 0" "0 0 2 2 -4" "6 6 4 4" "0 0 3 3 2"; do
+    status=0
+    # shellcheck disable=SC2086 # the box is words on purpose
+    xcrun swift "$ROOT/Scripts/png-luminance.swift" "$T/grey.png" $bad >/dev/null 2>&1 || status=$?
+    assert_eq "$status" "2" "box [$bad] exits 2"
+done
 echo "PASS test-notch-states"

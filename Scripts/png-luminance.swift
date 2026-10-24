@@ -3,7 +3,8 @@
 // into an sRGB context first, so a screenshot in the display's colour space is read as sRGB, as WCAG assumes.
 // Usage: xcrun swift Scripts/png-luminance.swift FILE X Y WIDTH HEIGHT [POINT_WIDTH]
 //   The box is in pixels from the top left, or in points when POINT_WIDTH (the image's width in points) is given.
-//   Prints the luminance with three decimals; exits 2 on bad arguments and 1 when the file cannot be read.
+//   Prints the luminance with three decimals; exits 2 on bad arguments (a POINT_WIDTH that is not a positive number,
+//   a box not wholly inside the image) and 1 when the file cannot be read.
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -29,7 +30,9 @@ else { fail("cannot read \(arguments[1])", 1) }
 
 let width = image.width
 let height = image.height
-let scale = arguments.count == 7 ? Double(width) / (Double(arguments[6]) ?? Double(width)) : 1
+let pointWidth = arguments.count == 7 ? Double(arguments[6]) : Double(width)
+guard let pointWidth, pointWidth.isFinite, pointWidth > 0 else { fail("POINT_WIDTH must be a positive number", 2) }
+let scale = Double(width) / pointWidth
 guard let sRGB = CGColorSpace(name: CGColorSpace.sRGB),
     let context = CGContext(
         data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: sRGB,
@@ -39,11 +42,14 @@ context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
 guard let data = context.data else { fail("cannot read the pixels", 1) }
 let pixels = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
 
-let minX = max(0, Int((box[0] * scale).rounded(.down)))
-let minY = max(0, Int((box[1] * scale).rounded(.down)))
-let maxX = min(width, Int(((box[0] + box[2]) * scale).rounded(.up)))
-let maxY = min(height, Int(((box[1] + box[3]) * scale).rounded(.up)))
-guard minX < maxX, minY < maxY else { fail("the box lies outside the image", 2) }
+let minX = Int((box[0] * scale).rounded(.down))
+let minY = Int((box[1] * scale).rounded(.down))
+let maxX = Int(((box[0] + box[2]) * scale).rounded(.up))
+let maxY = Int(((box[1] + box[3]) * scale).rounded(.up))
+// A box partly outside is refused, not clamped: a smaller region could miss the very pixels the gate is about.
+guard minX >= 0, minY >= 0, maxX <= width, maxY <= height, minX < maxX, minY < maxY else {
+    fail("the box is not wholly inside the \(width) x \(height) image", 2)
+}
 
 var lightest = 0.0
 for y in minY..<maxY {
