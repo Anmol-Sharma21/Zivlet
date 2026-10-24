@@ -18,6 +18,7 @@ struct NotchToast: View {
             if let line = model.board.toastStyledLine(on: display) {
                 HStack(spacing: NotchLook.Spacing.s) {
                     PartedLine(parts: line.primary).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary)
+                        .layoutPriority(line.secondaryGivesWay ? 1 : 0)
                     if let secondary = line.secondary {
                         Text(secondary).font(NotchLook.TypeStyle.secondary).foregroundStyle(NotchInk.secondary)
                             .lineLimit(1).truncationMode(.middle).layoutPriority(line.secondaryGivesWay ? 0 : 1)
