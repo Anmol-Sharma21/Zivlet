@@ -18,6 +18,7 @@ public enum IslandLayout {
         public static let pillToastHeight = 40.0
         public static let pillGap = 6.0
         public static let collapsedRadius = 12.0
+        public static let toastRadius = 18.0
         public static let expandedRadius = 22.0
     }
 

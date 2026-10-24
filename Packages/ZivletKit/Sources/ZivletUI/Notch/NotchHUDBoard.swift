@@ -16,8 +16,9 @@ public struct NotchHUDBoard: Sendable, Equatable {
     /// With VoiceOver or Switch Control running, toasts stay three times as long (D-N13).
     static let assistiveFactor = 3
     static let maxRows = 5
-    /// Steps of the ring and the bar for the visible key (19b §6.2); one per percent until the look's tokens.
-    static let ringSteps = VisibleProgress.maxSteps
+    /// Steps of the ring and the bar for the visible key (19b §6.2): one per device pixel of the drawn length at 2×,
+    /// at most one per percent. The bar is longer than 50 pt, so it gets one per percent.
+    static let ringSteps = VisibleProgress.steps(lengthInPoints: NotchLook.Ring.strokeLength, scale: 2)
     static let barSteps = VisibleProgress.maxSteps
 
     struct Drawn: Sendable, Equatable {
