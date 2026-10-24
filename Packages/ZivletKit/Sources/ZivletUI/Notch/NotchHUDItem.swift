@@ -113,6 +113,8 @@ struct NotchHUDItem: Sendable, Equatable {
     var indeterminateSince: Duration?
     /// An undo is in flight: the linger waits for its reply, whatever the hold does.
     var paused = false
+    /// What the batch's last applied snapshot draws and speaks (19b §6.2).
+    var visible: VisibleKey?
 
     var snapshot: BatchSnapshot? {
         if case .batch(let snapshot) = kind { return snapshot }

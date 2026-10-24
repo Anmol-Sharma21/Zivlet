@@ -46,6 +46,8 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
     /// Posts a VoiceOver announcement; a test seam.
     var announce: (Announcement) -> Void
+    /// Called at the top of every board change; a test seam.
+    var onApply: () -> Void = {}
 
     let model = NotchHUDModel()
     private(set) var board = NotchHUDBoard()
@@ -86,6 +88,7 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     public func show(_ snapshot: BatchSnapshot) {
         let id = NotchHUDItemID.batch(snapshot.batch)
         let known = board.item(id)
+        if known != nil, !snapshot.isFinished, drawsNothingNew(snapshot, id) { return }
         let drop: (point: CGPoint?, interval: OSSignpostIntervalState)? =
             known == nil && !pending.isEmpty ? pending.removeFirst() : nil
         guard let display = board.display(of: id) ?? display(for: drop?.point ?? nil) else {
@@ -102,6 +105,14 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
         if snapshot.isFinished, !wasFinished, let first = snapshot.outputs.first {
             loadThumbnail(first.url, for: snapshot.batch)
         }
+    }
+
+    /// The island already draws and speaks what `snapshot` would (G-M5a-1, 19b §6.2). The key is compared with the
+    /// published board's, not the latest applied one, so a step that came within 250 ms of the last redraw is still
+    /// drawn by the next snapshot.
+    private func drawsNothingNew(_ snapshot: BatchSnapshot, _ id: NotchHUDItemID) -> Bool {
+        guard let drawn = model.board.item(id)?.visible else { return false }
+        return drawn == VisibleKey(snapshot, ringSteps: NotchHUDBoard.ringSteps, barSteps: NotchHUDBoard.barSteps)
     }
 
     /// The batch leaves the island; the other items stay.
@@ -137,6 +148,7 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     /// Every board change goes through here: the views see it when the tab redraws or the layout changes, each
     /// display's request is filed or withdrawn, announcements are posted and the next deadline is scheduled.
     func apply(_ next: NotchHUDBoard) {
+        onApply()
         let old = board
         board = next
         let displays = Set(old.displays).union(next.displays)

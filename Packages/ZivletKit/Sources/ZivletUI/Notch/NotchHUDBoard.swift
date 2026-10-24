@@ -16,6 +16,9 @@ public struct NotchHUDBoard: Sendable, Equatable {
     /// With VoiceOver or Switch Control running, toasts stay three times as long (D-N13).
     static let assistiveFactor = 3
     static let maxRows = 5
+    /// Steps of the ring and the bar for the visible key (19b §6.2); one per percent until the look's tokens.
+    static let ringSteps = VisibleProgress.maxSteps
+    static let barSteps = VisibleProgress.maxSteps
 
     struct Drawn: Sendable, Equatable {
         let tab: TabContent
@@ -171,6 +174,7 @@ extension NotchHUDBoard {
         let home = found?.display ?? display
         var item = old ?? NotchHUDItem(id: id, kind: .batch(snapshot))
         item.kind = .batch(snapshot)
+        item.visible = VisibleKey(snapshot, ringSteps: Self.ringSteps, barSteps: Self.barSteps)
         item.indeterminateSince = snapshot.isIndeterminate ? (item.indeterminateSince ?? now) : nil
         let wasFinished = old?.snapshot?.isFinished ?? false
         if snapshot.isFinished, !wasFinished {
