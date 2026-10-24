@@ -39,14 +39,24 @@ final class IslandWiring {
         }
     }
 
+    /// Reduce Transparency and Increase Contrast pick the island's finish (19b D-NL3).
+    private static func finishSettings(_ workspace: NSWorkspace) -> IslandFinish.Settings {
+        IslandFinish.Settings(
+            reduceTransparency: workspace.accessibilityDisplayShouldReduceTransparency,
+            increaseContrast: workspace.accessibilityDisplayShouldIncreaseContrast)
+    }
+
     private func followAccessibility() {
         let workspace = NSWorkspace.shared
         if workspace.accessibilityDisplayShouldReduceMotion { hosts.reduceMotionChanged(true) }
+        hosts.finishSettingsChanged(Self.finishSettings(workspace))
         let options = workspace.notificationCenter.addObserver(
             forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.hosts.reduceMotionChanged(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+                let workspace = NSWorkspace.shared
+                self?.hosts.reduceMotionChanged(workspace.accessibilityDisplayShouldReduceMotion)
+                self?.hosts.finishSettingsChanged(Self.finishSettings(workspace))
             }
         }
         observers = [options]

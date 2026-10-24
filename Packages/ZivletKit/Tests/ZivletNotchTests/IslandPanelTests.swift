@@ -18,6 +18,10 @@ struct IslandPanelTests {
         #expect(panel.backgroundColor == .clear)
     }
 
+    @Test func thePanelIsAlwaysDark() {  // 19b D-NL2: glass follows the window's appearance
+        #expect(IslandPanel().appearance?.name == .darkAqua)
+    }
+
     @Test func keyOnlyAfterAClickNeverMain() {
         let panel = IslandPanel()
         #expect(panel.canBecomeKey && panel.becomesKeyOnlyIfNeeded && !panel.canBecomeMain)

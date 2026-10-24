@@ -23,6 +23,8 @@ public final class IslandPanel: NSPanel {
         becomesKeyOnlyIfNeeded = true
         isReleasedWhenClosed = false
         animationBehavior = .none
+        // Glass follows the window's appearance; the island is dark in Light mode too (19b D-NL2, P8).
+        appearance = NSAppearance(named: .darkAqua)
     }
 
     override public var canBecomeKey: Bool { true }

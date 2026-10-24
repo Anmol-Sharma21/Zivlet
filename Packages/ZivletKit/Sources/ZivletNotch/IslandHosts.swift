@@ -17,6 +17,7 @@ public final class IslandHosts {
     private var arbiter = IslandArbiter()
     private var clients: [IslandClientID: any IslandClient] = [:]
     private var reduceMotion = false
+    private var finishSettings = IslandFinish.Settings.standard
     private var wheelShowing = false
     private var watch: Task<Void, Never>?
     private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
@@ -107,6 +108,13 @@ public final class IslandHosts {
         broadcast(.reduceMotionChanged(on, now: clock.now()))
     }
 
+    /// Reduce Transparency or Increase Contrast changed (19b D-NL3): each island uses the new finish from its next
+    /// surface change.
+    public func finishSettingsChanged(_ settings: IslandFinish.Settings) {
+        finishSettings = settings
+        for host in hosts.values { host.finishSettings = settings }
+    }
+
     /// Speaks `text` with VoiceOver; high priority interrupts (failures), medium waits.
     public func announce(_ text: String, highPriority: Bool) {
         let priority: NSAccessibilityPriorityLevel = highPriority ? .high : .medium
@@ -157,6 +165,7 @@ public final class IslandHosts {
         let router = IslandClientRouter()
         router.current = clients[.hud]
         let host = IslandHost(display: display, client: router, motion: animation, clock: clock, pointer: pointer)
+        host.finishSettings = finishSettings
         let id = display.id
         host.onEvent = { [weak self] event in self?.step(event, on: id) }
         host.onSurface = { [weak self] surface, frame in self?.onSurface(id, surface, frame) }

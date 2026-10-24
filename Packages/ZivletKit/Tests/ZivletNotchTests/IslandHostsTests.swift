@@ -18,6 +18,21 @@ struct IslandHostsTests {
         hosts.close()
     }
 
+    @Test func newFinishSettingsReachEveryHostAndLaterOnes() throws {
+        let provider = try FakeDisplayProvider.notchOnly()
+        let hosts = IslandHosts(provider: provider, clock: ManualClock(), animation: .instant)
+        hosts.register(FakeClient(), as: .hud)
+        let contrast = IslandFinish.Settings(reduceTransparency: false, increaseContrast: true)
+        hosts.finishSettingsChanged(contrast)
+        #expect(hosts.host(on: 1)?.finishSettings == contrast)
+        provider.set([try OffscreenDisplays.notch(), try OffscreenDisplays.plain()])
+        hosts.displaysChanged(provider.displays)
+        #expect(hosts.host(on: 2)?.finishSettings == contrast)
+        hosts.request(IslandRequest(client: .hud, display: 1, resting: .toast, hoverSurface: .expanded), from: .hud)
+        #expect(hosts.host(on: 1)?.chrome.finish == .solid(band: 38, outline: true))
+        hosts.close()
+    }
+
     @Test func aRequestShowsItsRestingSurfaceAndAWithdrawalHidesIt() async throws {
         let hosts = IslandHosts(
             provider: try FakeDisplayProvider.notchAndExternal(), clock: ManualClock(), animation: .instant)

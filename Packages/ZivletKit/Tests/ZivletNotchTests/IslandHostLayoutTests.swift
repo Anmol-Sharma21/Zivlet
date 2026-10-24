@@ -39,6 +39,53 @@ struct IslandHostLayoutTests {
         host.close()
     }
 
+    @Test func theHostSetsTheFinishPerSurface() throws {
+        let host = makeHost(try OffscreenDisplays.notch())
+        host.apply([.show(.collapsed, display: 1, contentHeight: 0)])
+        #expect(host.chrome.finish == .black(outline: false))
+        host.apply([.show(.toast, display: 1, contentHeight: 0)])
+        #expect(host.chrome.finish == .glass(band: 38))
+        host.apply([.show(.expanded, display: 1, contentHeight: 108)])
+        #expect(host.chrome.finish == .glass(band: 38))
+        host.close()
+    }
+
+    @Test func thePillIsGlassWithoutABand() throws {
+        let host = makeHost(try OffscreenDisplays.plain())
+        host.apply([.show(.collapsed, display: 2, contentHeight: 0)])
+        #expect(host.chrome.finish == .glass(band: 0))
+        host.close()
+    }
+
+    @Test func reduceTransparencyTurnsGlassSolidAtTheNextSurface() throws {
+        let host = makeHost(try OffscreenDisplays.notch())
+        host.apply([.show(.toast, display: 1, contentHeight: 0)])
+        host.finishSettings = IslandFinish.Settings(reduceTransparency: true, increaseContrast: false)
+        #expect(host.chrome.finish == .glass(band: 38))
+        host.apply([.show(.expanded, display: 1, contentHeight: 108)])
+        #expect(host.chrome.finish == .solid(band: 38, outline: false))
+        host.close()
+    }
+
+    @Test func increaseContrastOutlinesTheTabAndTurnsTheCardSolid() throws {
+        let host = makeHost(try OffscreenDisplays.notch())
+        host.finishSettings = IslandFinish.Settings(reduceTransparency: false, increaseContrast: true)
+        host.apply([.show(.collapsed, display: 1, contentHeight: 0)])
+        #expect(host.chrome.finish == .black(outline: true))
+        host.apply([.show(.expanded, display: 1, contentHeight: 108)])
+        #expect(host.chrome.finish == .solid(band: 38, outline: true) && host.chrome.finish.outlined)
+        host.close()
+    }
+
+    @Test func aHidingIslandKeepsItsFinishWhileItFades() async throws {
+        let host = makeHost(try OffscreenDisplays.notch())
+        host.apply([.show(.toast, display: 1, contentHeight: 0)])
+        host.apply([.hide])
+        #expect(host.chrome.finish == .glass(band: 38))
+        await host.animationsSettled()
+        host.close()
+    }
+
     @Test func aShrinkInFlightEndsAtTheNewGeometry() async throws {
         let display = try OffscreenDisplays.notch()
         let host = makeHost(display, motion: .slow(0.05))
@@ -99,6 +146,8 @@ struct IslandHostLayoutTests {
             _ = host.chrome.opacity
             _ = host.chrome.topRadius
             _ = host.chrome.bottomRadius
+            _ = host.chrome.flare
+            _ = host.chrome.finish
         } onChange: {
             invalidated.withLock { $0 = true }
         }

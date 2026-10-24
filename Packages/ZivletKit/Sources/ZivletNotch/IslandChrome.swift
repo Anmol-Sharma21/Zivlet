@@ -20,14 +20,15 @@ final class IslandChromeModel {
     var scrolls = false
     var surface = IslandSurface.hidden
     var content = AnyView(EmptyView())
+    /// Black, glass or solid for the shown surface (19b D-NL1 … D-NL3).
+    var finish = IslandFinish.black(outline: false)
 }
 
-/// The black island (D-N10) with the client's content, inside a transparent panel-sized canvas, as one accessibility
+/// The island's finish (19b D-NL1 … D-NL3) with the client's content, inside a transparent panel-sized canvas, as one accessibility
 /// group (`IslandAccessibility`).
 struct IslandChrome: View {
     let model: IslandChromeModel
     let accessibility: IslandAccessibilityModel
-    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -44,8 +45,7 @@ struct IslandChrome: View {
 
     private var island: some View {
         ZStack(alignment: .top) {
-            shape.fill(Color.black)
-            if contrast == .increased { shape.strokeBorder(Color.white.opacity(0.5), lineWidth: 1) }
+            IslandFinishView(finish: model.finish, shape: shape)
             content
                 .padding(.top, model.contentTopInset)
                 .padding(.horizontal, model.flare)

@@ -135,9 +135,11 @@ extension IslandHost {
         chrome.content = client.content(for: shown, display: display.id)
     }
 
-    /// The corners, the inset under the housing and scrolling, all from the display; animated with the shape.
+    /// The finish, the corners, the inset under the housing and scrolling, all from the display and the settings;
+    /// animated with the shape.
     func applyShapeStyle() {
         let shown = shownSurface
+        chrome.finish = IslandFinish.resolve(surface, on: display, settings: finishSettings, previous: chrome.finish)
         chrome.contentTopInset = IslandLayout.contentTopInset(on: display)
         chrome.flare = flare
         chrome.topRadius = NotchGeometry.hasNotch(display) ? 0 : radius(shown)
