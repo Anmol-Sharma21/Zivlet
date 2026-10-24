@@ -17,8 +17,14 @@ public final class IslandHost {
     var onSurface: (IslandSurface, CGRect) -> Void = { _, _ in }
     /// The machine's curves; IslandHosts sets them before each step.
     var curves = IslandMotion(reduceMotion: false)
-    /// Reduce Transparency and Increase Contrast as IslandHosts last heard them; used at the next surface change.
-    var finishSettings = IslandFinish.Settings.standard
+    /// Reduce Transparency and Increase Contrast as IslandHosts last heard them. A shown island takes a new value at
+    /// once, without animation (a card can stay open until closed); a hidden one at its next surface.
+    var finishSettings = IslandFinish.Settings.standard {
+        didSet {
+            guard finishSettings != oldValue, surface != .hidden else { return }
+            withTransaction(Transaction(animation: nil)) { applyShapeStyle() }
+        }
+    }
 
     public private(set) var display: DisplayGeometry
     public private(set) var surface: IslandSurface = .hidden

@@ -108,8 +108,8 @@ public final class IslandHosts {
         broadcast(.reduceMotionChanged(on, now: clock.now()))
     }
 
-    /// Reduce Transparency or Increase Contrast changed (19b D-NL3): each island uses the new finish from its next
-    /// surface change.
+    /// Reduce Transparency or Increase Contrast changed (19b D-NL3): a shown island changes its finish at once, a
+    /// hidden one at its next surface.
     public func finishSettingsChanged(_ settings: IslandFinish.Settings) {
         finishSettings = settings
         for host in hosts.values { host.finishSettings = settings }

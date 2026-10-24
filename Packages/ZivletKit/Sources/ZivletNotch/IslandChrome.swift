@@ -1,6 +1,12 @@
 import SwiftUI
 import ZivletNotchCore
 
+extension EnvironmentValues {
+    /// The island draws the Increase Contrast outline: its content (the icon buttons' resting circle) follows the
+    /// same finish, so a forced screenshot finish and the real setting look the same.
+    @Entry public var islandOutlined = false
+}
+
 /// What the island draws, set by its host: the shape's rectangle, its corners and the client's content for the
 /// surface. The island group's accessibility text lives in `IslandAccessibilityModel`.
 @Observable
@@ -41,6 +47,7 @@ struct IslandChrome: View {
         }
         .frame(width: model.panelSize.width, height: model.panelSize.height, alignment: .top)
         .environment(\.colorScheme, .dark)
+        .environment(\.islandOutlined, model.finish.outlined)
     }
 
     private var shape: IslandShape { IslandShape(top: model.topRadius, bottom: model.bottomRadius, flare: model.flare) }

@@ -57,13 +57,26 @@ struct IslandHostLayoutTests {
         host.close()
     }
 
-    @Test func reduceTransparencyTurnsGlassSolidAtTheNextSurface() throws {
+    /// A card can stay open for a long time (a failure lingers until closed), so a new setting changes the island
+    /// that is showing, not only the next surface.
+    @Test func reduceTransparencyTurnsTheShownGlassSolidAtOnce() throws {
         let host = makeHost(try OffscreenDisplays.notch())
-        host.apply([.show(.toast, display: 1, contentHeight: 0)])
-        host.finishSettings = IslandFinish.Settings(reduceTransparency: true, increaseContrast: false)
-        #expect(host.chrome.finish == .glass(band: 38))
         host.apply([.show(.expanded, display: 1, contentHeight: 108)])
+        #expect(host.chrome.finish == .glass(band: 38))
+        host.finishSettings = IslandFinish.Settings(reduceTransparency: true, increaseContrast: false)
         #expect(host.chrome.finish == .solid(band: 38, outline: false))
+        host.finishSettings = .standard
+        #expect(host.chrome.finish == .glass(band: 38))
+        host.close()
+    }
+
+    @Test func aHiddenIslandTakesTheNewSettingAtItsNextSurface() throws {
+        let host = makeHost(try OffscreenDisplays.notch())
+        let before = host.chrome.finish
+        host.finishSettings = IslandFinish.Settings(reduceTransparency: false, increaseContrast: true)
+        #expect(host.chrome.finish == before)
+        host.apply([.show(.toast, display: 1, contentHeight: 0)])
+        #expect(host.chrome.finish == .solid(band: 38, outline: true))
         host.close()
     }
 

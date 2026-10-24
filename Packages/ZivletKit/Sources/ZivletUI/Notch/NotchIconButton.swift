@@ -1,8 +1,10 @@
 import SwiftUI
+import ZivletNotch
 
 /// An island button drawn as an SF Symbol in a 28 pt round hit area (19b D-NL9): no border and no fill at rest, white
 /// 0.14 on hover and 0.22 while pressed. Its tooltip and accessibility label are today's button title, so Voice
-/// Control's "click Undo" and the M5a words still work. Under Increase Contrast the round background shows at rest.
+/// Control's "click Undo" and the M5a words still work. Under Increase Contrast (the island's outlined finish) the round
+/// background shows at rest.
 struct NotchIconButton: View {
     static let hoverFill = 0.14
     static let pressedFill = 0.22
@@ -58,13 +60,14 @@ struct NotchIconButton: View {
 
 /// The circle behind the symbol; hover through `onHover`, so no global event monitor is needed.
 struct NotchIconButtonStyle: ButtonStyle {
-    @Environment(\.colorSchemeContrast) private var contrast
+    /// The island's outline, from the same finish as the outline itself (not SwiftUI's own contrast reading).
+    @Environment(\.islandOutlined) private var outlined
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovered = false
 
     func makeBody(configuration: Configuration) -> some View {
         let opacity = NotchIconButton.fill(
-            pressed: configuration.isPressed, hovered: hovered, increaseContrast: contrast == .increased)
+            pressed: configuration.isPressed, hovered: hovered, increaseContrast: outlined)
         return configuration.label
             .background(Circle().fill(Color.white.opacity(opacity)))
             .onHover { hovered = $0 }
