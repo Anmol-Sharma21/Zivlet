@@ -315,7 +315,7 @@ the Mac). Nothing that needs drawn frames could be measured or captured.
 | X2–X5 | **not run**: X2's 50 ms timing at load 47 and X3's screenshot need an awake, unlocked screen |
 | X6 (`make notch-idle`, Debug and Release) | **not run**: with the display asleep the island draws nothing, so the numbers would read low and mean nothing. The review's CPU effect (R2, R18, R19) is unmeasured; the last measured values are run E's (§3): Debug progress +1.184 % (fail), Release +0.825 % (pass) |
 | `make notch-states` | **not run** (locked screen); the screenshots of the review's changes (R8, R9, R10, R14, R16, the cancelled glyph) were not taken |
-| X7 | see the commit that adds this section |
+| X7 | pass (`Scripts/m5a-exit.sh --only X7`: signed off, no `Co-Authored-By`, no file ≥ 800 lines, no personal path) |
 
 G-M5a-1 stays **open**: progress failed on Debug in every measured run, and the review's redraw change has not been
 measured yet.
