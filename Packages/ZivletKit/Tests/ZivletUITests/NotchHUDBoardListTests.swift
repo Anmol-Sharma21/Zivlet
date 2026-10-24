@@ -124,4 +124,40 @@ struct NotchHUDBoardListTests {
         let done = running.applying(.finished(running.batch))
         #expect(board.updating(done, display: 1, now: t0 + .milliseconds(10)).redraw)
     }
+
+    // MARK: One line per row (plan 14 D16)
+
+    private func mixed() throws -> NotchHUDBoard {
+        NotchHUDBoard()
+            .updating(try HUDFx.running(JobProgress(fraction: 0.4)), display: 1, now: t0)
+            .updating(
+                try HUDFx.finished(outputs: [("photo.jpg", before: 2_100_000, after: 640_000)], target: .jpg),
+                display: 1, now: t0
+            )
+            .updating(try HUDFx.failed(error: .diskFull), display: 1, now: t0)
+    }
+
+    @Test func eachRowIsOneLineWithAShortStatus() throws {
+        let rows = try mixed().rows(on: 1)
+        #expect(rows.map(\.summary) == ["Failed", "40%", "2.1 MB → 640 KB"])
+        #expect(rows.map(\.line) == ["There isn't enough free disk space", "clip.mov → MP4", "Saved photo.jpg"])
+    }
+
+    @Test func rowPressesAreUnchanged() throws {
+        let rows = try mixed().rows(on: 1)
+        #expect(
+            rows.map { NotchListRow.presses($0, offersUndo: false) } == [
+                [.retry, .close], [.cancel], [.reveal, .open],
+            ])
+        let action = NotchHUDRow(id: .action(1), title: "Copied 1 file", detail: "", status: .action)
+        #expect(NotchListRow.presses(action, offersUndo: true) == [.undo])
+    }
+
+    @Test func theSpokenListIsUnchanged() throws {
+        let spoken = try mixed().accessibilityValue(on: 1)
+        #expect(
+            spoken
+                == "3 jobs, 1 failed, There isn't enough free disk space., clip.mov, "
+                + "Converting to MP4, clip.mov, 40%, Saved photo.jpg, photo.jpg, 2.1 MB to 640 KB")
+    }
 }

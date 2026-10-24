@@ -75,9 +75,22 @@ public struct NotchHUDRow: Sendable, Equatable, Identifiable {
     }
 
     public let id: NotchHUDItemID
+    /// The spoken title and detail (unchanged from M5a).
     public let title: String
     public let detail: String
     public let status: Status
+    /// What the row draws on its one line, and its short status beside it (19b §5): "40%", the sizes, "Failed".
+    public let line: String
+    public let summary: String
+
+    init(id: NotchHUDItemID, title: String, detail: String, status: Status, line: String? = nil, summary: String = "") {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.status = status
+        self.line = line ?? title
+        self.summary = summary
+    }
 }
 
 /// A VoiceOver announcement from the board (design/19 §5.5); progress percentages are never announced.

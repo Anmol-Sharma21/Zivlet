@@ -146,17 +146,21 @@ extension NotchHUDBoard {
         case .batch(let snapshot) where !snapshot.isFinished:
             return NotchHUDRow(
                 id: item.id, title: HUDCopy.title(target: snapshot.target), detail: HUDCopy.working(snapshot),
-                status: .working(snapshot.isIndeterminate ? nil : snapshot.fraction))
+                status: .working(snapshot.isIndeterminate ? nil : snapshot.fraction),
+                line: NotchHUDCopy.workingTitle(snapshot), summary: NotchHUDCopy.percent(snapshot) ?? "")
         case .batch(let snapshot):
             let shown = BatchPresentation.make(snapshot)
+            let styled = item.isFailure ? NotchHUDCopy.failureLine(snapshot) : NotchHUDCopy.savedLine(snapshot)
             return NotchHUDRow(
                 id: item.id, title: shown.title, detail: ResultCardModel.sizeLine(snapshot) ?? shown.subtitle,
-                status: item.isFailure ? .failed : .saved)
+                status: item.isFailure ? .failed : .saved, line: LinePart.joined(styled.primary),
+                summary: item.isFailure ? NotchHUDCopy.failedStatus : styled.secondary ?? "")
         case .action(let result):
             let detail = result.card?.lines.joined(separator: " · ") ?? ""
+            let failed = result.card != nil
             return NotchHUDRow(
-                id: item.id, title: NotchHUDCopy.action(result), detail: detail,
-                status: result.card == nil ? .action : .failed)
+                id: item.id, title: NotchHUDCopy.action(result), detail: detail, status: failed ? .failed : .action,
+                summary: failed ? NotchHUDCopy.failedStatus : "")
         }
     }
 

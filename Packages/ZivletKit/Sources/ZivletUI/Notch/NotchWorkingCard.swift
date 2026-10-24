@@ -42,12 +42,8 @@ struct NotchWorkingCard: View {
             .fixedSize()
     }
 
-    /// "holiday.mov → MP4"; the target alone before the first file starts.
-    static func title(for snapshot: BatchSnapshot, registry: FormatRegistry = .standard) -> String {
-        let target = registry.format(snapshot.target).wheelLabel
-        guard let name = snapshot.current?.item.name ?? snapshot.items.first?.name else { return target }
-        return "\(name) → \(target)"
-    }
+    /// "holiday.mov → MP4".
+    static func title(for snapshot: BatchSnapshot) -> String { NotchHUDCopy.workingTitle(snapshot) }
 
     static func family(_ snapshot: BatchSnapshot, registry: FormatRegistry = .standard) -> FormatFamily {
         registry.format(snapshot.target).family
@@ -57,9 +53,7 @@ struct NotchWorkingCard: View {
         snapshot.isIndeterminate ? nil : snapshot.fraction
     }
 
-    static func percent(_ snapshot: BatchSnapshot) -> String? {
-        fraction(snapshot).map { "\(Int(($0 * 100).rounded(.down)))%" }
-    }
+    static func percent(_ snapshot: BatchSnapshot) -> String? { NotchHUDCopy.percent(snapshot) }
 
     /// Right of the bar: "2 of 5" for a batch, "12.4 MB written" while the length is unknown, the short time left.
     static func details(_ snapshot: BatchSnapshot) -> [String] {

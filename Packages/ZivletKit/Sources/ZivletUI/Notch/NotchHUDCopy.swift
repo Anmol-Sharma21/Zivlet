@@ -10,6 +10,20 @@ enum NotchHUDCopy {
     static let showAction = "Show Progress and Results"
 
     static func jobs(_ count: Int) -> String { "\(count) jobs" }
+    /// A failed list row's short status (*new*).
+    static let failedStatus = "Failed"
+
+    /// "holiday.mov → MP4"; the target alone before the first file starts (19b §5).
+    static func workingTitle(_ snapshot: BatchSnapshot, registry: FormatRegistry = .standard) -> String {
+        let target = registry.format(snapshot.target).wheelLabel
+        guard let name = snapshot.current?.item.name ?? snapshot.items.first?.name else { return target }
+        return "\(name) → \(target)"
+    }
+
+    /// The whole percent the working card and the list show; nil while the length is unknown.
+    static func percent(_ snapshot: BatchSnapshot) -> String? {
+        snapshot.isIndeterminate ? nil : "\(Int((snapshot.fraction * 100).rounded(.down)))%"
+    }
     static func more(_ count: Int) -> String { "+\(count) more" }
     static func failedCount(_ count: Int) -> String { "\(count) failed" }
 

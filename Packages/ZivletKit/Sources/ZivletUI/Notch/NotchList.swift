@@ -1,21 +1,19 @@
 import SwiftUI
 import ZivletNotchCore
 
-/// The expanded list when a display has several items (design/19 §4.3): failed rows first, each with its own ring
-/// or result and its own buttons; at most five rows, then "+2 more".
+/// The expanded list when a display has several items (19b §5): failed rows first, one line each (glyph, the row's
+/// line, its short status, its icon buttons); at most five rows, then "+2 more" as a caption.
 struct NotchList: View {
     let model: NotchHUDModel
     let display: UInt32
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: NotchLook.Spacing.s) {
             ForEach(model.board.rows(on: display)) { row in
                 NotchListRow(row: row, offersUndo: offersUndo(row.id), act: act)
             }
-            if let more = model.board.moreLabel(on: display) {
-                Text(more).font(.caption).foregroundStyle(NotchInk.secondary)
-            }
+            if let more = model.board.moreLabel(on: display) { NotchCaption(text: more) }
         }
         .frame(width: NotchCard.contentWidth, alignment: .topLeading)
         .padding(.top, NotchCard.topInset)
@@ -29,29 +27,28 @@ struct NotchList: View {
     }
 }
 
-/// One row: its glyph, title and detail, and the buttons its state offers.
+/// One row on one line: its ring or glyph, its line (gives way), its short status and the buttons its state offers.
 struct NotchListRow: View {
     let row: NotchHUDRow
     let offersUndo: Bool
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: NotchLook.Spacing.s) {
             glyph
-            VStack(alignment: .leading, spacing: 2) {
-                Text(row.title).font(.callout.weight(.semibold)).foregroundStyle(NotchInk.primary).lineLimit(1)
-                    .truncationMode(.middle)
-                if !row.detail.isEmpty {
-                    Text(row.detail).font(.caption).foregroundStyle(NotchInk.secondary).lineLimit(1)
-                        .truncationMode(.middle)
+            Text(row.line).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary).lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: NotchLook.Spacing.xs)
+            if !row.summary.isEmpty {
+                Text(row.summary).font(NotchLook.TypeStyle.secondary).foregroundStyle(NotchInk.secondary).lineLimit(1)
+                    .fixedSize()
+            }
+            HStack(spacing: NotchLook.Spacing.xs) {
+                ForEach(Self.presses(row, offersUndo: offersUndo), id: \.self) { press in
+                    NotchIconButton(press: press) { act(press, row.id) }
                 }
             }
-            Spacer(minLength: 0)
-            ForEach(presses, id: \.self) { press in
-                Button(Self.title(press)) { act(press, row.id) }
-            }
         }
-        .controlSize(.small)
         .accessibilityElement(children: .contain)
     }
 
@@ -59,15 +56,14 @@ struct NotchListRow: View {
         switch row.status {
         case .working(let fraction?): NotchRing(fraction: fraction)
         case .working(nil): NotchSteps(step: 0)
-        case .saved: NotchSymbol(name: NotchSymbol.saved)
+        case .saved, .action: NotchSymbol(name: NotchSymbol.saved)
         case .failed: NotchSymbol(name: NotchSymbol.failed)
-        case .action: NotchSymbol(name: NotchSymbol.saved)
         }
     }
 
     /// Working: Cancel. Saved: Reveal and Open. A failed batch: Retry and Close; a failed action: Close. An action
     /// with Undo: Undo.
-    private var presses: [NotchHUD.Press] {
+    static func presses(_ row: NotchHUDRow, offersUndo: Bool) -> [NotchHUD.Press] {
         switch (row.status, row.id) {
         case (.working, _): [.cancel]
         case (.saved, _): [.reveal, .open]
