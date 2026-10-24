@@ -22,7 +22,7 @@ final class NotchHUDModel {
 /// closures `ResultHUD` and `ActionHUD` use.
 public final class NotchHUD: HUDPresenter, ActionPresenter {
     /// The card's buttons plus Cancel of a working batch.
-    public enum Press: Sendable, Hashable {
+    public enum Press: Sendable, Hashable, CaseIterable {
         case undo, reveal, open, copy, showDetails, retry, close, cancel
 
         init(_ button: ResultCardModel.Button) {
