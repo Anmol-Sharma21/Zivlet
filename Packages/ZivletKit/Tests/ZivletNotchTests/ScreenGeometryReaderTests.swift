@@ -26,6 +26,12 @@ struct ScreenGeometryReaderTests {
         #expect(try ScreenGeometryReader.geometry(Self.external, log: { _ in }) == DisplayFixtures.noNotch1080())
     }
 
+    @Test func aScreenWithoutItsNotchIsAPillDisplay() throws {  // plan 14 D-ND4, screenshots of the pill
+        let plain = try #require(ScreenGeometryReader.geometry(Self.recorded.withoutNotch, log: { _ in }))
+        #expect(!NotchGeometry.hasNotch(plain) && plain.frame == Rect2D(Self.recorded.frame))
+        #expect(Self.external.withoutNotch == Self.external)
+    }
+
     @Test func auxiliaryAreasRelativeToTheScreenAreMadeGlobal() throws {
         let local = ScreenGeometryReader.Raw(
             number: 7, frame: CGRect(x: 1920, y: 0, width: 1800, height: 1169),

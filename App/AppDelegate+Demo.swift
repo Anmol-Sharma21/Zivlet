@@ -43,21 +43,24 @@ extension AppDelegate {
             }
         }
 
-        /// Shows the preview's job on the Notch HUD, opens its card after a second when the state asks, and feeds
-        /// `.progress` a new snapshot ten times a second until the app quits.
+        /// Shows the preview's jobs (or its action) on the Notch HUD, opens its card after a second when the state
+        /// asks, and feeds `.progress` a new snapshot ten times a second until the app quits.
         private func runIslandPreview(_ preview: IslandPreview) throws {
             let hud = island.hud
-            let first = try preview.first()
+            let snapshots = try preview.snapshots()
             logger.notice("Island preview: \(preview.rawValue, privacy: .public)")
-            hud.prepare(near: nil)
-            hud.show(first)
+            for snapshot in snapshots {
+                hud.prepare(near: nil)
+                hud.show(snapshot)
+            }
+            if let action = preview.action { hud.show(action, near: nil) }
             if preview.opens {
                 Task { [island] in
                     guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }
                     island.hosts.expandRequested()
                 }
             }
-            guard let tick = preview.tick else { return }
+            guard let tick = preview.tick, let first = snapshots.first else { return }
             Task { [logger] in
                 var step = 0
                 while (try? await Task.sleep(for: tick)) != nil {

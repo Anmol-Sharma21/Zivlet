@@ -10,14 +10,34 @@ import os
 /// hides (D-M5a-6), Reduce Motion, and VoiceOver or Switch Control (D-N13), and logs each applied surface for the
 /// demo: surface names and whole-number frames only.
 final class IslandWiring {
-    let reader = ScreenGeometryReader()
+    let reader: ScreenGeometryReader
     let hosts: IslandHosts
     let hud: NotchHUD
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
     private var observers: [any NSObjectProtocol] = []
     private var keyValueObservers: [NSKeyValueObservation] = []
+    /// Debug screenshots force the finish's settings (plan 14 D-ND4); nil follows the system's.
+    private let forcedFinish: IslandFinish.Settings?
+    /// Debug screenshots can make the island move as under Reduce Motion without the system setting.
+    private let forcedReduceMotion: Bool
+    #if DEBUG
+        private var backdrop: IslandBackdrop?
+    #endif
 
     init() {
+        #if DEBUG
+            let flags = IslandShots.flags()
+            reader = IslandShots.reader(flags)
+            forcedFinish = flags.finish
+            forcedReduceMotion = flags.reduceMotion
+            let panel = flags.backdrop.map(IslandBackdrop.init)
+            panel?.show()
+            backdrop = panel
+        #else
+            reader = ScreenGeometryReader()
+            forcedFinish = nil
+            forcedReduceMotion = false
+        #endif
         hosts = IslandHosts(provider: reader)
         hud = NotchHUD(hosts: hosts, provider: reader)
         hosts.onSurface = { [logger] _, surface, frame in Self.log(surface, frame: frame, logger: logger) }
@@ -39,24 +59,28 @@ final class IslandWiring {
         }
     }
 
-    /// Reduce Transparency and Increase Contrast pick the island's finish (19b D-NL3).
-    private static func finishSettings(_ workspace: NSWorkspace) -> IslandFinish.Settings {
-        IslandFinish.Settings(
-            reduceTransparency: workspace.accessibilityDisplayShouldReduceTransparency,
-            increaseContrast: workspace.accessibilityDisplayShouldIncreaseContrast)
+    /// Reduce Transparency and Increase Contrast pick the island's finish (19b D-NL3), unless a debug screenshot
+    /// forces it.
+    private func finishSettings(_ workspace: NSWorkspace) -> IslandFinish.Settings {
+        forcedFinish
+            ?? IslandFinish.Settings(
+                reduceTransparency: workspace.accessibilityDisplayShouldReduceTransparency,
+                increaseContrast: workspace.accessibilityDisplayShouldIncreaseContrast)
     }
 
     private func followAccessibility() {
         let workspace = NSWorkspace.shared
-        if workspace.accessibilityDisplayShouldReduceMotion { hosts.reduceMotionChanged(true) }
-        hosts.finishSettingsChanged(Self.finishSettings(workspace))
+        if forcedReduceMotion || workspace.accessibilityDisplayShouldReduceMotion { hosts.reduceMotionChanged(true) }
+        hosts.finishSettingsChanged(finishSettings(workspace))
         let options = workspace.notificationCenter.addObserver(
             forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
+                guard let self else { return }
                 let workspace = NSWorkspace.shared
-                self?.hosts.reduceMotionChanged(workspace.accessibilityDisplayShouldReduceMotion)
-                self?.hosts.finishSettingsChanged(Self.finishSettings(workspace))
+                self.hosts.reduceMotionChanged(
+                    self.forcedReduceMotion || workspace.accessibilityDisplayShouldReduceMotion)
+                self.hosts.finishSettingsChanged(self.finishSettings(workspace))
             }
         }
         observers = [options]

@@ -29,6 +29,14 @@ public final class ScreenGeometryReader: DisplayGeometryProvider {
             self.right = right
             self.builtIn = builtIn
         }
+
+        /// The same screen with its auxiliary areas dropped, so it maps to a pill display: the demo's screenshots of
+        /// the pill on a Mac with a notch (plan 14 D-ND4). Everything else stays.
+        public var withoutNotch: Raw {
+            Raw(
+                number: number, frame: frame, visible: visible, safeTop: safeTop, left: nil, right: nil,
+                builtIn: builtIn)
+        }
     }
 
     public static let latchKey = "notch.builtInSeen.v1"
