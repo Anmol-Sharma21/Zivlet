@@ -7,6 +7,11 @@ import ZivletRuntime
 
 @Suite("Visible progress and the visible key (G-M5a-1, 19b §6.2)")
 struct NotchVisibleTests {
+    @Test func theKeyHoldsTheShortTimeLeftTheCardDraws() throws {
+        let snapshot = try HUDFx.running(JobProgress(fraction: 0.4, eta: .seconds(40)))
+        #expect(VisibleKey(snapshot, ringSteps: 84, barSteps: 100).shortTimeLeft == "< 1 min")
+    }
+
     @Test func quantaFollowTheDrawnLengthInPixels() {
         #expect(VisibleProgress.steps(lengthInPoints: 50, scale: 2) == 100)
         #expect(VisibleProgress.steps(lengthInPoints: 50, scale: 1) == 50)

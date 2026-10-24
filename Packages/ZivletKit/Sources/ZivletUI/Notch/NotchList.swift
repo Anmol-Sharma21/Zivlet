@@ -17,9 +17,10 @@ struct NotchList: View {
                 Text(more).font(.caption).foregroundStyle(NotchInk.secondary)
             }
         }
-        .padding(.horizontal, NotchCard.sideInset)
-        .padding(.vertical, NotchCard.verticalInset)
-        .frame(width: IslandLayout.Metrics.expandedWidth, alignment: .topLeading)
+        .frame(width: NotchCard.contentWidth, alignment: .topLeading)
+        .padding(.top, NotchCard.topInset)
+        .padding(.bottom, NotchCard.bottomInset)
+        .frame(maxWidth: .infinity)
     }
 
     private func offersUndo(_ id: NotchHUDItemID) -> Bool {

@@ -51,11 +51,41 @@ public enum HUDCopy {
 
     /// Rough on purpose: an estimate that ticks every second looks more precise than it is.
     public static func timeLeft(_ eta: Duration) -> String {
-        let seconds = Double(eta.components.seconds)
-        if eta < almostDone { return "almost done" }
-        if seconds < 60 { return "less than a minute left" }
-        let minutes = Int((seconds / 60).rounded())
-        if minutes < 90 { return "about \(minutes) min left" }
-        return "about \(Int((seconds / 3_600).rounded())) hr left"
+        switch TimeLeft(eta) {
+        case .almostDone: "almost done"
+        case .underAMinute: "less than a minute left"
+        case .minutes(let minutes): "about \(minutes) min left"
+        case .hours(let hours): "about \(hours) hr left"
+        }
+    }
+
+    /// The island's working card (19b §5, *new*): "almost done", "< 1 min", "3 min", "2 hr", from the same
+    /// thresholds; the long form stays the spoken one.
+    public static func shortTimeLeft(_ eta: Duration) -> String {
+        switch TimeLeft(eta) {
+        case .almostDone: "almost done"
+        case .underAMinute: "< 1 min"
+        case .minutes(let minutes): "\(minutes) min"
+        case .hours(let hours): "\(hours) hr"
+        }
+    }
+
+    /// The rough buckets both forms share.
+    private enum TimeLeft {
+        case almostDone, underAMinute, minutes(Int), hours(Int)
+
+        init(_ eta: Duration) {
+            let seconds = Double(eta.components.seconds)
+            let minutes = Int((seconds / 60).rounded())
+            if eta < HUDCopy.almostDone {
+                self = .almostDone
+            } else if seconds < 60 {
+                self = .underAMinute
+            } else if minutes < 90 {
+                self = .minutes(minutes)
+            } else {
+                self = .hours(Int((seconds / 3_600).rounded()))
+            }
+        }
     }
 }

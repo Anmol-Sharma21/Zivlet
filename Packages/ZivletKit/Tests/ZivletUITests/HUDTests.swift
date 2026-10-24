@@ -65,6 +65,14 @@ struct HUDCopyTests {
         #expect(HUDCopy.timeLeft(eta) == text)
     }
 
+    @Test(arguments: [
+        (Duration.seconds(5), "almost done"), (.seconds(40), "< 1 min"), (.seconds(190), "3 min"),
+        (.seconds(7_400), "2 hr"),
+    ])
+    func theShortTimeLeftUsesTheSameThresholds(eta: Duration, text: String) {  // 19b §5, the island's working card
+        #expect(HUDCopy.shortTimeLeft(eta) == text)
+    }
+
     @Test func aSnapshotGivesTheLineOfItsCurrentItem() throws {
         let progress = JobProgress(fraction: 0.5, eta: .seconds(70))
         #expect(HUDCopy.working(try HUDFx.running(progress)) == "clip.mov · 50% · about 1 min left")

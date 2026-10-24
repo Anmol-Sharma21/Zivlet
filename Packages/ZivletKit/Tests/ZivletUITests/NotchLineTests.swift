@@ -6,7 +6,7 @@ import ZivletRuntime
 
 @testable import ZivletUI
 
-@Suite("Notch HUD: one-line text that gives way in the right place, and the card's inset")
+@Suite("Notch HUD: one-line text that gives way in the right place")
 struct NotchLineTests {
     @Test func theSavedToastsOneLineFormStaysForTheSpokenLabel() throws {
         let done = try HUDFx.finished(outputs: [("photo.jpg", before: 2_100_000, after: 640_000)], target: .jpg)
@@ -59,10 +59,5 @@ struct NotchLineTests {
         #expect(parts.first == LinePart(text: "a-very-long-holiday-video.mov", givesWay: true))
         #expect(parts.last == LinePart(text: " · 40%", givesWay: false))
         #expect(HUDCopy.working(running) == parts.map(\.text).joined())
-    }
-
-    @Test func theExpandedCardHasTheGlassCardsContentWidthCentredInTheIsland() {
-        #expect(NotchCard.contentWidth == HUDLayout.contentWidth)
-        #expect(NotchCard.sideInset == 24)
     }
 }

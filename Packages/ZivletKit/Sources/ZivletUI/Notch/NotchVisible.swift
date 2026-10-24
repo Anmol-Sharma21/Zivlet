@@ -19,6 +19,9 @@ struct VisibleProgress: Sendable, Equatable {
         step = Int((clamped * Double(count)).rounded(.down))
     }
 
+    /// The drawn fraction: whole steps only.
+    var fraction: Double { Double(step) / Double(steps) }
+
     /// One step per device pixel of the drawn length, at most one per percent, at least one.
     static func steps(lengthInPoints: Double, scale: Double) -> Int {
         let pixels = (lengthInPoints * scale).rounded(.down)
@@ -44,6 +47,8 @@ struct VisibleKey: Sendable, Equatable {
     let ring: VisibleProgress?
     let bar: VisibleProgress?
     let timeLeft: String?
+    /// The working card's short form ("< 1 min").
+    let shortTimeLeft: String?
     /// "12.4 MB written" while the length is unknown.
     let written: String?
 
@@ -62,6 +67,7 @@ struct VisibleKey: Sendable, Equatable {
         ring = fraction.map { VisibleProgress($0, steps: ringSteps) }
         bar = fraction.map { VisibleProgress($0, steps: barSteps) }
         timeLeft = progress?.eta.map(HUDCopy.timeLeft)
+        shortTimeLeft = progress?.eta.map(HUDCopy.shortTimeLeft)
         written =
             snapshot.isIndeterminate
             ? progress?.bytesWritten.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } : nil

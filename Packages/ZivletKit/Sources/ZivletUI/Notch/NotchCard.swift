@@ -1,4 +1,5 @@
 import SwiftUI
+import ZivletNotch
 import ZivletNotchCore
 import ZivletRuntime
 
@@ -21,12 +22,13 @@ struct NotchExpanded: View {
     }
 }
 
-/// One item's card: today's working view, result card or action card at the glass card's content width, centred in
-/// the 380 pt island (D-N10). The 24 pt sides keep the buttons clear of the 22 pt bottom corners.
+/// One item's card inside the island's body (19b §3.1, §5): 8 pt below the housing, 16 pt from the body's sides
+/// (after the 6 pt flare), 12 pt above the bottom edge, so content is concentric with the 24 pt corners.
 struct NotchCard: View {
-    static let contentWidth = HUDLayout.contentWidth
-    static let sideInset = (IslandLayout.Metrics.expandedWidth - contentWidth) / 2
-    static let verticalInset = HUDLayout.padding
+    static let sideInset = NotchLook.Spacing.l
+    static let topInset = NotchLook.Spacing.s
+    static let bottomInset = NotchLook.Spacing.m
+    static let contentWidth = IslandLayout.Metrics.expandedWidth - 2 * IslandLook.flare - 2 * sideInset
 
     let model: NotchHUDModel
     let item: NotchHUDItem
@@ -34,14 +36,16 @@ struct NotchCard: View {
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
-        content.padding(.horizontal, Self.sideInset).padding(.vertical, Self.verticalInset)
+        content.frame(width: Self.contentWidth, alignment: .topLeading)
+            .padding(.top, Self.topInset).padding(.bottom, Self.bottomInset)
+            .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder private var content: some View {
         let id = item.id
         switch item.kind {
         case .batch(let snapshot) where !snapshot.isFinished:
-            WorkingContent(snapshot: snapshot, width: Self.contentWidth) { act(.cancel, id) }
+            NotchWorkingCard(snapshot: snapshot) { act(.cancel, id) }
         case .batch(let snapshot):
             if let state = model.cards[snapshot.batch] {
                 ResultCardContent(

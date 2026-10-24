@@ -49,4 +49,9 @@ enum NotchLook {
     enum Bar {
         static let height: CGFloat = 3
     }
+
+    enum Card {
+        /// The working card's two rows without the card's insets: a text line, a gap and a 28 pt button row.
+        static let workingHeight: CGFloat = 52
+    }
 }
