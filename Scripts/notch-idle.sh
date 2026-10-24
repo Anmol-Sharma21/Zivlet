@@ -2,7 +2,9 @@
 # M5a exit row X6: the app's idle CPU per island state, as a difference from a baseline (plan 12 §6, plan 14 D1). Each
 # state is one launch: wait for it to settle, sample with idle-cpu.sh, quit. Baseline: "Near the drop" and no job
 # (it includes the trigger host, Sparkle and the rest of the app). Then: the island hidden, collapsed and still,
-# collapsed with progress input at 10 Hz (drawn at most 4 Hz, D-N7), and the stepped glyph. These numbers are taken on
+# collapsed with progress input at 10 Hz (drawn at most 4 Hz, D-N7), the stepped glyph, and since the design pass
+# (19b §6.3) the working card open and still on glass, and the glass pill with progress. A toast lingers 4 s
+# (D-N11), so no still toast can be measured for 120 s; the still card stands in for still glass. These numbers are taken on
 # whatever else the Mac is doing; the record says so.
 # CONFIG=debug (default) measures make app's Debug build. CONFIG=release builds an optimised app into
 # build/NotchIdleRelease with one extra compile condition, ZIVLET_ISLAND_PREVIEW, so the made-up jobs of
@@ -32,6 +34,8 @@ STATES=(
     "collapsed|-ZivletHUDPlacement notch -ZivletIslandPreview collapsed|0.1"
     "progress|-ZivletHUDPlacement notch -ZivletIslandPreview progress|1"
     "indeterminate|-ZivletHUDPlacement notch -ZivletIslandPreview indeterminate|1"
+    "card-still|-ZivletHUDPlacement notch -ZivletIslandPreview expanded|0.1"
+    "pill-progress|-ZivletHUDPlacement notch -ZivletIslandPreview progress -ZivletIslandPill YES|1"
 )
 
 say() { echo "$CONFIG $*"; }

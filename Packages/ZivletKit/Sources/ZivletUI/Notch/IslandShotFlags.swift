@@ -1,6 +1,7 @@
 import ZivletNotchCore
 
-#if DEBUG
+// Debug builds and the CPU measurement build (D-ND3), whose pill row needs `-ZivletIslandPill`; never shipped.
+#if DEBUG || ZIVLET_ISLAND_PREVIEW
     /// Screenshot-only flags (plan 14 D-ND4), so every finish and the pill can be captured without touching the
     /// owner's accessibility settings or display: `-ZivletIslandFinish glass|solid|contrast` forces the finish's
     /// settings, `-ZivletIslandPill YES` treats every display as having no notch, and `-ZivletIslandBackdrop

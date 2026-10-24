@@ -20,12 +20,12 @@ final class IslandWiring {
     private let forcedFinish: IslandFinish.Settings?
     /// Debug screenshots can make the island move as under Reduce Motion without the system setting.
     private let forcedReduceMotion: Bool
-    #if DEBUG
+    #if DEBUG || ZIVLET_ISLAND_PREVIEW
         private var backdrop: IslandBackdrop?
     #endif
 
     init() {
-        #if DEBUG
+        #if DEBUG || ZIVLET_ISLAND_PREVIEW
             let flags = IslandShots.flags()
             reader = IslandShots.reader(flags)
             forcedFinish = flags.finish

@@ -24,6 +24,10 @@ done <<<"$out"
 out=$(ZIVLET_IDLE_DRY_RUN=1 "$ROOT/Scripts/notch-idle.sh")
 assert_contains "$out" "build/DerivedData/Build/Products/Debug/Zivlet.app"
 for state in baseline hidden collapsed progress indeterminate; do assert_contains "$out" "debug state $state "; done
+# plan 14 D20 (19b §6.3): the still glass card and the glass pill with progress, with their limits.
+assert_contains "$out" "debug state card-still 0.1 -ZivletHUDPlacement notch -ZivletIslandPreview expanded"
+assert_contains "$out" "debug state pill-progress 1 -ZivletHUDPlacement notch -ZivletIslandPreview progress -ZivletIslandPill YES"
+
 if grep -q "xcodebuild" <<<"$out"; then fail "the debug run measures make app's build and builds nothing"; fi
 
 status=0; CONFIG=profile ZIVLET_IDLE_DRY_RUN=1 "$ROOT/Scripts/notch-idle.sh" >/dev/null 2>&1 || status=$?

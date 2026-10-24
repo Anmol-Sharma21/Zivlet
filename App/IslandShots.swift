@@ -1,4 +1,4 @@
-#if DEBUG
+#if DEBUG || ZIVLET_ISLAND_PREVIEW
     import AppKit
     import ZivletNotch
     import ZivletUI
