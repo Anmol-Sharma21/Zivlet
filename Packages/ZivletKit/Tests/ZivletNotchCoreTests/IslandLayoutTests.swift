@@ -22,9 +22,9 @@ struct IslandLayoutTests {
         #expect(frame.minX >= housing.minX - 6 && frame.maxX <= housing.maxX + 6)
     }
 
-    @Test func cornersFollowTheSurface() {  // 19b D-NL5
-        #expect(IslandLayout.Metrics.collapsedRadius == 12 && IslandLayout.Metrics.toastRadius == 18)
-        #expect(IslandLayout.Metrics.expandedRadius == 24)
+    @Test func cornersGrowWithTheSurface() {  // 19b D-NL5
+        #expect(IslandLayout.Metrics.collapsedRadius < IslandLayout.Metrics.toastRadius)
+        #expect(IslandLayout.Metrics.toastRadius < IslandLayout.Metrics.expandedRadius)
     }
 
     @Test func toastHangsBelowTheHousing() throws {

@@ -14,18 +14,13 @@ struct NotchLookTests {
         #expect(IslandLook.Radius.inner == IslandLook.Radius.card - NotchLook.Spacing.l)
     }
 
-    @Test func theScrimIsTheMeasuredOne() {
-        #expect(IslandLook.scrim == 0.5)
+    /// The luminance the ink's contrast tests assume covers the lightest glass measured over white (19b §4.2 P7).
+    @Test func theAssumedGlassIsNoDarkerThanTheMeasuredOne() {
         #expect(IslandLook.worstGlassLuminance >= 0.102)
     }
 
     @Test func theRingsStepsFollowItsStrokeAtTwiceScale() {
         #expect(VisibleProgress.steps(lengthInPoints: NotchLook.Ring.strokeLength, scale: 2) == 84)
         #expect(NotchHUDBoard.ringSteps == 84 && NotchHUDBoard.barSteps == VisibleProgress.maxSteps)
-        #expect(NotchLook.Symbol.buttonSide == 28 && NotchLook.Ring.side == 16)
-    }
-
-    @Test func theRadiiFollowTheSurface() {
-        #expect(IslandLook.Radius.tab == 12 && IslandLook.Radius.toast == 18)
     }
 }

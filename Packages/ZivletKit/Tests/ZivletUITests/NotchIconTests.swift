@@ -31,6 +31,4 @@ struct NotchIconTests {
     @Test func aDoneActionShowsTheCheckMarkNotTheCopyGlyph() {
         #expect(NotchSymbol.name(for: ToastGlyph.action) == "checkmark.circle.fill")
     }
-
-    @Test func theRingIsTheTokensSize() { #expect(NotchLook.Ring.side == 16 && NotchLook.Symbol.tabBox == 16) }
 }

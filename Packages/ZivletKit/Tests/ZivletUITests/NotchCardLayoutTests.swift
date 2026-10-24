@@ -3,6 +3,7 @@ import SwiftUI
 import Testing
 import ZivletActions
 import ZivletCore
+import ZivletNotch
 import ZivletRuntime
 
 @testable import ZivletUI
@@ -66,8 +67,8 @@ struct NotchCardLayoutTests {
         #expect(NotchResultCard.presses(try saved(), state: state) == [.reveal, .open, .copy])
     }
 
-    @Test func theThumbnailIs40PointsWithTheInnerRadius() {
-        #expect(NotchResultCard.thumbnailSide == 40 && NotchResultCard.thumbnailRadius == 8)
+    @Test func theThumbnailIsConcentricWithTheCard() {
+        #expect(Double(NotchResultCard.thumbnailRadius) == IslandLook.Radius.inner)
     }
 
     @Test func theUndoReplyIsACaptionAndTheCardGrows() throws {

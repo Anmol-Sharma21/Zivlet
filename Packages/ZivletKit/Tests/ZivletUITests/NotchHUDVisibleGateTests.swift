@@ -33,7 +33,7 @@ struct NotchHUDVisibleGateTests {
         #expect(transitions == before)
     }
 
-    @Test func theNextVisibleStepStillRedrawsWithin250ms() async throws {
+    @Test func theNextVisibleStepRedrawsOnceThe250msFloorHasPassed() async throws {
         let rig = try NotchRig.notch()
         defer { rig.hosts.close() }
         var transitions = 0
