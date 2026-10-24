@@ -3,7 +3,7 @@
 Date: 2026-10-24. Status: **tasks D0–D20 of [plan 14](14-implementation-plan-notch-design.md) committed on the local
 branch `notch-design`; not merged, not pushed**. Every gate and exit row passes except **X6 (idle CPU)**: on a busy
 Mac the progress row and the new glass pill row sit around the 1 % limit on both builds, and on the Debug app they
-failed in all four exit runs (+1.11 % to +1.32 %). **G-M5a-1 is not closed** (§3). The owner has not yet reviewed the
+failed in all five exit runs (+1.08 % to +1.32 %), also after `c70cdad` (§3). **G-M5a-1 is not closed** (§3). The owner has not yet reviewed the
 screenshots of every state (OWN-UI-1, OS-2) or run Q27–Q32 ([qa/notch.md](qa/notch.md)), so the branch is not ready to
 merge.
 
@@ -53,6 +53,7 @@ Fixes found by looking at the screenshots or the profile (each with its own test
 | `b49d072` | A card in the pill sat 8 pt from the top, 12 pt from the bottom | 12 pt at the top when there is no housing |
 | `9f5ca1d` | Profile of X6 progress on Debug: the tab redrew and the spoken value was pushed at every percent | the tab redraws at the ring's visible step (84 a turn) |
 | `1f7c010` | The final failure card wrapped its reason after three words: the button row's spacer took half the row | the text has layout priority over the buttons |
+| `c70cdad` | Profile of X6 progress on Debug after `9f5ca1d`: a new percent the ring cannot draw left the published key behind, so every snapshot until the ring's next step ran a full board transition that drew nothing | a snapshot also stops when the last applied board has its key and no step held back by the 250 ms floor waits; main-thread busy samples over 20 s 159 → 131 |
 
 ## 2. Gates and exit rows (2026-10-24, run C, macOS 27.0, Xcode 27, M2 Pro 14-inch, at `1f7c010`)
 
@@ -117,6 +118,27 @@ passed, `make notch-states` took the 28 images and the four contrast rows gave t
 Every Release row passed in run D; the Debug progress rows failed again. Both runs were on a busy Mac, so neither is an
 idle-Mac reading.
 
+Run E (2026-10-25, at `c70cdad`, the commit above): `make test` (1217 tests), `lint`, `coverage` (the same module
+values as run C), `app`, `release-check`, `licence-gate` and `script-test` passed; X2–X5 and X7 passed; `make
+notch-states` took the 28 images again with the same four contrast values. The first `make test` and `make coverage`
+of this run failed three timing tests outside the island (`WheelControllerTests` twice, `SystemAdapterTests` once) at
+load average 15–21; both passed when repeated at load 9–20. X6:
+
+| State (limit over baseline) | Debug, load 7.75 → 3.35 | Release, load 9.48 → 3.88 | alone afterwards, load 3.6 → 4.4 |
+|---|---|---|---|
+| baseline | 0.008 % | 0.008 % | Debug 0.008 %, Release 0.017 % |
+| hidden (0.1 %) | −0.008 % | +0.000 % | — |
+| collapsed, still (0.1 %) | +0.000 % | +0.209 % **fail** | Release −0.017 % |
+| progress at 10 Hz (1 %) | +1.184 % **fail** | +0.825 % | Debug +1.092 % **fail** |
+| stepped glyph (1 %) | +0.742 % | +0.642 % | — |
+| card open, still, glass (0.1 %) | +0.017 % | +0.000 % | — |
+| pill with progress, glass (1 %) | +1.075 % **fail** | +0.842 % | Debug +1.134 % **fail** |
+
+Release's still "collapsed" row draws nothing; alone right after it read −0.017 %, so its +0.209 % was the Mac (as run
+C's Release "hidden"). `c70cdad` cut the Debug main thread's busy samples in the progress preview by about a sixth
+(159 → 131 of about 13,500 over 20 s, load about 8), but the whole-app number stayed within the noise of earlier runs:
+the main thread alone is still busy about 1 % of the time on Debug.
+
 What this says:
 
 - D2–D4 took progress on Debug from +1.383 % to +0.983 % with M5a's views. The look (glass, the 16 pt ring, the new
@@ -143,6 +165,8 @@ Profile of the progress preview (20 s `sample`, main thread busy samples of abou
 |---|---|---|
 | D5 (after D2–D4, before the look) | 146 (`NotchHUD.show` about 43, window layout 15, Core Animation commit about 29) | 112 (layout 17, commit about 31, `show` about 8) |
 | D20 run A (with the look, before `9f5ca1d`) | 185 (SwiftUI graph update 43, `show` 30, layout 16, commit 16, spoken value 11) | not sampled |
+| run E, before `c70cdad` (of 13,385) | 159 (preview driver task 72 of which `show` 62, SwiftUI graph update 34, window layout 15) | not sampled |
+| run E, at `c70cdad` (of 13,581) | 131 (preview driver task 53 of which `show` 43, including the spoken value 7, SwiftUI graph update 44, window layout 15) | not sampled |
 
 D5 step 4 (empty `sizingOptions` on the measurer, a fixed tab frame) was not tried: the measurer is never in a window,
 and the island's hosting view already has empty `sizingOptions`; the layout pass follows SwiftUI's invalidations, so
@@ -199,6 +223,12 @@ Over black (`notch-result-black.png`) the glass is near black; it was captured, 
   white-panel contrast check cannot see this. The scrim is one token (0.5, 19b D-NL2); raising it, or using the
   solid finish for the pill's card, is the owner's call (Q27). The notch's own toasts and cards were not affected in
   these screenshots: their band and the dark menu bar sat behind them.
+- **The open working card and the list follow the ring's step, not every percent** (found by reading the code in
+  run E, not seen on screen): since `9f5ca1d` the board publishes on the tab's ring step (84 a turn, about 1.2 %), and
+  the card's percent, bar and time left, and the list rows' percent, read the published board. So while a card is
+  open its percent can skip a number (48 % to 50 %) and its time left can lag by up to one ring step. Publishing at
+  every percent while a card or the list is open would need the HUD to know the island is open (it does not today);
+  this is left for the owner to decide with G-M5a-1.
 - 120 Hz smoothness of the flare, the glass and the content transition was not judged (screenshots only).
 - WindowServer's share of the glass was not measured.
 - Voice Control "click Undo" and the focus ring of the icon buttons were not tried (Q30).
