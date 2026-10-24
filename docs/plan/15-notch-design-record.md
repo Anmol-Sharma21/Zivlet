@@ -3,7 +3,7 @@
 Date: 2026-10-24. Status: **tasks D0–D20 of [plan 14](14-implementation-plan-notch-design.md) committed on the local
 branch `notch-design`; not merged, not pushed**. Every gate and exit row passes except **X6 (idle CPU)**: on a busy
 Mac the progress row and the new glass pill row sit around the 1 % limit on both builds, and on the Debug app they
-failed in all three exit runs (+1.11 % to +1.27 %). **G-M5a-1 is not closed** (§3). The owner has not yet reviewed the
+failed in all four exit runs (+1.11 % to +1.32 %). **G-M5a-1 is not closed** (§3). The owner has not yet reviewed the
 screenshots of every state (OWN-UI-1, OS-2) or run Q27–Q32 ([qa/notch.md](qa/notch.md)), so the branch is not ready to
 merge.
 
@@ -99,6 +99,23 @@ code a state moved by up to about 0.4 % (M5a's record saw the same).
 D0 and D5 had only the five M5a states. D5's Release build overlapped with a test compile of mine (load 16 at its
 start); the measurement itself did not. Run C's Release "hidden" row draws nothing at all, so its +0.125 % is the Mac,
 not the island: that is the size of the noise at load 4–7.
+
+Run D (2026-10-25, at `a0cc215`, no code change since run C) repeated every gate on the committed state: `make test
+lint coverage app release-check licence-gate script-test` passed (1215 tests, the same coverage), exit rows X2–X5 and X7
+passed, `make notch-states` took the 28 images and the four contrast rows gave the values of §4 again. X6:
+
+| State (limit over baseline) | Debug, load 5.74 → 8.26 | Release, load 8.12 → 6.54 |
+|---|---|---|
+| baseline | 0.058 % | 0.017 % |
+| hidden (0.1 %) | −0.050 % | −0.017 % |
+| collapsed, still (0.1 %) | −0.050 % | −0.009 % |
+| progress at 10 Hz (1 %) | +1.242 % **fail** | +0.900 % |
+| stepped glyph (1 %) | +0.750 % | +0.691 % |
+| card open, still, glass (0.1 %) | −0.050 % | +0.000 % |
+| pill with progress, glass (1 %) | +1.317 % **fail** | +0.916 % |
+
+Every Release row passed in run D; the Debug progress rows failed again. Both runs were on a busy Mac, so neither is an
+idle-Mac reading.
 
 What this says:
 
