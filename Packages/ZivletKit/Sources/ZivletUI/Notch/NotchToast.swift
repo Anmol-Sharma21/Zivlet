@@ -1,28 +1,37 @@
 import SwiftUI
 import ZivletNotchCore
 
-/// The toast row (design/19 §4.3): a check mark, the error glyph or an action icon, the board's line, and Undo when
-/// an action offers it. VoiceOver reads the board's spoken form, with separators as words.
+/// The toast row (19b §5, D-NL7, D-NL8): the check mark, the error glyph or the action's glyph, a primary line and a
+/// secondary one in two styles (no separator), and Undo as an icon button when an action offers it. The primary
+/// line gives way first; the secondary line keeps its width. VoiceOver reads the board's spoken form.
 struct NotchToast: View {
-    static let sidePadding: CGFloat = 14
-
     let model: NotchHUDModel
     let display: UInt32
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            if let glyph = model.board.toastGlyph(on: display) { NotchSymbol(name: NotchSymbol.name(for: glyph)) }
-            if let parts = model.board.toastParts(on: display) {
-                PartedLine(parts: parts).font(.callout.weight(.medium)).foregroundStyle(NotchInk.primary)
-                    .accessibilityLabel(model.board.toastAccessibilityLabel(on: display) ?? LinePart.joined(parts))
+        HStack(spacing: NotchLook.Spacing.s) {
+            if let glyph = model.board.toastGlyph(on: display) {
+                Image(systemName: NotchSymbol.name(for: glyph)).font(NotchLook.Symbol.toast)
+                    .foregroundStyle(NotchInk.primary)
+            }
+            if let line = model.board.toastStyledLine(on: display) {
+                HStack(spacing: NotchLook.Spacing.s) {
+                    PartedLine(parts: line.primary).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary)
+                    if let secondary = line.secondary {
+                        Text(secondary).font(NotchLook.TypeStyle.secondary).foregroundStyle(NotchInk.secondary)
+                            .lineLimit(1).truncationMode(.middle).layoutPriority(line.secondaryGivesWay ? 0 : 1)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(model.board.toastAccessibilityLabel(on: display) ?? line.joined)
             }
             Spacer(minLength: 0)
-            if let id = undoable { Button("Undo") { act(.undo, id) }.controlSize(.small) }
+            if let id = undoable { NotchIconButton(press: .undo) { act(.undo, id) } }
         }
-        .padding(.horizontal, Self.sidePadding)
+        .padding(.horizontal, NotchLook.Spacing.m)
         .frame(maxWidth: .infinity)
-        .frame(height: IslandLayout.Metrics.toastRow)
+        .frame(height: NotchLook.Spacing.rowHeight)
     }
 
     /// The toast's action, when it offers Undo now.

@@ -26,6 +26,24 @@ enum NotchHUDCopy {
         ]
     }
 
+    /// "Saved photo.jpg" (gives way) and "2.1 MB → 640 KB" (stays) in two styles.
+    static func savedLine(_ snapshot: BatchSnapshot) -> NotchToastLine {
+        split(savedParts(snapshot), secondaryGivesWay: false)
+    }
+
+    /// The reason without its full stop (stays) and the file name (gives way) in two styles.
+    static func failureLine(_ snapshot: BatchSnapshot) -> NotchToastLine {
+        split(failureParts(snapshot), secondaryGivesWay: true)
+    }
+
+    /// The first part as the primary line, the rest without its separator as the secondary one.
+    private static func split(_ parts: [LinePart], secondaryGivesWay: Bool) -> NotchToastLine {
+        guard let first = parts.first, parts.count > 1 else { return NotchToastLine(primary: parts) }
+        let rest = LinePart.joined(Array(parts.dropFirst()))
+        let secondary = rest.hasPrefix(" · ") ? String(rest.dropFirst(3)) : rest
+        return NotchToastLine(primary: [first], secondary: secondary, secondaryGivesWay: secondaryGivesWay)
+    }
+
     /// The card's title and subtitle on one line.
     static func failure(_ snapshot: BatchSnapshot) -> String { LinePart.joined(failureParts(snapshot)) }
 

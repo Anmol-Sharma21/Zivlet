@@ -30,10 +30,17 @@ extension NotchHUDBoard {
         return Self.line(item)
     }
 
-    /// The toast's line in its parts: the file name gives way, the sizes or the reason stay whole.
-    public func toastParts(on display: UInt32) -> [LinePart]? {
+    /// The toast's text in two styles, as the toast draws it (19b D-NL7).
+    public func toastStyledLine(on display: UInt32) -> NotchToastLine? {
         guard request(on: display)?.resting == .toast, let item = items[display]?.first else { return nil }
-        return Self.parts(item)
+        switch item.kind {
+        case .batch(let snapshot) where snapshot.isFinished:
+            return item.isFailure ? NotchHUDCopy.failureLine(snapshot) : NotchHUDCopy.savedLine(snapshot)
+        case .batch:
+            return NotchToastLine(primary: Self.parts(item))
+        case .action(let result):
+            return NotchToastLine(primary: [LinePart(text: NotchHUDCopy.action(result), givesWay: false)])
+        }
     }
 
     /// The toast as a screen reader speaks it: separators as words.
