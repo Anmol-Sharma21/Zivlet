@@ -6,6 +6,7 @@ import ZivletNotchCore
 struct NotchList: View {
     let model: NotchHUDModel
     let display: UInt32
+    let underHousing: Bool
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
@@ -16,7 +17,7 @@ struct NotchList: View {
             if let more = model.board.moreLabel(on: display) { NotchCaption(text: more) }
         }
         .frame(width: NotchCard.contentWidth, alignment: .topLeading)
-        .padding(.top, NotchCard.topInset)
+        .padding(.top, NotchCard.topInset(underHousing: underHousing))
         .padding(.bottom, NotchCard.bottomInset)
         .frame(maxWidth: .infinity)
     }

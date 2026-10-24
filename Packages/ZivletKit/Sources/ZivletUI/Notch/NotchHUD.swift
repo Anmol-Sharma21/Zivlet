@@ -52,7 +52,7 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     let model = NotchHUDModel()
     private(set) var board = NotchHUDBoard()
     private(set) weak var hosts: IslandHosts?
-    private let provider: any DisplayGeometryProvider
+    let provider: any DisplayGeometryProvider
     let clock: any MonotonicClock
     private let signposter = OSSignposter(subsystem: "app.zivlet.Zivlet", category: "hud")
     private var pending: [(point: CGPoint?, interval: OSSignpostIntervalState)] = []

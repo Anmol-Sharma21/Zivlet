@@ -32,7 +32,9 @@ struct NotchCardLayoutTests {
     @Test func cancelIsTheCardsOnlyPress() { #expect(NotchWorkingCard.presses == [.cancel]) }
 
     @Test func theCardSitsInsideTheBodyOnTheGrid() {
-        #expect(NotchCard.sideInset == NotchLook.Spacing.l && NotchCard.topInset == NotchLook.Spacing.s)
+        #expect(NotchCard.sideInset == NotchLook.Spacing.l)
+        #expect(NotchCard.topInset(underHousing: true) == NotchLook.Spacing.s)  // the housing's black is above it
+        #expect(NotchCard.topInset(underHousing: false) == NotchLook.Spacing.m)  // the pill: as far as the bottom
         #expect(NotchCard.bottomInset == NotchLook.Spacing.m)
         #expect(NotchCard.contentWidth == 380 - 2 * 6 - 2 * 16)
     }

@@ -8,6 +8,8 @@ import ZivletRuntime
 struct NotchExpanded: View {
     let model: NotchHUDModel
     let display: UInt32
+    /// The card hangs below a camera housing (a notch display), not in a pill.
+    let underHousing: Bool
     /// A drag of the result thumbnail began or ended.
     let drag: (Bool) -> Void
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
@@ -15,29 +17,34 @@ struct NotchExpanded: View {
     var body: some View {
         let items = model.board.ordered(on: display)
         if items.count == 1, let item = items.first {
-            NotchCard(model: model, item: item, drag: drag, act: act)
+            NotchCard(model: model, item: item, underHousing: underHousing, drag: drag, act: act)
         } else {
-            NotchList(model: model, display: display, act: act)
+            NotchList(model: model, display: display, underHousing: underHousing, act: act)
         }
     }
 }
 
-/// One item's card inside the island's body (19b §3.1, §5): 8 pt below the housing, 16 pt from the body's sides
-/// (after the 6 pt flare), 12 pt above the bottom edge, so content is concentric with the 24 pt corners.
+/// One item's card inside the island's body (19b §3.1, §5): 8 pt below the housing (12 pt from the top of a pill),
+/// 16 pt from the body's sides (after the 6 pt flare), 12 pt above the bottom edge, so content is concentric with the
+/// 24 pt corners.
 struct NotchCard: View {
     static let sideInset = NotchLook.Spacing.l
-    static let topInset = NotchLook.Spacing.s
     static let bottomInset = NotchLook.Spacing.m
+
+    /// Below a housing its black band already sits above the content; a pill gets the bottom's inset at the top too.
+    static func topInset(underHousing: Bool) -> CGFloat { underHousing ? NotchLook.Spacing.s : bottomInset }
+
     static let contentWidth = IslandLayout.Metrics.expandedWidth - 2 * IslandLook.flare - 2 * sideInset
 
     let model: NotchHUDModel
     let item: NotchHUDItem
+    let underHousing: Bool
     let drag: (Bool) -> Void
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
         content.frame(width: Self.contentWidth, alignment: .topLeading)
-            .padding(.top, Self.topInset).padding(.bottom, Self.bottomInset)
+            .padding(.top, Self.topInset(underHousing: underHousing)).padding(.bottom, Self.bottomInset)
             .frame(maxWidth: .infinity)
     }
 

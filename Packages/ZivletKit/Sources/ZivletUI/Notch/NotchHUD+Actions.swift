@@ -16,7 +16,9 @@ extension NotchHUD: IslandClient {
         case .toast: return AnyView(NotchToast(model: model, display: display, act: act))
         case .expanded:
             let drag: (Bool) -> Void = { [weak self] began in self?.dragChanged(began, display: display) }
-            return AnyView(NotchExpanded(model: model, display: display, drag: drag, act: act))
+            let housing = provider.displays.first { $0.id == display }.map(NotchGeometry.hasNotch) ?? true
+            return AnyView(
+                NotchExpanded(model: model, display: display, underHousing: housing, drag: drag, act: act))
         }
     }
 
