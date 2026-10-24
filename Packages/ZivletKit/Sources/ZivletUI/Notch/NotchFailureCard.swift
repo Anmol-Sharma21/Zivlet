@@ -26,6 +26,7 @@ struct NotchFailureCard: View {
                         if let message = state.undoMessage { NotchCaption(text: message) }
                     }
                 }
+                .layoutPriority(1)  // the text takes its width before the button row's spacer
                 NotchButtonRow(presses: Self.presses(model, state: state)) { act(Self.button($0)) }
             }
             if state.showsDetails, let details = model.details { NotchDetailsBox(details: details) }
@@ -66,7 +67,7 @@ struct NotchActionCard: View {
         VStack(alignment: .leading, spacing: NotchLook.Spacing.s) {
             if let result = model.result {
                 HStack(alignment: .bottom, spacing: NotchLook.Spacing.s) {
-                    text(result)
+                    text(result).layoutPriority(1)
                     NotchButtonRow(presses: Self.presses(model), act: act)
                 }
             }

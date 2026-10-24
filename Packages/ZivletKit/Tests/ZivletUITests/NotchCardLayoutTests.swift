@@ -90,6 +90,13 @@ struct NotchCardLayoutTests {
         #expect(size.height <= NotchLook.Card.failureHeight)
     }
 
+    @Test func aReasonThatFitsBesideTheButtonsStaysOnOneLine() throws {  // seen on screen: it wrapped at half width
+        let model = ResultCardModel(try HUDFx.failed(error: .diskFull))
+        let card = NotchFailureCard(model: model, state: CardState(), width: NotchCard.contentWidth) { _ in }
+        let size = try #require(ImageRenderer(content: card).nsImage).size
+        #expect(size.height <= 40)  // one line of reason, one of name
+    }
+
     @Test func detailsShowOnceWithAChevronAndKeepTheirTitle() throws {
         let model = ResultCardModel(try HUDFx.failed(error: .processFailed(status: 1, stderrTail: "boom")))
         let state = CardState()
