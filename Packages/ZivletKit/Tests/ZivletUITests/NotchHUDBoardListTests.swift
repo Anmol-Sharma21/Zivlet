@@ -140,7 +140,7 @@ struct NotchHUDBoardListTests {
     @Test func eachRowIsOneLineWithAShortStatus() throws {
         let rows = try mixed().rows(on: 1)
         #expect(rows.map(\.summary) == ["Failed", "40%", "2.1 MB → 640 KB"])
-        #expect(rows.map(\.line) == ["There isn't enough free disk space", "clip.mov → MP4", "Saved photo.jpg"])
+        #expect(rows.map(\.line) == ["clip.mov", "clip.mov → MP4", "Saved photo.jpg"])
     }
 
     @Test func rowPressesAreUnchanged() throws {

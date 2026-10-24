@@ -153,7 +153,7 @@ extension NotchHUDBoard {
             let styled = item.isFailure ? NotchHUDCopy.failureLine(snapshot) : NotchHUDCopy.savedLine(snapshot)
             return NotchHUDRow(
                 id: item.id, title: shown.title, detail: ResultCardModel.sizeLine(snapshot) ?? shown.subtitle,
-                status: item.isFailure ? .failed : .saved, line: LinePart.joined(styled.primary),
+                status: item.isFailure ? .failed : .saved, line: Self.rowLine(styled, failed: item.isFailure),
                 summary: item.isFailure ? NotchHUDCopy.failedStatus : styled.secondary ?? "")
         case .action(let result):
             let detail = result.card?.lines.joined(separator: " · ") ?? ""
@@ -162,6 +162,13 @@ extension NotchHUDBoard {
                 id: item.id, title: NotchHUDCopy.action(result), detail: detail, status: failed ? .failed : .action,
                 summary: failed ? NotchHUDCopy.failedStatus : "")
         }
+    }
+
+    /// A saved row says "Saved photo.jpg"; a failed one names its file beside "Failed", since the whole reason does
+    /// not fit on one line next to its buttons (the card and the spoken list keep the reason).
+    private static func rowLine(_ styled: NotchToastLine, failed: Bool) -> String {
+        guard failed, let name = styled.secondary, !name.isEmpty else { return LinePart.joined(styled.primary) }
+        return name
     }
 
     private static func spokenLine(_ row: NotchHUDRow) -> String {
