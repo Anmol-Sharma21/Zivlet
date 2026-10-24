@@ -12,13 +12,13 @@ extension NotchHUD: IslandClient {
         let act: (Press, NotchHUDItemID) -> Void = { [weak self] press, id in self?.press(press, onItem: id) }
         switch surface {
         case .hidden: return AnyView(EmptyView())
-        case .collapsed: return AnyView(NotchTab(model: model, display: display))
+        case .collapsed: return AnyView(NotchTab(model: model, display: display, underHousing: hasHousing(display)))
         case .toast: return AnyView(NotchToast(model: model, display: display, act: act))
         case .expanded:
             let drag: (Bool) -> Void = { [weak self] began in self?.dragChanged(began, display: display) }
-            let housing = provider.displays.first { $0.id == display }.map(NotchGeometry.hasNotch) ?? true
             return AnyView(
-                NotchExpanded(model: model, display: display, underHousing: housing, drag: drag, act: act))
+                NotchExpanded(
+                    model: model, display: display, underHousing: hasHousing(display), drag: drag, act: act))
         }
     }
 

@@ -15,6 +15,8 @@ public enum IslandLook {
     public static let fade = 16.0
     /// The concave curve that brings the top edge in to the body on a notch display (D-NL4).
     public static let flare = 6.0
+    /// The card's content sits this far from the body's sides (D-NL6); the inner radius follows from it.
+    public static let cardInset = 16.0
 
     public enum Outline {
         public static let width = 1.0
@@ -26,7 +28,7 @@ public enum IslandLook {
         public static var tab: Double { IslandLayout.Metrics.collapsedRadius }
         public static var toast: Double { IslandLayout.Metrics.toastRadius }
         public static var card: Double { IslandLayout.Metrics.expandedRadius }
-        /// Anything inside the card, concentric with it: the card radius minus the card's side inset (16).
-        public static var inner: Double { card - 16 }
+        /// Anything inside the card, concentric with it: the card radius minus the card's side inset.
+        public static var inner: Double { card - cardInset }
     }
 }

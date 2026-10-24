@@ -52,7 +52,7 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     let model = NotchHUDModel()
     private(set) var board = NotchHUDBoard()
     private(set) weak var hosts: IslandHosts?
-    let provider: any DisplayGeometryProvider
+    private let provider: any DisplayGeometryProvider
     let clock: any MonotonicClock
     private let signposter = OSSignposter(subsystem: "app.zivlet.Zivlet", category: "hud")
     private var pending: [(point: CGPoint?, interval: OSSignpostIntervalState)] = []
@@ -194,6 +194,17 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
             self.apply(self.board.expiring(now: clock.now()))
         }
         expiry = (deadline, task)
+    }
+
+    /// The content hangs under a camera housing on `display`: read from the host's own display, the one its flare and
+    /// top inset come from. A display the island no longer has (mid-reconfiguration) is logged and laid out as a
+    /// notch display, which never puts content behind a camera.
+    func hasHousing(_ display: UInt32) -> Bool {
+        guard let geometry = hosts?.display(display) else {
+            Self.logger.error("Notch HUD content for display \(display) with no host; laid out under a housing")
+            return true
+        }
+        return NotchGeometry.hasNotch(geometry)
     }
 
     /// The display that holds `point`, else the menu-bar display; nil when the island has no display at all.

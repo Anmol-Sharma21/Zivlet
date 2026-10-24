@@ -12,7 +12,9 @@ import ZivletRuntime
 struct NotchCardLayoutTests {
     @Test func theWorkingCardIsTwoRows() throws {
         let card = NotchWorkingCard(snapshot: try HUDFx.running(JobProgress(fraction: 0.4, eta: .seconds(40)))) {}
-        let size = try #require(ImageRenderer(content: card.frame(width: NotchCard.contentWidth)).nsImage).size
+        let size = try #require(
+            ImageRenderer(content: card.frame(width: NotchCard.contentWidth(underHousing: true))).nsImage
+        ).size
         #expect(size.height <= NotchLook.Card.workingHeight)
     }
 
@@ -29,6 +31,12 @@ struct NotchCardLayoutTests {
         #expect(NotchWorkingCard.details(unknown) == ["12.4 MB written"] && NotchWorkingCard.percent(unknown) == nil)
     }
 
+    /// 19b §3.1: the tab's ends sit 8 pt in under a housing, 12 pt in from the pill's round ends.
+    @Test func thePillsTabKeepsItsGlyphsClearOfTheRoundEnds() {
+        #expect(NotchTab.sideInset(underHousing: true) == NotchLook.Spacing.s)
+        #expect(NotchTab.sideInset(underHousing: false) == NotchLook.Spacing.m)
+    }
+
     @Test func cancelIsTheCardsOnlyPress() { #expect(NotchWorkingCard.presses == [.cancel]) }
 
     @Test func theCardSitsInsideTheBodyOnTheGrid() {
@@ -36,7 +44,8 @@ struct NotchCardLayoutTests {
         #expect(NotchCard.topInset(underHousing: true) == NotchLook.Spacing.s)  // the housing's black is above it
         #expect(NotchCard.topInset(underHousing: false) == NotchLook.Spacing.m)  // the pill: as far as the bottom
         #expect(NotchCard.bottomInset == NotchLook.Spacing.m)
-        #expect(NotchCard.contentWidth == 380 - 2 * 6 - 2 * 16)
+        #expect(NotchCard.contentWidth(underHousing: true) == CGFloat(380 - 2 * 6 - 2 * 16))
+        #expect(NotchCard.contentWidth(underHousing: false) == CGFloat(380 - 2 * 16))  // the pill has no flare
     }
 
     // MARK: Result card (D14)
@@ -71,7 +80,7 @@ struct NotchCardLayoutTests {
     }
 
     private func card(_ model: ResultCardModel, _ state: CardState) -> some View {
-        NotchResultCard(model: model, state: state, width: NotchCard.contentWidth) { _ in }
+        NotchResultCard(model: model, state: state, width: NotchCard.contentWidth(underHousing: true)) { _ in }
     }
 
     // MARK: Failure and action cards (D15)
@@ -85,14 +94,16 @@ struct NotchCardLayoutTests {
 
     @Test func theFailureCardsButtonsSitBesideItsLines() throws {  // seen on screen: a row of its own left a gap
         let model = ResultCardModel(try HUDFx.failed(error: .diskFull))
-        let card = NotchFailureCard(model: model, state: CardState(), width: NotchCard.contentWidth) { _ in }
+        let card = NotchFailureCard(model: model, state: CardState(), width: NotchCard.contentWidth(underHousing: true))
+        { _ in }
         let size = try #require(ImageRenderer(content: card).nsImage).size
         #expect(size.height <= NotchLook.Card.failureHeight)
     }
 
     @Test func aReasonThatFitsBesideTheButtonsStaysOnOneLine() throws {  // seen on screen: it wrapped at half width
         let model = ResultCardModel(try HUDFx.failed(error: .diskFull))
-        let card = NotchFailureCard(model: model, state: CardState(), width: NotchCard.contentWidth) { _ in }
+        let card = NotchFailureCard(model: model, state: CardState(), width: NotchCard.contentWidth(underHousing: true))
+        { _ in }
         let size = try #require(ImageRenderer(content: card).nsImage).size
         #expect(size.height <= 40)  // one line of reason, one of name
     }

@@ -12,8 +12,8 @@ enum NotchLook {
         static let s: CGFloat = 8
         /// Toast side inset; card bottom inset; pill side inset.
         static let m: CGFloat = 12
-        /// Card side inset.
-        static let l: CGFloat = 16
+        /// Card side inset: the island's own token, so the inner radius follows it.
+        static let l = CGFloat(IslandLook.cardInset)
         /// The toast's row (as M5a).
         static let rowHeight: CGFloat = 36
         /// The band under the housing that holds the tab (as M5a).

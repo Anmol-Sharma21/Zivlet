@@ -16,7 +16,7 @@ struct NotchList: View {
             }
             if let more = model.board.moreLabel(on: display) { NotchCaption(text: more) }
         }
-        .frame(width: NotchCard.contentWidth, alignment: .topLeading)
+        .frame(width: NotchCard.contentWidth(underHousing: underHousing), alignment: .topLeading)
         .padding(.top, NotchCard.topInset(underHousing: underHousing))
         .padding(.bottom, NotchCard.bottomInset)
         .frame(maxWidth: .infinity)

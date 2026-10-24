@@ -25,8 +25,8 @@ struct NotchExpanded: View {
 }
 
 /// One item's card inside the island's body (19b §3.1, §5): 8 pt below the housing (12 pt from the top of a pill),
-/// 16 pt from the body's sides (after the 6 pt flare), 12 pt above the bottom edge, so content is concentric with the
-/// 24 pt corners.
+/// 16 pt from the body's sides (after the 6 pt flare on a notch display), 12 pt above the bottom edge, so content is
+/// concentric with the 24 pt corners.
 struct NotchCard: View {
     static let sideInset = NotchLook.Spacing.l
     static let bottomInset = NotchLook.Spacing.m
@@ -34,7 +34,14 @@ struct NotchCard: View {
     /// Below a housing its black band already sits above the content; a pill gets the bottom's inset at the top too.
     static func topInset(underHousing: Bool) -> CGFloat { underHousing ? NotchLook.Spacing.s : bottomInset }
 
-    static let contentWidth = IslandLayout.Metrics.expandedWidth - 2 * IslandLook.flare - 2 * sideInset
+    /// The body's width less the card's insets: under a housing the body is the frame less the two flares; the pill
+    /// has no flare, so its content is 16 pt from the body's sides too.
+    static func contentWidth(underHousing: Bool) -> CGFloat {
+        let flare = underHousing ? IslandLook.flare : 0
+        return IslandLayout.Metrics.expandedWidth - 2 * flare - 2 * sideInset
+    }
+
+    private var contentWidth: CGFloat { Self.contentWidth(underHousing: underHousing) }
 
     let model: NotchHUDModel
     let item: NotchHUDItem
@@ -43,7 +50,7 @@ struct NotchCard: View {
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
 
     var body: some View {
-        content.frame(width: Self.contentWidth, alignment: .topLeading)
+        content.frame(width: contentWidth, alignment: .topLeading)
             .padding(.top, Self.topInset(underHousing: underHousing)).padding(.bottom, Self.bottomInset)
             .frame(maxWidth: .infinity)
     }
@@ -68,7 +75,7 @@ struct NotchCard: View {
             batch(snapshot, id: id)
         case .action:
             if case .action(let index) = id, let action = model.actions[index] {
-                NotchActionCard(model: action, width: Self.contentWidth) { act($0, id) }
+                NotchActionCard(model: action, width: contentWidth) { act($0, id) }
             }
         }
     }
@@ -81,9 +88,9 @@ struct NotchCard: View {
             let press: (ResultCardModel.Button) -> Void = { act(NotchHUD.Press($0), id) }
             if face == .result {
                 NotchResultCard(
-                    model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, onDrag: drag, act: press)
+                    model: ResultCardModel(snapshot), state: state, width: contentWidth, onDrag: drag, act: press)
             } else {
-                NotchFailureCard(model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, act: press)
+                NotchFailureCard(model: ResultCardModel(snapshot), state: state, width: contentWidth, act: press)
             }
         }
     }

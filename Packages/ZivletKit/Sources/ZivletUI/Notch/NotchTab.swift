@@ -8,6 +8,13 @@ import ZivletNotchCore
 struct NotchTab: View {
     let model: NotchHUDModel
     let display: UInt32
+    /// The tab sits in the band under a housing, not in a pill.
+    let underHousing: Bool
+
+    /// 8 pt under a housing; 12 pt in a pill, clear of its round ends (19b §3.1).
+    static func sideInset(underHousing: Bool) -> CGFloat {
+        underHousing ? NotchLook.Spacing.s : NotchLook.Spacing.m
+    }
 
     var body: some View {
         HStack(spacing: NotchLook.Spacing.s) {
@@ -21,7 +28,7 @@ struct NotchTab: View {
                 NotchStatusGlyph(tab: tab)
             }
         }
-        .padding(.horizontal, NotchLook.Spacing.s)
+        .padding(.horizontal, Self.sideInset(underHousing: underHousing))
         .frame(maxWidth: .infinity)
         .frame(height: NotchLook.Spacing.tabBand)
         .accessibilityHidden(true)

@@ -23,6 +23,14 @@ struct NotchHUDClientTests {
         #expect(rig.hosts.surface(on: 1) == .hidden)
     }
 
+    /// The card's layout follows the host's own display (the one its flare and top inset come from): under a housing
+    /// on the notch display, a pill on the plain one.
+    @Test func theCardKnowsWhetherItHangsUnderAHousingFromTheHostsDisplay() throws {
+        let rig = try NotchRig.both()
+        defer { rig.hosts.close() }
+        #expect(rig.hud.hasHousing(1) && !rig.hud.hasHousing(2))
+    }
+
     @Test func aCancelledActionShowsNothing() throws {
         let rig = try NotchRig.notch()
         defer { rig.hosts.close() }
