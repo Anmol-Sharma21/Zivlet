@@ -1,7 +1,8 @@
 # QA checklist: the notch island and the Notch HUD (M5a)
 
 Owner step OP-4 in [12](../12-implementation-plan-m5a-notch.md) §7, rows Q1–Q22 of
-[design/19](../../design/19-notch.md) §10, and Q23–Q26 added after the M5a review. Unit and shell tests already cover the island's rules (layout, the
+[design/19](../../design/19-notch.md) §10, Q23–Q26 added after the M5a review, and Q27–Q32 for the design pass of
+[plan 14](../14-implementation-plan-notch-design.md) ([design/19b](../../design/19b-notch-look.md)). Unit and shell tests already cover the island's rules (layout, the
 machine, the arbiter, the board, the presenter on off-screen displays) and the exit runner covers one conversion at
 the notch and one near the drop. These rows check what only real hardware, a real pointer and the system's
 assistive technologies show.
@@ -11,7 +12,11 @@ assistive technologies show.
 - A Debug build: `make app`. Quit any running Zivlet first (`osascript -e 'quit app "Zivlet"'`).
 - Settings › General › Progress and results: "At the notch" unless a row says otherwise. For a one-off run without
   changing the setting: `open -n build/DerivedData/Build/Products/Debug/Zivlet.app --args -ZivletHUDPlacement notch`.
-- Made-up jobs without a drop: add `-ZivletIslandPreview collapsed|progress|indeterminate|expanded|result|failure`.
+- Made-up jobs without a drop: add `-ZivletIslandPreview collapsed|progress|indeterminate|expanded|result|failure`,
+  or `savedToast|failureToast|actionToast|list`. Debug-only screenshot flags (plan 14 D-ND4), which leave the system
+  settings alone: `-ZivletIslandFinish glass|solid|contrast`, `-ZivletIslandPill YES`, `-ZivletIslandReduceMotion YES`,
+  `-ZivletIslandBackdrop white|black`. `make notch-states` captures every state into `build/notch-states/`. The rows
+  below use the real system settings, not these flags.
   A real conversion: `make convert-demo FILE=/abs/file.heic TO=jpg PLACEMENT=notch`.
 - At the top of the run, record the macOS build, the Mac model, the display modes and refresh rates, and the Zivlet
   commit.
@@ -46,7 +51,7 @@ assistive technologies show.
 | # | Check | Steps | Expected | Result |
 |---|---|---|---|---|
 | Q11 | VoiceOver | Turn VoiceOver on; convert one file that saves and one that fails; run a Copy action; move VoiceOver focus to the island and away | Announcements: the start, "Saved …" and the toast at normal priority, the failure at high priority; the collapsed island reads "Zivlet progress and results" and its full text; the toast reads "2.1 MB to 640 KB", not an arrow; focus opens and holds the card, moving away collapses it; toasts last three times as long | |
-| Q12 | Display options | Turn on Reduce Motion, then Increase Contrast, then Reduce Transparency; hover a preview each time | Reduce Motion: a fade, no growing shape. Increase Contrast: a thin white outline. Reduce Transparency: no change (the island is solid black) | |
+| Q12 | Display options | Turn on Reduce Motion, then Increase Contrast, then Reduce Transparency; hover a preview each time | Reduce Motion: a fade, no growing shape, and content only fades in (no scale). Increase Contrast: the toast and card turn solid grey under the black band, a thin white outline runs round every surface (the tab included), and the icon buttons show their round background without hover. Reduce Transparency: the toast and card turn solid grey under the black band; the tab stays black | |
 | Q18 | Keyboard only | Without touching the pointer: Control-F8 to the status menu, choose "Show Progress and Results"; Tab through the card; Escape | The island opens with keyboard focus; Tab reaches Cancel, Undo, Reveal, Open, Copy and Retry as the job offers them; Escape closes it; Cancel and Undo also work from the status menu | |
 | Q19 | Voice Control | Say "Show Progress and Results" through the menu, then "click Undo" and "click Retry" in the island | Each command acts on the island's button | |
 | Q20 | Switch Control | Reach the island through the status menu or its accessibility action and press Undo before the toast leaves | Undo works; toasts last three times as long while Switch Control runs | |
@@ -65,10 +70,25 @@ assistive technologies show.
 |---|---|---|---|---|
 | Q23 | The keyboard goes back when the card goes | Type in TextEdit; open a failure card by hover (`-ZivletIslandPreview failure`), click into its details text, then move the pointer away and wait for the card to collapse; type | The characters go to TextEdit, not to the island | |
 | Q24 | The card grows evenly | Hover the collapsed tab and the toast several times; record the screen and step through the first frames | The island grows from the housing to both sides at once, with no sideways jump; the corners round as it grows; the old content fades into the new | |
-| Q25 | Long names | Convert a file whose name is about 80 characters at the notch; let one with a long name fail; watch a long one run with the card open | The saved toast keeps the sizes and the extension; the failure toast keeps the whole reason, with no "." before the "·"; the working line keeps the percent and the time left | |
+| Q25 | Long names | Convert a file whose name is about 80 characters at the notch; let one with a long name fail; watch a long one run with the card open | The saved toast keeps the sizes and the extension; the failure toast keeps the whole reason (without its full stop) and shortens the name beside it; the working line keeps the percent and the time left | |
 | Q26 | A new display mode under the island | With a job collapsed, and again with the card open, change the built-in display's scaled resolution in System Settings › Displays | The island moves under the housing at once; no content sits behind the camera; the card's corners and inset match the new mode | |
 
+## F. After the design pass ([plan 14](../14-implementation-plan-notch-design.md))
+
+| # | Check | Steps | Expected | Result |
+|---|---|---|---|---|
+| Q27 | Glass legibility | Light wallpaper, then dark, then a busy photo; show a saved toast, a working card and the pill (`-ZivletIslandPill YES`); repeat with a text-heavy window (a terminal, a web page) right under the pill's card | All text readable; no part of a line looks washed out; note whether window text behind shows through the glass | |
+| Q28 | The band meets the menu bar | Light wallpaper with a translucent menu bar; open a card; screenshot | No seam between the housing and the band; the black beside the housing is acceptable (owner's call) | |
+| Q29 | The flare | Collapsed and expanded on the notch; look closely at the top corners; a crowded menu bar | The island grows out of the screen edge; it covers no menu title or status item while collapsed (Q13 still holds) | |
+| Q30 | Icon buttons | Hover each button; Voice Control "click Undo", "click Reveal", "click Retry"; Tab through them | Tooltips show today's words; Voice Control finds every button; the focus ring is visible | |
+| Q31 | Light appearance | Switch macOS to Light, show a toast and a card | The island stays dark with white text | |
+| Q32 | Motion | Hover the tab and the toast; with Reduce Motion on, again | Content grows in with the shape; under Reduce Motion only fades | |
+
 ## Known gaps to look at during the run
+
+- Glass shows what lies behind it, blurred: in the design pass's screenshots, a terminal's title under the pill's
+  result card showed faintly through the glass at the height of the second line (Q27). The contrast check over a
+  plain white panel cannot see this; the scrim (0.5) is one token if the owner wants less of it.
 
 - Show Progress and Results and the accessibility action now hold a saved result while the island has the keyboard
   (D-M5a-19); clicking elsewhere gives the keyboard back and the full linger starts again. Note in Q18–Q20 whether

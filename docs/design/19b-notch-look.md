@@ -1,6 +1,7 @@
 # 19b — Notch island look: Liquid Glass, fewer words, redraw only what changes
 
-Date: 2026-10-24. Status: design for the owner, with probe evidence; not built. Inputs:
+Date: 2026-10-24. Status: built on the local branch `notch-design` by [plan 14](../plan/14-implementation-plan-notch-design.md);
+what was built, measured and not seen is in [15-notch-design-record](../plan/15-notch-design-record.md). Inputs:
 [00-decisions](00-decisions.md) OWN-UI-1 (2026-10-23), [19-notch](19-notch.md) (D-N3, D-N5, D-N7, D-N10, §3.4, §4.3,
 §5.5), [17e-app §2a](17e-app.md), [13-m5a-record](../plan/13-m5a-record.md) (G-M5a-1, X6) and
 [qa/notch.md](../plan/qa/notch.md). The implementation plan is
