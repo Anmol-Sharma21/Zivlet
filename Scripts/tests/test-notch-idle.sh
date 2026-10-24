@@ -27,6 +27,11 @@ for state in baseline hidden collapsed progress indeterminate; do assert_contain
 # plan 14 D20 (19b §6.3): the still glass card and the glass pill with progress, with their limits.
 assert_contains "$out" "debug state card-still 0.1 -ZivletHUDPlacement notch -ZivletIslandPreview expanded"
 assert_contains "$out" "debug state pill-progress 1 -ZivletHUDPlacement notch -ZivletIslandPreview progress -ZivletIslandPill YES"
+# Design review: progress fast enough that the 250 ms floor holds steps back, and the pill with the same progress on
+# the solid finish, to compare with glass; WindowServer's CPU is reported beside every row, for information.
+assert_contains "$out" "debug state fast-progress 1 -ZivletHUDPlacement notch -ZivletIslandPreview fastProgress"
+assert_contains "$out" "debug state pill-progress-solid 1 -ZivletHUDPlacement notch -ZivletIslandPreview progress -ZivletIslandPill YES -ZivletIslandFinish solid"
+assert_contains "$out" "debug also samples WindowServer"
 
 if grep -q "xcodebuild" <<<"$out"; then fail "the debug run measures make app's build and builds nothing"; fi
 

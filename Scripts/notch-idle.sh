@@ -3,7 +3,10 @@
 # state is one launch: wait for it to settle, sample with idle-cpu.sh, quit. Baseline: "Near the drop" and no job
 # (it includes the trigger host, Sparkle and the rest of the app). Then: the island hidden, collapsed and still,
 # collapsed with progress input at 10 Hz (drawn at most 4 Hz, D-N7), the stepped glyph, and since the design pass
-# (19b §6.3) the working card open and still on glass, and the glass pill with progress. A toast lingers 4 s
+# (19b §6.3) the working card open and still on glass, and the glass pill with progress; since the design review,
+# progress fast enough that the 250 ms floor holds ring steps back, and the pill with the same progress on the solid
+# finish. WindowServer's CPU over the same window is printed beside each row, for information (glass is drawn
+# there, not in the app); it has no limit. A toast lingers 4 s
 # (D-N11), so no still toast can be measured for 120 s; the still card stands in for still glass. These numbers are taken on
 # whatever else the Mac is doing; the record says so.
 # CONFIG=debug (default) measures make app's Debug build. CONFIG=release builds an optimised app into
@@ -36,6 +39,8 @@ STATES=(
     "indeterminate|-ZivletHUDPlacement notch -ZivletIslandPreview indeterminate|1"
     "card-still|-ZivletHUDPlacement notch -ZivletIslandPreview expanded|0.1"
     "pill-progress|-ZivletHUDPlacement notch -ZivletIslandPreview progress -ZivletIslandPill YES|1"
+    "fast-progress|-ZivletHUDPlacement notch -ZivletIslandPreview fastProgress|1"
+    "pill-progress-solid|-ZivletHUDPlacement notch -ZivletIslandPreview progress -ZivletIslandPill YES -ZivletIslandFinish solid|1"
 )
 
 say() { echo "$CONFIG $*"; }
@@ -46,6 +51,7 @@ BUILD=(xcodebuild -project Zivlet.xcodeproj -scheme Zivlet -configuration Releas
 if [[ "$DRY_RUN" == 1 ]]; then
     if [[ "$CONFIG" == release ]]; then say "build ${BUILD[*]}"; fi
     say "app $APP"
+    say "also samples WindowServer over each window (information, no limit)"
     for state in "${STATES[@]}"; do
         IFS='|' read -r name arguments limit <<<"$state"
         say "state $name ${limit:-baseline} $arguments"
@@ -81,15 +87,22 @@ quit_app() {
     pkill -x Zivlet || true
 }
 
-# One launch: prints the CPU percentage of the state.
+# One launch: prints the app's CPU percentage of the state, then WindowServer's over the same window (or "n/a").
 sample_state() {
-    local pid
+    local pid server app server_file
     quit_app
     # shellcheck disable=SC2086 # the arguments are words on purpose
     open -n "$APP" --args -ZivletRevealResults NO $1
     sleep "$SETTLE"
     pid=$(pgrep -nx Zivlet) || { echo "error: Zivlet did not start" >&2; return 1; }
-    "$REPO_ROOT/Scripts/idle-cpu.sh" "$pid" "$SECONDS_PER_STATE"
+    server_file=$(mktemp)
+    if server=$(pgrep -x WindowServer); then
+        "$REPO_ROOT/Scripts/idle-cpu.sh" "$server" "$SECONDS_PER_STATE" >"$server_file" 2>/dev/null &
+    fi
+    app=$("$REPO_ROOT/Scripts/idle-cpu.sh" "$pid" "$SECONDS_PER_STATE")
+    wait || true
+    echo "$app $(cat "$server_file" 2>/dev/null || true)"
+    rm -f "$server_file"
 }
 
 trap quit_app EXIT
@@ -98,15 +111,17 @@ status=0
 baseline=""
 for state in "${STATES[@]}"; do
     IFS='|' read -r name arguments limit <<<"$state"
-    value=$(sample_state "$arguments")
+    result=$(sample_state "$arguments")
+    read -r value server <<<"$result"
+    server="WindowServer ${server:-n/a} %"
     if [[ -z "$limit" ]]; then
         baseline=$value
-        say "$name $value %"
+        say "$name $value % ($server)"
         continue
     fi
     verdict=$(awk -v v="$value" -v b="$baseline" -v l="$limit" \
         'BEGIN { d = v - b; printf "%.3f %s", d, (d <= l ? "pass" : "FAIL") }')
-    say "$name $value % (over baseline ${verdict% *} %, limit $limit %) ${verdict#* }"
+    say "$name $value % (over baseline ${verdict% *} %, limit $limit %) ${verdict#* } ($server)"
     [[ "$verdict" == *pass ]] || status=1
 done
 say "load average at end: $(sysctl -n vm.loadavg)"
