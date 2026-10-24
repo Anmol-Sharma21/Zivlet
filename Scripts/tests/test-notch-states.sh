@@ -12,6 +12,13 @@ out=$(PATH="$T/bin:$PATH" ZIVLET_STATES_DRY_RUN=1 "$ROOT/Scripts/demo-notch-stat
 for state in collapsed progress indeterminate expanded result failure failureToast actionToast savedToast list; do
     assert_contains "$out" "notch-$state-glass.png"
 done
+# The rest of 19b §5, added in the design review: the owner sees every state before merge (OWN-UI-1).
+for state in jobs failedTab doneTab; do assert_contains "$out" "notch-$state-glass.png after collapsed"; done
+for state in actionCard failureDetails indeterminateCard resultFiles; do
+    assert_contains "$out" "notch-$state-glass.png after expanded"
+done
+assert_contains "$out" "pill-jobs-glass.png"
+assert_contains "$out" "pill-list-glass.png"
 assert_contains "$out" "pill-collapsed-glass.png"
 assert_contains "$out" "notch-result-solid.png"
 assert_contains "$out" "notch-result-contrast.png"

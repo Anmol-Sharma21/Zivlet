@@ -43,8 +43,9 @@ extension AppDelegate {
             }
         }
 
-        /// Shows the preview's jobs (or its action) on the Notch HUD, opens its card after a second when the state
-        /// asks, and feeds `.progress` a new snapshot ten times a second until the app quits.
+        /// Shows the preview's jobs (or its action) on the Notch HUD, shows the details and opens its card after a
+        /// second when the state asks, and feeds `.progress` and `.fastProgress` a new snapshot ten times a second
+        /// until the app quits.
         private func runIslandPreview(_ preview: IslandPreview) throws {
             let hud = island.hud
             let snapshots = try preview.snapshots()
@@ -54,6 +55,8 @@ extension AppDelegate {
                 hud.show(snapshot)
             }
             if let action = preview.action { hud.show(action, near: nil) }
+            // Show Details before the island opens, so the card is measured with its details from the start.
+            if preview.showsDetails, let first = snapshots.first { hud.press(.showDetails, on: first.batch) }
             if preview.opens {
                 Task { [island] in
                     guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }

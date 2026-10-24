@@ -18,8 +18,12 @@ MIN_CONTRAST=4.5
 # file | surface to wait for | launch arguments | contrast box (x y w h in points, from the frame's top left) or empty
 CAPTURES=()
 add() { CAPTURES+=("$1|$2|$3|${4:-}"); }
-for state in collapsed progress indeterminate; do add "notch-$state-glass" collapsed "-ZivletIslandPreview $state"; done
-for state in expanded result failure list; do add "notch-$state-glass" expanded "-ZivletIslandPreview $state"; done
+for state in collapsed progress indeterminate jobs failedTab doneTab; do
+    add "notch-$state-glass" collapsed "-ZivletIslandPreview $state"
+done
+for state in expanded result failure list actionCard failureDetails indeterminateCard resultFiles; do
+    add "notch-$state-glass" expanded "-ZivletIslandPreview $state"
+done
 for state in savedToast failureToast actionToast; do add "notch-$state-glass" toast "-ZivletIslandPreview $state"; done
 for finish in solid contrast; do
     add "notch-collapsed-$finish" collapsed "-ZivletIslandPreview collapsed -ZivletIslandFinish $finish"
@@ -28,6 +32,9 @@ for finish in solid contrast; do
     add "notch-result-$finish" expanded "-ZivletIslandPreview result -ZivletIslandFinish $finish"
 done
 add "pill-collapsed-glass" collapsed "-ZivletIslandPreview collapsed -ZivletIslandPill YES"
+add "pill-jobs-glass" collapsed "-ZivletIslandPreview jobs -ZivletIslandPill YES"
+add "pill-list-glass" expanded "-ZivletIslandPreview list -ZivletIslandPill YES"
+add "pill-result-contrast" expanded "-ZivletIslandPreview result -ZivletIslandPill YES -ZivletIslandFinish contrast"
 add "pill-savedToast-glass" toast "-ZivletIslandPreview savedToast -ZivletIslandPill YES"
 add "pill-result-glass" expanded "-ZivletIslandPreview result -ZivletIslandPill YES"
 add "pill-result-solid" expanded "-ZivletIslandPreview result -ZivletIslandPill YES -ZivletIslandFinish solid"
