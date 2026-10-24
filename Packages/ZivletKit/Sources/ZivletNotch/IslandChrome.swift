@@ -1,8 +1,8 @@
 import SwiftUI
 import ZivletNotchCore
 
-/// What the island draws, set by its host: the shape's rectangle, its corners, the client's content for the surface
-/// and the accessibility text of the island group.
+/// What the island draws, set by its host: the shape's rectangle, its corners and the client's content for the
+/// surface. The island group's accessibility text lives in `IslandAccessibilityModel`.
 @Observable
 final class IslandChromeModel {
     var panelSize = CGSize(width: 1, height: 1)
@@ -17,18 +17,13 @@ final class IslandChromeModel {
     var scrolls = false
     var surface = IslandSurface.hidden
     var content = AnyView(EmptyView())
-    var accessibilityLabel = ""
-    var accessibilityValue = ""
-    var accessibilityActionName = ""
-    var onAccessibilityAction: () -> Void = {}
-    var onAccessibilityFocus: (Bool) -> Void = { _ in }
 }
 
-/// The black island (D-N10) with the client's content, inside a transparent panel-sized canvas. One accessibility
-/// group with a label, a value and the "show" action; accessibility focus entering or leaving reaches the machine.
+/// The black island (D-N10) with the client's content, inside a transparent panel-sized canvas, as one accessibility
+/// group (`IslandAccessibility`).
 struct IslandChrome: View {
     let model: IslandChromeModel
-    @AccessibilityFocusState private var focused: Bool
+    let accessibility: IslandAccessibilityModel
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
@@ -56,12 +51,7 @@ struct IslandChrome: View {
         }
         .clipShape(shape)
         .opacity(model.opacity)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(model.accessibilityLabel)
-        .accessibilityValue(model.accessibilityValue)
-        .accessibilityAction(named: model.accessibilityActionName) { model.onAccessibilityAction() }
-        .accessibilityFocused($focused)
-        .onChange(of: focused) { _, now in model.onAccessibilityFocus(now) }
+        .modifier(IslandAccessibility(model: accessibility))
     }
 
     @ViewBuilder private var content: some View {

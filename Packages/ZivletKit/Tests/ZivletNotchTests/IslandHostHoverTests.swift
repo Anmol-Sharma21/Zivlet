@@ -97,7 +97,7 @@ struct IslandHostHoverTests {
         host.apply([.show(.collapsed, display: 1, contentHeight: 0)])
         host.performAccessibilityAction()
         #expect(client.actions == 1)
-        #expect(host.chrome.accessibilityLabel == "Fake island" && host.chrome.accessibilityValue == "3 lines")
+        #expect(host.accessibility.label == "Fake island" && host.accessibility.value == "3 lines")
         host.close()
     }
 }

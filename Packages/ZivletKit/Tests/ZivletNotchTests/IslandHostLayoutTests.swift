@@ -1,5 +1,6 @@
 import AppKit
 import NotchTestSupport
+import Synchronization
 import Testing
 import ZivletCore
 import ZivletNotchCore
@@ -64,6 +65,28 @@ struct IslandHostLayoutTests {
         client.lines = 5
         host.refreshAccessibility()
         #expect(host.accessibilityValue == "5 lines")
+        host.close()
+    }
+
+    @Test func aNewSpokenValueDoesNotInvalidateTheChrome() throws {
+        let client = FakeClient()
+        let host = makeHost(try OffscreenDisplays.notch(), client: client)
+        host.apply([.show(.collapsed, display: 1, contentHeight: 0)])
+        let invalidated = Mutex(false)
+        withObservationTracking {
+            _ = IslandChrome(model: host.chrome, accessibility: host.accessibility).body
+            _ = host.chrome.shapeRect
+            _ = host.chrome.content
+            _ = host.chrome.surface
+            _ = host.chrome.opacity
+            _ = host.chrome.topRadius
+            _ = host.chrome.bottomRadius
+        } onChange: {
+            invalidated.withLock { $0 = true }
+        }
+        client.lines = 5
+        host.refreshAccessibility()
+        #expect(!invalidated.withLock { $0 } && host.accessibility.value == "5 lines")
         host.close()
     }
 

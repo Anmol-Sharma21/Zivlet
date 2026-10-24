@@ -12,8 +12,8 @@ extension IslandHost {
         panel.onResignKey = { [weak self] in self?.panelDidResignKey() }
         tracking.onEnter = { [weak self] in self?.trackingEntered() }
         tracking.onExit = { [weak self] in self?.trackingExited() }
-        chrome.onAccessibilityFocus = { [weak self] in self?.accessibilityFocusChanged($0) }
-        chrome.onAccessibilityAction = { [weak self] in self?.performAccessibilityAction() }
+        accessibility.onFocus = { [weak self] in self?.accessibilityFocusChanged($0) }
+        accessibility.onAction = { [weak self] in self?.performAccessibilityAction() }
     }
 
     // MARK: Deadlines
@@ -116,15 +116,16 @@ extension IslandHost {
     }
 
     /// The island group's label, value and action: on every surface change, and whenever the client's spoken text
-    /// changes (progress), so the collapsed value matches what the expanded view shows (design/19 §5.5).
+    /// changes (progress), so the collapsed value matches what the expanded view shows (design/19 §5.5). Only the
+    /// accessibility model changes; the island is not redrawn (19b §6.2).
     func refreshAccessibility() {
         let id = display.id
         let label = client.accessibilityLabel(display: id)
         let value = client.accessibilityValue(display: id)
         let action = client.accessibilityActionName
-        if chrome.accessibilityLabel != label { chrome.accessibilityLabel = label }
-        if chrome.accessibilityValue != value { chrome.accessibilityValue = value }
-        if chrome.accessibilityActionName != action { chrome.accessibilityActionName = action }
+        if accessibility.label != label { accessibility.label = label }
+        if accessibility.value != value { accessibility.value = value }
+        if accessibility.actionName != action { accessibility.actionName = action }
     }
 
     /// The surface's view; inside the transition's animation it cross-fades with the old one.

@@ -24,6 +24,7 @@ public final class IslandHost {
 
     let panel = IslandPanel()
     let chrome = IslandChromeModel()
+    let accessibility = IslandAccessibilityModel()
     let client: any IslandClient
     let clock: any MonotonicClock
     let pointer: () -> CGPoint
@@ -276,14 +277,14 @@ public final class IslandHost {
         return CGRect(x: frame.midX + local.minX, y: frame.maxY - local.maxY, width: local.width, height: local.height)
     }
 
-    /// The island group's accessibility value as the chrome holds it.
-    public var accessibilityValue: String { chrome.accessibilityValue }
+    /// The island group's accessibility value as the island holds it.
+    public var accessibilityValue: String { accessibility.value }
 
     /// The shape's target rectangle in global points: what the pointer is checked against.
     var shapeOnScreen: CGRect { targetFrame(surface) }
 
     private func prewarm() {
-        let view = NSHostingView(rootView: IslandChrome(model: chrome))
+        let view = NSHostingView(rootView: IslandChrome(model: chrome, accessibility: accessibility))
         view.sizingOptions = []
         view.autoresizingMask = [.width, .height]
         tracking.addSubview(view)
