@@ -102,7 +102,7 @@ struct NotchHUDBoardListTests {
         #expect(toast.expiring(now: t0 + .seconds(1)).announcements.isEmpty)
     }
 
-    @Test func progressRedrawsOnlyWhenThePercentChangesAtMostFourTimesASecond() throws {
+    @Test func progressRedrawsOnlyWhenTheRingChangesAtMostFourTimesASecond() throws {
         let running = try HUDFx.running(JobProgress(fraction: 0.4))
         let job = try #require(running.items.first?.job)
         func at(_ fraction: Double) -> BatchSnapshot {
@@ -116,6 +116,18 @@ struct NotchHUDBoardListTests {
         let soon = same.updating(at(0.41), display: 1, now: t0 + .milliseconds(100))
         #expect(!soon.redraw)
         #expect(soon.updating(at(0.41), display: 1, now: t0 + .milliseconds(260)).redraw)
+    }
+
+    @Test func aNewPercentTheRingCannotDrawDoesNotRedraw() throws {  // 19b D-NL12: 84 steps of about 1.2 % each
+        let running = try HUDFx.running(JobProgress(fraction: 0.4048))  // step 34 of 84, 40 %
+        let job = try #require(running.items.first?.job)
+        func at(_ fraction: Double) -> BatchSnapshot {
+            running.applying(.changed(running.batch, job, .running(JobProgress(fraction: fraction))))
+        }
+        let first = NotchHUDBoard().updating(running, display: 1, now: t0)
+        let percent = first.updating(at(0.41), display: 1, now: t0 + .milliseconds(300))  // 41 %, still step 34
+        #expect(!percent.redraw)
+        #expect(percent.updating(at(0.417), display: 1, now: t0 + .milliseconds(600)).redraw)  // step 35
     }
 
     @Test func aFinishAlwaysRedraws() throws {

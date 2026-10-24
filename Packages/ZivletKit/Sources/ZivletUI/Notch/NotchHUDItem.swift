@@ -40,7 +40,7 @@ public struct TabContent: Sendable, Equatable {
         self.failed = failed
     }
 
-    /// The same tab apart from the ring's percent or step, which redraws at most four times a second.
+    /// The same tab apart from the ring's drawn step or the stepped glyph, which redraw at most four times a second.
     func sameShape(as other: TabContent) -> Bool {
         icon == other.icon && count == other.count && failed == other.failed && ring.kind == other.ring.kind
     }
@@ -55,10 +55,11 @@ extension TabContent.Ring {
         }
     }
 
-    /// What is drawn: whole percents, so 40.1 % and 40.2 % are the same picture.
+    /// What is drawn: the ring's visible step (19b §6.2, D-NL12), so a new percent the ring cannot show is the same
+    /// picture and neither redraws the tab nor refreshes the spoken value.
     var shown: Int {
         switch self {
-        case .fraction(let value): Int((value * 100).rounded(.down))
+        case .fraction(let value): VisibleProgress(value, steps: NotchHUDBoard.ringSteps).step
         case .step(let step): step
         case .done: 0
         }
