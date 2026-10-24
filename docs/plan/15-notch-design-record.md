@@ -1,11 +1,14 @@
 # 15 — Notch design pass: record
 
-Date: 2026-10-24. Status: **tasks D0–D20 of [plan 14](14-implementation-plan-notch-design.md) committed on the local
-branch `notch-design`; not merged, not pushed**. Every gate and exit row passes except **X6 (idle CPU)**: on a busy
+Date: 2026-10-24, design review 2026-10-25 (§8). Status: **tasks D0–D20 of
+[plan 14](14-implementation-plan-notch-design.md) and the design review's fixes committed on the local branch
+`notch-design`; not merged, not pushed**. Every gate and exit row passed in runs A–E except **X6 (idle CPU)**: on a busy
 Mac the progress row and the new glass pill row sit around the 1 % limit on both builds, and on the Debug app they
-failed in all five exit runs (+1.08 % to +1.32 %), also after `c70cdad` (§3). **G-M5a-1 is not closed** (§3). The owner has not yet reviewed the
-screenshots of every state (OWN-UI-1, OS-2) or run Q27–Q32 ([qa/notch.md](qa/notch.md)), so the branch is not ready to
-merge.
+failed in all five exit runs (+1.08 % to +1.32 %) (§3). **G-M5a-1 is open** (§3, §8.3): plan 14 closes it only when
+progress passes on both builds. The review's fixes were not measured for CPU and their new screenshots were not taken,
+because the Mac's screen was locked and its display asleep for the whole review run (§8.3). The owner has not yet
+reviewed the screenshots of every state (OWN-UI-1, OS-2) or run Q27–Q38 ([qa/notch.md](qa/notch.md)), so the branch is
+not ready to merge.
 
 This is a record, not a plan. The design is [design/19b](../design/19b-notch-look.md), the owner decision OWN-UI-1 in
 [00-decisions](../design/00-decisions.md). This file says what was built, the gate and CPU numbers with the load on
@@ -53,7 +56,7 @@ Fixes found by looking at the screenshots or the profile (each with its own test
 | `b49d072` | A card in the pill sat 8 pt from the top, 12 pt from the bottom | 12 pt at the top when there is no housing |
 | `9f5ca1d` | Profile of X6 progress on Debug: the tab redrew and the spoken value was pushed at every percent | the tab redraws at the ring's visible step (84 a turn) |
 | `1f7c010` | The final failure card wrapped its reason after three words: the button row's spacer took half the row | the text has layout priority over the buttons |
-| `c70cdad` | Profile of X6 progress on Debug after `9f5ca1d`: a new percent the ring cannot draw left the published key behind, so every snapshot until the ring's next step ran a full board transition that drew nothing | a snapshot also stops when the last applied board has its key and no step held back by the 250 ms floor waits; main-thread busy samples over 20 s 159 → 131 |
+| `c70cdad` | Profile of X6 progress on Debug after `9f5ca1d`: a new percent the ring cannot draw left the published key behind, so every snapshot until the ring's next step ran a full board transition that drew nothing | a snapshot also stops when the last applied board has its key and no step held back by the 250 ms floor waits (replaced by one rule with a wake-up in `7d70d4f`, §8); its CPU effect is not demonstrated (§3) |
 
 ## 2. Gates and exit rows (2026-10-24, run C, macOS 27.0, Xcode 27, M2 Pro 14-inch, at `1f7c010`)
 
@@ -135,9 +138,11 @@ load average 15–21; both passed when repeated at load 9–20. X6:
 | pill with progress, glass (1 %) | +1.075 % **fail** | +0.842 % | Debug +1.134 % **fail** |
 
 Release's still "collapsed" row draws nothing; alone right after it read −0.017 %, so its +0.209 % was the Mac (as run
-C's Release "hidden"). `c70cdad` cut the Debug main thread's busy samples in the progress preview by about a sixth
-(159 → 131 of about 13,500 over 20 s, load about 8), but the whole-app number stayed within the noise of earlier runs:
-the main thread alone is still busy about 1 % of the time on Debug.
+C's Release "hidden"). Two single 20 s `sample` runs, one before and one at `c70cdad`, counted 159 and 131 busy
+main-thread samples (of about 13,500, load about 8). That is one unrepeated sample each, taken at different load; it is
+not evidence that `c70cdad` lowered CPU. The whole-app Debug number (+1.242 % in run D, +1.184 % in run E) moved by
+less than the ±0.4 % run-to-run noise above. The main thread alone is still busy about 1 % of the time on Debug, which
+is roughly the whole margin over the baseline.
 
 What this says:
 
@@ -199,9 +204,9 @@ Over black (`notch-result-black.png`) the glass is near black; it was captured, 
 | DV2 | D9: a `DisplayOptions` protocol with a workspace adapter and a change stream; `IslandHosts(finishOverride:)` | the app reads the two settings and hands them to `IslandHosts.finishSettingsChanged`, which passes them to every host; the debug override uses the same call | one entry point, no new protocol; tests drive it directly |
 | DV3 | D10: read the button's label from the accessibility tree in a test | the test checks the titles the button uses | SwiftUI builds no accessibility tree without an assistive client; Voice Control stays QA row Q30 |
 | DV4 | D7: a token enum named `Type` | `NotchLook.TypeStyle` | `Type` cannot name a member in Swift |
-| DV5 | D13: content width | fixed 336 pt (380 − 2 × 6 flare − 2 × 16) for the card and the list, centred on the pill too | the measurer and the views agree on one width |
+| DV5 | D13: content width | first a fixed 336 pt (380 − 2 × 6 flare − 2 × 16) for the card and the list, on the pill too; since the review (`03a6925`) 348 pt on the pill, which has no flare | the fixed width put the pill's content 22 pt from its sides, off the grid |
 | DV6 | D14 | a partly failed batch stays on the result card (thumbnail, Reveal), whose first line keeps the model's title | the failure card has no thumbnail; the partial result has saved files |
-| DV7 | D15: Show Details toggles `chevron.down` to `chevron.up` | `chevron.down` only | Show Details disappears once the details show (M5a); there is no hide press |
+| DV7 | D15: Show Details toggles `chevron.down` to `chevron.up` | `chevron.down` only; 19b §3.3 now says so (`557d633`) | Show Details disappears once the details show (M5a); there is no hide press |
 | DV8 | D16: the row's title | a failed row names the file beside "Failed" | seen on screen (§1) |
 | DV9 | D17: content leaves in 0.12 s ease-out | it leaves with opacity inside the surface's animation | one animation per surface change; the springs are unchanged |
 | DV10 | D18: states `list`, `actionToast`, `failureToast` | also `savedToast`; `list` opens; a `-ZivletIslandReduceMotion YES` debug flag | the saved toast is the contrast row; the list only shows when open; the owner's Reduce Motion setting stays untouched |
@@ -223,23 +228,104 @@ Over black (`notch-result-black.png`) the glass is near black; it was captured, 
   white-panel contrast check cannot see this. The scrim is one token (0.5, 19b D-NL2); raising it, or using the
   solid finish for the pill's card, is the owner's call (Q27). The notch's own toasts and cards were not affected in
   these screenshots: their band and the dark menu bar sat behind them.
-- **The open working card and the list follow the ring's step, not every percent** (found by reading the code in
-  run E, not seen on screen): since `9f5ca1d` the board publishes on the tab's ring step (84 a turn, about 1.2 %), and
-  the card's percent, bar and time left, and the list rows' percent, read the published board. So while a card is
-  open its percent can skip a number (48 % to 50 %) and its time left can lag by up to one ring step. Publishing at
-  every percent while a card or the list is open would need the HUD to know the island is open (it does not today);
-  this is left for the owner to decide with G-M5a-1.
+- ~~The open working card and the list follow the ring's step, not every percent~~: fixed in the review (`7d70d4f`,
+  §8); not yet seen on screen (Q37).
 - 120 Hz smoothness of the flare, the glass and the content transition was not judged (screenshots only).
-- WindowServer's share of the glass was not measured.
+- WindowServer's share of the glass was not measured; since `638bfd7` X6 prints it beside every row, but no X6 run
+  has happened since (§8.3).
 - Voice Control "click Undo" and the focus ring of the icon buttons were not tried (Q30).
 - The open points of plan 14 §6 are unanswered: (a) icon-only Undo and Retry, (b) the family symbol in the tab, (c)
   "Saved" as the toast's first word. The build follows 19b's choices (symbols with tooltips; family symbol; "Saved").
+
+## 8. Design review (2026-10-25)
+
+A review of the branch at `83da6f3` returned 26 findings (swift, look, perf and failure lenses). Each was checked
+against the code before it was changed; every behaviour change has a test that failed first. Commits on
+`notch-design`, after `83da6f3`:
+
+| Commit | What |
+|---|---|
+| `23b1f5b` | A cancelled batch (every job cancelled: nothing saved, nothing failed) gets the stop glyph `stop.circle.fill` and Close in its toast, card and list row; before, the card showed the failure triangle while the toast showed the saved check mark, and the row offered Reveal and Open with no file. The card is picked from `BatchPresentation`'s phase, which `ResultCardModel` now carries; "Saved …" comes from the phase, not from the buttons |
+| `a261ea5` | The shape is one closed contour (the lips joined to the body by a union), and the Increase Contrast outline is its own shape: one line inside the edge, open along the screen edge on a notch display |
+| `03a6925` | The pill's card and list sit 16 pt from the body's sides (348 pt wide, was 336 with a 22 pt margin); the pill's tab uses the 12 pt inset; whether content hangs under a housing comes from the host's own display (`NotchHUD.hasHousing`, logged when the host is missing); `provider` is private again; the card inset is one token (`IslandLook.cardInset`) |
+| `82a0359` | Tests that only restated a token are gone or check a relation |
+| `657bb0c` | A new Reduce Transparency or Increase Contrast setting changes a shown island at once (a card can stay open until closed); the buttons' resting circle follows the island's outlined finish (an environment value), so the forced screenshot finish and the real setting match |
+| `d703023` | The result card measures its second line with the font it draws it in (tabular digits, one `NSFont` token) and keeps a 2 pt margin |
+| `7d70d4f` | One redraw rule for the tab and the open card (19b §6.2): the board knows which displays are open, an open card follows its own percent, bar and time left at most every 250 ms, a change held back by the floor has a deadline, `NotchHUD.show` drops a snapshot when the latest applied board has its key, and the key is worked out once per snapshot in one pass over the items |
+| `557d633` | Cancel is `stop.fill` (it sat beside Close's X in the list); decorative symbols are hidden from VoiceOver; the bar is a `ProgressView` to VoiceOver; 19b §3.3 updated (the cancelled glyph, Cancel, Show Details disappears) |
+| `4451234` | A refused screenshot flag is logged in public (the flag's name only) and fails the capture; yes/no flags take YES or NO only; `png-luminance.swift` refuses a bad `POINT_WIDTH` or a box not wholly inside the image |
+| `313dd93` | Preview states and captures for the rest of 19b §5 (three jobs, failed tab, done tab, action card, failure with details, unknown-length card, three files with a note; pill tab with three jobs, pill list, pill result under Increase Contrast) and a fast progress state |
+| `638bfd7` | X6 rows for fast progress (2 % a tick, about 17 ring steps a second, so the floor holds steps back) and for the solid pill with the same progress; WindowServer's CPU printed beside every row |
+
+### 8.1 Findings
+
+| # | Finding | Result |
+|---|---|---|
+| R1 | (swift, medium) a cancelled batch went to the failure card; toast and card disagreed | fixed `23b1f5b` |
+| R2 | (swift, medium) two update paths: the open card followed the ring's step | fixed `7d70d4f` |
+| R3 | (swift, medium) `buttonsFitBeside` measured with another font, no margin | fixed `d703023`, measuring kept: `ViewThatFits` over the card would also compare the primary line's full ideal width, which truncates by design |
+| R4 | (swift, low) a new finish setting waited for the next surface | fixed `657bb0c` |
+| R5 | (swift, low) `Radius.inner` hard-coded the card inset | fixed `03a6925` |
+| R6 | (swift, low) `provider` widened to internal | fixed `03a6925` |
+| R7 | (swift, low) tests restating constants; a misnamed 250 ms test | fixed `82a0359` |
+| R8 | (look, medium) the outline drew a seam per lip and a line along the screen edge | fixed `a261ea5`; the new contrast screenshot was not taken (§8.3) |
+| R9 | (look, medium) pill content 22 pt from its sides | fixed `03a6925`; not yet seen on screen |
+| R10 | (look, medium) states missing from the preview and the captures | fixed `313dd93`, QA row Q33; the new pictures were not taken (§8.3) |
+| R11 | (look, low) button circle followed SwiftUI's contrast, not the forced finish | fixed `657bb0c` |
+| R12 | (look, low) monospaced digits under-measured | fixed `d703023` (same as R3) |
+| R13 | (look, low) decorative symbols read by VoiceOver; the bar had no value | fixed `557d633`; no automated test (SwiftUI builds no accessibility tree without an assistive client, DV3); Q38 |
+| R14 | (look, low) Cancel and Close both an X | fixed `557d633` |
+| R15 | (look, low) Show Details has no hide state; spec and build disagreed | fixed in 19b §3.3 (`557d633`): the button disappears, as M5a |
+| R16 | (look, low) the pill's tab used the 8 pt inset | fixed `03a6925` |
+| R17 | (perf, medium) the record must not claim G-M5a-1 fixed or cite 159 → 131 as a CPU fix | fixed in this record (status, §1, §3): G-M5a-1 open, the sample called unrepeated; no A/B runs were made |
+| R18 | (perf, medium) the gate did little for fast jobs; no wake-up for a held step | fixed `7d70d4f`; fast-progress row added `638bfd7`, not yet measured (§8.3) |
+| R19 | (perf, low) `VisibleKey` built arrays and ran twice per snapshot | fixed `7d70d4f`; a many-file X6 row was not added: each row costs 130 s per build, and the key no longer allocates; the cost of a drop of hundreds of files stays unmeasured |
+| R20 | (perf, low) WindowServer's share of glass not recorded | script fixed `638bfd7` (column plus a solid pill row); not yet measured (§8.3) |
+| R21 | (perf, low) the progress row measures the preview driver, not a real `ProgressSink` job | skipped: a real job reaches `NotchHUD.show` the same way, at most 10 Hz on the main thread (`ProgressSink` throttles; `ConversionWiring.present` calls `show` and `menu.track`), and only the snapshot's construction happens off the main thread; a real-job row needs a two-minute conversion fixture. Judging X6 on Release only stays the owner's call (§3, option 3) |
+| R22 | (failure, medium) the same as R4, with a test flipping the setting while a card is open | fixed `657bb0c` |
+| R23 | (failure, low) a missing display silently meant "under a housing" | fixed `03a6925`: the host's display, logged when missing |
+| R24 | (failure, low) a refused flag reset every flag silently; "yes" meant NO | fixed `4451234`; the capture script's log check has no shell test (it needs the app and the unified log) |
+| R25 | (failure, low) `png-luminance` clamped a misplaced box, read a bad point width as scale 1 | fixed `4451234` |
+| R26 | (failure, low) success inferred from the buttons; an action card's empty title | first part fixed `23b1f5b`; second skipped: every `ActionResult` that reaches the island has a toast or a card (`.cancelled` returns before the board), so the empty fallback cannot be drawn |
+
+### 8.2 Decisions added
+
+| # | Decision | Why |
+|---|---|---|
+| DV15 | `IslandClient.surfaceChanged(_:display:)` with a default empty implementation; the host calls it before asking for the new surface's content | the board needs to know the island is open to follow the open card; the client brings the card up to date before it is drawn |
+| DV16 | The cancelled glyph `stop.circle.fill`, Cancel `stop.fill` | the stop shape says what happened and what the button does; neither is the dismissal X |
+| DV17 | The demo presses Show Details before it opens the failure card | the capture crops the first frame after the surface, so the card has to be measured with its details |
+
+### 8.3 Gates (2026-10-25, at `638bfd7`, macOS 27.0, Xcode 27, M2 Pro 14-inch)
+
+The Mac's screen was **locked and its display asleep** for the whole run (`CGSessionCopyCurrentDictionary`
+`CGSSessionScreenIsLocked = 1`, `CGDisplayIsAsleep = 1`), and the load average rose from about 9 to 47 (other work on
+the Mac). Nothing that needs drawn frames could be measured or captured.
+
+| Gate | Result |
+|---|---|
+| `make test` | 1240 tests; 3 failed, all outside the island and all waiting for drawn frames: `WheelControllerTests.theFirstFrameEndsTheTriggerToFrameSignpost`, `WheelControllerTests.hideFadesOutAndResets` (they failed again alone) and `SystemAdapterTests.samplerDeliversFramesUntilStopped`. No wheel or trigger source changed on this branch since `83da6f3`; with the display asleep no frame arrives. Not re-run with the screen awake |
+| `make lint` | pass (swift-format strict, log privacy) |
+| `make coverage` | the script stops on the three failures above; the same tests with only those three skipped (`swift test --enable-code-coverage --skip …`), then the script's report: ZivletCore 98 %, ZivletTrigger 100 %, ZivletWheelCore 99 %, ZivletEngineKit 97 %, EngineMedia 97 %, EngineImage 95 %, ZivletRuntime 95 %, ZivletTriggerHost 88 % (92 % in run C; the skipped frame test covers part of it), ZivletWheel 95 %, ZivletActions 91 %, ZivletSettings 96 %, ZivletUI 94 %, ZivletNotchCore 98 %, ZivletNotch 95 %; every module ≥ 80 % |
+| `make app` | pass (Debug build succeeded) |
+| `make release-check` | pass (no Homebrew path, no island preview, size OK) |
+| `make licence-gate` | pass (13 components) |
+| `make script-test` | pass (including the extended `test-notch-states.sh` and `test-notch-idle.sh`) |
+| X1 | the gates above |
+| X2–X5 | **not run**: X2's 50 ms timing at load 47 and X3's screenshot need an awake, unlocked screen |
+| X6 (`make notch-idle`, Debug and Release) | **not run**: with the display asleep the island draws nothing, so the numbers would read low and mean nothing. The review's CPU effect (R2, R18, R19) is unmeasured; the last measured values are run E's (§3): Debug progress +1.184 % (fail), Release +0.825 % (pass) |
+| `make notch-states` | **not run** (locked screen); the screenshots of the review's changes (R8, R9, R10, R14, R16, the cancelled glyph) were not taken |
+| X7 | see the commit that adds this section |
+
+G-M5a-1 stays **open**: progress failed on Debug in every measured run, and the review's redraw change has not been
+measured yet.
 
 ## 7. Owner steps
 
 | # | Step |
 |---|---|
 | OS-1 | Answer plan 14 §6 (a)–(c) |
-| OS-2 | Review the screenshots of every state: run `make notch-states` (they go to `build/notch-states/`, not tracked) |
-| OS-3 | Run Q27–Q32 and the open M5a rows Q1–Q26 on real hardware |
+| OS-2 | Review the screenshots of every state: run `make notch-states` with the screen awake (they go to `build/notch-states/`, not tracked); the review's new states are listed in Q33 |
+| OS-5 | With the Mac awake and quiet, run `make test`, `Scripts/m5a-exit.sh --only X2,X3,X4,X5,X6` and `make notch-idle CONFIG=release`, then fill in §8.3 (the review's CPU numbers, WindowServer, the fast-progress and solid-pill rows) |
+| OS-3 | Run Q27–Q38 and the open M5a rows Q1–Q26 on real hardware |
 | OS-4 | Merge `notch-design` into `main` and push when satisfied (the assistant never pushes) |

@@ -84,6 +84,20 @@ assistive technologies show.
 | Q31 | Light appearance | Switch macOS to Light, show a toast and a card | The island stays dark with white text | |
 | Q32 | Motion | Hover the tab and the toast; with Reduce Motion on, again | Content grows in with the shape; under Reduce Motion only fades | |
 
+## G. After the design review ([15 §8](../15-notch-design-record.md))
+
+Screenshots of every state below come from `make notch-states` (`build/notch-states/`, not tracked); the owner looks
+at them before merge (OWN-UI-1). The rows that need a real job or a real setting are checked by hand.
+
+| # | Check | Steps | Expected | Result |
+|---|---|---|---|---|
+| Q33 | Every state's picture | Run `make notch-states`; open `notch-jobs-glass`, `notch-failedTab-glass`, `notch-doneTab-glass`, `notch-actionCard-glass`, `notch-failureDetails-glass`, `notch-indeterminateCard-glass`, `notch-resultFiles-glass`, `pill-jobs-glass`, `pill-list-glass`, `pill-result-contrast` | "3 jobs" with one ring; the triangle in the failed tab; the check mark in the done tab; the action card shows five lines and "and 3 more"; the details box with the inner radius; "12.4 MB written" in the unknown-length card; "Saved 3 files" with the note as a caption; the pill's tab glyphs 12 pt from its ends; the pill's card and list 16 pt from its sides | |
+| Q34 | A cancelled batch | Drop a long video at the notch, open the card and press Cancel (the stop symbol) | The toast and the card show the stop glyph with "Cancelled" and "Nothing was saved."; only Close is offered; no triangle, no check mark | |
+| Q35 | The outline under Increase Contrast | Turn on Increase Contrast with the tab, a toast and a card showing on the notch | One continuous thin line down each lip, side and along the bottom; no line along the screen edge beside or across the housing; no seam where a lip meets a side | |
+| Q36 | Settings while a card is open | Let a conversion fail so its card stays; open it and keep the pointer on it; turn on Reduce Transparency, then Increase Contrast, then both off | The open card changes finish at once each time (solid grey, then outlined), and its buttons' resting circle appears and goes with the outline | |
+| Q37 | The open card's percent | Watch a long conversion with the card open | The percent counts every whole number (no 48 → 50 jumps); the time left changes as soon as its text would; the collapsed ring still moves smoothly | |
+| Q38 | VoiceOver on the island | With VoiceOver on, move through a card and the list | The family and status symbols are not read before the text; the working card's bar is read as a progress indicator with its value | |
+
 ## Known gaps to look at during the run
 
 - Glass shows what lies behind it, blurred: in the design pass's screenshots, a terminal's title under the pill's

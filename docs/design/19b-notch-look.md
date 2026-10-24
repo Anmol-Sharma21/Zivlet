@@ -289,6 +289,12 @@ pixel.
   refreshed on every drawn change, so VoiceOver reads what is drawn (§5.5 of design/19).
 - **Equality before publish.** `NotchHUD.apply` already publishes only on a drawn change; with the visible key in front
   of it, nothing reaches it between drawn changes.
+- **One redraw rule** (design review, [15 §8](../plan/15-notch-design-record.md)). What a display draws is its tab
+  plus, while the card or the list is open, each batch's visible key. It redraws when its layout changes, or when that
+  picture changes at least 250 ms after the last redraw. So the collapsed tab follows the ring's step, and an open card
+  follows its own percent, bar and time left; the island tells its client of each surface change before asking for its
+  content. A change the floor holds back adds its redraw time to the board's next deadline, so the HUD wakes once to
+  draw it, and `NotchHUD.show` drops a snapshot whenever the latest applied board already has its key.
 - **Window layout pass.** If the 18 samples of AppKit layout per redraw remain after the three changes, the plan's task
   D5 tries `NSHostingView.sizingOptions = []` on the measurer as well and a fixed-size container for the tab, and
   records the result either way.
@@ -309,8 +315,8 @@ limit), because the glass is composited there.
 
 | Setting or tool | Behaviour |
 |---|---|
-| Reduce Transparency | solid grey 0.11 below the black band (D-NL3); read from `NSWorkspace.accessibilityDisplayShouldReduceTransparency` and its change notification, applied at the next surface change |
-| Increase Contrast | solid plus the 1 pt outline; icon buttons show their round background at white 0.18 at all times, so they are visible without hover |
+| Reduce Transparency | solid grey 0.11 below the black band (D-NL3); read from `NSWorkspace.accessibilityDisplayShouldReduceTransparency` and its change notification; a shown island changes at once, a hidden one at its next surface |
+| Increase Contrast | solid plus the 1 pt outline, one line open along the screen edge on a notch display; icon buttons show their round background at white 0.18 at all times (they follow the island's outlined finish), so they are visible without hover |
 | Reduce Motion | D-N5 unchanged; content transitions use opacity only (§3.4) |
 | VoiceOver | label, value, custom action and announcements unchanged; icon buttons carry today's titles as labels |
 | Voice Control | "click Undo", "click Retry" work through the labels; tooltips show the same words on hover |
