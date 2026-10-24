@@ -73,7 +73,8 @@ struct NotchStatusGlyph: View {
     }
 }
 
-/// One of the island's SF Symbols at tab size, white, in a 16 pt box.
+/// One of the island's SF Symbols at tab size, white, in a 16 pt box. Decorative: the text beside it, or the island
+/// group's spoken value, already says what it means, so VoiceOver skips it.
 struct NotchSymbol: View {
     static let saved = "checkmark.circle.fill"
     static let failed = "exclamationmark.triangle.fill"
@@ -86,6 +87,7 @@ struct NotchSymbol: View {
         Image(systemName: name).font(NotchLook.Symbol.tab)
             .foregroundStyle(NotchInk.primary)
             .frame(width: NotchLook.Symbol.tabBox, height: NotchLook.Symbol.tabBox)
+            .accessibilityHidden(true)
     }
 
     /// A done action shows the check mark: the result does not say which action ran (19b D-NL10).

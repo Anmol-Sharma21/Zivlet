@@ -21,6 +21,14 @@ struct NotchIconButtonTests {
         #expect(Set(NotchHUD.Press.allCases.map(NotchIconButton.symbol)).count == NotchHUD.Press.allCases.count)
     }
 
+    /// Cancel stops a running conversion and Close only dismisses; they sit in the same column of the list, so they
+    /// must not both be an X.
+    @Test func cancelAndCloseAreDifferentShapes() {
+        let cancel = NotchIconButton.symbol(.cancel)
+        #expect(cancel == "stop.fill")
+        #expect(!cancel.hasPrefix("xmark") && NotchIconButton.symbol(.close).hasPrefix("xmark"))
+    }
+
     @Test func theHitAreaIs28Points() throws {
         let image = try #require(ImageRenderer(content: NotchIconButton(press: .undo) {}).nsImage)
         #expect(image.size == CGSize(width: 28, height: 28))

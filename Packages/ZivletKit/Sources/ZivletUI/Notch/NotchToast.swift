@@ -13,7 +13,7 @@ struct NotchToast: View {
         HStack(spacing: NotchLook.Spacing.s) {
             if let glyph = model.board.toastGlyph(on: display) {
                 Image(systemName: NotchSymbol.name(for: glyph)).font(NotchLook.Symbol.toast)
-                    .foregroundStyle(NotchInk.primary)
+                    .foregroundStyle(NotchInk.primary).accessibilityHidden(true)  // the line says saved or failed
             }
             if let line = model.board.toastStyledLine(on: display) {
                 HStack(spacing: NotchLook.Spacing.s) {

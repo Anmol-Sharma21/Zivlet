@@ -70,7 +70,8 @@ struct NotchWorkingCard: View {
     }
 }
 
-/// The working card's bar: a 3 pt capsule, white on white 0.3, one visible step at a time (19b §3.3, §6.2).
+/// The working card's bar: a 3 pt capsule, white on white 0.3, one visible step at a time (19b §3.3, §6.2). VoiceOver
+/// reads it as a progress indicator with its value, as M5a's ProgressView was.
 struct NotchBar: View {
     let progress: VisibleProgress
 
@@ -83,5 +84,6 @@ struct NotchBar: View {
         }
         .frame(height: NotchLook.Bar.height)
         .frame(maxWidth: .infinity)
+        .accessibilityRepresentation { ProgressView(value: progress.fraction) }
     }
 }

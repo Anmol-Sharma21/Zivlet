@@ -30,10 +30,10 @@ struct NotchIconButton: View {
     /// Today's words for the press (the M5a button titles), unchanged.
     static func title(_ press: NotchHUD.Press) -> String { NotchListRow.title(press) }
 
-    /// The symbol of 19b §3.3.
+    /// The symbol of 19b §3.3 (Cancel changed from an X in the design review: it sat beside Close's X in the list).
     static func symbol(_ press: NotchHUD.Press) -> String {
         switch press {
-        case .cancel: "xmark"
+        case .cancel: "stop.fill"  // stops a conversion: not the X that only dismisses
         case .undo: "arrow.uturn.backward"
         case .reveal: "folder"
         case .open: "arrow.up.forward.app"

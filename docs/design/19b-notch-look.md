@@ -131,14 +131,15 @@ next to the chrome, and content tokens (spacing, type, symbols, ink) in `ZivletU
 |---|---|
 | saved | `checkmark.circle.fill` |
 | failed (shape, not colour) | `exclamationmark.triangle.fill` |
+| cancelled (every job of a batch stopped; nothing saved, nothing failed) | `stop.circle.fill` |
 | format family: image, video, audio, document, spreadsheet, subtitle, archive | `photo`, `film`, `waveform`, `doc.text`, `tablecells`, `captions.bubble`, `archivebox` |
-| Cancel | `xmark` |
+| Cancel | `stop.fill` (changed from `xmark` in the design review: it sat beside Close's X in the list) |
 | Undo | `arrow.uturn.backward` |
 | Reveal | `folder` |
 | Open | `arrow.up.forward.app` |
 | Copy | `doc.on.doc` |
 | Retry | `arrow.clockwise` |
-| Show Details / hide | `chevron.down` / `chevron.up` |
+| Show Details | `chevron.down`; the button disappears once the details show (as M5a; there is no hide press) |
 | Close | `xmark.circle` |
 
 ### 3.4 Motion
@@ -226,6 +227,7 @@ how they are split over the two text styles. New strings are marked *new*. "Left
 | Card, working | row 1: family symbol, name and target, percent right; row 2: bar, time left right | "holiday.mov → MP4" (name gives way) | "40%"; "< 1 min" | Cancel | "Converting to MP4, holiday.mov, 40%, less than a minute left" (unchanged) |
 | Card, saved | thumbnail 40 pt left; two lines; buttons on the right of the second line when they fit, else a row below | "Saved photo.jpg" | "2.1 MB → 640 KB"; notes and the undo reply as captions | Undo, Reveal, Open, Copy | unchanged |
 | Card, failed | triangle; reason up to two lines; details box (radius 8) when shown | the reason | the file name | Show Details, Retry, Close | unchanged |
+| Card, cancelled | stop glyph; the failure card's layout | "Cancelled" | "Nothing was saved." | Close | unchanged |
 | Card, action partial or failed | glyph; title; up to five caption lines, "and 3 more" | the card's title | its lines | Undo, Show details, Close | unchanged |
 | List row | ring or glyph, one line, buttons right | the row's title (gives way) | percent, size line or "Failed" (*new* for the failed row's short status) | as M5a per status (Cancel; Reveal, Open; Retry, Close; Close; Undo) | unchanged |
 | "+2 more" | caption under the rows | — | "+2 more" | — | unchanged |
