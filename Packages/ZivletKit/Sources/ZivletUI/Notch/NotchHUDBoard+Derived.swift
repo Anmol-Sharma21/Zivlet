@@ -117,7 +117,7 @@ extension NotchHUDBoard {
 
     private static func icon(_ item: NotchHUDItem) -> TabContent.Icon {
         guard let snapshot = item.snapshot else { return .action }
-        return .file(snapshot.current?.item.name ?? snapshot.items.first?.name ?? "")
+        return .family(FormatRegistry.standard.format(snapshot.target).family)
     }
 
     /// The one-line form of an item: "Saved photo.jpg · 2.1 MB → 640 KB", the failure's title and reason, the

@@ -60,7 +60,7 @@ struct NotchListRow: View {
         case .working(nil): NotchSteps(step: 0)
         case .saved: NotchSymbol(name: NotchSymbol.saved)
         case .failed: NotchSymbol(name: NotchSymbol.failed)
-        case .action: NotchSymbol(name: NotchSymbol.action)
+        case .action: NotchSymbol(name: NotchSymbol.saved)
         }
     }
 

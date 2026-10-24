@@ -6,14 +6,10 @@ import SwiftUI
 enum NotchInk {
     static let secondaryOpacity = 0.8
     static let trackOpacity = 0.3
-    /// M5a's ring track, until the glyphs move to the tokens.
-    static let ringTrackOpacity = 0.4
-    static let ringLineWidth: CGFloat = 2.5
-    static let glyphSide: CGFloat = 14
 
     static let primary = Color.white
     static let secondary = Color.white.opacity(secondaryOpacity)
-    static let track = Color.white.opacity(ringTrackOpacity)
+    static let track = Color.white.opacity(trackOpacity)
 
     /// WCAG contrast of white at `textOpacity` over the black island.
     static func contrast(textOpacity: Double) -> Double { contrast(textOpacity: textOpacity, over: 0) }

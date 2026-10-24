@@ -1,48 +1,39 @@
-import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
+import ZivletCore
 
-/// The source file's icon in the tab, or an action's icon.
-struct NotchIcon: View {
+/// The tab's left end (19b D-NL10): the target's family symbol, or the check mark of a done action.
+struct NotchTabIcon: View {
     let icon: TabContent.Icon
 
     var body: some View {
         switch icon {
-        case .file(let name):
-            Image(nsImage: Self.image(for: name)).resizable().interpolation(.high)
-                .frame(width: NotchInk.glyphSide + 2, height: NotchInk.glyphSide + 2)
-        case .action:
-            NotchSymbol(name: NotchSymbol.action)
+        case .family(let family): NotchFamilySymbol(family: family)
+        case .action: NotchSymbol(name: NotchSymbol.saved)
         }
     }
-
-    /// The system icon for the name's type; a name without a known extension gets the generic document icon. One
-    /// image per type: the tab redraws with every visible progress step, and a new image each time would make
-    /// SwiftUI draw the icon again as well.
-    static func image(for name: String) -> NSImage {
-        let type = UTType(filenameExtension: (name as NSString).pathExtension) ?? .data
-        if let known = icons[type] { return known }
-        let icon = NSWorkspace.shared.icon(for: type)
-        icons[type] = icon
-        return icon
-    }
-
-    /// Icons already asked for, per type; main-actor state, a few entries at most.
-    private static var icons: [UTType: NSImage] = [:]
 }
 
-/// The progress ring (design/19 §5.5): fill white, track white at 0.4, so it meets the 3:1 of WCAG 1.4.11.
+/// What kind of file is being made, as a white symbol in the tab's 16 pt box.
+struct NotchFamilySymbol: View {
+    let family: FormatFamily
+
+    var body: some View { NotchSymbol(name: NotchSymbol.name(for: family)) }
+}
+
+/// The progress ring (19b §3.3, D-NL11): 16 pt, a 2.5 pt line, fill white on a white 0.3 track, so it meets the 3:1
+/// of WCAG 1.4.11 on black, glass and the solid finish.
 struct NotchRing: View {
     let fraction: Double
 
     var body: some View {
         ZStack {
-            Circle().stroke(NotchInk.track, lineWidth: NotchInk.ringLineWidth)
+            Circle().stroke(NotchInk.track, lineWidth: NotchLook.Ring.lineWidth)
             Circle().trim(from: 0, to: min(max(fraction, 0), 1))
-                .stroke(NotchInk.primary, style: StrokeStyle(lineWidth: NotchInk.ringLineWidth, lineCap: .round))
+                .stroke(NotchInk.primary, style: StrokeStyle(lineWidth: NotchLook.Ring.lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
-        .frame(width: NotchInk.glyphSide, height: NotchInk.glyphSide)
+        .padding(NotchLook.Ring.lineWidth / 2)
+        .frame(width: NotchLook.Ring.side, height: NotchLook.Ring.side)
     }
 }
 
@@ -54,12 +45,13 @@ struct NotchSteps: View {
 
     var body: some View {
         ZStack {
-            Circle().stroke(NotchInk.track, lineWidth: NotchInk.ringLineWidth)
+            Circle().stroke(NotchInk.track, lineWidth: NotchLook.Ring.lineWidth)
             Circle().trim(from: 0, to: 0.25)
-                .stroke(NotchInk.primary, style: StrokeStyle(lineWidth: NotchInk.ringLineWidth, lineCap: .round))
+                .stroke(NotchInk.primary, style: StrokeStyle(lineWidth: NotchLook.Ring.lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(Double(step % Self.positions) * 360 / Double(Self.positions) - 90))
         }
-        .frame(width: NotchInk.glyphSide, height: NotchInk.glyphSide)
+        .padding(NotchLook.Ring.lineWidth / 2)
+        .frame(width: NotchLook.Ring.side, height: NotchLook.Ring.side)
     }
 }
 
@@ -81,25 +73,37 @@ struct NotchStatusGlyph: View {
     }
 }
 
-/// One of the island's SF Symbols at glyph size, white.
+/// One of the island's SF Symbols at tab size, white, in a 16 pt box.
 struct NotchSymbol: View {
     static let saved = "checkmark.circle.fill"
     static let failed = "exclamationmark.triangle.fill"
-    static let action = "doc.on.doc"
 
     let name: String
 
     var body: some View {
-        Image(systemName: name).font(.system(size: NotchInk.glyphSide - 1, weight: .semibold))
+        Image(systemName: name).font(NotchLook.Symbol.tab)
             .foregroundStyle(NotchInk.primary)
-            .frame(width: NotchInk.glyphSide + 2, height: NotchInk.glyphSide + 2)
+            .frame(width: NotchLook.Symbol.tabBox, height: NotchLook.Symbol.tabBox)
     }
 
+    /// A done action shows the check mark: the result does not say which action ran (19b D-NL10).
     static func name(for glyph: ToastGlyph) -> String {
         switch glyph {
-        case .saved: saved
+        case .saved, .action: saved
         case .failed: failed
-        case .action: action
+        }
+    }
+
+    /// The target's format family (19b §3.3).
+    static func name(for family: FormatFamily) -> String {
+        switch family {
+        case .image: "photo"
+        case .audio: "waveform"
+        case .video: "film"
+        case .document: "doc.text"
+        case .spreadsheet: "tablecells"
+        case .subtitle: "captions.bubble"
+        case .archive: "archivebox"
         }
     }
 }

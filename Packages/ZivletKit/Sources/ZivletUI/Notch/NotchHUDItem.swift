@@ -9,12 +9,12 @@ public enum NotchHUDItemID: Sendable, Hashable {
     case action(Int)
 }
 
-/// What the collapsed tab shows (design/19 §4.3): icon left, count in the middle, ring, stepped glyph or error glyph
-/// right.
+/// What the collapsed tab shows (design/19 §4.3, 19b D-NL10): the target's family symbol left, count in the middle,
+/// ring, stepped glyph or error glyph right.
 public struct TabContent: Sendable, Equatable {
     public enum Icon: Sendable, Equatable {
-        /// The source file's name, for its icon.
-        case file(String)
+        /// The format family of the batch's target: what is being made.
+        case family(FormatFamily)
         case action
     }
 

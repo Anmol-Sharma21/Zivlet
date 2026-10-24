@@ -15,7 +15,7 @@ struct NotchHUDBoardTests {
         let board = NotchHUDBoard().updating(try HUDFx.running(JobProgress(fraction: 0.4)), display: 1, now: t0)
         #expect(board.request(on: 1)?.resting == .collapsed)
         #expect(board.request(on: 1)?.hoverSurface == .expanded && board.request(on: 1)?.client == .hud)
-        let expected = TabContent(icon: .file("clip.mov"), ring: .fraction(0.4), count: nil, failed: false)
+        let expected = TabContent(icon: .family(.video), ring: .fraction(0.4), count: nil, failed: false)
         #expect(board.tab(on: 1) == expected)
         #expect(board.nextDeadline == nil)
     }
