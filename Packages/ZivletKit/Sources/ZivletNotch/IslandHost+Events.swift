@@ -131,6 +131,8 @@ extension IslandHost {
     /// The surface's view; inside the transition's animation it cross-fades with the old one.
     func applyContent() {
         let shown = shownSurface
+        let transition = motion.contentTransition(reduceMotion: curves.isReduced)
+        if chrome.contentTransition != transition { chrome.contentTransition = transition }
         chrome.surface = shown
         chrome.content = client.content(for: shown, display: display.id)
     }

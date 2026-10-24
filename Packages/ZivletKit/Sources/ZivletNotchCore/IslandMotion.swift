@@ -11,6 +11,12 @@ public struct IslandMotion: Sendable, Equatable {
     public let expand: Curve
     public let collapse: Curve
 
+    /// Reduce Motion is on: the island only fades.
+    public var isReduced: Bool {
+        if case .fade = expand { return true }
+        return false
+    }
+
     public init(reduceMotion: Bool) {
         if reduceMotion {
             expand = .fade(seconds: Self.reducedFade)

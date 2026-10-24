@@ -45,6 +45,9 @@ struct NotchIconButton: View {
     /// The round background at rest: none, or white 0.18 under Increase Contrast (19b §7).
     static func restingFill(increaseContrast: Bool) -> Double { increaseContrast ? contrastFill : 0 }
 
+    /// The hover fill eases in over 0.12 s; under Reduce Motion it changes at once (19b §3.4).
+    static func hoverAnimation(reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeOut(duration: 0.12) }
+
     /// The background's opacity for a state.
     static func fill(pressed: Bool, hovered: Bool, increaseContrast: Bool) -> Double {
         if pressed { return pressedFill }
@@ -56,6 +59,7 @@ struct NotchIconButton: View {
 /// The circle behind the symbol; hover through `onHover`, so no global event monitor is needed.
 struct NotchIconButtonStyle: ButtonStyle {
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovered = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -64,6 +68,6 @@ struct NotchIconButtonStyle: ButtonStyle {
         return configuration.label
             .background(Circle().fill(Color.white.opacity(opacity)))
             .onHover { hovered = $0 }
-            .animation(.easeOut(duration: 0.12), value: hovered)
+            .animation(NotchIconButton.hoverAnimation(reduceMotion: reduceMotion), value: hovered)
     }
 }

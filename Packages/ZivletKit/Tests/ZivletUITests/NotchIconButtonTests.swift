@@ -38,4 +38,9 @@ struct NotchIconButtonTests {
         #expect(NotchIconButton.fill(pressed: false, hovered: true, increaseContrast: false) == 0.14)
         #expect(NotchIconButton.fill(pressed: true, hovered: true, increaseContrast: true) == 0.22)
     }
+
+    @Test func buttonHoverIsInstantUnderReduceMotion() {
+        #expect(NotchIconButton.hoverAnimation(reduceMotion: true) == nil)
+        #expect(NotchIconButton.hoverAnimation(reduceMotion: false) == .easeOut(duration: 0.12))
+    }
 }

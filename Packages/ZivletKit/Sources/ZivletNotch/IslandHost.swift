@@ -30,7 +30,7 @@ public final class IslandHost {
     let client: any IslandClient
     let clock: any MonotonicClock
     let pointer: () -> CGPoint
-    private let motion: IslandAnimation
+    let motion: IslandAnimation
     let tracking = IslandTrackingView()
     private var hosting: NSHostingView<IslandChrome>?
     let measurer = NSHostingView(rootView: AnyView(EmptyView()))

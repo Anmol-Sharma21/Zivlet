@@ -28,4 +28,27 @@ public enum IslandAnimation: Sendable, Equatable {
 
     /// A spring's settling time is open-ended; the frame swap waits at most this long.
     static let maxSettle = 0.6
+
+    /// How new content enters (19b D-NL13): it grows from 0.96 at the top edge while it fades in, inside the shape's
+    /// spring, and leaves with opacity only. Under Reduce Motion it only fades.
+    func contentTransition(reduceMotion: Bool) -> IslandContentTransition {
+        reduceMotion ? .fade : .scaleAndFade(from: IslandContentTransition.enteringScale)
+    }
+}
+
+/// The content's transition as a plain value; the chrome maps it to SwiftUI.
+enum IslandContentTransition: Sendable, Equatable {
+    static let enteringScale = 0.96
+
+    case fade
+    case scaleAndFade(from: Double)
+
+    var transition: AnyTransition {
+        switch self {
+        case .fade:
+            .opacity
+        case .scaleAndFade(let scale):
+            .asymmetric(insertion: .opacity.combined(with: .scale(scale: scale, anchor: .top)), removal: .opacity)
+        }
+    }
 }

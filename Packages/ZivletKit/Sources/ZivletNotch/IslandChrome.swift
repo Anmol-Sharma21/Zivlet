@@ -20,6 +20,8 @@ final class IslandChromeModel {
     var scrolls = false
     var surface = IslandSurface.hidden
     var content = AnyView(EmptyView())
+    /// How a new surface's content enters and the old one leaves (19b D-NL13).
+    var contentTransition = IslandContentTransition.fade
     /// Black, glass or solid for the shown surface (19b D-NL1 … D-NL3).
     var finish = IslandFinish.black(outline: false)
 }
@@ -51,7 +53,7 @@ struct IslandChrome: View {
                 .padding(.horizontal, model.flare)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .id(model.surface)
-                .transition(.opacity)
+                .transition(model.contentTransition.transition)
         }
         .clipShape(shape)
         .opacity(model.opacity)
