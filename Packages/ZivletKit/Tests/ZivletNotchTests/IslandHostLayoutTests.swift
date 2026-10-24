@@ -21,6 +21,24 @@ struct IslandHostLayoutTests {
         host.close()
     }
 
+    @Test func theCornersAndTheFlareFollowTheSurface() throws {
+        let host = makeHost(try OffscreenDisplays.notch())
+        host.apply([.show(.collapsed, display: 1, contentHeight: 0)])
+        #expect(host.chrome.bottomRadius == 12 && host.chrome.flare == 6 && host.chrome.topRadius == 0)
+        host.apply([.show(.toast, display: 1, contentHeight: 0)])
+        #expect(host.chrome.bottomRadius == 18)
+        host.apply([.show(.expanded, display: 1, contentHeight: 108)])
+        #expect(host.chrome.bottomRadius == 24)
+        host.close()
+    }
+
+    @Test func thePillHasNoFlare() throws {
+        let host = makeHost(try OffscreenDisplays.plain())
+        host.apply([.show(.toast, display: 2, contentHeight: 0)])
+        #expect(host.chrome.flare == 0 && host.chrome.topRadius == host.chrome.bottomRadius)
+        host.close()
+    }
+
     @Test func aShrinkInFlightEndsAtTheNewGeometry() async throws {
         let display = try OffscreenDisplays.notch()
         let host = makeHost(display, motion: .slow(0.05))

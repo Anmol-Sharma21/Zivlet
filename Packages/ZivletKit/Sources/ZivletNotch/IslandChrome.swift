@@ -12,6 +12,9 @@ final class IslandChromeModel {
     var opacity = 0.0
     var topRadius = 0.0
     var bottomRadius = IslandLayout.Metrics.collapsedRadius
+    /// The concave curve into the screen edge on a notch display; 0 on the pill (19b D-NL4). Content stays inside
+    /// the body, between the two curves.
+    var flare = 0.0
     /// The housing height on a notch display: content starts below it, never behind the camera.
     var contentTopInset = 0.0
     var scrolls = false
@@ -37,7 +40,7 @@ struct IslandChrome: View {
         .environment(\.colorScheme, .dark)
     }
 
-    private var shape: IslandShape { IslandShape(top: model.topRadius, bottom: model.bottomRadius) }
+    private var shape: IslandShape { IslandShape(top: model.topRadius, bottom: model.bottomRadius, flare: model.flare) }
 
     private var island: some View {
         ZStack(alignment: .top) {
@@ -45,6 +48,7 @@ struct IslandChrome: View {
             if contrast == .increased { shape.strokeBorder(Color.white.opacity(0.5), lineWidth: 1) }
             content
                 .padding(.top, model.contentTopInset)
+                .padding(.horizontal, model.flare)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .id(model.surface)
                 .transition(.opacity)

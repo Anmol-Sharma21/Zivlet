@@ -19,7 +19,7 @@ public enum IslandLayout {
         public static let pillGap = 6.0
         public static let collapsedRadius = 12.0
         public static let toastRadius = 18.0
-        public static let expandedRadius = 22.0
+        public static let expandedRadius = 24.0
     }
 
     /// `contentHeight` is the measured height of the client's content (only the expanded card uses it).

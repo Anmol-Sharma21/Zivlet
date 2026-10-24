@@ -22,6 +22,11 @@ struct IslandLayoutTests {
         #expect(frame.minX >= housing.minX - 6 && frame.maxX <= housing.maxX + 6)
     }
 
+    @Test func cornersFollowTheSurface() {  // 19b D-NL5
+        #expect(IslandLayout.Metrics.collapsedRadius == 12 && IslandLayout.Metrics.toastRadius == 18)
+        #expect(IslandLayout.Metrics.expandedRadius == 24)
+    }
+
     @Test func toastHangsBelowTheHousing() throws {
         let frame = IslandLayout.frame(.toast, on: try DisplayFixtures.mbp14MoreSpace())
         #expect(frame == Rect2D(x: 720, y: 1095, width: 360, height: 74))
