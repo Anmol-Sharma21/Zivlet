@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import ZivletNotch
 
@@ -25,7 +26,9 @@ enum NotchLook {
     /// Two styles per surface (D-NL7); the caption only for "+2 more", notes and the undo reply.
     enum TypeStyle {
         static let primary = Font.system(size: 13, weight: .semibold)
-        static let secondary = Font.system(size: 12, weight: .regular).monospacedDigit()
+        /// Tabular digits, so sizes and percents do not jitter; layout code measures with the same font.
+        static let secondaryFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        static let secondary = Font(secondaryFont as CTFont)
         static let caption = Font.system(size: 10, weight: .regular)
         static let count = Font.system(size: 11, weight: .semibold)
     }

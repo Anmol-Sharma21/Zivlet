@@ -8,6 +8,8 @@ import ZivletRuntime
 /// on the second line when they fit beside it, else on a row of their own.
 struct NotchResultCard: View {
     static let thumbnailSide: CGFloat = 40
+    /// Room left over when the buttons go beside the second line, for rounding between AppKit's measure and SwiftUI's.
+    static let fitMargin: CGFloat = 2
     static var thumbnailRadius: CGFloat { IslandLook.Radius.inner }
 
     let model: ResultCardModel
@@ -18,7 +20,9 @@ struct NotchResultCard: View {
 
     var body: some View {
         let lines = Self.lines(model)
-        let beside = buttonsFitBeside(lines.secondary)
+        let beside = Self.buttonsFitBeside(
+            lines.secondary, buttons: state.visible(model).count, thumbnail: !state.remaining(model.outputs).isEmpty,
+            width: width)
         VStack(alignment: .leading, spacing: NotchLook.Spacing.s) {
             HStack(alignment: .center, spacing: NotchLook.Spacing.m) {
                 if let first = state.remaining(model.outputs).first { thumbnail(first) }
@@ -79,13 +83,18 @@ struct NotchResultCard: View {
         }
     }
 
-    /// The buttons go beside the second line when it and they fit in the text column.
-    private func buttonsFitBeside(_ secondary: String) -> Bool {
-        let count = CGFloat(state.visible(model).count)
-        let buttons = count * NotchLook.Symbol.buttonSide + max(0, count - 1) * NotchLook.Spacing.xs
-        let thumbnail = state.remaining(model.outputs).isEmpty ? 0 : Self.thumbnailSide + NotchLook.Spacing.m
-        let text = (secondary as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 12)]).width
-        return text + NotchLook.Spacing.s + buttons <= width - thumbnail
+    /// The buttons go beside the second line when it, measured in the font it is drawn in, and they fit in the text
+    /// column with `fitMargin` to spare.
+    static func buttonsFitBeside(_ secondary: String, buttons count: Int, thumbnail: Bool, width: CGFloat) -> Bool {
+        let side = CGFloat(count)
+        let buttons = side * NotchLook.Symbol.buttonSide + max(0, side - 1) * NotchLook.Spacing.xs
+        let column = width - (thumbnail ? thumbnailSide + NotchLook.Spacing.m : 0)
+        return textWidth(of: secondary) + NotchLook.Spacing.s + buttons + fitMargin <= column
+    }
+
+    /// The width of `text` on one line in the second line's font (tabular digits).
+    static func textWidth(of text: String) -> CGFloat {
+        (text as NSString).size(withAttributes: [.font: NotchLook.TypeStyle.secondaryFont]).width.rounded(.up)
     }
 
     private func thumbnail(_ url: URL) -> some View {

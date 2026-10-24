@@ -67,6 +67,21 @@ struct NotchCardLayoutTests {
         #expect(NotchResultCard.presses(try saved(), state: state) == [.reveal, .open, .copy])
     }
 
+    /// The second line is drawn with tabular digits, which are wider than the proportional ones: the fit is measured
+    /// with the font the line is drawn in, plus a margin, so a size line never truncates beside the buttons.
+    @Test func theButtonsGoBesideOnlyWhenTheDrawnLineFits() {
+        let line = "1111 KB → 1111 KB"
+        let proportional = (line as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 12)]).width
+        let drawn = NotchResultCard.textWidth(of: line)
+        #expect(drawn > proportional)
+        let besides = 2 * NotchLook.Symbol.buttonSide + NotchLook.Spacing.xs + NotchLook.Spacing.s
+        let thumbnail = NotchResultCard.thumbnailSide + NotchLook.Spacing.m
+        let tight = proportional + besides + thumbnail
+        #expect(!NotchResultCard.buttonsFitBeside(line, buttons: 2, thumbnail: true, width: tight))
+        let roomy = drawn + besides + thumbnail + NotchResultCard.fitMargin
+        #expect(NotchResultCard.buttonsFitBeside(line, buttons: 2, thumbnail: true, width: roomy))
+    }
+
     @Test func theThumbnailIsConcentricWithTheCard() {
         #expect(Double(NotchResultCard.thumbnailRadius) == IslandLook.Radius.inner)
     }
