@@ -4,7 +4,7 @@ import ZivletNotchCore
 /// Draws an `IslandFinish` inside the island's shape (19b D-NL1 … D-NL3): solid black; Liquid Glass under a black
 /// scrim; or the solid grey of Reduce Transparency and Increase Contrast. Below a housing the top stays black down to
 /// the housing's bottom edge and fades into the finish over `IslandLook.fade`, so the housing and the island read as
-/// one piece. The Increase Contrast outline is drawn inside the edge.
+/// one piece. The Increase Contrast outline is drawn inside the edge, open along the screen edge on a notch display.
 struct IslandFinishView: View {
     let finish: IslandFinish
     let shape: IslandShape
@@ -13,7 +13,8 @@ struct IslandFinishView: View {
         ZStack(alignment: .top) {
             fill
             if finish.outlined {
-                shape.strokeBorder(Color.white.opacity(IslandLook.Outline.opacity), lineWidth: IslandLook.Outline.width)
+                IslandOutline(shape: shape, lineWidth: IslandLook.Outline.width)
+                    .fill(Color.white.opacity(IslandLook.Outline.opacity))
             }
         }
     }
