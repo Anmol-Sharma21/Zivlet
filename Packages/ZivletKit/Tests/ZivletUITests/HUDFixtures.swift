@@ -67,3 +67,13 @@ extension BatchSnapshot {
         return applying(.changed(batch, job, .running(progress)))
     }
 }
+
+extension HUDFx {
+    /// A finished batch whose `count` items were all cancelled: nothing saved, nothing failed.
+    static func cancelled(count: Int = 1) throws -> BatchSnapshot {
+        let requests = try (0..<count).map { try request("clip\($0).mov", format: .mov, to: .mp4) }
+        let batch = BatchID()
+        let start = BatchSnapshot(batch: batch, target: .mp4, plan: RequestPlan(requests: requests, rejections: []))
+        return requests.reduce(start) { $0.applying(.changed(batch, $1.id, .cancelled)) }.applying(.finished(batch))
+    }
+}

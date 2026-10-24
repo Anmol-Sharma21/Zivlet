@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import ZivletNotch
+import ZivletRuntime
 
 /// The island's result card (19b §5, F1, F3): a 40 pt thumbnail (a drag source for every output), "Saved photo.jpg"
 /// over "2.1 MB → 640 KB", notes and the undo reply as captions, the details box, and the model's buttons as icons,
@@ -50,8 +51,7 @@ struct NotchResultCard: View {
             return (model.title, model.subtitle)
         }
         let label = line[..<split.lowerBound]
-        let succeeded = !model.buttons.contains(.retry)
-        let primary = model.outputs.count == 1 && succeeded ? "Saved \(label)" : model.title
+        let primary = model.outputs.count == 1 && model.phase == .succeeded ? "Saved \(label)" : model.title
         return (primary, String(line[split.upperBound...]))
     }
 

@@ -10,6 +10,8 @@ public struct ResultCardModel: Sendable, Equatable {
 
     public static let successLinger = Duration.seconds(4)
 
+    /// Saved, partly saved, failed or cancelled: what the card is about, so no view infers it from its buttons.
+    public let phase: BatchPresentation.Phase
     public let title: String
     public let subtitle: String
     /// "photo.png · 2.1 MB → 640 KB", or "3 files · 5 MB → 1 MB"; nil when nothing was saved.
@@ -24,6 +26,7 @@ public struct ResultCardModel: Sendable, Equatable {
 
     public init(_ snapshot: BatchSnapshot, registry: FormatRegistry = .standard) {
         let shown = BatchPresentation.make(snapshot, registry: registry)
+        phase = shown.phase
         title = shown.title
         subtitle = shown.subtitle
         sizeLine = Self.sizeLine(snapshot)

@@ -59,17 +59,18 @@ struct NotchListRow: View {
         case .working(nil): NotchSteps(step: 0)
         case .saved, .action: NotchSymbol(name: NotchSymbol.saved)
         case .failed: NotchSymbol(name: NotchSymbol.failed)
+        case .cancelled: NotchSymbol(name: NotchSymbol.cancelled)
         }
     }
 
-    /// Working: Cancel. Saved: Reveal and Open. A failed batch: Retry and Close; a failed action: Close. An action
-    /// with Undo: Undo.
+    /// Working: Cancel. Saved: Reveal and Open. A failed batch: Retry and Close; a failed action or a cancelled
+    /// batch: Close. An action with Undo: Undo.
     static func presses(_ row: NotchHUDRow, offersUndo: Bool) -> [NotchHUD.Press] {
         switch (row.status, row.id) {
         case (.working, _): [.cancel]
         case (.saved, _): [.reveal, .open]
         case (.failed, .batch): [.retry, .close]
-        case (.failed, .action): [.close]
+        case (.failed, .action), (.cancelled, _): [.close]
         case (.action, _): offersUndo ? [.undo] : []
         }
     }

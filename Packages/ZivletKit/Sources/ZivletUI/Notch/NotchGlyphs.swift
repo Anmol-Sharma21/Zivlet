@@ -77,6 +77,8 @@ struct NotchStatusGlyph: View {
 struct NotchSymbol: View {
     static let saved = "checkmark.circle.fill"
     static let failed = "exclamationmark.triangle.fill"
+    /// A batch whose jobs were all cancelled: stopped, neither saved nor failed.
+    static let cancelled = "stop.circle.fill"
 
     let name: String
 
@@ -91,6 +93,7 @@ struct NotchSymbol: View {
         switch glyph {
         case .saved, .action: saved
         case .failed: failed
+        case .cancelled: cancelled
         }
     }
 

@@ -73,6 +73,8 @@ public struct NotchHUDRow: Sendable, Equatable, Identifiable {
         case saved
         case failed
         case action
+        /// Every job of the batch was cancelled: nothing saved, nothing failed.
+        case cancelled
     }
 
     public let id: NotchHUDItemID
@@ -105,9 +107,10 @@ public struct Announcement: Sendable, Equatable {
     }
 }
 
-/// The glyph in front of a toast line: a check mark, the error glyph (a shape, not colour alone) or an action icon.
+/// The glyph in front of a toast line: a check mark, the error glyph (a shape, not colour alone), an action icon, or
+/// the neutral stop glyph of a batch whose jobs were all cancelled.
 public enum ToastGlyph: Sendable, Equatable {
-    case saved, failed, action
+    case saved, failed, action, cancelled
 }
 
 /// One item and its timer. `linger` runs while the item rests as a toast; a failure's runs only for its first 4 s,
@@ -136,6 +139,12 @@ struct NotchHUDItem: Sendable, Equatable {
     }
 
     var isWorking: Bool { snapshot.map { !$0.isFinished } ?? false }
+
+    /// A finished batch with nothing saved and nothing failed (BatchPresentation's `.cancelled`).
+    var isCancelled: Bool {
+        guard let snapshot, snapshot.isFinished else { return false }
+        return snapshot.outputs.isEmpty && snapshot.failures.isEmpty
+    }
 
     var isFailure: Bool {
         switch kind {

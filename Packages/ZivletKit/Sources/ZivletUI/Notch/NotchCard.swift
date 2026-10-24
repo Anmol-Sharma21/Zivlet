@@ -48,28 +48,42 @@ struct NotchCard: View {
             .frame(maxWidth: .infinity)
     }
 
+    /// Which card a batch gets, from its phase: a partly saved batch keeps the result card (DV6); a failure and a
+    /// cancelled batch share the failure card's layout with their own glyph.
+    enum Face: Equatable { case working, result, failure, cancelled }
+
+    static func face(_ snapshot: BatchSnapshot) -> Face {
+        switch BatchPresentation.make(snapshot).phase {
+        case .working: .working
+        case .succeeded, .partial: .result
+        case .failed: .failure
+        case .cancelled: .cancelled
+        }
+    }
+
     @ViewBuilder private var content: some View {
         let id = item.id
         switch item.kind {
-        case .batch(let snapshot) where !snapshot.isFinished:
-            NotchWorkingCard(snapshot: snapshot) { act(.cancel, id) }
-        case .batch(let snapshot) where !snapshot.outputs.isEmpty:
-            if let state = model.cards[snapshot.batch] {
-                NotchResultCard(
-                    model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, onDrag: drag
-                ) {
-                    act(NotchHUD.Press($0), id)
-                }
-            }
         case .batch(let snapshot):
-            if let state = model.cards[snapshot.batch] {
-                NotchFailureCard(model: ResultCardModel(snapshot), state: state, width: Self.contentWidth) {
-                    act(NotchHUD.Press($0), id)
-                }
-            }
+            batch(snapshot, id: id)
         case .action:
             if case .action(let index) = id, let action = model.actions[index] {
                 NotchActionCard(model: action, width: Self.contentWidth) { act($0, id) }
+            }
+        }
+    }
+
+    @ViewBuilder private func batch(_ snapshot: BatchSnapshot, id: NotchHUDItemID) -> some View {
+        let face = Self.face(snapshot)
+        if face == .working {
+            NotchWorkingCard(snapshot: snapshot) { act(.cancel, id) }
+        } else if let state = model.cards[snapshot.batch] {
+            let press: (ResultCardModel.Button) -> Void = { act(NotchHUD.Press($0), id) }
+            if face == .result {
+                NotchResultCard(
+                    model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, onDrag: drag, act: press)
+            } else {
+                NotchFailureCard(model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, act: press)
             }
         }
     }

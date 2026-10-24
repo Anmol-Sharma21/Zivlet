@@ -1,8 +1,10 @@
 import SwiftUI
 import ZivletActions
+import ZivletRuntime
 
 /// The island's failure card (19b §5): the triangle, the reason (up to two lines) over the file name, the details box
-/// when shown, and Show Details, Retry and Close as icon buttons. Close keeps Escape (`.cancelAction`).
+/// when shown, and Show Details, Retry and Close as icon buttons. Close keeps Escape (`.cancelAction`). A batch whose
+/// jobs were all cancelled uses the same card with the neutral stop glyph, "Cancelled / Nothing was saved." and Close.
 struct NotchFailureCard: View {
     let model: ResultCardModel
     let state: CardState
@@ -14,7 +16,7 @@ struct NotchFailureCard: View {
         VStack(alignment: .leading, spacing: NotchLook.Spacing.s) {
             HStack(alignment: .bottom, spacing: NotchLook.Spacing.s) {
                 HStack(alignment: .top, spacing: NotchLook.Spacing.s) {
-                    NotchSymbol(name: NotchSymbol.failed)
+                    NotchSymbol(name: Self.glyph(model))
                     VStack(alignment: .leading, spacing: NotchLook.Spacing.xs) {
                         Text(lines.primary).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary)
                             .lineLimit(2).fixedSize(horizontal: false, vertical: true)
@@ -32,6 +34,11 @@ struct NotchFailureCard: View {
             if state.showsDetails, let details = model.details { NotchDetailsBox(details: details) }
         }
         .frame(width: width, alignment: .topLeading)
+    }
+
+    /// The triangle for a failure; the neutral stop glyph for a cancelled batch.
+    static func glyph(_ model: ResultCardModel) -> String {
+        model.phase == .cancelled ? NotchSymbol.cancelled : NotchSymbol.failed
     }
 
     /// The reason first, the file name second (`BatchPresentation`'s title and subtitle).

@@ -51,6 +51,7 @@ extension NotchHUDBoard {
     public func toastGlyph(on display: UInt32) -> ToastGlyph? {
         guard request(on: display)?.resting == .toast, let item = items[display]?.first else { return nil }
         if item.isFailure { return .failed }
+        if item.isCancelled { return .cancelled }
         return item.snapshot == nil ? .action : .saved
     }
 
@@ -153,7 +154,7 @@ extension NotchHUDBoard {
             let styled = item.isFailure ? NotchHUDCopy.failureLine(snapshot) : NotchHUDCopy.savedLine(snapshot)
             return NotchHUDRow(
                 id: item.id, title: shown.title, detail: ResultCardModel.sizeLine(snapshot) ?? shown.subtitle,
-                status: item.isFailure ? .failed : .saved, line: Self.rowLine(styled, failed: item.isFailure),
+                status: Self.finishedStatus(item), line: Self.rowLine(styled, failed: item.isFailure),
                 summary: item.isFailure ? NotchHUDCopy.failedStatus : styled.secondary ?? "")
         case .action(let result):
             let detail = result.card?.lines.joined(separator: " · ") ?? ""
@@ -169,6 +170,11 @@ extension NotchHUDBoard {
     private static func rowLine(_ styled: NotchToastLine, failed: Bool) -> String {
         guard failed, let name = styled.secondary, !name.isEmpty else { return LinePart.joined(styled.primary) }
         return name
+    }
+
+    private static func finishedStatus(_ item: NotchHUDItem) -> NotchHUDRow.Status {
+        if item.isFailure { return .failed }
+        return item.isCancelled ? .cancelled : .saved
     }
 
     private static func spokenLine(_ row: NotchHUDRow) -> String {
