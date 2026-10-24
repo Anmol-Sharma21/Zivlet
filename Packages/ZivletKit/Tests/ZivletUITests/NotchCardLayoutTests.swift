@@ -35,4 +35,39 @@ struct NotchCardLayoutTests {
         #expect(NotchCard.bottomInset == NotchLook.Spacing.m)
         #expect(NotchCard.contentWidth == 380 - 2 * 6 - 2 * 16)
     }
+
+    // MARK: Result card (D14)
+
+    private func saved() throws -> ResultCardModel {
+        ResultCardModel(try HUDFx.finished(outputs: [("photo.jpg", before: 2_100_000, after: 640_000)], target: .jpg))
+    }
+
+    @Test func theResultCardNamesTheFileOnce() throws {
+        let lines = NotchResultCard.lines(try saved())
+        #expect(lines.primary == "Saved photo.jpg" && lines.secondary == "2.1 MB → 640 KB")
+    }
+
+    @Test func theButtonsAreTheModelsInItsOrder() throws {
+        let state = CardState()
+        #expect(NotchResultCard.presses(try saved(), state: state) == [.undo, .reveal, .open, .copy])
+        state.undoInFlight = true
+        #expect(NotchResultCard.presses(try saved(), state: state) == [.reveal, .open, .copy])
+    }
+
+    @Test func theThumbnailIs40PointsWithTheInnerRadius() {
+        #expect(NotchResultCard.thumbnailSide == 40 && NotchResultCard.thumbnailRadius == 8)
+    }
+
+    @Test func theUndoReplyIsACaptionAndTheCardGrows() throws {
+        let model = try saved()
+        let state = CardState()
+        let before = try #require(ImageRenderer(content: card(model, state)).nsImage).size.height
+        state.undoMessage = "Moved photo.jpg to the Trash."
+        let after = try #require(ImageRenderer(content: card(model, state)).nsImage).size.height
+        #expect(after > before)
+    }
+
+    private func card(_ model: ResultCardModel, _ state: CardState) -> some View {
+        NotchResultCard(model: model, state: state, width: NotchCard.contentWidth) { _ in }
+    }
 }

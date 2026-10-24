@@ -46,6 +46,14 @@ struct NotchCard: View {
         switch item.kind {
         case .batch(let snapshot) where !snapshot.isFinished:
             NotchWorkingCard(snapshot: snapshot) { act(.cancel, id) }
+        case .batch(let snapshot) where snapshot.failures.isEmpty:
+            if let state = model.cards[snapshot.batch] {
+                NotchResultCard(
+                    model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, onDrag: drag
+                ) {
+                    act(NotchHUD.Press($0), id)
+                }
+            }
         case .batch(let snapshot):
             if let state = model.cards[snapshot.batch] {
                 ResultCardContent(
