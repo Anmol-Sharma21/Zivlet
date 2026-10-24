@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Testing
+import ZivletActions
 import ZivletCore
 import ZivletRuntime
 
@@ -69,5 +70,42 @@ struct NotchCardLayoutTests {
 
     private func card(_ model: ResultCardModel, _ state: CardState) -> some View {
         NotchResultCard(model: model, state: state, width: NotchCard.contentWidth) { _ in }
+    }
+
+    // MARK: Failure and action cards (D15)
+
+    @Test func theFailureCardLeadsWithTheReason() throws {
+        let failed = try HUDFx.failed(error: .diskFull)
+        let lines = NotchFailureCard.lines(ResultCardModel(failed))
+        let shown = BatchPresentation.make(failed)
+        #expect(lines.primary == shown.title && lines.secondary == shown.subtitle)
+    }
+
+    @Test func detailsShowOnceWithAChevronAndKeepTheirTitle() throws {
+        let model = ResultCardModel(try HUDFx.failed(error: .processFailed(status: 1, stderrTail: "boom")))
+        let state = CardState()
+        #expect(NotchFailureCard.presses(model, state: state) == [.showDetails, .retry, .close])
+        #expect(NotchIconButton.symbol(.showDetails) == "chevron.down")
+        #expect(NotchIconButton.title(.showDetails) == "Show Details")
+        state.showsDetails = true
+        #expect(NotchFailureCard.presses(model, state: state) == [.retry, .close])
+    }
+
+    @Test func closeIsTheCancelActionAndNothingElseIs() {
+        #expect(NotchButtonRow.shortcut(.close) == .cancelAction)
+        #expect(NotchHUD.Press.allCases.filter { NotchButtonRow.shortcut($0) != nil } == [.close])
+    }
+
+    @Test func theActionCardShowsFiveLinesThenACount() {
+        let card = ActionCard(title: "2 files were skipped", lines: (1...7).map { "file\($0).txt" })
+        let lines = NotchActionCard.lines(.partial(toast: "Copied 5 files", card: card, undo: nil))
+        #expect(lines.count == 6 && lines.last == "and 2 more" && lines.first == "file1.txt")
+    }
+
+    @Test func theActionCardOffersCloseAndDetailsLikeM5a() {
+        let model = ActionHUDModel()
+        model.present(.failed(ActionCard(title: "Could not copy", detail: "Permission denied")))
+        #expect(NotchActionCard.presses(model) == [.showDetails, .close])
+        #expect(NotchActionCard.title(.failed(ActionCard(title: "Could not copy"))) == "Could not copy")
     }
 }

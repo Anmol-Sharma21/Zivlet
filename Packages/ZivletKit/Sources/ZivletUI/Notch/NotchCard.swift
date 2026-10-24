@@ -46,7 +46,7 @@ struct NotchCard: View {
         switch item.kind {
         case .batch(let snapshot) where !snapshot.isFinished:
             NotchWorkingCard(snapshot: snapshot) { act(.cancel, id) }
-        case .batch(let snapshot) where snapshot.failures.isEmpty:
+        case .batch(let snapshot) where !snapshot.outputs.isEmpty:
             if let state = model.cards[snapshot.batch] {
                 NotchResultCard(
                     model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, onDrag: drag
@@ -56,17 +56,13 @@ struct NotchCard: View {
             }
         case .batch(let snapshot):
             if let state = model.cards[snapshot.batch] {
-                ResultCardContent(
-                    model: ResultCardModel(snapshot), state: state, width: Self.contentWidth, onDrag: drag
-                ) {
+                NotchFailureCard(model: ResultCardModel(snapshot), state: state, width: Self.contentWidth) {
                     act(NotchHUD.Press($0), id)
                 }
             }
         case .action:
             if case .action(let index) = id, let action = model.actions[index] {
-                ActionContent(
-                    model: action, width: Self.contentWidth, undo: { act(.undo, id) },
-                    details: { act(.showDetails, id) }, close: { act(.close, id) })
+                NotchActionCard(model: action, width: Self.contentWidth) { act($0, id) }
             }
         }
     }

@@ -43,13 +43,15 @@ struct NotchResultCard: View {
         .frame(width: width, alignment: .topLeading)
     }
 
-    /// The name once: "Saved photo.jpg" and "2.1 MB → 640 KB"; without a saved file, the title and subtitle.
+    /// The name once: "Saved photo.jpg" and "2.1 MB → 640 KB". Several files or a partial result keep the model's
+    /// title, which says so; without a saved file, the title and subtitle.
     static func lines(_ model: ResultCardModel) -> (primary: String, secondary: String) {
         guard let line = model.sizeLine, let split = line.range(of: " · ", options: .backwards) else {
             return (model.title, model.subtitle)
         }
         let label = line[..<split.lowerBound]
-        let primary = model.outputs.count == 1 ? "Saved \(label)" : model.title
+        let succeeded = !model.buttons.contains(.retry)
+        let primary = model.outputs.count == 1 && succeeded ? "Saved \(label)" : model.title
         return (primary, String(line[split.upperBound...]))
     }
 
@@ -72,7 +74,7 @@ struct NotchResultCard: View {
         HStack(spacing: NotchLook.Spacing.xs) {
             ForEach(state.visible(model), id: \.self) { button in
                 NotchIconButton(press: NotchHUD.Press(button)) { act(button) }
-                    .keyboardShortcut(button == .close ? .cancelAction : nil)
+                    .keyboardShortcut(NotchButtonRow.shortcut(NotchHUD.Press(button)))
             }
         }
     }
