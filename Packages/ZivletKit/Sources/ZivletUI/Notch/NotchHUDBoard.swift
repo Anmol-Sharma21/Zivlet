@@ -249,6 +249,14 @@ extension NotchHUDBoard {
         replace(found, with: change(found.display, found.item))
     }
 
+    /// The display's tab is not the one last drawn: a step the 250 ms floor held back, which the next transition
+    /// draws even when its snapshot reads the same (19b §6.2).
+    func awaitsRedraw(on display: UInt32) -> Bool {
+        guard let tab = tab(on: display) else { return drawn[display] != nil }
+        guard let last = drawn[display], last.tab.sameShape(as: tab) else { return true }
+        return last.tab.ring.shown != tab.ring.shown
+    }
+
     /// A tab redraws when its shape changes, or when its percent or step changes ≥ 250 ms after the last redraw.
     private mutating func updateDrawn() {
         redraw = false

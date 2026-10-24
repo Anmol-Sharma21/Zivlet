@@ -107,12 +107,14 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
         }
     }
 
-    /// The island already draws and speaks what `snapshot` would (G-M5a-1, 19b §6.2). The key is compared with the
-    /// published board's, not the latest applied one, so a step that came within 250 ms of the last redraw is still
-    /// drawn by the next snapshot.
+    /// The island already draws and speaks what `snapshot` would (G-M5a-1, 19b §6.2): the published board has its
+    /// key, or the latest applied board has it and drew nothing from it (a percent the ring cannot show). A step that
+    /// came within 250 ms of the last redraw still waits to be drawn, so the next snapshot gets through.
     private func drawsNothingNew(_ snapshot: BatchSnapshot, _ id: NotchHUDItemID) -> Bool {
-        guard let drawn = model.board.item(id)?.visible else { return false }
-        return drawn == VisibleKey(snapshot, ringSteps: NotchHUDBoard.ringSteps, barSteps: NotchHUDBoard.barSteps)
+        let key = VisibleKey(snapshot, ringSteps: NotchHUDBoard.ringSteps, barSteps: NotchHUDBoard.barSteps)
+        if model.board.item(id)?.visible == key { return true }
+        guard board.item(id)?.visible == key, let display = board.display(of: id) else { return false }
+        return !board.awaitsRedraw(on: display)
     }
 
     /// The batch leaves the island; the other items stay.

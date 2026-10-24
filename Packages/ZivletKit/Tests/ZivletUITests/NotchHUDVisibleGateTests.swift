@@ -62,6 +62,28 @@ struct NotchHUDVisibleGateTests {
         #expect(Self.publishedFraction(rig, first.batch) == 0.412)
     }
 
+    /// A new percent the ring cannot draw (34 of 84 steps from 40.5 % to 41.4 %) reaches the board once; the snapshots
+    /// after it read the same and stop before the board until the ring draws its next step.
+    @Test func aPercentTheRingCannotDrawReachesTheBoardOnce() async throws {
+        let rig = try NotchRig.notch()
+        defer { rig.hosts.close() }
+        var transitions = 0
+        rig.hud.onApply = { transitions += 1 }
+        let first = try HUDFx.running(Self.progress(0.405))
+        rig.hud.show(first)
+        await rig.clock.advance(by: .milliseconds(300))
+        let before = transitions
+        for fraction in [0.411, 0.412, 0.413, 0.414] {
+            rig.hud.show(first.applyingProgress(Self.progress(fraction)))
+            await rig.clock.advance(by: .milliseconds(100))
+        }
+        #expect(transitions == before + 1)
+        #expect(Self.publishedFraction(rig, first.batch) == 0.405)
+        rig.hud.show(first.applyingProgress(Self.progress(0.417)))
+        #expect(transitions == before + 2)
+        #expect(Self.publishedFraction(rig, first.batch) == 0.417)
+    }
+
     @Test func aFinishedSnapshotIsNeverDropped() throws {
         let rig = try NotchRig.notch()
         defer { rig.hosts.close() }
