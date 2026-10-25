@@ -352,3 +352,10 @@ measured yet.
 - The owner approved merging `notch-design` into `main` and pushing (OS-4, OWN-PLAN-5). G-M5a-1 stays open: the
   fast-progress rows still exceed the 1 % limit (Release 1.333 %, Debug 1.800 % over baseline in the quietest run).
 - OS-2 is covered by the owner's sign-off on the §9 screenshots; OS-3 and OS-5 stay with the owner.
+- Pre-push check at `6a8c604` (2026-10-26): a clean clone passed `make test` (1240 tests), lint, coverage (every
+  module 91–100 %), `make app`, `make release-check` (42.5 MB), `make licence-gate` and `make script-test` (the
+  last needs the media stage first, so it passed on a second run after `release-check` had built it). A leak audit
+  of the 86 commits found nothing to fix. `make notch-states` captured all 38 states; Cancel reads as a stop control
+  beside Close. In a first capture, run while the test suite loaded the Mac (load about 9), both saved-toast rows over
+  white caught a blank card (1.01:1); rerun at load about 5 they gave 5.62:1 and 5.13:1 as on 2026-10-25. The script
+  captures after a fixed wait, so a heavily loaded Mac can catch a toast before it draws.
