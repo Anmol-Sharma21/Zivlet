@@ -166,3 +166,17 @@ decisions, given in chat.
 | OWN-HUD-2 (resolved) | The placement choices are **At the notch** (on a Mac without a notch: **At the top of the screen**) and **Near the drop** (today's card, below and to the right of the drop point). No fixed bottom-right corner | Matches what M5a built ([19-notch](19-notch.md) Settings section); the "Bottom-right corner" label in the OWN-HUD-1 defaults row is superseded. No `HUDLayout` change |
 | OWN-PLAN-4 | **Beta numbering stays:** 0.5 = the notch work (island, Notch HUD, Drop Box, tray) + OCR + lock/unlock + PDF basics; 0.6 and 0.7 unchanged. No notch-only beta | 17-feature-roadmap §4.1 stands as written on 2026-10-22 |
 | OWN-UI-1 | **The notch UI gets a design pass: minimal, clean, Liquid Glass, optimised.** The part that meets the hardware notch stays black so it continues the housing; toasts and the expanded card below it use Liquid Glass, blending from black at the top edge. Fewer words, one line per state, SF Symbols, no borders or dividers, corners that follow the notch's curve, spring motion | Supersedes D-N10 (solid black, no glass) for the surfaces below the housing. Reduce Transparency → solid surface; Reduce Motion → fades; Increase Contrast keeps its outline. Redraw only when something visible changes (also the planned fix for G-M5a-1), measured on a Release build. Owner reviews screenshots of every state before merge. Scheduled after M5a lands and before beta 0.5 |
+
+## Owner decisions, 2026-10-26: notch design pass sign-off
+
+Date: 2026-10-26, after the screen-awake check of the notch design pass (see
+[15-notch-design-record.md](../plan/15-notch-design-record.md) §9). The owner answered "yes" to each point, given in
+chat.
+
+| ID | Decision | Consequences |
+|---|---|---|
+| OWN-UI-2 | **Cancel is an outlined `stop.circle`**, matching Close's outlined circle. The filled square read as an empty checkbox | [19b](19b-notch-look.md) §3.3 updated; the cancelled glyph stays `stop.circle.fill` |
+| OWN-UI-3 | **Undo and Retry stay icon-only**, with their words as tooltips and accessibility labels | Confirms 19b D-NL9 (plan 14 §6 (a)) |
+| OWN-UI-4 | **The collapsed tab keeps the format-family symbol**, not the Finder file icon | Confirms 19b D-NL10 (plan 14 §6 (b)) |
+| OWN-UI-5 | **Toasts keep "Saved" as their first word** | Confirms plan 14 §6 (c) |
+| OWN-PLAN-5 | **Merge and push:** M5a and the notch design pass go to `main` and are pushed | G-M5a-1 (fast-progress CPU) stays open and is recorded, not a merge blocker |

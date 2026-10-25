@@ -343,3 +343,12 @@ measured yet.
   Cancel button (`stop.fill`) reads like an empty checkbox, most visibly as a column in the list. An outlined
   `stop.circle`, matching the failure card's outlined close, is the suggested change; not made here.
 - X2–X6 and the Release CPU rows (OS-5) were not re-run in this check; G-M5a-1 stays open.
+
+## 10. Owner sign-off (2026-10-26)
+
+- Plan 14 §6 answered (OS-1 done): Undo and Retry stay icon-only, the tab keeps the family symbol, toasts keep
+  "Saved" first ([00-decisions](../design/00-decisions.md) OWN-UI-3..5).
+- Cancel changed to the outlined `stop.circle` (OWN-UI-2, `dfa98b6`), from the §9 point.
+- The owner approved merging `notch-design` into `main` and pushing (OS-4, OWN-PLAN-5). G-M5a-1 stays open: the
+  fast-progress rows still exceed the 1 % limit (Release 1.333 %, Debug 1.800 % over baseline in the quietest run).
+- OS-2 is covered by the owner's sign-off on the §9 screenshots; OS-3 and OS-5 stay with the owner.
