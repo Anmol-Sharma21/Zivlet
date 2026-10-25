@@ -133,7 +133,7 @@ next to the chrome, and content tokens (spacing, type, symbols, ink) in `ZivletU
 | failed (shape, not colour) | `exclamationmark.triangle.fill` |
 | cancelled (every job of a batch stopped; nothing saved, nothing failed) | `stop.circle.fill` |
 | format family: image, video, audio, document, spreadsheet, subtitle, archive | `photo`, `film`, `waveform`, `doc.text`, `tablecells`, `captions.bubble`, `archivebox` |
-| Cancel | `stop.fill` (changed from `xmark` in the design review: it sat beside Close's X in the list) |
+| Cancel | `stop.circle`, outlined like Close (changed from `xmark` in the design review because it sat beside Close's X in the list; then from `stop.fill`, which read as an empty checkbox, by the owner on 2026-10-26) |
 | Undo | `arrow.uturn.backward` |
 | Reveal | `folder` |
 | Open | `arrow.up.forward.app` |

@@ -25,7 +25,7 @@ struct NotchIconButtonTests {
     /// must not both be an X.
     @Test func cancelAndCloseAreDifferentShapes() {
         let cancel = NotchIconButton.symbol(.cancel)
-        #expect(cancel == "stop.fill")
+        #expect(cancel == "stop.circle")  // outlined like Close; the filled square read as an empty checkbox
         #expect(!cancel.hasPrefix("xmark") && NotchIconButton.symbol(.close).hasPrefix("xmark"))
     }
 
