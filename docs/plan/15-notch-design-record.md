@@ -329,3 +329,17 @@ measured yet.
 | OS-5 | With the Mac awake and quiet, run `make test`, `Scripts/m5a-exit.sh --only X2,X3,X4,X5,X6` and `make notch-idle CONFIG=release`, then fill in §8.3 (the review's CPU numbers, WindowServer, the fast-progress and solid-pill rows) |
 | OS-3 | Run Q27–Q38 and the open M5a rows Q1–Q26 on real hardware |
 | OS-4 | Merge `notch-design` into `main` and push when satisfied (the assistant never pushes) |
+
+## 9. Check with the screen awake (2026-10-25, 11:50, load average about 6)
+
+- The three frame tests that failed while the screen was locked pass with the screen awake:
+  `theFirstFrameEndsTheTriggerToFrameSignpost`, `hideFadesOutAndResets` and `samplerDeliversFramesUntilStopped`.
+  This supports the earlier reading that the lock, not the branch, failed them. The full `make test` and coverage
+  were not re-run in this check.
+- `make notch-states` (at `c46aa37`) captured all 38 states with exit 0. The four contrast rows over a white backdrop
+  give white text at 0.8 between 5.13:1 and 6.82:1 (need 4.5:1). The images are local and untracked.
+- Seen in the images: the black band meets the housing with no seam and blends into the glass below; toasts are one
+  line; the working card is two rows; the result, failure and list cards match 19b. One point for the owner: the
+  Cancel button (`stop.fill`) reads like an empty checkbox, most visibly as a column in the list. An outlined
+  `stop.circle`, matching the failure card's outlined close, is the suggested change; not made here.
+- X2–X6 and the Release CPU rows (OS-5) were not re-run in this check; G-M5a-1 stays open.
