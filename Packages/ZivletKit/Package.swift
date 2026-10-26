@@ -21,7 +21,7 @@ let package = Package(
             targets: [
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "EngineMedia", "EngineImage",
                 "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions", "ZivletSettings", "ZivletUI",
-                "ZivletNotchCore", "ZivletNotch", "ZivletShelfCore",
+                "ZivletNotchCore", "ZivletNotch", "ZivletShelfCore", "ZivletBox",
             ])
     ],
     targets: [
@@ -46,6 +46,11 @@ let package = Package(
             swiftSettings: strict),
         // Copy, Copy Path, AirDrop, Move, Terminal (02 §6): AppKit side effects behind small ports.
         .target(name: "ZivletActions", dependencies: ["ZivletCore", "ZivletRuntime"], swiftSettings: shell),
+        // The Drop Box's panel, views, intake and controller (D-M5b-1); the tray client joins it in stream D.
+        .target(
+            name: "ZivletBox",
+            dependencies: ["ZivletCore", "ZivletShelfCore", "ZivletActions", "ZivletNotchCore", "ZivletNotch"],
+            swiftSettings: shell),
         // Versioned, validated settings values and their UserDefaults store (03b §8.1); no AppKit.
         .target(name: "ZivletSettings", dependencies: ["ZivletTrigger"], swiftSettings: strict),
         // The app shell's windows and panels: Settings, the status menu model, onboarding, the HUD (14 §3).
@@ -111,6 +116,10 @@ let package = Package(
         .testTarget(
             name: "ZivletShelfCoreTests", dependencies: ["ZivletShelfCore", "ZivletCore", "TestSupport"],
             swiftSettings: strict),
+        .testTarget(
+            name: "ZivletBoxTests",
+            dependencies: ["ZivletBox", "ZivletShelfCore", "ZivletCore", "TestSupport", "NotchTestSupport"],
+            swiftSettings: shell),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.
         .testTarget(
             name: "ZivletMatrixTests",
