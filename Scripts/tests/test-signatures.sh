@@ -7,6 +7,8 @@ APP=$ROOT/build/DerivedData/Build/Products/Debug/Zivlet.app
 [[ -x "$APP/Contents/Helpers/ffmpeg" ]] || fail "no Debug app with helpers; run make vendor app first"
 T=$(tmpdir); trap 'rm -rf "$T"' EXIT
 ditto "$APP" "$T/Zivlet.app"
+# sign-app.sh must sign the worker itself, not rely on Xcode's signature.
+codesign --remove-signature "$T/Zivlet.app/Contents/XPCServices/ZivletWorker.xpc/Contents/MacOS/ZivletWorker"
 
 "$ROOT/Scripts/sign-app.sh" - "$T/Zivlet.app" >/dev/null
 out=$("$ROOT/Scripts/verify-signatures.sh" "$T/Zivlet.app") || fail "verify failed on a freshly signed app: $out"
@@ -16,6 +18,13 @@ assert_contains "$info" "flags=0x10002(adhoc,runtime)"
 assert_contains "$info" "Identifier=app.zivlet.helper.ffmpeg"
 "$T/Zivlet.app/Contents/Helpers/ffmpeg" -hide_banner -version | grep -q "ffmpeg version" ||
     fail "the re-signed helper does not run"
+# Plan 18c C10: the worker is signed with its identifier, the hardened runtime and no entitlements.
+WORKER=$T/Zivlet.app/Contents/XPCServices/ZivletWorker.xpc
+worker_info=$(codesign -dv "$WORKER" 2>&1)
+assert_contains "$worker_info" "flags=0x10002(adhoc,runtime)"
+assert_contains "$worker_info" "Identifier=app.zivlet.Zivlet.Worker"
+assert_eq "$(codesign -d --entitlements - --xml "$WORKER" 2>/dev/null | wc -c | tr -d ' ')" "0" "worker entitlements"
+codesign --verify --strict --deep "$T/Zivlet.app" || fail "the signed app's seal is broken"
 app_info=$(codesign -dv "$T/Zivlet.app" 2>&1)
 assert_contains "$app_info" "runtime"
 
@@ -29,6 +38,12 @@ assert_fails "$ROOT/Scripts/verify-signatures.sh" "$T/Zivlet.app" --require-deve
 before=$(codesign -dvvv "$T/Zivlet.app" 2>&1 | grep '^CDHash=')
 "$ROOT/Scripts/sign-app.sh" --nested-only - "$T/Zivlet.app" >/dev/null
 assert_eq "$(codesign -dvvv "$T/Zivlet.app" 2>&1 | grep '^CDHash=')" "$before" "app CDHash after --nested-only"
+
+ditto "$T/Zivlet.app" "$T/Unsigned.app"
+codesign --remove-signature "$T/Unsigned.app/Contents/XPCServices/ZivletWorker.xpc/Contents/MacOS/ZivletWorker"
+out=$("$ROOT/Scripts/verify-signatures.sh" "$T/Unsigned.app" 2>&1 || true)
+assert_contains "$out" "ZivletWorker"
+assert_fails "$ROOT/Scripts/verify-signatures.sh" "$T/Unsigned.app"
 
 printf 'x' >> "$T/Zivlet.app/Contents/Frameworks/libavutil.61.dylib"
 out=$("$ROOT/Scripts/verify-signatures.sh" "$T/Zivlet.app" 2>&1 || true)

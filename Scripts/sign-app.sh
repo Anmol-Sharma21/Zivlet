@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Signs Zivlet.app inside-out (P0-38, 11 §7.2): libraries in Contents/Frameworks, then the helpers in
 # Contents/Helpers (identifier app.zivlet.helper.<name>), then nested frameworks (their inner bundles and
-# executables first), then the app with Config/Zivlet.entitlements. Always the hardened runtime; a secure timestamp
+# executables first), then the XPC services in Contents/XPCServices (the worker, app.zivlet.Zivlet.Worker, plan 18c:
+# no entitlements in any build, as it loads only system libraries), then the app with Config/Zivlet.entitlements. Always the hardened runtime; a secure timestamp
 # when the identity is a real certificate. Ad-hoc signatures use Config/HelperAdHoc.entitlements for the helpers and
 # Config/ZivletAdHoc.entitlements for the app, because library validation cannot match the Team ID of ad-hoc files
 # (they have none).
@@ -64,9 +65,20 @@ sign_frameworks() {
     done
 }
 
+# Each service with its bundle identifier and no entitlements (02 §2.1: the worker has none).
+sign_xpc_services() {
+    local service identifier
+    for service in "$CONTENTS"/XPCServices/*.xpc; do
+        [[ -d "$service" ]] || continue
+        identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$service/Contents/Info.plist")
+        sign --identifier "$identifier" "$service"
+    done
+}
+
 sign_libraries
 sign_helpers
 sign_frameworks
+sign_xpc_services
 if ((NESTED_ONLY)); then echo "Signed the nested code in $APP with ${IDENTITY}"; exit 0; fi
 sign --entitlements "$APP_ENTITLEMENTS" "$APP"
 echo "Signed $APP with ${IDENTITY}"
