@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ZivletActions
 import ZivletCore
 import ZivletShelfCore
 import os
@@ -11,6 +12,7 @@ public final class BoxController {
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "actions")
 
     let ports: BoxPorts
+    let actions: BoxActions
     let intake: BoxIntake
     let thumbnails: ThumbnailCache
     public let panel = BoxPanel()
@@ -29,6 +31,8 @@ public final class BoxController {
 
     /// A bulk action on its targets (the selection, else every item); stream C runs them.
     public var onBulk: (BoxPress, [ShelfItem]) -> Void = { _, _ in }
+    /// A bulk action finished: its result for the toast or the card, and the panel's frame as the anchor.
+    public var onResult: (ActionResult, CGRect?) -> Void = { _, _ in }
     /// The library or the presentation changed (the menu and the tray follow it).
     public var onChange: () -> Void = {}
     /// A save failed: the sentence to show.
@@ -39,8 +43,9 @@ public final class BoxController {
     public var onPresented: (BoxPresentation.Base, CGRect?) -> Void = { _, _ in }
     var lastReport: (base: BoxPresentation.Base, frame: CGRect?)?
 
-    public init(ports: BoxPorts) {
+    public init(ports: BoxPorts, actions: BoxActions = BoxActions()) {
         self.ports = ports
+        self.actions = actions
         intake = BoxIntake(maker: ports.maker, storage: ports.storage, promises: ports.promises, now: ports.now)
         thumbnails = ThumbnailCache(maker: ports.thumbnails)
         wirePanel()

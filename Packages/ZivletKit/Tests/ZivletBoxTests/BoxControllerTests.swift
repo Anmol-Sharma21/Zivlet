@@ -181,10 +181,10 @@ struct BoxControllerTests {
         _ = await box.add(try rig.files(3), newBox: false)
         var seen: [(BoxPress, Int)] = []
         box.onBulk = { press, items in seen.append((press, items.count)) }
-        box.press(.share)
+        box.press(.moveTo)
         box.press(.select(box.viewModel.items[0].id, extend: false, toggle: false))
         _ = box.handleKey(BoxKeyStroke(chars: "c", command: true))
-        #expect(seen.map(\.0) == [.share, .copy] && seen.map(\.1) == [3, 1])
+        #expect(seen.map(\.0) == [.moveTo, .copy] && seen.map(\.1) == [3, 1])
     }
 
     @Test func aPanelLetGoNearAnEdgeDocks() async throws {

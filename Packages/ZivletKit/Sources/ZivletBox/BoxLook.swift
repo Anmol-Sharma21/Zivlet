@@ -20,6 +20,11 @@ public enum BoxLook {
         public static let barHeight: CGFloat = 28
         /// Header to grid, grid to bar.
         public static let sectionGap = IslandContentLook.Spacing.m
+        /// The Share button, first in the action bar, in the panel's content view (origin bottom-left): where the
+        /// share picker points.
+        public static let shareAnchor = CGRect(
+            x: IslandContentLook.Spacing.l, y: IslandContentLook.Spacing.l, width: IslandContentLook.Symbol.buttonSide,
+            height: IslandContentLook.Symbol.buttonSide)
     }
 
     public enum Grid {

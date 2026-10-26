@@ -32,7 +32,8 @@ extension BoxController {
             select(GridSelection(selected: Set(hit), anchor: hit.first, focus: hit.last))
         case .more: break
         case .cancelBusy: onBulk(.cancelBusy, [])
-        case .share, .airDrop, .copy, .moveTo, .copyTo, .copyPaths, .trash, .remove, .clear, .locate, .removeMissing:
+        case .share: share()
+        case .airDrop, .copy, .moveTo, .copyTo, .copyPaths, .trash, .remove, .clear, .locate, .removeMissing:
             onBulk(press, targets())
         }
     }
@@ -55,7 +56,7 @@ extension BoxController {
         case .copyPaths: onBulk(.copyPaths, targets())
         case .moveTo: onBulk(.moveTo, targets())
         case .copyTo: onBulk(.copyTo, targets())
-        case .share: onBulk(.share, targets())
+        case .share: share()
         case .remove: onBulk(.remove, targets())
         case .trash: onBulk(.trash, targets())
         case .newBox: makeNewBox()

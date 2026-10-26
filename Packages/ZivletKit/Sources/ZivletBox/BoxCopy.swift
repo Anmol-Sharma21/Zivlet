@@ -6,6 +6,7 @@ import ZivletShelfCore
 /// decimal, as Finder shows them.
 nonisolated enum BoxCopy {
     static let empty = "Drop files here"
+    static let nothingToShare = "Nothing here can be shared."
 
     static func items(_ count: Int) -> String { counted(count, "item") }
 

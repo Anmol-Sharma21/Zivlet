@@ -23,7 +23,11 @@ final class BoxWiring {
         controller.onAdded = { [weak self] outcome in self?.present(outcome.actionResult, nil) }
         controller.onError = { [weak self] message in self?.present(.failed(ActionCard(title: message)), nil) }
         controller.onPresented = { base, frame in Self.log(base, frame: frame) }
+        controller.onResult = { [weak self] result, frame in self?.present(result, frame.map(Self.anchor)) }
     }
+
+    /// A bulk action's toast or card sits under the panel's centre when the placement is near the drop.
+    private static func anchor(_ frame: CGRect) -> CGPoint { CGPoint(x: frame.midX, y: frame.minY) }
 
     /// `Box: <state>` and `Box: frame x y w h` (whole points from the top of the menu-bar display): states and
     /// frames only, never names, so the lines are public for the demo scripts.

@@ -28,6 +28,8 @@ final class BoxRig {
     let dir: TempDir
     let bookmarks = FakeBoxBookmarks()
     let quickLook = FakeQuickLook()
+    let picker = FakeSharePicker()
+    let results = ResultLog()
     var clock = 0.0
     var displays = [BoxRig.display]
 
@@ -37,13 +39,18 @@ final class BoxRig {
     var storage: OwnedStorage { OwnedStorage(root: dir.url.appending(path: "Box")) }
 
     func controller() -> BoxController {
-        BoxController(
+        let box = BoxController(
             ports: BoxPorts(
                 store: store, storage: storage, maker: bookmarks, resolver: bookmarks, isMounted: { _ in true },
                 promises: FakePromises(names: []), thumbnails: NoThumbnails(), quickLook: quickLook,
                 visibleFrames: { [unowned self] in displays }, finish: { .solid },
-                now: { Date(timeIntervalSince1970: 1_000) }, uptime: { [unowned self] in clock }))
+                now: { Date(timeIntervalSince1970: 1_000) }, uptime: { [unowned self] in clock }),
+            actions: actions)
+        box.onResult = { [results] result, anchor in results.record(result, anchor) }
+        return box
     }
+
+    var actions: BoxActions { BoxActions(sharePicker: picker) }
 
     func files(_ count: Int, prefix: String = "f") throws -> [URL] {
         try (0..<count).map { try dir.file("files/\(prefix)\($0).txt") }
