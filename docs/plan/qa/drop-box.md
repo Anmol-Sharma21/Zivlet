@@ -74,6 +74,21 @@ only real hardware, real drags, other apps and the system's assistive technologi
 | A6 | Voice Control | Say "Show Drop Box" through the menu, then "click Share" and "click Move to Trash" | Each command acts on the panel's button | |
 | A7 | Light mode | Switch the system to Light appearance; show the panel and the compact view | The panel stays dark, as the island does (OP-M5b-1) | |
 
+## V. Review fixes (M5b review, record 17 §9)
+
+Rows for what the branch review changed and only a person on real hardware can see.
+
+| # | Check | Steps | Expected | Result |
+|---|---|---|---|---|
+| V1 | A click takes the keyboard | Type in TextEdit; show the panel from the status menu; click an item; press the arrows, ⌘A, Space, Space, ⌫ (on a test item), Escape | The panel answers each key after the click; TextEdit stays the frontmost app (its menu bar stays) | |
+| V2 | An owned copy moved out | Drop some text on the panel ("Clipping.txt"); Move to… Documents; drop more text; select the first item and press ⌫ | The file in Documents is untouched; the second clipping stays in the box and is not in the Trash | |
+| V3 | Accessibility settings while shown | With the panel shown, turn Reduce Transparency on and off, then Increase Contrast on and off | The panel's finish changes at once each time, without hiding and showing it | |
+| V4 | VoiceOver actions | With VoiceOver on, move to an item; press VO-Space; open the actions (VO-⌘-Space) | VO-Space selects the item; the actions list Quick Look and Remove from Box (and Locate… for a missing item), and each acts on that item alone | |
+| V5 | A slow or failing promise | Drag a large attachment (several hundred MB) out of Mail into the panel; then drag one and quit Mail at once | The first lands; the "Add 1" overlay leaves when it does. The second ends within two minutes with a card naming what did not arrive; the panel never stays in "Add" | |
+| V6 | The tray after a relaunch | Quit and relaunch with items in the box; without opening the panel, hover the notch and drag a strip thumbnail to Finder; delete one item's file in Finder first | The file arrives in Finder; the deleted item shows its badge in the strip; the strip shows thumbnails, not only type icons | |
+| V7 | Many text files | Add 30 small `.txt` files; look at the grid on glass | Judge whether the page thumbnails (Quick Look's icon mode, as Finder draws them) read well on the dark glass (G-M5b-14) | |
+| V8 | Scrolling to the selection | With 40 items, select the first and hold the down arrow past the panel's bottom | The selection stays in view; the scroll indicator shows that more items are below | |
+
 ## C4. Reads before and after a drop
 
 What the prototype answered (16 §3.5, run on 2026-10-26 under a throwaway app identity, outside the repository):
