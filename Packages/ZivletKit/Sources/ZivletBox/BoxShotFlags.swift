@@ -9,7 +9,7 @@ import Foundation
     public struct BoxShotFlags: Sendable, Equatable {
         public enum State: String, Sendable, CaseIterable {
             case hidden, docked, collapsed, grid, list, selection, dropTarget, busy, attention, confirmTrash
-            case confirmClear, empty
+            case confirmClear, empty, confirmEmpty, storageWarning
         }
 
         public enum Invalid: Error, Equatable {

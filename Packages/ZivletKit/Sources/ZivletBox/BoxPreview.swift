@@ -9,6 +9,8 @@ import ZivletShelfCore
             ("holiday.mov", 84_000_000), ("report.pdf", 2_100_000), ("photo.heic", 3_400_000), ("notes.txt", 4_000),
             ("song.m4a", 7_800_000), ("slides.key", 12_000_000), ("archive.zip", 41_000_000), ("logo.png", 180_000),
         ]
+        /// Past the 2 GB warning, for the overflow button's dot.
+        static let warningBytes: Int64 = 2_400_000_000
 
         public static func model(
             _ state: BoxShotFlags.State, finish: BoxFinish, maxHeight: CGFloat, icon: (String) -> NSImage
@@ -23,7 +25,7 @@ import ZivletShelfCore
                 items: items, selection: selection, presentation: presentation,
                 viewMode: state == .list ? .list : .grid,
                 finish: finish, images: Dictionary(uniqueKeysWithValues: items.map { ($0.id, icon($0.name)) }),
-                maxHeight: maxHeight)
+                maxHeight: maxHeight, storageBytes: state == .storageWarning ? warningBytes : 0)
         }
 
         /// `Box: frame x y w h` in whole points, y from the top of the menu-bar display, as the island logs frames.
@@ -61,6 +63,7 @@ import ZivletShelfCore
             case .busy: .busy(verb: "Moving 8 items", fraction: 0.4)
             case .confirmTrash: .confirm(.trash(count: 3))
             case .confirmClear: .confirm(.clear)
+            case .confirmEmpty: .confirm(.emptyStorage)
             default: nil
             }
         }

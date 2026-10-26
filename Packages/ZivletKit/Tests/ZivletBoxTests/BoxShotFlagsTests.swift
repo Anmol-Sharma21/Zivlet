@@ -61,6 +61,8 @@
             #expect(model(.attention).missingCount == 3)
             #expect(model(.confirmTrash).presentation.overlay == .confirm(.trash(count: 3)))
             #expect(model(.confirmClear).presentation.overlay == .confirm(.clear))
+            #expect(model(.confirmEmpty).presentation.overlay == .confirm(.emptyStorage))
+            #expect(model(.storageWarning).storageWarning && !model(.grid).storageWarning)
             if case .busy = model(.busy).presentation.overlay {} else { Issue.record("not busy") }
         }
 
