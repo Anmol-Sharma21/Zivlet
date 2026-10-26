@@ -1,11 +1,12 @@
 /// Accessibility focus, drags from the island, the menu command, the keyboard and the wheel (design/19 §4.2, §5.1,
 /// §5.4, D-N12, D-N13).
 extension IslandMachine {
-    /// Focus opens the card at once (no intent delay) and holds it; while the wheel shows it only holds.
+    /// Focus opens the card at once (no intent delay) and holds it; while the wheel shows, or on a drop target, it
+    /// only holds.
     mutating func accessibilityFocused(into effects: inout EffectList) {
         guard surface != .hidden, !isAccessibilityFocused else { return }
         isAccessibilityFocused = true
-        guard !isSuppressed, surface != hoverSurface else { return }
+        guard !isSuppressed, surface != hoverSurface, surface != .dropTarget else { return }
         show(hoverSurface, into: &effects)
         if case .intent = hover {
             hover = .inside

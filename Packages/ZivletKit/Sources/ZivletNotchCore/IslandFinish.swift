@@ -33,9 +33,11 @@ public enum IslandFinish: Sendable, Equatable {
         switch surface {
         case .hidden:
             return previous
+        case .sensor:
+            return .black(outline: false)  // only inside the housing, where the display has no pixels to show it
         case .collapsed where housing != nil:
             return .black(outline: outline)
-        case .collapsed, .toast, .expanded:
+        case .collapsed, .toast, .expanded, .dropTarget:
             return floating(settings: settings, band: housing?.height ?? 0)
         }
     }

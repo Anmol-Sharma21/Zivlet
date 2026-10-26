@@ -1,6 +1,8 @@
-/// One island per display, several clients (design/19 §4.1, §8): each client's latest request per display is kept,
-/// and the highest priority one wins (picker > tray > HUD). A withdrawn request hands the island back to the next.
-/// The machine of a display receives `.request(winner)` whenever the winner changes.
+/// One island per display, several clients (design/19 §4.1, §8): each client's latest request per display is kept.
+/// Requests that rest on a visible surface come first, by priority (picker > tray > HUD); only when there is none
+/// does the highest-priority sensor win, so a tray at rest never hides the HUD's progress (D-M5b-6); requests that
+/// rest hidden come last. A withdrawn request hands the island back to the next. The machine of a display receives
+/// `.request(winner)` whenever the winner changes.
 public struct IslandArbiter: Sendable, Equatable {
     private let requests: [UInt32: [IslandClientID: IslandRequest]]
 
@@ -12,7 +14,13 @@ public struct IslandArbiter: Sendable, Equatable {
     public var displays: Set<UInt32> { Set(requests.keys) }
 
     public func winner(on display: UInt32) -> IslandRequest? {
-        requests[display]?.max { $0.key < $1.key }?.value
+        requests[display]?.max { Self.rank($0) < Self.rank($1) }?.value
+    }
+
+    /// Visible rests above sensors above hidden rests; inside each, the client's priority.
+    private static func rank(_ entry: (key: IslandClientID, value: IslandRequest)) -> (Int, IslandClientID) {
+        let rest = entry.value.resting
+        return (rest.isVisible ? 2 : rest == .sensor ? 1 : 0, entry.key)
     }
 
     /// Sets `request` on its own display, or withdraws all of `client`'s requests when it is nil. A request filed

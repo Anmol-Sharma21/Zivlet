@@ -49,3 +49,60 @@ struct IslandArbiterTests {
         #expect(a.winner(on: 1) == nil)
     }
 }
+
+@Suite("Arbiter: a tray at rest never hides the HUD (D-M5b-6)")
+struct IslandArbiterRestTests {
+    @Test func theHUDsTabBeatsTheTraysSensor() {
+        let a = IslandArbiter().updating(.tray, .tray(.sensor)).updating(.hud, .hud(.collapsed))
+        #expect(a.winner(on: 1)?.client == .hud)
+    }
+
+    @Test func theHUDsToastAndCardBeatTheSensorToo() {
+        for surface in [IslandSurface.toast, .expanded] {
+            let a = IslandArbiter().updating(.tray, .tray(.sensor)).updating(.hud, .hud(surface))
+            #expect(a.winner(on: 1)?.client == .hud)
+        }
+    }
+
+    @Test func aDropTargetBeatsTheHUD() {
+        let a = IslandArbiter().updating(.hud, .hud(.collapsed)).updating(.tray, .tray(.dropTarget))
+        #expect(a.winner(on: 1)?.client == .tray)
+    }
+
+    @Test func withoutAVisibleRequestTheSensorWins() {
+        let a = IslandArbiter().updating(.tray, .tray(.sensor)).updating(.hud, .hud(.toast)).updating(.hud, nil)
+        #expect(a.winner(on: 1) == .tray(.sensor))
+    }
+
+    @Test func theTraysSensorAloneWins() {
+        #expect(IslandArbiter().updating(.tray, .tray(.sensor)).winner(on: 1) == .tray(.sensor))
+    }
+
+    @Test func pickerAndTrayBothVisibleGivesThePicker() {
+        let a = IslandArbiter().updating(.tray, .tray(.dropTarget)).updating(.picker, .picker(.expanded))
+        #expect(a.winner(on: 1)?.client == .picker)
+    }
+
+    @Test func withdrawingTheHUDHandsBackToTheTraysSensor() {
+        let a = IslandArbiter().updating(.tray, .tray(.sensor)).updating(.hud, .hud(.collapsed))
+        #expect(a.updating(.hud, nil).winner(on: 1) == .tray(.sensor))
+    }
+
+    @Test func aVisibleRestBeatsAHigherClientsSensor() {
+        let a = IslandArbiter().updating(.picker, .picker(.sensor)).updating(.tray, .tray(.collapsed))
+        #expect(a.winner(on: 1)?.client == .tray)
+    }
+
+    @Test func twoSensorsGoByPriority() {
+        let a = IslandArbiter().updating(.tray, .tray(.sensor)).updating(.picker, .picker(.sensor))
+        #expect(a.winner(on: 1)?.client == .picker)
+    }
+
+    @Test func aHiddenRestNeverBeatsAVisibleOrASensorOne() {
+        let hidden = IslandRequest(client: .picker, display: 1, resting: .hidden, hoverSurface: .expanded)
+        #expect(
+            IslandArbiter().updating(.picker, hidden).updating(.tray, .tray(.sensor)).winner(on: 1)?.client == .tray)
+        #expect(IslandArbiter().updating(.picker, hidden).updating(.hud, .hud(.toast)).winner(on: 1)?.client == .hud)
+        #expect(IslandArbiter().updating(.picker, hidden).winner(on: 1) == hidden)
+    }
+}

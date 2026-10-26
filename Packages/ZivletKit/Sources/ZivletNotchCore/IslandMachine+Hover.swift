@@ -1,4 +1,5 @@
-/// Hover intent and grace (design/19 §4.2, §4.4).
+/// Hover intent and grace (design/19 §4.2, §4.4). A sensor opens like a resting tab; hover never changes a drop
+/// target (D-M5b-6).
 extension IslandMachine {
     mutating func pointerEntered(now: Duration, into effects: inout EffectList) {
         guard surface != .hidden, !isSuppressed else { return }
@@ -8,7 +9,7 @@ extension IslandMachine {
             hover = .inside
             effects.deadline = .cancelDeadline
         case .outside:
-            if surface == hoverSurface, !isPinned {
+            if surface == .dropTarget || (surface == hoverSurface && !isPinned) {
                 hover = .inside
             } else {
                 let until = now + Timing.intent

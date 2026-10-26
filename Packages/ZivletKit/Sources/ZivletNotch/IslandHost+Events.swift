@@ -95,7 +95,7 @@ extension IslandHost {
     /// width; a new height goes to the machine.
     public func contentChanged() {
         refreshContent()
-        let width = IslandLayout.Metrics.expandedWidth - 2 * flare
+        let width = IslandLayout.Metrics.expandedWidth - 2 * flare(for: .expanded)
         measurer.rootView = AnyView(
             client.content(for: .expanded, display: display.id)
                 .frame(width: width).fixedSize(horizontal: false, vertical: true))
@@ -151,17 +151,23 @@ extension IslandHost {
     }
 
     /// While hidden (fading out) the last surface stays drawn.
-    private var shownSurface: IslandSurface { surface == .hidden ? chrome.surface : surface }
+    var shownSurface: IslandSurface { surface == .hidden ? chrome.surface : surface }
 
     private var contentHeightShown: Double { lastMeasuredHeight ?? 0 }
 
-    /// The flare on a notch display; the pill has none (19b D-NL4).
-    var flare: Double { NotchGeometry.hasNotch(display) ? IslandLook.flare : 0 }
+    /// The flare on a notch display; the pill has none (19b D-NL4), and neither has the sensor, which stays inside
+    /// the housing.
+    var flare: Double { flare(for: shownSurface) }
+
+    func flare(for surface: IslandSurface) -> Double {
+        NotchGeometry.hasNotch(display) && surface != .sensor ? IslandLook.flare : 0
+    }
 
     private func radius(_ surface: IslandSurface) -> Double {
         if surface == .expanded { return IslandLayout.Metrics.expandedRadius }
         if NotchGeometry.hasNotch(display) {
-            return surface == .toast ? IslandLayout.Metrics.toastRadius : IslandLayout.Metrics.collapsedRadius
+            let toastLike = surface == .toast || surface == .dropTarget
+            return toastLike ? IslandLayout.Metrics.toastRadius : IslandLayout.Metrics.collapsedRadius
         }
         let pill = IslandLayout.frame(surface, on: display, contentHeight: 0)
         return pill.height / 2

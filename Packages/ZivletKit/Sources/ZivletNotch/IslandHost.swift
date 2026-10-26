@@ -160,6 +160,10 @@ public final class IslandHost {
         }
         refreshAccessibility()
         let goal = targetFrame(target)
+        guard !goal.isEmpty else {
+            onSurface(target, .zero)  // a sensor on a display without a housing: nothing to sense, so ordered out
+            return fadeOut(mine)
+        }
         onSurface(target, goal)
         if !panel.isVisible || previous == .hidden {
             appear(at: goal, mine)

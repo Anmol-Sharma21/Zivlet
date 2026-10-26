@@ -96,10 +96,21 @@ public struct IslandMachine: Sendable, Equatable {
             if surface != .hidden, !isDragging { hide(into: &effects) }
             return
         }
+        if newRequest.resting == .dropTarget { return showDropTarget(newRequest, into: &effects) }
         let keepsOpen = isOpenedBeyondRest && (isHovered || deadline != nil || isHeld || isPinned)
         request = newRequest
         guard !keepsOpen, surface != newRequest.resting else { return }
         show(newRequest.resting, into: &effects)
+    }
+
+    /// A drop target shows at once, over an open card too (D-M5b-7): the drag is happening now. Hover, a pending
+    /// deadline and a pin end with it; the keyboard goes back.
+    private mutating func showDropTarget(_ newRequest: IslandRequest, into effects: inout EffectList) {
+        request = newRequest
+        if deadline != nil { effects.deadline = .cancelDeadline }
+        hover = .outside
+        isPinned = false
+        if surface != .dropTarget { show(.dropTarget, into: &effects) }
     }
 
     private mutating func measure(_ height: Double, into effects: inout EffectList) {

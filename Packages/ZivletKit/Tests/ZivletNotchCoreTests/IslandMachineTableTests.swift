@@ -6,6 +6,7 @@ import ZivletNotchCore
 struct IslandMachineTableTests {
     enum State: String, CaseIterable {
         case hidden, collapsed, toast, hoverExpanded, focusExpanded, dragHeld, pinned, keyed, keyedLeaving, suppressed
+        case sensor, dropTarget
     }
 
     static let t0 = Duration.seconds(100)
@@ -31,14 +32,21 @@ struct IslandMachineTableTests {
         case .keyedLeaving:
             return hoverExpanded.after([.clicked(now: t0 + .seconds(1)), .pointerExited(now: t0 + .seconds(2))])
         case .suppressed: return collapsed.after([.wheelShown(now: t0)])
+        case .sensor:
+            return IslandMachine().after([.request(.tray(.sensor), now: t0), .contentHeightChanged(108, now: t0)])
+        case .dropTarget:
+            return IslandMachine().after([.request(.trayDrop(), now: t0), .contentHeightChanged(108, now: t0)])
         }
     }
 
-    /// The events sent in each state, by label: every case of `IslandEvent.allCases`, plus two more requests.
+    /// The events sent in each state, by label: every case of `IslandEvent.allCases`, plus four more requests (the
+    /// HUD's toast and tab, the tray's sensor and drop target).
     static var events: [(String, IslandEvent)] {
         IslandEvent.allCases(now: t1).map { (label($0), $0) } + [
             ("request(toast)", .request(.hud(.toast), now: t1)),
             ("request(collapsed)", .request(.hud(.collapsed), now: t1)),
+            ("request(sensor)", .request(.tray(.sensor), now: t1)),
+            ("request(dropTarget)", .request(.trayDrop(), now: t1)),
         ]
     }
 

@@ -3,7 +3,8 @@ import ZivletCore
 /// Pure frames for each surface on one display (design/19 §3.4, D-N3). On a notch display every frame hangs from the
 /// top edge, centred on the housing; nothing is drawn inside the housing, so collapsed content sits in a tab below it.
 /// On a display without a notch the island is a pill centred on the display, 6 pt under the menu bar. Every frame is
-/// clamped inside the display frame.
+/// clamped inside the display frame. The tray's drop target takes the toast's frame; its sensor is the housing
+/// itself, and an empty rectangle (ordered out) on a pill display (D-M5b-17).
 public enum IslandLayout {
     public enum Metrics {
         /// How far the collapsed shape reaches past the housing on each side (the acceptance rule of §5.3).
@@ -31,9 +32,11 @@ public enum IslandLayout {
         }
         let size: (width: Double, height: Double)
         switch surface {
+        case .sensor:
+            return housing
         case .hidden, .collapsed:
             size = (housing.width + 2 * Metrics.shoulder, housing.height + Metrics.tabHeight)
-        case .toast:
+        case .toast, .dropTarget:
             size = (Metrics.toastWidth, housing.height + Metrics.toastRow)
         case .expanded:
             size = (Metrics.expandedWidth, min(housing.height + contentHeight, Metrics.maxHeight))
@@ -69,8 +72,9 @@ public enum IslandLayout {
     {
         let size: (width: Double, height: Double)
         switch surface {
+        case .sensor: return Rect2D(x: 0, y: 0, width: 0, height: 0)  // no housing to sense: ordered out
         case .hidden, .collapsed: size = Metrics.pillCollapsed
-        case .toast: size = (Metrics.toastWidth, Metrics.pillToastHeight)
+        case .toast, .dropTarget: size = (Metrics.toastWidth, Metrics.pillToastHeight)
         case .expanded: size = (Metrics.expandedWidth, min(contentHeight, Metrics.maxHeight))
         }
         let top = display.visibleFrame.maxY - Metrics.pillGap

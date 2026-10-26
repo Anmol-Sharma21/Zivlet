@@ -11,7 +11,7 @@ extension NotchHUD: IslandClient {
     public func content(for surface: IslandSurface, display: UInt32) -> AnyView {
         let act: (Press, NotchHUDItemID) -> Void = { [weak self] press, id in self?.press(press, onItem: id) }
         switch surface {
-        case .hidden: return AnyView(EmptyView())
+        case .hidden, .dropTarget, .sensor: return AnyView(EmptyView())  // the HUD never asks for the tray's surfaces
         case .collapsed: return AnyView(NotchTab(model: model, display: display, underHousing: hasHousing(display)))
         case .toast: return AnyView(NotchToast(model: model, display: display, act: act))
         case .expanded:
