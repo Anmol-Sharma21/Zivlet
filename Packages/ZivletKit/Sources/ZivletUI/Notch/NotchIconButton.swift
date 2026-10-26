@@ -6,9 +6,9 @@ import ZivletNotch
 /// Control's "click Undo" and the M5a words still work. Under Increase Contrast (the island's outlined finish) the round
 /// background shows at rest.
 struct NotchIconButton: View {
-    static let hoverFill = 0.14
-    static let pressedFill = 0.22
-    static let contrastFill = 0.18
+    static let hoverFill = IslandIconButtonFill.hover
+    static let pressedFill = IslandIconButtonFill.pressed
+    static let contrastFill = IslandIconButtonFill.contrast
 
     let press: NotchHUD.Press
     var symbol: String? = nil
@@ -22,7 +22,7 @@ struct NotchIconButton: View {
                 .frame(width: NotchLook.Symbol.buttonSide, height: NotchLook.Symbol.buttonSide)
                 .contentShape(Circle())
         }
-        .buttonStyle(NotchIconButtonStyle())
+        .buttonStyle(IslandIconButtonStyle())
         .help(Self.title(press))
         .accessibilityLabel(Self.title(press))
     }
@@ -45,32 +45,17 @@ struct NotchIconButton: View {
     }
 
     /// The round background at rest: none, or white 0.18 under Increase Contrast (19b §7).
-    static func restingFill(increaseContrast: Bool) -> Double { increaseContrast ? contrastFill : 0 }
+    static func restingFill(increaseContrast: Bool) -> Double {
+        IslandIconButtonFill.resting(increaseContrast: increaseContrast)
+    }
 
     /// The hover fill eases in over 0.12 s; under Reduce Motion it changes at once (19b §3.4).
-    static func hoverAnimation(reduceMotion: Bool) -> Animation? { reduceMotion ? nil : .easeOut(duration: 0.12) }
+    static func hoverAnimation(reduceMotion: Bool) -> Animation? {
+        IslandIconButtonFill.hoverAnimation(reduceMotion: reduceMotion)
+    }
 
     /// The background's opacity for a state.
     static func fill(pressed: Bool, hovered: Bool, increaseContrast: Bool) -> Double {
-        if pressed { return pressedFill }
-        if hovered { return hoverFill }
-        return restingFill(increaseContrast: increaseContrast)
-    }
-}
-
-/// The circle behind the symbol; hover through `onHover`, so no global event monitor is needed.
-struct NotchIconButtonStyle: ButtonStyle {
-    /// The island's outline, from the same finish as the outline itself (not SwiftUI's own contrast reading).
-    @Environment(\.islandOutlined) private var outlined
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var hovered = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        let opacity = NotchIconButton.fill(
-            pressed: configuration.isPressed, hovered: hovered, increaseContrast: outlined)
-        return configuration.label
-            .background(Circle().fill(Color.white.opacity(opacity)))
-            .onHover { hovered = $0 }
-            .animation(NotchIconButton.hoverAnimation(reduceMotion: reduceMotion), value: hovered)
+        IslandIconButtonFill.opacity(pressed: pressed, hovered: hovered, increaseContrast: increaseContrast)
     }
 }
