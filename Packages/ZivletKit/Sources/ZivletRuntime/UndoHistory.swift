@@ -7,11 +7,15 @@ public enum UndoStoreError: Error, Sendable, Equatable {
 }
 
 /// The undo log on disk: `~/Library/Application Support/Zivlet/undo.json` (03a §4.7). A missing file is an empty
-/// log; an unreadable one is logged and treated as empty, so a damaged file never blocks conversions.
+/// log; an undecodable one is logged, set aside as `undo.damaged.json` and treated as empty, so a damaged file never
+/// blocks conversions and is never silently replaced. A file a later Zivlet wrote (a newer schema) is read as empty
+/// and never overwritten.
 public struct UndoStore: Sendable {
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "actions")
+    static let damagedName = "undo.damaged.json"
 
     public let file: URL
+    private let newer = NewerFlag()
 
     public init(file: URL) { self.file = file }
 
@@ -22,16 +26,34 @@ public struct UndoStore: Sendable {
 
     public func load() -> UndoLog {
         guard let data = try? Data(contentsOf: file) else { return UndoLog() }
+        if let header = try? JSONDecoder().decode(UndoHeader.self, from: data), (header.schema ?? 1) > UndoLog.schema {
+            Self.logger.error("Undo history has newer schema \(header.schema ?? 0, privacy: .public); left untouched")
+            newer.set()
+            return UndoLog()
+        }
         do {
             return try JSONDecoder().decode(UndoLog.self, from: data)
         } catch {
             Self.logger.error(
                 "Undo history unreadable, starting empty: \(String(describing: error), privacy: .private)")
+            setAside()
             return UndoLog()
         }
     }
 
+    /// Renames the file to the first free "undo.damaged.json", "undo.damaged 2.json" …; an earlier one stays.
+    private func setAside() {
+        let folder = file.deletingLastPathComponent()
+        let names = [Self.damagedName] + (2...99).map { "undo.damaged \($0).json" }
+        guard
+            let free = names.map({ folder.appending(path: $0) }).first(where: {
+                !FileManager.default.fileExists(atPath: $0.path)
+            }), (try? FileManager.default.moveItem(at: file, to: free)) != nil
+        else { return Self.logger.error("Undo history could not be set aside") }
+    }
+
     public func save(_ log: UndoLog) throws(UndoStoreError) {
+        guard !newer.isSet else { throw .writeFailed("a newer Zivlet wrote the undo history") }
         do {
             try FileManager.default.createDirectory(
                 at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -40,6 +62,20 @@ public struct UndoStore: Sendable {
             throw .writeFailed(String(describing: error))
         }
     }
+}
+
+/// Only the schema of `undo.json`, read first so a newer file is recognised before its entries.
+private struct UndoHeader: Decodable {
+    let schema: Int?
+}
+
+/// Whether the store read a newer file, shared by the store's copies.
+private final class NewerFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+
+    var isSet: Bool { lock.withLock { value } }
+    func set() { lock.withLock { value = true } }
 }
 
 /// Records finished batches and Moves and undoes them (P1-15): the log is loaded once, and every change is written

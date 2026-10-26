@@ -92,6 +92,25 @@ struct UndoLogTests {
         #expect(store.load() == UndoLog())
     }
 
+    @Test func aCorruptFileIsSetAsideNotOverwritten() throws {
+        let box = try Sandbox()
+        let store = UndoStore(file: box.dir.appending(path: "undo.json"))
+        try Data("not json".utf8).write(to: store.file)
+        #expect(store.load() == UndoLog())
+        let aside = box.dir.appending(path: "undo.damaged.json")
+        #expect(try String(contentsOf: aside, encoding: .utf8) == "not json")
+    }
+
+    @Test func aNewerSchemaIsNeverOverwritten() throws {
+        let box = try Sandbox()
+        let store = UndoStore(file: box.dir.appending(path: "undo.json"))
+        let newer = #"{"schema":3,"entries":[],"later":true}"#
+        try Data(newer.utf8).write(to: store.file)
+        #expect(store.load() == UndoLog())
+        #expect(throws: UndoStoreError.self) { try store.save(UndoLog()) }
+        #expect(try String(contentsOf: store.file, encoding: .utf8) == newer)
+    }
+
     @Test func aStoreThatCannotBeWrittenIsATypedError() throws {
         let box = try Sandbox()
         let blocker = try box.file("blocker")
