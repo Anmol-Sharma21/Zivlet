@@ -66,6 +66,11 @@ let package = Package(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
             swiftSettings: strict),
 
+        // Seeded synthetic drags and the recorded-trace reader for the shake and proximity tests (D-M5b-15, P2-197).
+        .target(
+            name: "DragTraceSupport", dependencies: ["ZivletTrigger", "ZivletCore", "TestSupport"],
+            path: "Tests/DragTraceSupport", swiftSettings: strict),
+
         // Display fixtures, a fake display provider and a manual clock for the notch and HUD test bundles.
         .target(
             name: "NotchTestSupport", dependencies: ["ZivletNotch", "ZivletNotchCore", "ZivletCore"],
@@ -73,7 +78,8 @@ let package = Package(
 
         .testTarget(name: "ZivletCoreTests", dependencies: ["ZivletCore"], swiftSettings: strict),
         .testTarget(
-            name: "ZivletTriggerTests", dependencies: ["ZivletTrigger", "TestSupport"], swiftSettings: strict),
+            name: "ZivletTriggerTests", dependencies: ["ZivletTrigger", "TestSupport", "DragTraceSupport"],
+            swiftSettings: strict),
         .testTarget(
             name: "ZivletWheelCoreTests", dependencies: ["ZivletWheelCore", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "ZivletTriggerHostTests", dependencies: ["ZivletTriggerHost"], swiftSettings: shell),
