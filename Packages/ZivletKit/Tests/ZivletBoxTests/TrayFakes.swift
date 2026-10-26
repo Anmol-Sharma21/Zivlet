@@ -95,7 +95,9 @@ final class TrayRig {
     /// Surfaces shown on `display`, in order.
     func shown(on display: UInt32) -> [IslandSurface] { surfaces.filter { $0.0 == display }.map(\.1) }
 
+    /// Ends the held lingers; a linger that starts later is not held, so a release that comes first is not lost.
     func releaseLingers() {
+        holdsLingers = false
         heldLingers.forEach { $0.resume() }
         heldLingers = []
     }

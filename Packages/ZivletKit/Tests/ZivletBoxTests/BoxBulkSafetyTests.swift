@@ -6,19 +6,29 @@ import ZivletShelfCore
 
 @testable import ZivletBox
 
-/// A folder chooser that waits until the test answers, so a second press can arrive while the first is open.
+/// A folder chooser that waits until the test answers, so a second press can arrive while the first is open. An
+/// answer given before the chooser is asked (a busy main actor) is kept, so no wait is lost.
 final class HeldFolders: FolderChoosing {
     private var waiting: CheckedContinuation<URL?, Never>?
+    private var early: URL??
     private(set) var asked = 0
 
     func chooseFolder(for items: [MoveItem]) async -> URL? {
         asked += 1
+        if let early {
+            self.early = nil
+            return early
+        }
         return await withCheckedContinuation { waiting = $0 }
     }
 
     func answer(_ url: URL?) {
-        waiting?.resume(returning: url)
-        waiting = nil
+        guard let waiting else {
+            early = .some(url)
+            return
+        }
+        waiting.resume(returning: url)
+        self.waiting = nil
     }
 }
 
