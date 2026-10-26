@@ -39,6 +39,8 @@ struct BoxCollapsedCard: View {
                     radius: BoxLook.Grid.thumbRadius
                 )
                 .offset(x: CGFloat(offset) * Self.fan, y: CGFloat(offset) * Self.fan)
+                .onAppear { press(.shown(item.id, true)) }
+                .onDisappear { press(.shown(item.id, false)) }
             }
         }
         .frame(
@@ -47,9 +49,9 @@ struct BoxCollapsedCard: View {
         )
         .overlay {
             FileDragSource(
-                urls: model.items.compactMap(\.url), image: shown.first.flatMap { model.images[$0.id] } ?? NSImage(),
-                drawsImage: false,
-                onEnded: { operation in
+                provide: { [model] in model.items.compactMap(\.url) },
+                image: shown.first.flatMap { model.images[$0.id] } ?? NSImage(), drawsImage: false,
+                onEnded: { [model, press] operation in
                     BoxItemDrag.ended(operation, ids: model.items.filter { $0.url != nil }.map(\.id)).map(press)
                 })
         }

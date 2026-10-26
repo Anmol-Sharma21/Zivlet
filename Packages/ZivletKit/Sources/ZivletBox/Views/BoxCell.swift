@@ -15,7 +15,8 @@ struct BoxCell: View {
     var body: some View {
         VStack(spacing: BoxLook.Grid.nameGap) {
             BoxThumb(
-                item: item, image: model.images[item.id], side: BoxLook.Grid.thumb, radius: BoxLook.Grid.thumbRadius)
+                item: item, image: model.images[item.id], side: BoxLook.Grid.thumb, radius: BoxLook.Grid.thumbRadius,
+                fades: !model.reduceMotion)
             Text(item.name)
                 .font(BoxLook.Grid.nameFont)
                 .foregroundStyle(Color.white.opacity(BoxLook.Grid.nameOpacity))
@@ -28,9 +29,38 @@ struct BoxCell: View {
         .background(BoxSelectionFill(isSelected: isSelected))
         .overlay { BoxItemDrag(item: item, model: model, press: press) }
         .modifier(BoxContextMenu(press: press))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(item.spoken)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .modifier(BoxItemAccessibility(item: item, isSelected: isSelected, press: press))
+        .id(item.id)
+    }
+}
+
+/// One item for VoiceOver (19c §6): its spoken line, selected or not, and actions, since the mouse handling that
+/// selects is hidden inside the element: press toggles the item in the selection, and Quick Look, Remove from Box
+/// and (for a missing item) Locate… act on it alone. Its coming on screen and leaving drive the thumbnails.
+struct BoxItemAccessibility: ViewModifier {
+    let item: BoxItemModel
+    let isSelected: Bool
+    let press: (BoxPress) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(item.spoken)
+            .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
+            .accessibilityAction { press(.select(item.id, extend: false, toggle: true)) }
+            .accessibilityAction(named: BoxCopy.title(.quickLook)) { alone(.quickLook) }
+            .accessibilityAction(named: BoxCopy.title(.remove)) { alone(.remove) }
+            .accessibilityActions {
+                if !item.isAvailable { Button(BoxCopy.title(.locate)) { alone(.locate) } }
+            }
+            .onAppear { press(.shown(item.id, true)) }
+            .onDisappear { press(.shown(item.id, false)) }
+    }
+
+    /// Selects only this item, then runs `command` on it.
+    private func alone(_ command: BoxPress) {
+        press(.select(item.id, extend: false, toggle: false))
+        press(command)
     }
 }
 
@@ -50,12 +80,16 @@ struct BoxItemDrag: View {
     let model: BoxViewModel
     let press: (BoxPress) -> Void
 
+    /// The payload is worked out when a drag starts, never in the body: with every item selected, building it for
+    /// each visible cell on each render cost tens of milliseconds.
     var body: some View {
-        let urls = model.selection.contains(item.id) ? model.dragURLs : (item.url.map { [$0] } ?? [])
-        let ids = model.dragIDs(from: item)
         FileDragSource(
-            urls: urls, image: model.images[item.id] ?? NSImage(), drawsImage: false,
-            onEnded: { operation in Self.ended(operation, ids: ids).map(press) },
+            provide: { [model, item] in
+                model.selection.contains(item.id) ? model.dragURLs : (item.url.map { [$0] } ?? [])
+            }, image: model.images[item.id] ?? NSImage(), drawsImage: false,
+            onEnded: { [model, item, press] operation in
+                Self.ended(operation, ids: model.dragIDs(from: item)).map(press)
+            },
             onClick: { flags in
                 press(.select(item.id, extend: flags.contains(.shift), toggle: flags.contains(.command)))
             })

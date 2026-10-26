@@ -14,7 +14,9 @@ struct BoxRow: View {
 
     var body: some View {
         HStack(spacing: IslandContentLook.Spacing.s) {
-            BoxThumb(item: item, image: model.images[item.id], side: BoxLook.List.icon, radius: BoxLook.List.iconRadius)
+            BoxThumb(
+                item: item, image: model.images[item.id], side: BoxLook.List.icon, radius: BoxLook.List.iconRadius,
+                fades: !model.reduceMotion)
             Text(item.name)
                 .font(IslandContentLook.TypeStyle.primary)
                 .foregroundStyle(IslandInk.primary)
@@ -27,6 +29,7 @@ struct BoxRow: View {
                     .font(IslandContentLook.TypeStyle.secondary)
                     .foregroundStyle(IslandInk.secondary)
                     .fixedSize()
+                    .opacity(item.isAvailable ? 1 : BoxLook.missingOpacity)
             }
         }
         .padding(.horizontal, IslandContentLook.Spacing.s)
@@ -34,9 +37,8 @@ struct BoxRow: View {
         .background(BoxSelectionFill(isSelected: isSelected))
         .overlay { BoxItemDrag(item: item, model: model, press: press) }
         .modifier(BoxContextMenu(press: press))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(item.spoken)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .modifier(BoxItemAccessibility(item: item, isSelected: isSelected, press: press))
+        .id(item.id)
     }
 }
 

@@ -76,7 +76,8 @@ extension BoxPresentation {
         }
     }
 
-    private var isBusy: Bool {
+    /// A bulk action shows its progress: only Cancel applies.
+    public var isBusy: Bool {
         if case .busy = overlay { return true }
         return false
     }

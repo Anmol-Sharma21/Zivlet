@@ -34,7 +34,8 @@ struct BoxHeader: View {
                 }
             }
             Spacer(minLength: 0)
-            trailing
+            // While busy only Cancel applies (19c §4.1): no other command can start beside a running one.
+            if !model.presentation.isBusy { trailing }
         }
         .frame(height: BoxLook.Panel.headerHeight)
     }

@@ -23,10 +23,12 @@ public struct BoxPanelView: View {
             BoxCard(finish: model.finish, size: BoxLayout.size(of: model)) {
                 dimmed(BoxCollapsedCard(model: model, press: press)).frame(maxHeight: .infinity)
             }
+            .modifier(BoxEntrance(reduceMotion: model.reduceMotion))
         case .expanded:
             BoxCard(finish: model.finish, size: BoxLayout.size(of: model)) {
                 BoxExpandedCard(model: model, press: press)
             }
+            .modifier(BoxEntrance(reduceMotion: model.reduceMotion))
         }
     }
 
@@ -81,9 +83,18 @@ struct BoxExpandedCard: View {
         .overlay { if let dropCount { BoxDropOverlay(count: dropCount) } }
     }
 
+    /// Past the panel's maximum the items scroll: the indicator stays visible, so more items below always show, and
+    /// the arrows and type-to-select keep the selection's moving end in view.
     @ViewBuilder private var items: some View {
         if BoxLayout.scrolls(model) {
-            ScrollView(.vertical) { list }.scrollIndicators(.automatic)
+            ScrollViewReader { proxy in
+                ScrollView(.vertical) { list }
+                    .scrollIndicators(.visible)
+                    .onChange(of: model.focus) { _, focus in
+                        guard let focus else { return }
+                        proxy.scrollTo(focus)
+                    }
+            }
         } else {
             list
         }

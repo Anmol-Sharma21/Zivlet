@@ -53,6 +53,12 @@ public enum BoxLook {
         public static let radius: CGFloat = 8
     }
 
+    /// The tray's "+6" tile rests at the selection fill, so hover and press go one step brighter.
+    public enum Tile {
+        public static let hover = IslandIconButtonFill.pressed
+        public static let pressed = 0.3
+    }
+
     /// A missing cell or row; the badge stays fully visible.
     public static let missingOpacity = 0.4
     /// The content behind the drop target (19c D-BL7).
@@ -60,6 +66,8 @@ public enum BoxLook {
 
     public enum Badge {
         public static let symbol = Font.system(size: 10, weight: .semibold)
+        /// The glyph is fitted into this square inside the circle, so wide symbols (the offline drive) keep a margin.
+        public static let glyph: CGFloat = 9
         public static let circle: CGFloat = 16
         public static let circleOpacity = 0.6
     }

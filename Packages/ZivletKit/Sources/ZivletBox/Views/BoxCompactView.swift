@@ -38,7 +38,7 @@ public struct BoxCompactView: View {
                 ForEach(Self.strip(model.items)) { item in
                     BoxThumb(
                         item: item, image: model.images[item.id], side: BoxLook.Tray.thumb,
-                        radius: BoxLook.Tray.thumbRadius
+                        radius: BoxLook.Tray.thumbRadius, fades: !model.reduceMotion
                     )
                     .overlay {
                         FileDragSource(
@@ -48,6 +48,7 @@ public struct BoxCompactView: View {
                                 BoxItemDrag.ended(operation, ids: item.url == nil ? [] : [item.id]).map(press)
                             })
                     }
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel(item.spoken)
                 }
                 if Self.overflow(model.items.count) > 0 { more }
@@ -75,10 +76,11 @@ public struct BoxCompactView: View {
 
     /// The strip's empty space: a drag from it carries every present item.
     private var everything: some View {
-        let ids = model.items.filter { $0.url != nil }.map(\.id)
-        return FileDragSource(
-            urls: model.dragURLs, image: NSImage(), drawsImage: false, onDrag: drag,
-            onEnded: { operation in BoxItemDrag.ended(operation, ids: ids).map(press) })
+        FileDragSource(
+            provide: { [model] in model.dragURLs }, image: NSImage(), drawsImage: false, onDrag: drag,
+            onEnded: { [model, press] operation in
+                BoxItemDrag.ended(operation, ids: model.items.filter { $0.url != nil }.map(\.id)).map(press)
+            })
     }
 
     private var more: some View {
@@ -89,12 +91,37 @@ public struct BoxCompactView: View {
                 .font(IslandContentLook.TypeStyle.primary)
                 .foregroundStyle(IslandInk.primary)
                 .frame(width: BoxLook.Tray.thumb, height: BoxLook.Tray.thumb)
-                .background(
-                    RoundedRectangle(cornerRadius: BoxLook.Tray.thumbRadius, style: .continuous)
-                        .fill(Color.white.opacity(BoxLook.Selection.fill)))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BoxTileButtonStyle())
         .help(BoxCopy.title(.openPanel))
         .accessibilityLabel(BoxCopy.title(.openPanel))
+    }
+}
+
+/// The "+6" tile: the resting fill of a selected cell, lighter on hover and pressed, the island's icon-button values
+/// (19b D-NL9) on the tile's rounded rectangle.
+struct BoxTileButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        BoxTile(label: configuration.label, isPressed: configuration.isPressed)
+    }
+}
+
+private struct BoxTile<Label: View>: View {
+    let label: Label
+    let isPressed: Bool
+    @State private var hovering = false
+
+    var body: some View {
+        label
+            .background(
+                RoundedRectangle(cornerRadius: BoxLook.Tray.thumbRadius, style: .continuous)
+                    .fill(Color.white.opacity(fill))
+            )
+            .contentShape(RoundedRectangle(cornerRadius: BoxLook.Tray.thumbRadius, style: .continuous))
+            .onHover { hovering = $0 }
+    }
+
+    private var fill: Double {
+        isPressed ? BoxLook.Tile.pressed : hovering ? BoxLook.Tile.hover : BoxLook.Selection.fill
     }
 }
