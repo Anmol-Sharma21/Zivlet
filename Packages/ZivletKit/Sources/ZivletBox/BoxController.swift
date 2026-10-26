@@ -25,6 +25,8 @@ public final class BoxController {
     var selection = GridSelection()
     var typed = TypeSelect()
     var resolvedBox: UUID?
+    /// The exit fade running now (G-M5b-10); a show during it cancels it, and a stale completion does nothing.
+    var fading: UUID?
     /// The resolution of the shown box, running off the main thread (G-M5b-8).
     var resolving: Task<Void, Never>?
     /// The cells on screen now (their `onAppear` and `onDisappear`): the only items whose thumbnails are asked for.

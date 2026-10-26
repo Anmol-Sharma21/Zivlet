@@ -29,6 +29,10 @@ public struct BoxPorts {
     public let sleep: (Duration) async -> Void
     /// Records a Move to Trash as one undo batch (the app's undo history); the box remembers the items to put back.
     public let recordUndo: (BatchID, [UndoMove]) async -> Void
+    /// The panel's exit (19c D-BL12): an opacity fade, then it is ordered out.
+    public let fader: any PanelFading
+    /// Reduce Motion is on: the panel's entrance and exit only fade, briefly.
+    public let reduceMotion: () -> Bool
 
     public init(
         store: BoxStore, storage: OwnedStorage, maker: any BookmarkMaking, resolver: any BookmarkResolving,
@@ -39,7 +43,9 @@ public struct BoxPorts {
         uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime },
         trash: any Trashing = SystemTrash(), locator: any FileLocating = SystemFileLocator(),
         sleep: @escaping (Duration) async -> Void = { try? await Task.sleep(for: $0) },
-        recordUndo: @escaping (BatchID, [UndoMove]) async -> Void = { _, _ in }
+        recordUndo: @escaping (BatchID, [UndoMove]) async -> Void = { _, _ in },
+        fader: any PanelFading = SystemPanelFader(),
+        reduceMotion: @escaping () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
     ) {
         self.store = store
         self.storage = storage
@@ -57,23 +63,28 @@ public struct BoxPorts {
         self.locator = locator
         self.sleep = sleep
         self.recordUndo = recordUndo
+        self.fader = fader
+        self.reduceMotion = reduceMotion
     }
 
     /// The same ports over another store and storage (the debug demo keeps its box away from `boxes.json`).
     public func with(store: BoxStore, storage: OwnedStorage) -> BoxPorts {
-        BoxPorts(
-            store: store, storage: storage, maker: maker, resolver: resolver, isMounted: isMounted, promises: promises,
-            thumbnails: thumbnails, quickLook: quickLook, visibleFrames: visibleFrames, finish: finish, now: now,
-            uptime: uptime, trash: trash, locator: locator, sleep: sleep, recordUndo: recordUndo)
+        copy(store: store, storage: storage, recordUndo: recordUndo)
     }
 
     /// The same ports recording Move to Trash in `history`.
     public func with(undoHistory history: UndoHistory) -> BoxPorts {
+        copy(store: store, storage: storage) { batch, moves in await history.record(batch, moves: moves) }
+    }
+
+    private func copy(
+        store: BoxStore, storage: OwnedStorage, recordUndo: @escaping (BatchID, [UndoMove]) async -> Void
+    ) -> BoxPorts {
         BoxPorts(
             store: store, storage: storage, maker: maker, resolver: resolver, isMounted: isMounted, promises: promises,
             thumbnails: thumbnails, quickLook: quickLook, visibleFrames: visibleFrames, finish: finish, now: now,
-            uptime: uptime, trash: trash, locator: locator, sleep: sleep,
-            recordUndo: { batch, moves in await history.record(batch, moves: moves) })
+            uptime: uptime, trash: trash, locator: locator, sleep: sleep, recordUndo: recordUndo, fader: fader,
+            reduceMotion: reduceMotion)
     }
 
     /// The real stores and system ports: `boxes.json` and `Box/` in Application Support, Foundation bookmarks

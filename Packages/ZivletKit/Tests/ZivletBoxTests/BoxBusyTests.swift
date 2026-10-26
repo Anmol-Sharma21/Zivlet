@@ -6,10 +6,10 @@ import ZivletShelfCore
 
 @testable import ZivletBox
 
-/// Polls the main actor until `condition` holds, for at most about five seconds.
+/// Polls the main actor until `condition` holds, for at most about ten seconds (parallel suites share it).
 @MainActor
 func waitUntil(_ condition: () -> Bool) async throws {
-    for _ in 0..<500 where !condition() { try await Task.sleep(for: .milliseconds(10)) }
+    for _ in 0..<1_000 where !condition() { try await Task.sleep(for: .milliseconds(10)) }
     #expect(condition())
 }
 

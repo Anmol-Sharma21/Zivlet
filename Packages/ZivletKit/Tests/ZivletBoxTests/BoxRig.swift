@@ -21,6 +21,15 @@ final class FakeQuickLook: QuickLookPresenting {
     func preview(_ urls: [URL]) { previews.append(urls) }
 }
 
+/// An exit with no fade: the panel goes at once, as before G-M5b-10.
+@MainActor
+struct InstantFader: PanelFading {
+    func fadeOut(_ panel: NSWindow, seconds: Double, completion: @escaping @MainActor @Sendable () -> Void) {
+        completion()
+    }
+    func cancel(_ panel: NSWindow) { panel.alphaValue = 1 }
+}
+
 /// A Boolean that any thread can read and set.
 nonisolated final class LockedFlag: @unchecked Sendable {
     private let lock = NSLock()
@@ -74,6 +83,9 @@ final class BoxRig {
     /// Another bookmark resolver for the controllers made after it is set (one that holds).
     var resolver: (any BookmarkResolving)?
     var chooser: (any FolderChoosing)?
+    /// The panel's exit fade for the controllers made after it is set; instant by default.
+    var fader: (any PanelFading)?
+    var reduceMotion = false
     /// Another move executor for the controllers made after it is set (a gated rename).
     var executor: MoveExecutor?
 
@@ -100,7 +112,8 @@ final class BoxRig {
                 now: { [weak self] in self?.now ?? Date(timeIntervalSince1970: 1_000) },
                 uptime: { [weak self] in self?.clock ?? 0 }, trash: trash,
                 locator: locator, sleep: { [weak self] duration in await self?.wait(duration) },
-                recordUndo: { [undo] batch, moves in await undo.record(batch, moves: moves) }),
+                recordUndo: { [undo] batch, moves in await undo.record(batch, moves: moves) },
+                fader: fader ?? InstantFader(), reduceMotion: { [weak self] in self?.reduceMotion ?? false }),
             actions: actions)
         box.onResult = { [results] result, anchor in results.record(result, anchor) }
         return box

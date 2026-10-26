@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import ZivletCore
+import ZivletNotch
 import ZivletShelfCore
 
 extension BoxController {
@@ -34,13 +35,35 @@ extension BoxController {
         renders += 1
         hosting.rootView = AnyView(BoxPanelView(model: model) { [weak self] in self?.press($0) })
         guard let frame = frame(for: model) else {
-            panel.orderOut(nil)
+            fadeOut()
             report(nil)
             return
         }
+        stopFading()
         if panel.frame != frame.cgRect { panel.setFrame(frame.cgRect, display: true) }
         if !panel.isVisible { panel.show() }
         report(frame.cgRect)
+    }
+
+    /// The panel leaves with opacity on the island's collapse curve, then is ordered out (19c D-BL12).
+    private func fadeOut() {
+        guard panel.isVisible, fading == nil else { return }
+        let id = UUID()
+        fading = id
+        let seconds = IslandAnimation.exitSeconds(reduceMotion: ports.reduceMotion())
+        ports.fader.fadeOut(panel, seconds: seconds) { [weak self] in
+            guard let self, fading == id else { return }
+            fading = nil
+            panel.orderOut(nil)
+            panel.alphaValue = 1
+        }
+    }
+
+    /// A show during the exit fade: the panel stays, fully opaque.
+    private func stopFading() {
+        guard fading != nil else { return }
+        fading = nil
+        ports.fader.cancel(panel)
     }
 
     /// Reduce Transparency or Increase Contrast changed: a shown panel takes the new finish at once (19c §6).

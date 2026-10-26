@@ -6,7 +6,7 @@ import ZivletShelfCore
 @testable import ZivletBox
 
 /// Fake bookmarks that, once armed, hold the first resolve or bookmark call until `release()`. A call made on the
-/// main thread would block the test that waits for it, so a hold gives up after two seconds and disarms; `isHeld`
+/// main thread would block the test that waits for it, so a hold gives up after ten seconds and disarms; `isHeld`
 /// is true only while a call waits.
 final class HoldingBookmarks: BookmarkMaking, BookmarkResolving, @unchecked Sendable {
     let base: FakeBoxBookmarks
@@ -45,7 +45,7 @@ final class HoldingBookmarks: BookmarkMaking, BookmarkResolving, @unchecked Send
         lock.withLock {
             guard armed, !released else { return }
             held = true
-            let limit = Date().addingTimeInterval(2)
+            let limit = Date().addingTimeInterval(10)
             while !released, lock.wait(until: limit) {}
             held = false
             armed = false

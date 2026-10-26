@@ -13,7 +13,7 @@ extension BoxController {
             items: items, selection: selection.selected, presentation: presentation,
             viewMode: current?.viewMode ?? .grid, finish: ports.finish(), images: images,
             maxHeight: CGFloat(PanelFrames.maxHeight(in: display(for: current?.frame))),
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, storageBytes: ownedBytes,
+            reduceMotion: ports.reduceMotion(), storageBytes: ownedBytes,
             focus: selection.focus)
     }
 

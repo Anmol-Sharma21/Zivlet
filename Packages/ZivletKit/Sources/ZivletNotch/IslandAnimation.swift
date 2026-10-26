@@ -29,6 +29,12 @@ public enum IslandAnimation: Sendable, Equatable {
     /// A spring's settling time is open-ended; the frame swap waits at most this long.
     static let maxSettle = 0.6
 
+    /// How long a panel's exit fade lasts: the island's collapse settle (at most 0.6 s), or Reduce Motion's short
+    /// fade, so the Drop Box leaves in the island's motion language (19c D-BL12).
+    public static func exitSeconds(reduceMotion: Bool) -> Double {
+        motion.timing(for: IslandMotion(reduceMotion: reduceMotion).collapse).seconds
+    }
+
     /// How new content enters (19b D-NL13): it grows from 0.96 at the top edge while it fades in, inside the shape's
     /// spring, and leaves with opacity only. Under Reduce Motion it only fades.
     func contentTransition(reduceMotion: Bool) -> IslandContentTransition {
