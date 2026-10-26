@@ -10,10 +10,10 @@ import ZivletShelfCore
 @Suite("Box thumbnails from the cells on screen (D-M5b-14)")
 @MainActor
 struct BoxThumbnailTests {
-    static func shownBox(_ rig: BoxRig, files: Int) async throws -> BoxController {
+    static func shownBox(_ rig: BoxRig, files: Int, ext: String = "txt") async throws -> BoxController {
         let box = rig.controller()
         box.start()
-        _ = await box.add(try rig.files(files), newBox: false)
+        _ = await box.add(try rig.files(files, ext: ext), newBox: false)
         box.showPanel()
         return box
     }
@@ -22,7 +22,7 @@ struct BoxThumbnailTests {
         let rig = try BoxRig()
         let maker = GatedThumbnailMaker()
         rig.thumbnailMaker = maker
-        let box = try await Self.shownBox(rig, files: 3)
+        let box = try await Self.shownBox(rig, files: 3, ext: "png")
         let ids = box.viewModel.items.map(\.id)
         for id in ids { box.press(.shown(id, true)) }
         await settle()
@@ -39,7 +39,7 @@ struct BoxThumbnailTests {
         let rig = try BoxRig()
         let maker = GatedThumbnailMaker()
         rig.thumbnailMaker = maker
-        let box = try await Self.shownBox(rig, files: 1)
+        let box = try await Self.shownBox(rig, files: 1, ext: "png")
         let id = try #require(box.viewModel.items.first?.id)
         box.press(.shown(id, true))
         await settle()
@@ -56,7 +56,7 @@ struct BoxThumbnailTests {
         let rig = try BoxRig()
         let maker = GatedThumbnailMaker()
         rig.thumbnailMaker = maker
-        let box = try await Self.shownBox(rig, files: 1)
+        let box = try await Self.shownBox(rig, files: 1, ext: "png")
         box.press(.shown(try #require(box.viewModel.items.first?.id), true))
         await settle()
         box.hidePanel()

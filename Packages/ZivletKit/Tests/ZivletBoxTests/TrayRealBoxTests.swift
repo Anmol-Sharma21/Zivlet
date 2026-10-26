@@ -27,10 +27,10 @@ final class RecordingThumbnailMaker: ThumbnailMaking {
 @MainActor
 struct TrayRealBoxTests {
     /// A box saved by one launch, then a fresh launch whose panel stays hidden.
-    static func freshLaunch(_ rig: BoxRig, files: Int) async throws -> BoxController {
+    static func freshLaunch(_ rig: BoxRig, files: Int, ext: String = "txt") async throws -> BoxController {
         let first = rig.controller()
         first.start()
-        _ = await first.add(try rig.files(files), newBox: false)
+        _ = await first.add(try rig.files(files, ext: ext), newBox: false)
         first.quit()
         let again = rig.controller()
         again.start()
@@ -80,7 +80,7 @@ struct TrayRealBoxTests {
         let rig = try BoxRig()
         let maker = RecordingThumbnailMaker()
         rig.thumbnailMaker = maker
-        let box = try await Self.freshLaunch(rig, files: 2)
+        let box = try await Self.freshLaunch(rig, files: 2, ext: "png")
         let tray = try TrayRig(box: box)
         await Self.expand(tray)
         #expect(maker.sides == [Double(BoxLook.Tray.thumb), Double(BoxLook.Tray.thumb)])

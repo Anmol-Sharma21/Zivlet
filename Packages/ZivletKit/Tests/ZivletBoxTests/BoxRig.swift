@@ -97,8 +97,9 @@ final class BoxRig {
         try? await Task.sleep(for: .seconds(3_600))
     }
 
-    func files(_ count: Int, prefix: String = "f") throws -> [URL] {
-        try (0..<count).map { try dir.file("files/\(prefix)\($0).txt") }
+    /// Text by default; thumbnail tests pass an image extension, since text keeps its type icon.
+    func files(_ count: Int, prefix: String = "f", ext: String = "txt") throws -> [URL] {
+        try (0..<count).map { try dir.file("files/\(prefix)\($0).\(ext)") }
     }
 
     /// The library as saved on disk.

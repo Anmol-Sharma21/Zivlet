@@ -58,9 +58,10 @@ public final class ThumbnailCache {
         for (key, task) in requests where gone(key) { task.cancel() }
     }
 
-    /// Quick Look's thumbnail for a visible item, from the cache when it has one; nil when the item is not visible,
-    /// leaves the visible set, or Quick Look has none. Cancelling the caller cancels the request.
+    /// Quick Look's thumbnail for a visible item, from the cache when it has one; nil for text, when the item is not
+    /// visible, leaves the visible set, or Quick Look has none. Cancelling the caller cancels the request.
     public func thumbnail(for id: UUID, url: URL, size: ThumbnailSize) async -> NSImage? {
+        guard Self.asksQuickLook(url) else { return nil }
         if let hit = cached(id, size: size) { return hit }
         let key = Key(id: id, size: size)
         guard isVisible(key) else { return nil }
@@ -70,6 +71,13 @@ public final class ThumbnailCache {
         } onCancel: {
             request.cancel()
         }
+    }
+
+    /// Text of any kind keeps its type icon (owner, 2026-10-26): Quick Look's white page was the brightest thing on
+    /// the dark glass (G-M5b-14). Decided from the name, so no file is read.
+    static func asksQuickLook(_ url: URL) -> Bool {
+        guard let type = UTType(filenameExtension: url.pathExtension.lowercased()) else { return true }
+        return !type.conforms(to: .text)
     }
 
     private func start(_ key: Key, url: URL) -> Task<NSImage?, Never> {

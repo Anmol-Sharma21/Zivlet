@@ -146,4 +146,24 @@ struct SystemThumbnailMakerTests {
         let missing = URL(filePath: "/nonexistent-zivlet-\(UUID().uuidString).png")
         #expect(await SystemThumbnailMaker().thumbnail(for: missing, side: 48, scale: 2) == nil)
     }
+    /// Plain text keeps its type icon (owner, 2026-10-26): Quick Look's white page was the brightest thing on the glass.
+    @Test(arguments: ["notes.txt", "README.md", "data.csv", "main.swift"])
+    func plainTextKeepsItsTypeIcon(name: String) async {
+        let cache = ThumbnailCache(maker: FailingThumbnailMaker())
+        let id = UUID()
+        cache.setVisible([id])
+        #expect(await cache.thumbnail(for: id, url: URL(filePath: "/tmp/\(name)"), size: .cell) == nil)
+    }
+
+    @Test func imagesStillAskQuickLook() async {
+        let maker = GatedThumbnailMaker()
+        let cache = ThumbnailCache(maker: maker)
+        let id = UUID()
+        cache.setVisible([id])
+        let task = Task { await cache.thumbnail(for: id, url: URL(filePath: "/tmp/box-thumb-7.png"), size: .cell) }
+        await settle()
+        #expect(maker.requests == [URL(filePath: "/tmp/box-thumb-7.png")])
+        maker.finish(URL(filePath: "/tmp/box-thumb-7.png"))
+        #expect(await task.value != nil)
+    }
 }
