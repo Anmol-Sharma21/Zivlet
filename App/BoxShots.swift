@@ -24,14 +24,14 @@
             }
         }
 
-        /// The demo keeps its box in a store inside the demo folder, so a relaunch finds it again; a preview uses an
-        /// empty store in a temporary folder. Neither touches the person's `boxes.json`.
+        /// The demo keeps its box in a store inside the demo folder, so a relaunch finds it again; a panel or tray
+        /// preview uses an empty store in a temporary folder. None touches the person's `boxes.json`.
         static func ports(_ flags: BoxShotFlags) -> BoxPorts {
             let standard = BoxPorts.standard()
             let root: URL
             if let folder = flags.demoFolder, isFolder(folder) {
                 root = folder.appending(path: demoFolderName, directoryHint: .isDirectory)
-            } else if flags.preview != nil || flags.demoFolder != nil {
+            } else if flags.preview != nil || flags.trayPreview != nil || flags.demoFolder != nil {
                 root = FileManager.default.temporaryDirectory.appending(path: "zivlet-box-preview-\(UUID().uuidString)")
             } else {
                 return standard
@@ -78,11 +78,10 @@
         }
     }
 
-    /// One Drop Box state with made-up items, in its own panel near the top middle of the menu-bar display (over the
-    /// island backdrop) or, docked, against the right edge.
+    /// One Drop Box state with made-up items, in its own panel in the middle of the menu-bar display (clear of the
+    /// menu bar and of anything other apps leave just under it) or, docked, against the right edge.
     @MainActor
     final class BoxPreviewPanel {
-        static let topInset: CGFloat = 120
         let panel = BoxPanel()
 
         func show(_ state: BoxShotFlags.State, finish: BoxFinish, icon: (String) -> NSImage) {
@@ -97,7 +96,7 @@
             let origin =
                 state == .docked
                 ? NSPoint(x: visible.maxX - size.width, y: visible.midY - size.height / 2)
-                : NSPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - Self.topInset - size.height)
+                : NSPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.midY - size.height / 2)
             let frame = NSRect(origin: origin, size: size)
             panel.setFrame(frame, display: true)
             panel.show()

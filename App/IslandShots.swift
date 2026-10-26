@@ -27,12 +27,11 @@
         }
     }
 
-    /// A white or black panel across the top middle of the menu-bar display, below the island and above other
-    /// windows, so the glass is read over a known backdrop.
+    /// A white or black panel over the whole menu-bar display, below the island and the Drop Box and above other
+    /// windows, so the glass is read over a known backdrop wherever it sits (the docked tab is on the display's edge).
     final class IslandBackdrop {
-        static let size = NSSize(width: 900, height: 480)
         private let panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: IslandBackdrop.size),
+            contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: true)
 
@@ -47,8 +46,7 @@
 
         func show() {
             guard let screen = NSScreen.screens.first else { return }
-            let frame = screen.frame
-            panel.setFrameOrigin(NSPoint(x: frame.midX - Self.size.width / 2, y: frame.maxY - Self.size.height))
+            panel.setFrame(screen.frame, display: false)
             panel.orderFrontRegardless()
         }
     }
