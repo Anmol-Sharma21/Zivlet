@@ -36,6 +36,29 @@ struct PrivateStagingTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: elsewhere.path).isEmpty)
     }
 
+    /// A worker killed during an ImageIO write leaves the encoder's temporary sibling `.staged.<ext>-XXXXXX` (seen in
+    /// the worker smoke run); discarding must remove it, or the retry cannot claim the same staging folder again.
+    @Test func discardingRemovesAnEncodersLeftoverTemporaryAndTheRetryCanClaimAgain() throws {
+        let box = try Sandbox()
+        let request = try box.request("photo.heic", .heic, to: .png)
+        let workspace = try publisher.claimStaging(for: request)
+        let folder = workspace.stagedFile.deletingLastPathComponent()
+        try Data("partial".utf8).write(to: folder.appending(path: ".staged.png-rynv0d"))
+        try publisher.discard(workspace)
+        #expect(!FileManager.default.fileExists(atPath: folder.path))
+        #expect(throws: Never.self) { try publisher.discard(try publisher.claimStaging(for: request)) }
+    }
+
+    @Test func discardingLeavesAnythingElseInTheFolderAlone() throws {
+        let box = try Sandbox()
+        let request = try box.request("photo.heic", .heic, to: .png)
+        let workspace = try publisher.claimStaging(for: request)
+        let other = workspace.stagedFile.deletingLastPathComponent().appending(path: "not-ours.txt")
+        try Data("x".utf8).write(to: other)
+        #expect(throws: JobError.self) { try publisher.discard(workspace) }
+        #expect(FileManager.default.fileExists(atPath: other.path))
+    }
+
     @Test func publishingLeavesNoStagingEntry() throws {
         let box = try Sandbox()
         try box.file("photo.heic")

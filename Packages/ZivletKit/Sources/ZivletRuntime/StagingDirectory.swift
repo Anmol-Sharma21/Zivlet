@@ -57,10 +57,24 @@ enum StagingDirectory {
         return folder.lastPathComponent.hasPrefix(Publisher.stagingPrefix) ? folder : nil
     }
 
-    /// Removes the staged file (if still there) and then its folder. Already gone is fine.
+    /// Removes the staged file (if still there), an encoder's temporary siblings of it, and then its folder. Already
+    /// gone is fine.
     static func remove(_ stagedFile: URL) throws(JobError) {
         guard unlink(stagedFile.path) == 0 || errno == ENOENT else { throw .publishFailed(errno: errno) }
+        try removeTemporaries(of: stagedFile)
         try removeFolder(of: stagedFile)
+    }
+
+    /// ImageIO writes `.staged.<ext>-XXXXXX` beside the staged file and renames it at the end; a writer killed
+    /// mid-write (a crashed worker) leaves it behind. Only names of that shape are removed, never followed (unlink).
+    static func removeTemporaries(of stagedFile: URL) throws(JobError) {
+        guard let folder = folder(of: stagedFile) else { return }
+        let prefix = ".\(stagedFile.lastPathComponent)-"
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        for name in names where name.hasPrefix(prefix) {
+            let path = folder.appending(path: name, directoryHint: .notDirectory).path
+            guard unlink(path) == 0 || errno == ENOENT else { throw .publishFailed(errno: errno) }
+        }
     }
 
     /// Removes the (empty) staging folder after its file was published or deleted. Already gone is fine.
