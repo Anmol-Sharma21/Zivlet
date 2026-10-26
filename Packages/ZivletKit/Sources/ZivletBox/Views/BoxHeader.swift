@@ -54,6 +54,8 @@ struct BoxHeader: View {
 /// says why in its accessibility value.
 struct BoxOverflowMenu: View {
     static let dot: CGFloat = 6
+    /// Pulls the dot in from the hit area's corner onto the symbol's shoulder.
+    static let dotInset: CGFloat = 4
 
     let model: BoxViewModel
     let press: (BoxPress) -> Void
@@ -71,6 +73,7 @@ struct BoxOverflowMenu: View {
                 .overlay(alignment: .topTrailing) {
                     if model.storageWarning {
                         Circle().fill(IslandInk.primary).frame(width: Self.dot, height: Self.dot)
+                            .offset(x: -Self.dotInset, y: Self.dotInset)
                     }
                 }
         }
