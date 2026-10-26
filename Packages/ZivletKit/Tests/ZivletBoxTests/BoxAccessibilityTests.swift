@@ -28,7 +28,8 @@ struct BoxAccessibilityTests {
     }
 
     @Test func anEmptyBoxSaysSo() {
-        #expect(BoxAccessibility(BoxViewFixtures.model([])).listLabel == "Drop Box, empty. Drop files here")
+        let tree = BoxAccessibility(BoxViewFixtures.model([]))
+        #expect(tree.listLabel == "Drop Box, empty. Drop files here" && tree.buttons.isEmpty)
     }
 
     @Test func theDropTargetAnnouncesTheCount() {

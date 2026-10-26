@@ -54,6 +54,19 @@ struct BoxExpandedCard: View {
     }
 
     var body: some View {
+        if model.items.isEmpty {
+            // Empty (19c §4.1): only the empty tray and its line; nothing to act on, so no header buttons or bar.
+            BoxEmpty()
+                .opacity(dropCount == nil ? 1 : BoxLook.dropDim)
+                .overlay { if let dropCount { BoxDropOverlay(count: dropCount) } }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(BoxAccessibility(model).listLabel)
+        } else {
+            full
+        }
+    }
+
+    private var full: some View {
         VStack(alignment: .leading, spacing: BoxLook.Panel.sectionGap) {
             BoxHeader(model: model, press: press)
             items
@@ -69,9 +82,7 @@ struct BoxExpandedCard: View {
     }
 
     @ViewBuilder private var items: some View {
-        if model.items.isEmpty {
-            BoxEmpty()
-        } else if BoxLayout.scrolls(model) {
+        if BoxLayout.scrolls(model) {
             ScrollView(.vertical) { list }.scrollIndicators(.automatic)
         } else {
             list

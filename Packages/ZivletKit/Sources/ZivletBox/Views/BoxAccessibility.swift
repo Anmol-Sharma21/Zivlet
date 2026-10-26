@@ -16,7 +16,7 @@ struct BoxAccessibility {
             + (model.missingCount > 0 ? [BoxSpeech.missing(model.missingCount)] : [])
         value = parts.joined(separator: ". ")
         rows = model.items.map(\.spoken)
-        buttons = BoxPress.bar.map(BoxCopy.title)
+        buttons = model.items.isEmpty ? [] : BoxPress.bar.map(BoxCopy.title)
         if case .dropTarget(let count) = model.presentation.overlay {
             announcement = BoxSpeech.dropTarget(count)
         } else {

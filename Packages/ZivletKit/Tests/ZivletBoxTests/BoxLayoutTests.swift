@@ -55,7 +55,7 @@ struct BoxLayoutTests {
 
     @Test func anEmptyBoxKeepsTheMinimumHeight() throws {
         let model = BoxViewFixtures.model([])
-        #expect(BoxLayout.size(of: model).height >= BoxLook.Panel.minHeight)
+        #expect(BoxLayout.size(of: model).height == BoxLook.Panel.minHeight)
         #expect(try rendered(model).width == BoxLook.Panel.width)
     }
 

@@ -19,20 +19,26 @@ struct BoxEmpty: View {
 
 /// Drop target (19c D-BL7): the content behind dims to 0.4 (done by the card); the drop symbol over "Add 3".
 struct BoxDropOverlay: View {
+    static let backingOpacity = 0.55
+
     let count: Int
-    var showsLine = true
 
     var body: some View {
         VStack(spacing: IslandContentLook.Spacing.s) {
             Image(systemName: BoxSymbols.dropHere)
                 .font(IslandContentLook.Symbol.toast)
                 .foregroundStyle(IslandInk.primary)
-            if showsLine {
-                Text(BoxCopy.add(count))
-                    .font(IslandContentLook.TypeStyle.primary)
-                    .foregroundStyle(IslandInk.primary)
-            }
+            Text(BoxCopy.add(count))
+                .font(IslandContentLook.TypeStyle.primary)
+                .foregroundStyle(IslandInk.primary)
         }
+        .padding(.horizontal, IslandContentLook.Spacing.m)
+        .padding(.vertical, IslandContentLook.Spacing.s)
+        // A dark fill (no border) keeps the line readable over the dimmed items behind it.
+        .background(
+            RoundedRectangle(cornerRadius: IslandLook.Radius.inner, style: .continuous)
+                .fill(Color.black.opacity(Self.backingOpacity))
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(BoxSpeech.dropTarget(count))

@@ -35,6 +35,8 @@ public enum BoxLayout {
             return CGSize(width: width, height: BoxLook.Tab.height)
         case .collapsed:
             return CGSize(width: BoxLook.Panel.width, height: BoxLook.Panel.collapsedHeight)
+        case .expanded where model.items.isEmpty:
+            return CGSize(width: BoxLook.Panel.width, height: BoxLook.Panel.minHeight)
         case .expanded:
             let natural = chromeHeight + contentHeight(model)
             let height = min(max(natural, BoxLook.Panel.minHeight), max(model.maxHeight, BoxLook.Panel.minHeight))
