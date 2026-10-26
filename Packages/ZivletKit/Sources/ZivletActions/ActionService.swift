@@ -72,13 +72,21 @@ public final class ActionService {
     /// Move to… for callers that need to know where each item went (the Drop Box updates its references): one run-loop
     /// turn, the folder chooser, the plan, the executor and one undo entry for the whole batch. The report is nil when
     /// nothing ran (the choice was cancelled or the plan refused).
-    public func moveReporting(_ urls: [URL]) async -> (ActionResult, MoveReport?) { await transfer(urls, .move) }
+    public func moveReporting(_ urls: [URL], progress: TransferProgress = .silent) async -> (ActionResult, MoveReport?) {
+        await transfer(urls, .move, progress)
+    }
 
     /// Copy to… (P2-142, D-M5b-13): as Move to…, but every item is copied and the originals stay; one undo entry puts
     /// the copies that are still unchanged in the Trash.
-    public func copyReporting(_ urls: [URL]) async -> (ActionResult, MoveReport?) { await transfer(urls, .copy) }
+    public func copyReporting(_ urls: [URL], progress: TransferProgress = .silent) async -> (ActionResult, MoveReport?) {
+        await transfer(urls, .copy, progress)
+    }
 
-    private func transfer(_ urls: [URL], _ mode: MovePlan.Mode) async -> (ActionResult, MoveReport?) {
+    /// The chooser, the plan, then the executor; `progress` hears the count only once there is a plan, so nothing
+    /// it shows can cover the chooser. Cancelling the caller's task stops the run between items.
+    private func transfer(_ urls: [URL], _ mode: MovePlan.Mode, _ progress: TransferProgress) async -> (
+        ActionResult, MoveReport?
+    ) {
         await nextTurn()
         guard let folder = await folders.chooseFolder(for: urls.map(survey.item), mode: mode) else {
             return (.cancelled, nil)
@@ -89,7 +97,8 @@ public final class ActionService {
         } catch {
             return (.failed(ActionCard(title: error.userMessage)), nil)
         }
-        let report = await executor.run(plan)
+        progress.started(plan.steps.count)
+        let report = await executor.run(plan, progress: progress.advanced)
         let undo = mode == .move ? await recordUndo(report.moved) : await recordUndo(copies: report.moved)
         return (Self.result(report, undo: undo, mode: mode), report)
     }
@@ -117,6 +126,7 @@ public final class ActionService {
     static func result(_ report: MoveReport, undo: BatchID?, mode: MovePlan.Mode = .move) -> ActionResult {
         let lines = report.failures.map { $0.userMessage(for: mode) }
         let copying = mode == .copy
+        guard report.cancelled.isEmpty else { return stopped(report, undo: undo, mode: mode, lines: lines) }
         guard !report.moved.isEmpty else {
             return lines.isEmpty && !copying
                 ? .done(toast: "Already in that folder", undo: nil)
@@ -126,6 +136,23 @@ public final class ActionService {
         guard !lines.isEmpty else { return .done(toast: toast, undo: undo) }
         let title = copying ? "Some items weren't copied." : "Some items weren't moved."
         return .partial(toast: toast, card: ActionCard(title: title, lines: lines), undo: undo)
+    }
+
+    /// A run cancelled between items: what moved keeps its Undo and the card counts what did not. Nothing moved is
+    /// silent, as a cancelled choice is, unless something failed on the way.
+    private static func stopped(_ report: MoveReport, undo: BatchID?, mode: MovePlan.Mode, lines: [String])
+        -> ActionResult
+    {
+        let copying = mode == .copy
+        guard !report.moved.isEmpty else {
+            guard !lines.isEmpty else { return .cancelled }
+            return .failed(ActionCard(title: copying ? "Nothing was copied." : "Nothing was moved.", lines: lines))
+        }
+        let left = report.cancelled.count + report.failures.count
+        let verb = (left == 1 ? " wasn't " : " weren't ") + (copying ? "copied." : "moved.")
+        let toast = (copying ? "Copied " : "Moved ") + counted(report.moved.count, "item")
+        let card = ActionCard(title: "Stopped. " + counted(left, "item") + verb, lines: lines)
+        return .partial(toast: toast, card: card, undo: undo)
     }
 
     /// Resumes on the next pass of the main run loop.

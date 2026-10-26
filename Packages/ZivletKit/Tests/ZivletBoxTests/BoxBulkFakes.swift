@@ -89,3 +89,36 @@ final class FakeLocator: FileLocating {
         return answer
     }
 }
+
+/// The executor's exclusive rename, holding before the `pauseAt`th call until `resume()`, so a test can press Cancel
+/// while a Move or Copy is between items.
+nonisolated final class RenameGate: @unchecked Sendable {
+    private let lock = NSCondition()
+    private let pauseAt: Int
+    private var calls = 0
+    private var held = false
+    private var released = false
+
+    init(pauseAt: Int) { self.pauseAt = pauseAt }
+
+    var isHeld: Bool { lock.withLock { held } }
+
+    var rename: MoveExecutor.Rename {
+        { [self] from, to in
+            lock.withLock {
+                calls += 1
+                guard calls == pauseAt else { return }
+                held = true
+                while !released { lock.wait() }
+            }
+            return MoveExecutor.renameExclusive(from, to)
+        }
+    }
+
+    func resume() {
+        lock.withLock {
+            released = true
+            lock.broadcast()
+        }
+    }
+}

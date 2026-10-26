@@ -34,9 +34,13 @@ public struct BoxActions {
         ActionResult(clipboard.copyPaths(urls, shellQuoted: shellQuoted))
     }
 
-    func move(_ urls: [URL]) async -> (ActionResult, MoveReport?) { await service.moveReporting(urls) }
+    func move(_ urls: [URL], progress: TransferProgress) async -> (ActionResult, MoveReport?) {
+        await service.moveReporting(urls, progress: progress)
+    }
 
-    func copy(to urls: [URL]) async -> ActionResult { await service.copyReporting(urls).0 }
+    func copy(to urls: [URL], progress: TransferProgress) async -> ActionResult {
+        await service.copyReporting(urls, progress: progress).0
+    }
 
     func send(_ urls: [URL]) async -> ActionResult {
         await nextTurn()

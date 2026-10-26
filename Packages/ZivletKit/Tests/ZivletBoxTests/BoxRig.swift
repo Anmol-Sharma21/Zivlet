@@ -54,6 +54,8 @@ final class BoxRig {
     /// Another bookmark maker or folder chooser for the controllers made after it is set.
     var maker: (any BookmarkMaking)?
     var chooser: (any FolderChoosing)?
+    /// Another move executor for the controllers made after it is set (a gated rename).
+    var executor: MoveExecutor?
 
     init() throws {
         dir = try TempDir(prefix: "zivlet-box-rig")
@@ -88,7 +90,8 @@ final class BoxRig {
             sharePicker: picker, clipboard: ClipboardAction(pasteboard: board.board),
             airDrop: AirDropAction(service: sharing), optionHeld: { [weak self] in self?.optionHeld ?? false },
             nextTurn: { [weak self] in self?.turns += 1 },
-            service: ActionService(folders: chooser ?? folders, undoHistory: undo, nextTurn: {}))
+            service: ActionService(
+                folders: chooser ?? folders, executor: executor ?? MoveExecutor(), undoHistory: undo, nextTurn: {}))
     }
 
     private func wait(_ duration: Duration) async {

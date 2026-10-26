@@ -12,16 +12,20 @@ nonisolated public struct MoveExecutor: Sendable {
     public typealias Trash = @Sendable (URL) throws -> Void
     /// Items done so far and the plan's step count; called on the executor's thread after each step.
     public typealias Progress = @Sendable (_ done: Int, _ total: Int) -> Void
+    /// Renames without replacing anything: nil when it worked, else `errno` (`EEXIST` when the name is taken).
+    public typealias Rename = @Sendable (_ source: URL, _ target: URL) -> Int32?
     static let hiddenPrefix = ".zivlet-move-"
 
     private let copy: Copy
+    private let rename: Rename
     private let trash: Trash
 
     public init(
-        copy: @escaping Copy = MoveExecutor.copyTree,
+        copy: @escaping Copy = MoveExecutor.copyTree, rename: @escaping Rename = MoveExecutor.renameExclusive,
         trash: @escaping Trash = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
     ) {
         self.copy = copy
+        self.rename = rename
         self.trash = trash
     }
 
@@ -49,15 +53,14 @@ nonisolated public struct MoveExecutor: Sendable {
 
     private func perform(_ step: MoveStep, in folder: URL) -> Result<URL, MoveFailure.Reason> {
         switch step.kind {
-        case .rename: rename(step)
+        case .rename: renameInPlace(step)
         case .copyThenTrash: copyThenTrash(step, in: folder)
         case .copy: copyAndPlace(step, in: folder)
         }
     }
 
-    private func rename(_ step: MoveStep) -> Result<URL, MoveFailure.Reason> {
-        claim(step) { renamex_np(step.source.path, $0.path, UInt32(RENAME_EXCL)) == 0 ? nil : errno }
-            .mapError(Self.reason)
+    private func renameInPlace(_ step: MoveStep) -> Result<URL, MoveFailure.Reason> {
+        claim(step) { rename(step.source, $0) }.mapError(Self.reason)
     }
 
     private func copyThenTrash(_ step: MoveStep, in folder: URL) -> Result<URL, MoveFailure.Reason> {
@@ -84,7 +87,7 @@ nonisolated public struct MoveExecutor: Sendable {
             remove(hidden)
             return .failure(.verifyFailed)
         }
-        let placed = claim(step) { renamex_np(hidden.path, $0.path, UInt32(RENAME_EXCL)) == 0 ? nil : errno }
+        let placed = claim(step) { rename(hidden, $0) }
         if case .failure = placed { remove(hidden) }
         return placed.mapError(Self.reason)
     }
@@ -111,6 +114,11 @@ nonisolated public struct MoveExecutor: Sendable {
 
     private func remove(_ url: URL) {
         try? FileManager.default.removeItem(at: url)
+    }
+
+    /// `renamex_np` with `RENAME_EXCL`, so nothing at the target is ever replaced.
+    public static let renameExclusive: Rename = { source, target in
+        renamex_np(source.path, target.path, UInt32(RENAME_EXCL)) == 0 ? nil : errno
     }
 
     /// `copyfile` with metadata, recursion, no overwrite and symlinks copied as links.

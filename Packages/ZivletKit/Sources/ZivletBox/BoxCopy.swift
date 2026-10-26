@@ -44,6 +44,11 @@ nonisolated enum BoxCopy {
     static let nothingTrashed = "Nothing was moved to the Trash."
     static let someStayed = "Some items stayed in the box."
 
+    /// The busy overlay's verb while a bulk action runs (G-M5b-9).
+    static func moving(_ count: Int) -> String { "Moving \(items(count))" }
+    static func copying(_ count: Int) -> String { "Copying \(items(count))" }
+    static func trashing(_ count: Int) -> String { "Moving \(items(count)) to the Trash" }
+
     static func trashed(_ count: Int) -> String { "Moved \(count) to the Trash" }
     static func notTrashed(_ name: String) -> String { "\(name) couldn't be moved to the Trash." }
     static func copyStayed(_ name: String) -> String { "\(name) stayed: its kept copy couldn't be moved to the Trash." }

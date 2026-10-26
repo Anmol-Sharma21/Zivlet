@@ -64,22 +64,24 @@ extension BoxController {
     }
 
     /// Move to…: the folder chooser, one undo entry for the batch, then the moved items point at their new places.
-    /// Items that were not moved stay as they were and are listed.
+    /// Items that were not moved stay as they were and are listed. The busy overlay shows while it runs; Cancel or
+    /// Esc stops it between items, and what moved keeps its Undo.
     func moveItems() {
         guard running == nil, let targets = usableTargets(.moveTo), let box = current?.id else { return }
-        runBulk { [self, actions] in
-            let (result, moveReport) = await actions.move(targets.urls)
+        runBusy(BoxCopy.moving) { [self, actions] progress in
+            let (result, moveReport) = await actions.move(targets.urls, progress: progress)
             let (moved, lost) = moveReport.map { follow($0.moved, in: box, targets: targets) } ?? ([], [])
             report(result.listing(lines: targets.failures + lost))
             clearAutomatically(left: moved)
         }
     }
 
-    /// Copy to…: the folder chooser and one undo entry; the box keeps pointing at the originals.
+    /// Copy to…: the folder chooser and one undo entry; the box keeps pointing at the originals. Busy and Cancel as
+    /// for Move to….
     func copyItemsTo() {
         guard running == nil, let targets = usableTargets(.copyTo) else { return }
-        runBulk { [self, actions] in
-            report(await actions.copy(to: targets.urls).listing(lines: targets.failures))
+        runBusy(BoxCopy.copying) { [self, actions] progress in
+            report(await actions.copy(to: targets.urls, progress: progress).listing(lines: targets.failures))
         }
     }
 
