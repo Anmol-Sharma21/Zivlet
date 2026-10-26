@@ -9,23 +9,34 @@ public struct FileDragSource: NSViewRepresentable {
     public let urls: [URL]
     public let image: NSImage
     public var onDrag: (Bool) -> Void = { _ in }
+    /// False when SwiftUI content draws the item and the view only carries the drag (the Drop Box's cells).
+    public var drawsImage = true
+    /// A press released without a drag, with its modifier keys; nil leaves clicks to AppKit.
+    public var onClick: ((NSEvent.ModifierFlags) -> Void)?
 
-    public init(urls: [URL], image: NSImage, onDrag: @escaping (Bool) -> Void = { _ in }) {
+    public init(
+        urls: [URL], image: NSImage, drawsImage: Bool = true, onDrag: @escaping (Bool) -> Void = { _ in },
+        onClick: ((NSEvent.ModifierFlags) -> Void)? = nil
+    ) {
         self.urls = urls
         self.image = image
+        self.drawsImage = drawsImage
         self.onDrag = onDrag
+        self.onClick = onClick
     }
 
     public func makeNSView(context: Context) -> DragSourceView {
         let view = DragSourceView(urls: urls, image: image)
-        view.onDrag = onDrag
+        updateNSView(view, context: context)
         return view
     }
 
     public func updateNSView(_ view: DragSourceView, context: Context) {
         view.urls = urls
         view.image = image
+        view.drawsImage = drawsImage
         view.onDrag = onDrag
+        view.onClick = onClick
     }
 }
 
@@ -36,6 +47,11 @@ public final class DragSourceView: NSView, NSDraggingSource {
         didSet { needsDisplay = true }
     }
     public var onDrag: (Bool) -> Void = { _ in }
+    public var drawsImage = true {
+        didSet { needsDisplay = true }
+    }
+    public var onClick: ((NSEvent.ModifierFlags) -> Void)?
+    private var dragged = false
 
     public init(urls: [URL], image: NSImage) {
         self.urls = urls
@@ -47,9 +63,12 @@ public final class DragSourceView: NSView, NSDraggingSource {
     required init?(coder: NSCoder) { nil }
 
     /// Aspect-fit, centred.
+    /// A drag here moves files, never the window it sits in (the Drop Box panel moves by its background).
+    override public var mouseDownCanMoveWindow: Bool { false }
+
     override public func draw(_ dirtyRect: NSRect) {
         let size = image.size
-        guard size.width > 0, size.height > 0 else { return }
+        guard drawsImage, size.width > 0, size.height > 0 else { return }
         let scale = min(bounds.width / size.width, bounds.height / size.height)
         let fitted = CGSize(width: size.width * scale, height: size.height * scale)
         image.draw(
@@ -58,7 +77,18 @@ public final class DragSourceView: NSView, NSDraggingSource {
                 height: fitted.height))
     }
 
+    override public func mouseDown(with event: NSEvent) {
+        dragged = false
+        if onClick == nil { super.mouseDown(with: event) }
+    }
+
+    override public func mouseUp(with event: NSEvent) {
+        guard let onClick else { return super.mouseUp(with: event) }
+        if !dragged { onClick(event.modifierFlags) }
+    }
+
     override public func mouseDragged(with event: NSEvent) {
+        dragged = true
         let items = urls.enumerated().map { offset, url in
             let item = NSDraggingItem(pasteboardWriter: url as NSURL)
             let shift = CGFloat(offset) * 4

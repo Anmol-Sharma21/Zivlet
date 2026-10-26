@@ -1,0 +1,84 @@
+import SwiftUI
+import ZivletActions
+import ZivletNotch
+
+/// The tray's expanded content (19c §4.3, plan 16e D11): the header with Share and Open Drop Box, then a strip of up
+/// to six 40 pt thumbnails, the last one "+6" when there are more. Thumbnails drag their item; "+6" opens the panel.
+/// No surface of its own: the island draws the finish around it.
+public struct BoxCompactView: View {
+    public static var height: CGFloat {
+        2 * IslandContentLook.Spacing.l + BoxLook.Panel.headerHeight + IslandContentLook.Spacing.s + BoxLook.Tray.thumb
+    }
+
+    let model: BoxViewModel
+    let press: (BoxPress) -> Void
+
+    public init(model: BoxViewModel, press: @escaping (BoxPress) -> Void) {
+        self.model = model
+        self.press = press
+    }
+
+    /// The thumbnails shown: all up to six, else five and the "+N" tile.
+    static func strip(_ items: [BoxItemModel]) -> [BoxItemModel] {
+        items.count <= BoxLook.Tray.maxThumbs ? items : Array(items.prefix(BoxLook.Tray.maxThumbs - 1))
+    }
+
+    /// The number on the last tile; 0 when every item fits.
+    static func overflow(_ count: Int) -> Int {
+        count <= BoxLook.Tray.maxThumbs ? 0 : count - BoxLook.Tray.maxThumbs + 1
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: IslandContentLook.Spacing.s) {
+            header
+            HStack(spacing: IslandContentLook.Spacing.s) {
+                ForEach(Self.strip(model.items)) { item in
+                    BoxThumb(
+                        item: item, image: model.images[item.id], side: BoxLook.Tray.thumb,
+                        radius: BoxLook.Tray.thumbRadius
+                    )
+                    .overlay {
+                        FileDragSource(
+                            urls: item.url.map { [$0] } ?? [], image: model.images[item.id] ?? NSImage(),
+                            drawsImage: false)
+                    }
+                    .accessibilityLabel(item.spoken)
+                }
+                if Self.overflow(model.items.count) > 0 { more }
+            }
+        }
+        .padding(IslandContentLook.Spacing.l)
+        .frame(width: BoxLook.Tray.compactWidth, height: Self.height, alignment: .topLeading)
+    }
+
+    private var header: some View {
+        HStack(spacing: IslandContentLook.Spacing.s) {
+            Image(systemName: BoxSymbols.box).font(IslandContentLook.Symbol.tab).foregroundStyle(IslandInk.primary)
+            Text(BoxCopy.items(model.items.count))
+                .font(IslandContentLook.TypeStyle.primary).foregroundStyle(IslandInk.primary)
+            Text(model.secondaryLine)
+                .font(IslandContentLook.TypeStyle.secondary).foregroundStyle(IslandInk.secondary)
+            Spacer(minLength: 0)
+            BoxIconButton(press: .share, action: press)
+            BoxIconButton(press: .openPanel, action: press)
+        }
+        .frame(height: BoxLook.Panel.headerHeight)
+    }
+
+    private var more: some View {
+        Button {
+            press(.openPanel)
+        } label: {
+            Text("+\(Self.overflow(model.items.count))")
+                .font(IslandContentLook.TypeStyle.primary)
+                .foregroundStyle(IslandInk.primary)
+                .frame(width: BoxLook.Tray.thumb, height: BoxLook.Tray.thumb)
+                .background(
+                    RoundedRectangle(cornerRadius: BoxLook.Tray.thumbRadius, style: .continuous)
+                        .fill(Color.white.opacity(BoxLook.Selection.fill)))
+        }
+        .buttonStyle(.plain)
+        .help(BoxCopy.title(.openPanel))
+        .accessibilityLabel(BoxCopy.title(.openPanel))
+    }
+}

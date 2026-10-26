@@ -15,6 +15,6 @@ public enum ActionOutcome: Sendable, Equatable {
 }
 
 /// "1 item", "3 items": the count and the noun, singular for one.
-func counted(_ count: Int, _ singular: String) -> String {
+nonisolated public func counted(_ count: Int, _ singular: String) -> String {
     count == 1 ? "1 \(singular)" : "\(count) \(singular)s"
 }
