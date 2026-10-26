@@ -135,7 +135,7 @@ extension JobState {
     /// Progress is shown only while a job is preparing or running.
     var acceptsProgress: Bool {
         switch self {
-        case .queued, .preparing, .running: true
+        case .queued, .preparing, .retrying, .running: true
         default: false
         }
     }

@@ -44,8 +44,9 @@ public struct PublishedOutput: Sendable, Equatable, Codable {
 }
 
 /// Lifecycle of one job (03a §4.1): queued → preparing (probe + plan) → running → verifying → publishing → outcome.
+/// `retrying`: the worker crashed during the job, which runs once more from the start (P2-01).
 public enum JobState: Sendable, Equatable, Codable {
-    case queued, preparing
+    case queued, preparing, retrying
     case running(JobProgress)
     case verifying, publishing
     case succeeded(PublishedOutput)

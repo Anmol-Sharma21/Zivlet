@@ -36,12 +36,14 @@ public struct LaneWidths: Sendable, Equatable {
 }
 
 /// One semaphore per lane, created once; `apply` narrows or restores them for the current system load. Preparation
-/// (probe and plan, before the lane is known) has its own gate: it may spawn a probe helper per job.
+/// (probe and plan, before the lane is known) has its own gate: it may spawn a probe helper per job. Retries after a
+/// worker crash have a gate of width 1, so they run one at a time (P2-01: "retried once, singly").
 public struct LaneGates: Sendable {
     /// Probes running at once across all jobs; enough to keep the lanes fed, far below the descriptor limit.
     public static let preparationWidth = 4
 
     public let preparation = AsyncSemaphore(width: LaneGates.preparationWidth)
+    public let retry = AsyncSemaphore(width: 1)
     private let base: LaneWidths
     private let semaphores: [Lane: AsyncSemaphore]
 

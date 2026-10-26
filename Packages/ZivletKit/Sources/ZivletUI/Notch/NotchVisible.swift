@@ -90,7 +90,7 @@ struct VisibleKey: Sendable, Equatable {
                 case .succeeded: outputs += 1
                 case .failed: failures += 1
                 case .cancelled: cancelled += 1
-                case .queued, .preparing, .running, .verifying, .publishing: break
+                case .queued, .preparing, .retrying, .running, .verifying, .publishing: break
                 }
             }
         }

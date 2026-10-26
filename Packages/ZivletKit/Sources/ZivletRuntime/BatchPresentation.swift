@@ -55,12 +55,16 @@ public struct BatchPresentation: Sendable, Equatable {
             fraction: nil, notes: notes, detail: firstFailure?.copy.detail)
     }
 
+    static let retryingLine = "The converter stopped unexpectedly. Trying again…"
+
     private static func working(_ snapshot: BatchSnapshot, label: String) -> BatchPresentation {
         let percent = Int((snapshot.fraction * 100).rounded(.down))
         let position = snapshot.current.map { "\($0.item.name) · \($0.index + 1) of \(snapshot.items.count)" } ?? ""
+        let retrying = snapshot.items.contains { $0.state == .retrying }
         return BatchPresentation(
-            phase: .working, title: "Converting to \(label)", subtitle: "\(position) · \(percent)%",
-            fraction: snapshot.fraction, notes: [], detail: nil)
+            phase: .working, title: "Converting to \(label)",
+            subtitle: retrying ? retryingLine : "\(position) · \(percent)%", fraction: snapshot.fraction, notes: [],
+            detail: nil)
     }
 
     static func noteText(_ note: PlanNote) -> String {

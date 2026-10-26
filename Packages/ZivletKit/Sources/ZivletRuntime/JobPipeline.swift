@@ -37,9 +37,42 @@ struct JobPipeline: Sendable {
     let beginPublishing: @Sendable () async -> Bool
     let noted: @Sendable ([PlanNote]) async -> Void
 
-    /// `@concurrent`: the job runs on the global executor, never on the scheduler actor (02 §6.2).
+    /// `@concurrent`: the job runs on the global executor, never on the scheduler actor (02 §6.2). A worker crash
+    /// gets one more attempt from the start, behind the retry gate so retries run one at a time; a second crash
+    /// names the file (P2-01). Other failures end the job at once.
     @concurrent func run() async -> JobState {
         await report(.preparing)
+        let first = await attempt()
+        guard first == .failure(.workerCrashed) else { return Self.state(first) }
+        JobPipeline.logger.error("Worker crashed during job \(request.id, privacy: .public); retrying once")
+        let second = await retryAttempt()
+        if second == .failure(.workerCrashed) { return .failed(.engineCrashedOnInput) }
+        return Self.state(second)
+    }
+
+    private func retryAttempt() async -> Result<PublishedOutput, JobError> {
+        do {
+            return try await services.gates.retry.withPermit { () async throws(JobError) in
+                if Task.isCancelled { throw .cancelled }
+                await report(.retrying)
+                return await attempt()
+            }
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private static func state(_ result: Result<PublishedOutput, JobError>) -> JobState {
+        switch result {
+        case .success(let published): .succeeded(published)
+        case .failure(.cancelled): .cancelled
+        case .failure(let error): .failed(error)
+        }
+    }
+
+    /// One pass from staging to publication. Whatever happens, the staging is gone afterwards (or its record is kept
+    /// for the orphan reaper).
+    private func attempt() async -> Result<PublishedOutput, JobError> {
         var workspace: JobWorkspace?
         do {
             let engine = try selectEngine()
@@ -51,11 +84,11 @@ struct JobPipeline: Sendable {
             try services.records?.write(record)
             let published = try await convert(engine, workspace: claimed, record: record)
             services.records?.remove(request.id)
-            return .succeeded(published)
+            return .success(published)
         } catch {
             let isClean = workspace.map(cleanUp) ?? true
             if isClean { services.records?.remove(request.id) }
-            return error == .cancelled ? .cancelled : .failed(error)
+            return .failure(error)
         }
     }
 

@@ -12,7 +12,7 @@ import os
 /// and armed again when the last one ends (D-M6-10).
 public actor WorkerService {
     public typealias EventSink = @Sendable (WorkerEvent) -> Void
-    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "worker")
+    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
     public static let osBuild = CapabilityProbe.currentOSBuild()
 
     private let engines: [any Engine]

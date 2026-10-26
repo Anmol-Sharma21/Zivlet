@@ -11,7 +11,7 @@ import os
 /// by job to the context of the call that runs it, synchronously and in order, so progress always arrives before the
 /// step's reply. A cancelled Swift task sends `.cancel(job)` and gets `.cancelled` back from the worker.
 public final class WorkerConnection: Sendable {
-    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "worker")
+    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
 
     private struct Session {
         let id: Int

@@ -17,6 +17,8 @@ public final class LoopbackTransport: WorkerTransport {
         case onCall(Int)
         /// Every prepare of an input with this file name crashes the worker.
         case whenInputIs(String)
+        /// Only the first prepare of an input with this file name crashes the worker.
+        case onceWhenInputIs(String)
     }
 
     struct State {
@@ -24,6 +26,9 @@ public final class LoopbackTransport: WorkerTransport {
         var calls = 0
         var attempts: [String: Int] = [:]
         var current: LoopbackChannel?
+        /// Jobs whose second attempt has prepared but not yet reached verify, and the most at once.
+        var retrying: Set<String> = []
+        var maxRetrying = 0
     }
 
     let service: WorkerService
@@ -36,6 +41,9 @@ public final class LoopbackTransport: WorkerTransport {
     }
 
     public var openCount: Int { state.withLock(\.opened) }
+
+    /// The most second attempts that were between prepare and verify at the same time.
+    public var maxConcurrentRetries: Int { state.withLock(\.maxRetrying) }
 
     /// How many prepares arrived for an input with this file name.
     public func attempts(for name: String) -> Int { state.withLock { $0.attempts[name] ?? 0 } }
@@ -60,16 +68,32 @@ public final class LoopbackTransport: WorkerTransport {
     func arrives(_ request: WorkerRequest) -> Bool {
         state.withLock { state in
             state.calls += 1
-            var name: String?
-            if case .prepare(let job, _) = request {
-                name = job.input.fileName
-                state.attempts[job.input.fileName, default: 0] += 1
-            }
+            let name = Self.track(request, in: &state)
             switch crash {
             case .never: return false
             case .onCall(let n): return state.calls == n
             case .whenInputIs(let bad): return name == bad
+            case .onceWhenInputIs(let bad): return name == bad && state.attempts[bad] == 1
             }
+        }
+    }
+
+    /// Counts prepares per input name and follows second attempts until their verify; returns the prepared name.
+    private static func track(_ request: WorkerRequest, in state: inout State) -> String? {
+        switch request {
+        case .prepare(let job, _):
+            let name = job.input.fileName
+            state.attempts[name, default: 0] += 1
+            if state.attempts[name] == 2 {
+                state.retrying.insert(job.id.description)
+                state.maxRetrying = max(state.maxRetrying, state.retrying.count)
+            }
+            return name
+        case .verify(let output, _):
+            let folder = output.url.deletingLastPathComponent().lastPathComponent
+            state.retrying = state.retrying.filter { !folder.hasSuffix($0) }
+            return nil
+        default: return nil
         }
     }
 }
