@@ -96,7 +96,10 @@ let package = Package(
             dependencies: ["zivlet-traces", "ZivletTrigger", "TestSupport", "DragTraceSupport"], swiftSettings: strict),
         .testTarget(
             name: "ZivletWheelCoreTests", dependencies: ["ZivletWheelCore", "TestSupport"], swiftSettings: strict),
-        .testTarget(name: "ZivletTriggerHostTests", dependencies: ["ZivletTriggerHost"], swiftSettings: shell),
+        .testTarget(
+            name: "ZivletTriggerHostTests",
+            dependencies: ["ZivletTriggerHost", "ZivletTrigger", "ZivletCore", "TestSupport"],
+            swiftSettings: shell),
         .testTarget(name: "ZivletWheelTests", dependencies: ["ZivletWheel"], swiftSettings: shell),
         .testTarget(
             name: "ZivletEngineKitTests", dependencies: ["ZivletEngineKit", "EngineTestSupport"],

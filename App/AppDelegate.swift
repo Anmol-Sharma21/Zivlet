@@ -59,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         private let debugHUD = DebugHUD()
         private let boxFlags = BoxShots.flags()
         private var boxPreview: BoxPreviewPanel?
+        private var dragTraces: DragTraceRecorder?
     #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -89,6 +90,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.wheel = wheel
         self.trigger = trigger
         settings.attach(trigger)
+        #if DEBUG
+            dragTraces = DragTraceRecording.start(trigger: trigger, displays: island.reader)
+        #endif
         conversion.start()
         startBox()
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")

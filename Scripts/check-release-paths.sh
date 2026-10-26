@@ -5,12 +5,14 @@
 # ad-hoc) and the installed size (P1-52).
 # Plan 14 D-ND3: the same scan refuses the island preview's launch flag, so a shipped build can never show made-up
 # jobs (only the CPU measurement build of notch-idle.sh CONFIG=release compiles it in). Plan 16 D-M5b-20: the Drop
-# Box's debug flags (-ZivletBoxPreview, -ZivletBoxDemo) are refused the same way; no build compiles them in Release.
+# Box's debug flags (-ZivletBoxPreview, -ZivletBoxDemo) and the drag-trace recorder's flag (-ZivletRecordDragTraces,
+# D-M5b-10) are refused the same way; no build compiles them in Release.
 # Usage: Scripts/check-release-paths.sh              build and check the Release app
 #        Scripts/check-release-paths.sh --scan-only FILE   only the scans, on one file (script tests)
 source "$(dirname "$0")/env.sh"
 PREVIEW_FLAG="-ZivletIslandPreview"
 BOX_FLAGS=("-ZivletBoxPreview" "-ZivletBoxDemo")
+TRACE_FLAG="-ZivletRecordDragTraces"
 
 # Prints what is wrong with one Mach-O file; exits 1 when anything is. Every byte is searched (grep -a), also data
 # after the last segment, which strings skips in a universal file.
@@ -31,6 +33,10 @@ scan_file() {
             found=1
         fi
     done
+    if LC_ALL=C grep -qaF -- "$TRACE_FLAG" "$file"; then
+        echo "error: the drag-trace recorder flag $TRACE_FLAG is in $label (Release must not record drags)" >&2
+        found=1
+    fi
     return "$found"
 }
 
@@ -63,7 +69,7 @@ while IFS= read -r -d '' file; do
     fi
 done < <(find "$APP" -type f -print0)
 if (( found )); then exit 1; fi
-echo "Release build contains no Homebrew path, no island preview and no Drop Box debug flag."
+echo "Release build contains no Homebrew path, no island preview, no Drop Box debug flag and no drag recorder."
 "$REPO_ROOT/Scripts/check-bundle.sh" "$APP"
 "$REPO_ROOT/Scripts/verify-signatures.sh" "$APP"
 "$REPO_ROOT/Scripts/size-gate.sh" "$APP"
