@@ -42,47 +42,71 @@ public struct UndoOutput: Sendable, Equatable, Codable {
     var stamp: FileStamp { FileStamp(fileID: fileID, byteCount: byteCount, modified: modified) }
 }
 
-/// One undoable batch (03a §4.7): the outputs a conversion published, or the items a Move put elsewhere.
+/// One undoable batch (03a §4.7): the outputs a conversion published, the items a Move put elsewhere, or the copies
+/// a Copy to… made (schema 2).
 public struct UndoEntry: Sendable, Equatable, Codable {
-    public enum Kind: Sendable, Equatable { case conversion, move }
+    public enum Kind: Sendable, Equatable { case conversion, move, copy }
 
     public let batch: BatchID
     public let date: Date
     public let outputs: [UndoOutput]
     public let moves: [UndoMove]
+    public let copies: [UndoCopy]
 
-    public init(batch: BatchID, date: Date, outputs: [UndoOutput] = [], moves: [UndoMove] = []) {
+    public init(
+        batch: BatchID, date: Date, outputs: [UndoOutput] = [], moves: [UndoMove] = [], copies: [UndoCopy] = []
+    ) {
         self.batch = batch
         self.date = date
         self.outputs = outputs
         self.moves = moves
+        self.copies = copies
     }
 
-    public var kind: Kind { moves.isEmpty ? .conversion : .move }
-    var isEmpty: Bool { outputs.isEmpty && moves.isEmpty }
+    public var kind: Kind {
+        if !moves.isEmpty { return .move }
+        return copies.isEmpty ? .conversion : .copy
+    }
 
-    private enum CodingKeys: String, CodingKey { case batch, date, outputs, moves }
+    var isEmpty: Bool { outputs.isEmpty && moves.isEmpty && copies.isEmpty }
 
-    /// Histories written before moves existed have no `moves` key.
+    private enum CodingKeys: String, CodingKey { case batch, date, outputs, moves, copies }
+
+    /// Histories written before moves existed have no `moves` key; schema 1 has no `copies` key.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
             batch: try container.decode(BatchID.self, forKey: .batch),
             date: try container.decode(Date.self, forKey: .date),
             outputs: try container.decode([UndoOutput].self, forKey: .outputs),
-            moves: try container.decodeIfPresent([UndoMove].self, forKey: .moves) ?? [])
+            moves: try container.decodeIfPresent([UndoMove].self, forKey: .moves) ?? [],
+            copies: try container.decodeIfPresent([UndoCopy].self, forKey: .copies) ?? [])
     }
 }
 
 /// The undo history, newest first: the last 20 batches, each kept for 24 hours (03a §4.7). Immutable; every change
-/// returns a new log.
+/// returns a new log. Written as schema 2 (copies, D-M5b-13); a schema 1 file, without the key, reads the same.
 public struct UndoLog: Sendable, Equatable, Codable {
     public static let capacity = 20
     public static let lifetime: TimeInterval = 24 * 60 * 60
+    public static let schema = 2
 
     public let entries: [UndoEntry]
 
     public init(entries: [UndoEntry] = []) { self.entries = entries }
+
+    private enum CodingKeys: String, CodingKey { case schema, entries }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(entries: try container.decode([UndoEntry].self, forKey: .entries))
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(Self.schema, forKey: .schema)
+        try container.encode(entries, forKey: .entries)
+    }
 
     /// Adds `entry` as the newest; an entry without outputs or moves has nothing to undo and is not kept.
     public func recording(_ entry: UndoEntry, now: Date) -> UndoLog {
@@ -102,7 +126,8 @@ public struct UndoLog: Sendable, Equatable, Codable {
                 guard entry.batch == batch else { return entry }
                 let kept = UndoEntry(
                     batch: entry.batch, date: entry.date, outputs: entry.outputs.filter { urls.contains($0.url) },
-                    moves: entry.moves.filter { urls.contains($0.moved) })
+                    moves: entry.moves.filter { urls.contains($0.moved) },
+                    copies: entry.copies.filter { urls.contains($0.copy) })
                 return kept.isEmpty ? nil : kept
             })
     }

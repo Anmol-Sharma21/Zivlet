@@ -3,7 +3,7 @@ import Foundation
 /// The outcome of one undo, and the sentence the result card shows for it.
 public struct UndoResult: Sendable, Equatable {
     public let kind: UndoEntry.Kind
-    /// Conversion outputs moved to the Trash.
+    /// Conversion outputs or copies moved to the Trash.
     public let trashed: [URL]
     /// Moved items put back, at their old paths.
     public let restored: [URL]
@@ -31,16 +31,22 @@ public struct UndoResult: Sendable, Equatable {
         let done = isMove ? restored.count : trashed.count
         let lead = done == 0 ? [] : [Self.count(done, kind) + (isMove ? " moved back." : " moved to the Trash.")]
         let reasons: [UndoSkipReason] = [.changed, .missing, .trashFailed, .originalTaken, .moveFailed]
-        let left = reasons.compactMap { reason -> String? in
-            let count = skipped.filter { $0.reason == reason }.count
-            return count == 0 ? nil : Self.sentence(reason, count: count, kind: kind)
+        let left = reasons.flatMap { reason -> [String] in
+            let urls = skipped.filter { $0.reason == reason }.map(\.url)
+            if kind == .copy, reason == .changed { return urls.map(Self.keptCopy) }
+            return urls.isEmpty ? [] : [Self.sentence(reason, count: urls.count, kind: kind)]
         }
         return (lead + left).joined(separator: " ")
     }
 
-    /// "1 file", "3 files" for conversions; "1 item", "3 items" for moves (they may be folders).
+    /// A copy that changed is named: the person may have started working in it.
+    private static func keptCopy(_ url: URL) -> String {
+        "\(url.lastPathComponent) changed since it was copied, so it was kept."
+    }
+
+    /// "1 file", "3 files" for conversions; "1 item", "3 items" for moves and copies (they may be folders).
     private static func count(_ count: Int, _ kind: UndoEntry.Kind) -> String {
-        let noun = kind == .move ? "item" : "file"
+        let noun = kind == .conversion ? "file" : "item"
         return count == 1 ? "1 \(noun)" : "\(count) \(noun)s"
     }
 

@@ -77,6 +77,11 @@ public actor UndoHistory {
         update(log.recording(UndoEntry(batch: batch, date: date, moves: moves), now: date))
     }
 
+    public func record(_ batch: BatchID, copies: [UndoCopy]) {
+        let date = now()
+        update(log.recording(UndoEntry(batch: batch, date: date, copies: copies), now: date))
+    }
+
     /// The entries that can still be undone, newest first (the status menu's Recent Results).
     public func recent() -> [UndoEntry] { log.pruned(now: now()).entries }
 
@@ -84,12 +89,16 @@ public actor UndoHistory {
     /// back) stay in the entry so Undo can be retried; the rest leave it, and an entry with nothing left is removed.
     public func undo(_ batch: BatchID) -> UndoResult? {
         guard let entry = log.pruned(now: now()).entry(for: batch) else { return nil }
-        return entry.kind == .move ? undoMoves(entry) : undoOutputs(entry)
+        switch entry.kind {
+        case .move: return undoMoves(entry)
+        case .copy: return undoTrashing(entry, plan: UndoPlanner.plan(copies: entry.copies, stamp: FileStamp.read))
+        case .conversion: return undoTrashing(entry, plan: UndoPlanner.plan(entry, stamp: FileStamp.read))
+        }
     }
 
-    private func undoOutputs(_ entry: UndoEntry) -> UndoResult {
+    /// Conversion outputs and copies: what is unchanged goes to the Trash.
+    private func undoTrashing(_ entry: UndoEntry, plan: UndoPlan) -> UndoResult {
         let batch = entry.batch
-        let plan = UndoPlanner.plan(entry, stamp: FileStamp.read)
         var trashed: [URL] = []
         var skipped = plan.skipped
         for url in plan.trash {
@@ -103,7 +112,7 @@ public actor UndoHistory {
         }
         let retry = Set(skipped.filter { $0.reason == .trashFailed }.map(\.url))
         update(log.keeping(batch, outputs: retry))
-        return UndoResult(trashed: trashed, skipped: skipped)
+        return UndoResult(kind: entry.kind, trashed: trashed, skipped: skipped)
     }
 
     private func undoMoves(_ entry: UndoEntry) -> UndoResult {
