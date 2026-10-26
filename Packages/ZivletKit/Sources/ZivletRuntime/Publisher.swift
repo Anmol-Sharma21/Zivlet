@@ -10,7 +10,7 @@ import os
 /// `renamex_np(RENAME_EXCL)` claims `<base>.<ext>`, `<base> 2.<ext>`, …: an existing file (the source included) is
 /// never replaced, and case-insensitive volumes collide case-insensitively because the kernel decides.
 public struct Publisher: Sendable {
-    public static let stagingPrefix = ".zivlet-"
+    public static let stagingPrefix = JobWorkspace.stagingFolderPrefix
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
     static let quarantineName = "com.apple.quarantine"
 

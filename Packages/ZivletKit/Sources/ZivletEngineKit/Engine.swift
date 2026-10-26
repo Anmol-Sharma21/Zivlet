@@ -4,6 +4,11 @@ import ZivletCore
 /// Where a job may write (02 §7.3, R4): one hidden staged file in the destination folder, claimed exclusively by the
 /// runtime before planning. Engines never write anywhere else.
 public struct JobWorkspace: Sendable, Equatable, Codable {
+    /// `<destination>/.zivlet-<job>/staged.<ext>` (G-16): the staging folder's prefix and the staged file's stem,
+    /// shared by the runtime that claims them and the worker that checks them.
+    public static let stagingFolderPrefix = ".zivlet-"
+    public static let stagedFileStem = "staged"
+
     public let job: JobID
     public let stagedFile: URL
 

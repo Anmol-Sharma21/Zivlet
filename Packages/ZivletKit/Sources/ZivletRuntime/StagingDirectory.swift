@@ -11,7 +11,7 @@ import ZivletEngineKit
 /// keep out, so only the type is checked there.
 enum StagingDirectory {
     static let mode: mode_t = 0o700
-    static let stagedName = "staged"
+    static let stagedName = JobWorkspace.stagedFileStem
 
     /// Creates the folder and an empty staged file `staged.<ext>` in it.
     static func claim(in destination: URL, job: JobID, ext: String) throws(JobError) -> URL {
