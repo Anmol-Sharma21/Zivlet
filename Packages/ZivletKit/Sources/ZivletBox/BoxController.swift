@@ -170,18 +170,23 @@ public final class BoxController {
         render()
     }
 
-    func store(_ result: IntakeResult, newBox: Bool) -> AddOutcome {
+    func store(_ result: IntakeResult, newBox: Bool) -> AddOutcome { adding(result, newBox: newBox).outcome }
+
+    /// Adds the intake's items and says which ones went in, so a tray drop can be undone exactly.
+    func adding(_ result: IntakeResult, newBox: Bool) -> TrayAdded {
         guard !result.items.isEmpty else {
-            return AddOutcome(added: 0, rejected: result.rejected, failure: result.rejected.first)
+            return TrayAdded(
+                outcome: AddOutcome(added: 0, rejected: result.rejected, failure: result.rejected.first), ids: [])
         }
         do {
             let (next, report) = try library.adding(result.items, to: newBox ? .newBox : .current, now: ports.now())
             replace(next)
-            return AddOutcome(
-                added: report.added.count, duplicates: report.duplicates + report.overCap,
-                rejected: result.rejected)
+            let outcome = AddOutcome(
+                added: report.added.count, duplicates: report.duplicates + report.overCap, rejected: result.rejected)
+            return TrayAdded(outcome: outcome, ids: report.added)
         } catch {
-            return AddOutcome(added: 0, rejected: result.rejected, failure: error.userMessage)
+            return TrayAdded(
+                outcome: AddOutcome(added: 0, rejected: result.rejected, failure: error.userMessage), ids: [])
         }
     }
 

@@ -26,3 +26,27 @@ struct TrayDropRow: View {
         .accessibilityLabel(BoxSpeech.dropTarget(count))
     }
 }
+
+/// The result toast's row: the check mark or the triangle, the line, and Undo when the drop can be undone.
+struct TrayToastRow: View {
+    let toast: TrayToastModel
+    let undo: () -> Void
+
+    var body: some View {
+        HStack(spacing: IslandContentLook.Spacing.s) {
+            Image(systemName: toast.failed ? BoxSymbols.failed : BoxSymbols.saved)
+                .font(IslandContentLook.Symbol.toast).foregroundStyle(IslandInk.primary).accessibilityHidden(true)
+            Text(toast.text).font(IslandContentLook.TypeStyle.primary).foregroundStyle(IslandInk.primary)
+                .lineLimit(1).truncationMode(.tail).accessibilityLabel(toast.spoken)
+            Spacer(minLength: 0)
+            if !toast.undoIDs.isEmpty {
+                Button(action: undo) { BoxSymbolLabel(symbol: BoxSymbols.undo) }
+                    .buttonStyle(IslandIconButtonStyle())
+                    .help(BoxCopy.undo).accessibilityLabel(BoxCopy.undo)
+            }
+        }
+        .padding(.horizontal, IslandContentLook.Spacing.m)
+        .frame(maxWidth: .infinity)
+        .frame(height: IslandContentLook.Spacing.rowHeight)
+    }
+}

@@ -3,7 +3,10 @@ import NotchTestSupport
 import TestSupport
 import Testing
 import ZivletCore
+import ZivletNotch
+import ZivletNotchCore
 import ZivletShelfCore
+import ZivletTrigger
 
 @testable import ZivletBox
 
@@ -77,5 +80,27 @@ struct PreDropReadTests {
         let info = FakeDraggingInfo(pasteboard: board.board)
         #expect(box.dropView.prepareForDragOperation(info) == false)
         #expect(box.dropView.performDragOperation(info) == false)
+    }
+
+    @Test func theTrayReadsNoFileWhileADragApproachesHoversAndLeaves() throws {
+        let rig = try BoxRig()
+        let box = Self.failingController(rig)
+        box.start()
+        let tray = try TrayRig(box: box)
+        let board = TestPasteboard(urls: try Self.files(rig, count: 3))
+        let info = FakeDraggingInfo(pasteboard: board.board)
+        tray.tray.proximity(.entered(display: 1), itemCount: 3)
+        #expect(tray.tray.draggingEntered(info, display: 1) == .copy)
+        #expect(tray.tray.draggingUpdated(info, display: 1) == .copy)
+        _ = tray.tray.content(for: .dropTarget, display: 1)
+        _ = tray.tray.accessibilityValue(display: 1)
+        tray.tray.draggingExited(display: 1)
+        tray.tray.wheelShown()
+        tray.tray.wheelHidden()
+        tray.tray.proximity(.entered(display: 1), itemCount: 3)
+        tray.tray.proximity(.left(display: 1), itemCount: 3)
+        tray.tray.dragEnded()
+        #expect(tray.hosts.surface(on: 1) == .hidden)
+        withExtendedLifetime(rig) {}
     }
 }

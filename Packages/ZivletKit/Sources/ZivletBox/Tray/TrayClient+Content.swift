@@ -10,9 +10,15 @@ extension TrayClient: IslandClient {
         switch surface {
         case .dropTarget:
             return AnyView(TrayDropRow(count: dropTarget?.count ?? 0, inBox: box.trayModel.items.count))
+        case .toast:
+            guard let lastToast, lastToast.display == display else { return AnyView(EmptyView()) }
+            return AnyView(TrayToastRow(toast: lastToast) { [weak self] in self?.undoLastDrop() })
         case .expanded:
-            return AnyView(BoxCompactView(model: box.trayModel) { [weak self] in self?.pressed($0, display: display) })
-        case .hidden, .collapsed, .sensor, .toast:
+            return AnyView(
+                BoxCompactView(
+                    model: box.trayModel, press: { [weak self] in self?.pressed($0, display: display) },
+                    drag: { [weak self] in self?.stripDrag($0, display: display) }))
+        case .hidden, .collapsed, .sensor:
             return AnyView(EmptyView())
         }
     }
@@ -30,7 +36,12 @@ extension TrayClient: IslandClient {
 
     public func accessibilityActionPerformed(display: UInt32) { openPanel(from: display) }
 
-    public func held(_ held: Bool, display: UInt32, now: Duration) {}
+    /// A held island keeps its toast: the linger stops while held and starts again when let go.
+    public func held(_ held: Bool, display: UInt32, now: Duration) {
+        if held { heldDisplays.insert(display) } else { heldDisplays.remove(display) }
+        guard lastToast?.display == display else { return }
+        if held { toastTask?.cancel() } else { startLinger() }
+    }
 
     public func closeRequested(display: UInt32) {}
 

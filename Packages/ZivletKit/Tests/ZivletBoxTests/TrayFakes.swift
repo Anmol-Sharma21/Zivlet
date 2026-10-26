@@ -44,24 +44,41 @@ final class FakeTrayBox: TrayBox {
     func press(_ press: BoxPress) { presses.append(press) }
 }
 
-/// The app's one `IslandHosts` on the off-screen notch display (1) and plain display (2), a fake box and the tray
-/// registered as `.tray`, at rest.
+/// The app's one `IslandHosts` on the off-screen notch display (1) and plain display (2), a box (a fake unless one
+/// is given) and the tray registered as `.tray`, at rest. Toast lingers are recorded and end at once.
 final class TrayRig {
     let hosts: IslandHosts
     let box: FakeTrayBox
     let tray: TrayClient
     var opensWhileDragging = true
+    private(set) var lingers: [Duration] = []
+    private(set) var surfaces: [(UInt32, IslandSurface)] = []
 
-    init(boxItems: Int) throws {
+    convenience init(boxItems: Int) throws {
+        try self.init(fake: FakeTrayBox(count: boxItems), box: nil)
+    }
+
+    /// A rig over a real box (the controller); `box` (the fake) is then unused.
+    convenience init(box real: any TrayBox) throws {
+        try self.init(fake: FakeTrayBox(count: 0), box: real)
+    }
+
+    private init(fake: FakeTrayBox, box real: (any TrayBox)?) throws {
         hosts = IslandHosts(
             provider: try FakeDisplayProvider.notchAndExternal(), clock: ManualClock(), animation: .instant)
-        box = FakeTrayBox(count: boxItems)
+        box = fake
         var rig: TrayRig?
-        tray = TrayClient(hosts: hosts, box: box) { rig?.opensWhileDragging ?? true }
+        tray = TrayClient(
+            hosts: hosts, box: real ?? fake, opensWhileDragging: { rig?.opensWhileDragging ?? true },
+            linger: { duration in rig?.lingers.append(duration) })
         rig = self
+        hosts.onSurface = { display, surface, _ in rig?.surfaces.append((display, surface)) }
         hosts.register(tray, as: .tray)
         tray.boxChanged()
     }
+
+    /// Surfaces shown on `display`, in order.
+    func shown(on display: UInt32) -> [IslandSurface] { surfaces.filter { $0.0 == display }.map(\.1) }
 
     isolated deinit { hosts.close() }
 }

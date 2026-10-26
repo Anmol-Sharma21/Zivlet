@@ -3,8 +3,9 @@ import ZivletActions
 import ZivletNotch
 
 /// The tray's expanded content (19c §4.3, plan 16e D11): the header with Share and Open Drop Box, then a strip of up
-/// to six 40 pt thumbnails, the last one "+6" when there are more. Thumbnails drag their item; "+6" opens the panel.
-/// No surface of its own: the island draws the finish around it.
+/// to six 40 pt thumbnails, the last one "+6" when there are more. Thumbnails drag their item, the strip's empty
+/// space drags every item, "+6" opens the panel; `drag` hears a drag begin and end, so the island is held meanwhile
+/// (D-N13). No surface of its own: the island draws the finish around it.
 public struct BoxCompactView: View {
     public static var height: CGFloat {
         2 * IslandContentLook.Spacing.l + BoxLook.Panel.headerHeight + IslandContentLook.Spacing.s + BoxLook.Tray.thumb
@@ -12,10 +13,12 @@ public struct BoxCompactView: View {
 
     let model: BoxViewModel
     let press: (BoxPress) -> Void
+    let drag: (Bool) -> Void
 
-    public init(model: BoxViewModel, press: @escaping (BoxPress) -> Void) {
+    public init(model: BoxViewModel, press: @escaping (BoxPress) -> Void, drag: @escaping (Bool) -> Void = { _ in }) {
         self.model = model
         self.press = press
+        self.drag = drag
     }
 
     /// The thumbnails shown: all up to six, else five and the "+N" tile.
@@ -40,7 +43,7 @@ public struct BoxCompactView: View {
                     .overlay {
                         FileDragSource(
                             urls: item.url.map { [$0] } ?? [], image: model.images[item.id] ?? NSImage(),
-                            drawsImage: false,
+                            drawsImage: false, onDrag: drag,
                             onEnded: { operation in
                                 BoxItemDrag.ended(operation, ids: item.url == nil ? [] : [item.id]).map(press)
                             })
@@ -48,7 +51,9 @@ public struct BoxCompactView: View {
                     .accessibilityLabel(item.spoken)
                 }
                 if Self.overflow(model.items.count) > 0 { more }
+                Spacer(minLength: 0)
             }
+            .background { everything }
         }
         .padding(IslandContentLook.Spacing.l)
         .frame(width: BoxLook.Tray.compactWidth, height: Self.height, alignment: .topLeading)
@@ -66,6 +71,14 @@ public struct BoxCompactView: View {
             BoxIconButton(press: .openPanel, action: press)
         }
         .frame(height: BoxLook.Panel.headerHeight)
+    }
+
+    /// The strip's empty space: a drag from it carries every present item.
+    private var everything: some View {
+        let ids = model.items.filter { $0.url != nil }.map(\.id)
+        return FileDragSource(
+            urls: model.dragURLs, image: NSImage(), drawsImage: false, onDrag: drag,
+            onEnded: { operation in BoxItemDrag.ended(operation, ids: ids).map(press) })
     }
 
     private var more: some View {

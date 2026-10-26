@@ -19,7 +19,11 @@ extension BoxController {
     func removeItems() {
         guard let shelf = current else { return }
         guard !selection.selected.isEmpty else { return requestConfirm(.clear) }
-        let chosen = shelf.items.filter { selection.selected.contains($0.id) }
+        remove(shelf.items.filter { selection.selected.contains($0.id) }, from: shelf)
+    }
+
+    /// Takes `chosen` out of `shelf`; owned copies go to the Trash, and those that cannot stay with a card.
+    func remove(_ chosen: [ShelfItem], from shelf: Shelf) {
         let (kept, lines) = trashOwnedCopies(chosen)
         replace(library.replacing(shelf.removing(Set(chosen.map(\.id)).subtracting(kept))))
         if !lines.isEmpty { report(.failed(ActionCard(title: BoxCopy.someStayed, lines: lines))) }

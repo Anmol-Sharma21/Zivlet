@@ -11,18 +11,37 @@ import ZivletTrigger
 public final class TrayClient {
     public static let label = "Drop Box"
 
+    /// How long the result toast stays, as the action toasts do: 1.5 s, or 4 s while it offers Undo.
+    public enum Timing {
+        public static let toast = Duration.milliseconds(1_500)
+        public static let undoToast = Duration.seconds(4)
+    }
+
     let hosts: IslandHosts
     let box: any TrayBox
     /// Settings › Drop Box › "Open at the notch while dragging".
     let opensWhileDragging: () -> Bool
+    /// Waits out a toast's linger; tests end it at once.
+    let linger: (Duration) async -> Void
     /// The drop target's display and the drag's item count, while it shows.
     var dropTarget: (display: UInt32, count: Int)?
     private(set) var wheelShowing = false
+    /// The last drop's result, while its toast shows.
+    var lastToast: TrayToastModel?
+    var toastTask: Task<Void, Never>?
+    /// The drop being added (promises are received inside it), so tests can wait for it.
+    var dropTask: Task<Void, Never>?
+    /// Displays whose island is held (pointer, focus, a drag from the strip): a toast there waits.
+    var heldDisplays: Set<UInt32> = []
 
-    public init(hosts: IslandHosts, box: any TrayBox, opensWhileDragging: @escaping () -> Bool) {
+    public init(
+        hosts: IslandHosts, box: any TrayBox, opensWhileDragging: @escaping () -> Bool,
+        linger: @escaping (Duration) async -> Void = { try? await Task.sleep(for: $0) }
+    ) {
         self.hosts = hosts
         self.box = box
         self.opensWhileDragging = opensWhileDragging
+        self.linger = linger
     }
 
     /// The proximity rule's events during a live file drag, with the drag pasteboard's item count.
@@ -61,10 +80,10 @@ public final class TrayClient {
     }
 
     /// Puts every display at rest: a sensor on notch displays while the box has items, no request elsewhere. The
-    /// display showing the drop target keeps it.
+    /// display showing the drop target or a drop's toast keeps it.
     func rest() {
         let hasItems = !box.trayModel.items.isEmpty
-        for display in hosts.displayIDs where display != dropTarget?.display {
+        for display in hosts.displayIDs where display != dropTarget?.display && display != lastToast?.display {
             guard hasItems, let geometry = hosts.display(display), NotchGeometry.hasNotch(geometry) else {
                 hosts.withdraw(.tray, on: display)
                 continue
