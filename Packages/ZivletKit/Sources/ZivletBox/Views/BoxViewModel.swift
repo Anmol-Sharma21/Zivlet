@@ -1,4 +1,5 @@
 import AppKit
+import ZivletCore
 import ZivletShelfCore
 
 /// One item as the views draw it: name, size and status (nil until the box was resolved), no file access.
@@ -45,6 +46,8 @@ public enum BoxPress: Sendable, Equatable {
     /// A click on an item: ⇧ extends the range, ⌘ toggles the item.
     case select(UUID, extend: Bool, toggle: Bool)
     case clearSelection
+    /// A marquee drawn over the grid, in the grid's own space (origin top-left, y down).
+    case marquee(Rect2D)
 
     /// The five icon buttons of the action bar (19c D-BL5).
     public static let bar: [BoxPress] = [.share, .airDrop, .copy, .moveTo, .trash]
@@ -73,7 +76,7 @@ public enum BoxPress: Sendable, Equatable {
         case .removeMissing: BoxSymbols.removeMissing
         case .cancelBusy: BoxSymbols.cancel
         case .confirm(let yes): yes ? BoxSymbols.trash : BoxSymbols.close
-        case .select, .clearSelection: BoxSymbols.box
+        case .select, .clearSelection, .marquee: BoxSymbols.box
         }
     }
 }

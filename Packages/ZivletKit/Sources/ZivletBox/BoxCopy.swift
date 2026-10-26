@@ -53,7 +53,7 @@ nonisolated enum BoxCopy {
         case .removeMissing: "Remove Missing"
         case .cancelBusy, .confirm(false): "Cancel"
         case .confirm(true): "Confirm"
-        case .select, .clearSelection: ""
+        case .select, .clearSelection, .marquee: ""
         }
     }
 }

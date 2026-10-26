@@ -27,6 +27,9 @@ extension BoxController {
         case .select(let id, let extend, let toggle):
             select(selection.clicking(id, extend: extend, toggle: toggle, in: order))
         case .clearSelection: select(selection.cleared())
+        case .marquee(let rect):
+            let hit = GridSelection.marquee(rect, cells: BoxGrid.cells(count: order.count)).map { order[$0] }
+            select(GridSelection(selected: Set(hit), anchor: hit.first, focus: hit.last))
         case .more: break
         case .cancelBusy: onBulk(.cancelBusy, [])
         case .share, .airDrop, .copy, .moveTo, .copyTo, .copyPaths, .trash, .remove, .clear, .locate, .removeMissing:

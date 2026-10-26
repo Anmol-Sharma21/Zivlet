@@ -209,3 +209,35 @@ struct BoxControllerTests {
         #expect(box.library.boxes.count == 2 && box.library.current?.items.isEmpty == true)
     }
 }
+
+@Suite("Marquee in the grid (17e §2.3)")
+@MainActor
+struct BoxMarqueeTests {
+    @Test func aMarqueeSelectsTheCellsItCrosses() async throws {
+        let rig = try BoxRig()
+        let box = rig.controller()
+        box.start()
+        _ = await box.add(try rig.files(7), newBox: false)
+        box.showPanel()
+        let ids = box.viewModel.items.map(\.id)
+        box.press(.marquee(Rect2D(x: 60, y: 60, width: 20, height: 20)))
+        #expect(box.viewModel.selection == [ids[0], ids[1], ids[5], ids[6]])
+        box.press(.marquee(Rect2D(x: 900, y: 900, width: 1, height: 1)))
+        #expect(box.viewModel.selection.isEmpty)
+        box.hidePanel()
+    }
+
+    @Test func theGridsCellsFollowTheTokens() {
+        let cells = BoxGrid.cells(count: 6)
+        #expect(cells[5].minY == Double(BoxLook.Grid.rowHeight + BoxLook.Grid.gap) && cells[1].minX == 72)
+    }
+}
+
+@Suite("Marquee rectangle from a drag")
+struct BoxMarqueeRectTests {
+    @Test func aDragUpAndLeftStillMakesAPositiveRectangle() {
+        #expect(
+            BoxGrid.rect(from: CGPoint(x: 50, y: 40), to: CGPoint(x: 10, y: 0))
+                == Rect2D(x: 10, y: 0, width: 40, height: 40))
+    }
+}
