@@ -32,6 +32,8 @@ public enum BoxPresentationEvent: Sendable, Equatable {
 public enum ConfirmKind: Sendable, Equatable {
     case trash(count: Int)
     case clear
+    /// Empty Box Storage: every box's owned copies go to the Trash.
+    case emptyStorage
 }
 
 /// What the controller does after an event, besides drawing the new presentation.

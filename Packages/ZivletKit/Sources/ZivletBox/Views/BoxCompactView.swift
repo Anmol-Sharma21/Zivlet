@@ -40,7 +40,10 @@ public struct BoxCompactView: View {
                     .overlay {
                         FileDragSource(
                             urls: item.url.map { [$0] } ?? [], image: model.images[item.id] ?? NSImage(),
-                            drawsImage: false)
+                            drawsImage: false,
+                            onEnded: { operation in
+                                BoxItemDrag.ended(operation, ids: item.url == nil ? [] : [item.id]).map(press)
+                            })
                     }
                     .accessibilityLabel(item.spoken)
                 }

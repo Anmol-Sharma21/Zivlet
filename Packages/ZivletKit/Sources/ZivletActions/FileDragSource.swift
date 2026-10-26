@@ -3,12 +3,14 @@ import SwiftUI
 
 /// Makes its content a drag source for several file URLs at once (P1-41 drag-out): SwiftUI's own drag supports one
 /// item, so an AppKit view starts the session with one dragging item per file. `onDrag` hears the session begin
-/// (true) and end (false), so the notch island can hold while a drag from it is in flight (D-N13). Shared by the
+/// (true) and end (false), so the notch island can hold while a drag from it is in flight (D-N13); `onEnded` hears
+/// how it ended (none when nothing took the files), so the Drop Box can clear items that left it. Shared by the
 /// result cards and the Drop Box (D-M5b-1), so every multi-file drag out of Zivlet behaves the same.
 public struct FileDragSource: NSViewRepresentable {
     public let urls: [URL]
     public let image: NSImage
     public var onDrag: (Bool) -> Void = { _ in }
+    public var onEnded: (NSDragOperation) -> Void = { _ in }
     /// False when SwiftUI content draws the item and the view only carries the drag (the Drop Box's cells).
     public var drawsImage = true
     /// A press released without a drag, with its modifier keys; nil leaves clicks to AppKit.
@@ -16,12 +18,13 @@ public struct FileDragSource: NSViewRepresentable {
 
     public init(
         urls: [URL], image: NSImage, drawsImage: Bool = true, onDrag: @escaping (Bool) -> Void = { _ in },
-        onClick: ((NSEvent.ModifierFlags) -> Void)? = nil
+        onEnded: @escaping (NSDragOperation) -> Void = { _ in }, onClick: ((NSEvent.ModifierFlags) -> Void)? = nil
     ) {
         self.urls = urls
         self.image = image
         self.drawsImage = drawsImage
         self.onDrag = onDrag
+        self.onEnded = onEnded
         self.onClick = onClick
     }
 
@@ -36,6 +39,7 @@ public struct FileDragSource: NSViewRepresentable {
         view.image = image
         view.drawsImage = drawsImage
         view.onDrag = onDrag
+        view.onEnded = onEnded
         view.onClick = onClick
     }
 }
@@ -47,6 +51,7 @@ public final class DragSourceView: NSView, NSDraggingSource {
         didSet { needsDisplay = true }
     }
     public var onDrag: (Bool) -> Void = { _ in }
+    public var onEnded: (NSDragOperation) -> Void = { _ in }
     public var drawsImage = true {
         didSet { needsDisplay = true }
     }
@@ -109,6 +114,12 @@ public final class DragSourceView: NSView, NSDraggingSource {
 
     public func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation)
     {
+        ended(with: operation)
+    }
+
+    /// The session ended with `operation` (empty when nothing took the files).
+    public func ended(with operation: NSDragOperation) {
         onDrag(false)
+        onEnded(operation)
     }
 }

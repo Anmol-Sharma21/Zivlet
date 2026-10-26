@@ -46,6 +46,7 @@ extension BoxController {
             pendingTrash = nil
             trash(targets)
         case .clear: clearBox()
+        case .emptyStorage: emptyStorage()
         }
     }
 

@@ -35,6 +35,11 @@ public final class BoxController {
     /// The last Clear, while its Undo still works, and the wait that ends it.
     var pendingClear: PendingClear?
     var clearing: Task<Void, Never>?
+    /// Bytes of every box's owned copies, counted on disk at launch, on show and after every change.
+    var ownedBytes: Int64 = 0
+
+    /// When items leave the box on their own (Settings › Drop Box); off until the app says otherwise.
+    public var autoClear: () -> AutoClear = { .off }
 
     /// A bulk action finished: its result for the toast or the card, and the panel's frame as the anchor.
     public var onResult: (ActionResult, CGRect?) -> Void = { _, _ in }
@@ -70,6 +75,8 @@ public final class BoxController {
             onError(BoxStoreError.wouldOverwriteNewer.userMessage)
         case .empty, .damaged: break
         }
+        clearAutomatically(left: [])
+        refreshStorage()
         let shelf = library.current
         presentation = BoxPresentation(
             base: shelf?.shown ?? .hidden, dock: shelf?.dock, missing: 0, isEmpty: shelf?.items.isEmpty ?? true)
@@ -148,7 +155,10 @@ public final class BoxController {
         presentation = next
         for effect in effects {
             switch effect {
-            case .present: resolveIfNeeded()
+            case .present:
+                resolveIfNeeded()
+                clearAutomatically(left: [])
+                refreshStorage()
             case .dismiss:
                 resolvedBox = nil
                 requestedThumbnails = []
@@ -180,6 +190,7 @@ public final class BoxController {
         if next.currentID != library.currentID { resolvedBox = nil }
         library = next
         save()
+        refreshStorage()
         selection = selection.keeping(current?.items.map(\.id) ?? [])
         let missing = current?.items.filter { !(statuses[$0.id]?.isAvailable ?? true) }.count ?? 0
         apply(.itemsChanged(count: current?.items.count ?? 0, missing: missing))

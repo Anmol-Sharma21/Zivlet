@@ -42,8 +42,9 @@ extension BoxController {
         guard let targets = usableTargets(.moveTo), let box = current?.id else { return }
         running = Task { [actions] in
             let (result, moveReport) = await actions.move(targets.urls)
-            if let moveReport { follow(moveReport.moved, in: box, targets: targets) }
+            let moved = moveReport.map { follow($0.moved, in: box, targets: targets) } ?? []
             report(result.listing(lines: targets.failures))
+            clearAutomatically(left: moved)
         }
     }
 
@@ -55,16 +56,18 @@ extension BoxController {
         }
     }
 
-    /// Points the items that moved at their new paths (new bookmarks too) and saves.
-    func follow(_ moved: [MovedItem], in box: UUID, targets: BulkTargets) {
+    /// Points the items that moved at their new paths (new bookmarks too) and saves; the ids that moved.
+    @discardableResult
+    func follow(_ moved: [MovedItem], in box: UUID, targets: BulkTargets) -> Set<UUID> {
         let ids = Dictionary(
             zip(targets.urls.map(\.standardizedFileURL.path), targets.ids), uniquingKeysWith: { first, _ in first })
         let moves = Dictionary(
             moved.compactMap { item in ids[item.source.standardizedFileURL.path].map { ($0, item.target.path) } },
             uniquingKeysWith: { first, _ in first })
-        guard !moves.isEmpty, let shelf = library.boxes.first(where: { $0.id == box }) else { return }
+        guard !moves.isEmpty, let shelf = library.boxes.first(where: { $0.id == box }) else { return [] }
         for (id, path) in moves { statuses[id] = .present(path: path) }
         replace(library.replacing(shelf.relocating(moves, using: ports.maker).0))
+        return Set(moves.keys)
     }
 
     /// The targets when any item can take part; otherwise the card that says nothing can, and nil.

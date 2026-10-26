@@ -14,7 +14,7 @@ extension BoxController {
             items: items, selection: selection.selected, presentation: presentation,
             viewMode: current?.viewMode ?? .grid, finish: ports.finish(), images: placeholders,
             maxHeight: CGFloat(PanelFrames.maxHeight(in: display(for: current?.frame))),
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, storageBytes: ownedBytes)
     }
 
     /// A press in the panel or the tray.
@@ -43,6 +43,8 @@ extension BoxController {
         case .clear: requestClear()
         case .locate: locate()
         case .removeMissing: removeMissing()
+        case .emptyStorage: requestEmptyStorage()
+        case .draggedOut(let ids): clearAutomatically(left: Set(ids))
         }
     }
 

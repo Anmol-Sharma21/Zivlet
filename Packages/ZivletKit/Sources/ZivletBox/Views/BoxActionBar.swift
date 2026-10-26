@@ -68,12 +68,18 @@ struct BoxConfirmLine: View {
 
     private var symbol: String {
         switch kind {
-        case .trash: BoxSymbols.trash
+        case .trash, .emptyStorage: BoxSymbols.trash
         case .clear: BoxSymbols.clear
         }
     }
 
-    private var title: String { BoxCopy.title(kind == .clear ? .clear : .trash) }
+    private var title: String {
+        switch kind {
+        case .trash: BoxCopy.title(.trash)
+        case .clear: BoxCopy.title(.clear)
+        case .emptyStorage: BoxCopy.title(.emptyStorage)
+        }
+    }
 
     var body: some View {
         HStack(spacing: IslandContentLook.Spacing.xs) {

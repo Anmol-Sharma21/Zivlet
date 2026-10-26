@@ -41,13 +41,15 @@ public struct BoxItemModel: Identifiable, Equatable {
 /// What a press in the box asks for. The views only report presses; the controller decides.
 public enum BoxPress: Sendable, Equatable {
     case share, airDrop, copy, moveTo, copyTo, copyPaths, trash, remove, clear, more
-    case grid, list, openPanel, locate, removeMissing, cancelBusy
+    case grid, list, openPanel, locate, removeMissing, cancelBusy, emptyStorage
     case confirm(Bool)
     /// A click on an item: ⇧ extends the range, ⌘ toggles the item.
     case select(UUID, extend: Bool, toggle: Bool)
     case clearSelection
     /// A marquee drawn over the grid, in the grid's own space (origin top-left, y down).
     case marquee(Rect2D)
+    /// A drag out of the box landed somewhere (its operation was not none), carrying these items.
+    case draggedOut([UUID])
 
     /// The five icon buttons of the action bar (19c D-BL5).
     public static let bar: [BoxPress] = [.share, .airDrop, .copy, .moveTo, .trash]
@@ -55,7 +57,9 @@ public enum BoxPress: Sendable, Equatable {
     public static let overflow: [BoxPress] = [.copyTo, .copyPaths, .remove, .clear]
     /// Every press with words, for the copy test.
     public static let buttons: [BoxPress] =
-        bar + overflow + [.more, .grid, .list, .openPanel, .locate, .removeMissing, .cancelBusy, .confirm(true)]
+        bar + overflow + [
+            .more, .grid, .list, .openPanel, .locate, .removeMissing, .cancelBusy, .emptyStorage, .confirm(true),
+        ]
 
     var symbol: String {
         switch self {
@@ -75,8 +79,9 @@ public enum BoxPress: Sendable, Equatable {
         case .locate: BoxSymbols.locate
         case .removeMissing: BoxSymbols.removeMissing
         case .cancelBusy: BoxSymbols.cancel
+        case .emptyStorage: BoxSymbols.trash
         case .confirm(let yes): yes ? BoxSymbols.trash : BoxSymbols.close
-        case .select, .clearSelection, .marquee: BoxSymbols.box
+        case .select, .clearSelection, .marquee, .draggedOut: BoxSymbols.box
         }
     }
 }
@@ -92,10 +97,13 @@ public struct BoxViewModel {
     public let images: [UUID: NSImage]
     public let maxHeight: CGFloat
     public let reduceMotion: Bool
+    /// Bytes of every box's owned copies, for the overflow menu's first line and its dot.
+    public let storageBytes: Int64
 
     public init(
         items: [BoxItemModel], selection: Set<UUID>, presentation: BoxPresentation, viewMode: Shelf.ViewMode,
-        finish: BoxFinish, images: [UUID: NSImage] = [:], maxHeight: CGFloat, reduceMotion: Bool = false
+        finish: BoxFinish, images: [UUID: NSImage] = [:], maxHeight: CGFloat, reduceMotion: Bool = false,
+        storageBytes: Int64 = 0
     ) {
         self.items = items
         self.selection = selection.intersection(items.map(\.id))
@@ -105,6 +113,7 @@ public struct BoxViewModel {
         self.images = images
         self.maxHeight = maxHeight
         self.reduceMotion = reduceMotion
+        self.storageBytes = storageBytes
     }
 
     public var totalBytes: Int64 { items.compactMap(\.bytes).reduce(0, +) }
@@ -130,9 +139,21 @@ public struct BoxViewModel {
     /// One missing item is selected: Locate… applies.
     public var canLocate: Bool { selected.count == 1 && selected.first?.isAvailable == false }
 
+    /// "Box storage 1.2 GB".
+    public var storageLine: String { BoxCopy.storage(storageBytes) }
+
+    /// The owned copies passed the 2 GB warning (OWN-APP-3): the overflow button carries a dot.
+    public var storageWarning: Bool { StorageBudget.isOverWarning(storageBytes) }
+
+    /// The ids a drag from `item` carries: the selection when the item is in it, else the item when it is present.
+    public func dragIDs(from item: BoxItemModel) -> [UUID] {
+        guard selection.contains(item.id) else { return item.url == nil ? [] : [item.id] }
+        return selected.filter { $0.url != nil }.map(\.id)
+    }
+
     public func with(images: [UUID: NSImage]) -> BoxViewModel {
         BoxViewModel(
             items: items, selection: selection, presentation: presentation, viewMode: viewMode, finish: finish,
-            images: images, maxHeight: maxHeight, reduceMotion: reduceMotion)
+            images: images, maxHeight: maxHeight, reduceMotion: reduceMotion, storageBytes: storageBytes)
     }
 }

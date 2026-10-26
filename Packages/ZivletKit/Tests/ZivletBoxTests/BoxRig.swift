@@ -45,6 +45,7 @@ final class BoxRig {
     private(set) var slept: [Duration] = []
     let undo: UndoHistory
     var clock = 0.0
+    var now = Date(timeIntervalSince1970: 1_000)
     var displays = [BoxRig.display]
 
     init() throws {
@@ -66,7 +67,7 @@ final class BoxRig {
                 isMounted: { [unowned self] _ in mounted },
                 promises: FakePromises(names: []), thumbnails: NoThumbnails(), quickLook: quickLook,
                 visibleFrames: { [unowned self] in displays }, finish: { .solid },
-                now: { Date(timeIntervalSince1970: 1_000) }, uptime: { [unowned self] in clock }, trash: trash,
+                now: { [unowned self] in now }, uptime: { [unowned self] in clock }, trash: trash,
                 locator: locator, sleep: { [weak self] duration in await self?.wait(duration) }),
             actions: actions)
         box.onResult = { [results] result, anchor in results.record(result, anchor) }

@@ -8,8 +8,8 @@ import os
 
 /// The Drop Box in the app (P2-55, P2-141): one controller over the standard stores, restored at launch and saved at
 /// quit; the BOX slice's adapter; the menu command; drop results and save errors shown as action toasts and cards.
-/// Settings › Drop Box: "New drops go to" decides the slice's box here; the tray, shake and auto-clear rows are read
-/// by the parts that use them as they are added (plan 16 streams C and D).
+/// Settings › Drop Box: "New drops go to" decides the slice's box here and "Clear items" is the controller's
+/// auto-clear policy; the tray and shake rows are read by the parts that use them as they are added (plan 16 stream D).
 final class BoxWiring {
     private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
     /// Undo on the Clear toast put the items back.
@@ -26,6 +26,7 @@ final class BoxWiring {
         controller.onError = { [weak self] message in self?.present(.failed(ActionCard(title: message)), nil) }
         controller.onPresented = { base, frame in Self.log(base, frame: frame) }
         controller.onResult = { [weak self] result, frame in self?.present(result, frame.map(Self.anchor)) }
+        controller.autoClear = { [settings] in AutoClear(rawValue: settings().autoClear.rawValue) ?? .off }
     }
 
     /// A bulk action's toast or card sits under the panel's centre when the placement is near the drop.

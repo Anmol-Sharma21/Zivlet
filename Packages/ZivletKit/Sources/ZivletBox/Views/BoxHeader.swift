@@ -44,22 +44,35 @@ struct BoxHeader: View {
             if model.canLocate { BoxIconButton(press: .locate, action: press) }
             if model.missingCount > 0 { BoxIconButton(press: .removeMissing, action: press) }
             BoxIconButton(press: model.viewMode == .grid ? .list : .grid, action: press)
-            BoxOverflowMenu(press: press)
+            BoxOverflowMenu(model: model, press: press)
         }
     }
 }
 
-/// The commands that do not fit the bar (19c D-BL5): Copy to…, Copy Paths, Remove from Box, Clear Box.
+/// The commands that do not fit the bar (19c D-BL5): first the storage line and Empty Box Storage, then Copy to…,
+/// Copy Paths, Remove from Box, Clear Box. Past the 2 GB warning the button carries a small dot (OWN-APP-3), and
+/// says why in its accessibility value.
 struct BoxOverflowMenu: View {
+    static let dot: CGFloat = 6
+
+    let model: BoxViewModel
     let press: (BoxPress) -> Void
 
     var body: some View {
         Menu {
+            Text(model.storageLine)
+            Button(BoxCopy.title(.emptyStorage)) { press(.emptyStorage) }
+                .disabled(model.storageBytes == 0)
             ForEach(BoxPress.overflow, id: \.self.menuID) { item in
                 Button(BoxCopy.title(item)) { press(item) }
             }
         } label: {
             BoxSymbolLabel(symbol: BoxSymbols.more)
+                .overlay(alignment: .topTrailing) {
+                    if model.storageWarning {
+                        Circle().fill(IslandInk.primary).frame(width: Self.dot, height: Self.dot)
+                    }
+                }
         }
         .menuStyle(.button)
         .buttonStyle(IslandIconButtonStyle())
@@ -67,6 +80,7 @@ struct BoxOverflowMenu: View {
         .fixedSize()
         .help(BoxCopy.title(.more))
         .accessibilityLabel(BoxCopy.title(.more))
+        .accessibilityValue(model.storageWarning ? model.storageLine : "")
     }
 }
 

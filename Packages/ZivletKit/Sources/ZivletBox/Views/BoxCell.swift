@@ -52,11 +52,18 @@ struct BoxItemDrag: View {
 
     var body: some View {
         let urls = model.selection.contains(item.id) ? model.dragURLs : (item.url.map { [$0] } ?? [])
+        let ids = model.dragIDs(from: item)
         FileDragSource(
             urls: urls, image: model.images[item.id] ?? NSImage(), drawsImage: false,
+            onEnded: { operation in Self.ended(operation, ids: ids).map(press) },
             onClick: { flags in
                 press(.select(item.id, extend: flags.contains(.shift), toggle: flags.contains(.command)))
             })
+    }
+
+    /// A drag that something took (copy, link or generic) left the box; one that nobody took did not.
+    static func ended(_ operation: NSDragOperation, ids: [UUID]) -> BoxPress? {
+        operation.isEmpty || ids.isEmpty ? nil : .draggedOut(ids)
     }
 }
 

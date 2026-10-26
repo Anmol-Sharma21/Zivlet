@@ -19,6 +19,9 @@ nonisolated enum BoxCopy {
     }
 
     static let cleared = "Cleared"
+    static let storageEmptied = "Box storage emptied"
+
+    static func storage(_ bytes: Int64) -> String { "Box storage \(size(bytes))" }
     static let nothingTrashed = "Nothing was moved to the Trash."
     static let someStayed = "Some items stayed in the box."
 
@@ -50,6 +53,7 @@ nonisolated enum BoxCopy {
         switch kind {
         case .trash(let count): "Move \(count) to Trash?"
         case .clear: "Clear the box?"
+        case .emptyStorage: "Empty box storage?"
         }
     }
 
@@ -71,9 +75,10 @@ nonisolated enum BoxCopy {
         case .openPanel: "Open Drop Box"
         case .locate: "Locate…"
         case .removeMissing: "Remove Missing"
+        case .emptyStorage: "Empty Box Storage"
         case .cancelBusy, .confirm(false): "Cancel"
         case .confirm(true): "Confirm"
-        case .select, .clearSelection, .marquee: ""
+        case .select, .clearSelection, .marquee, .draggedOut: ""
         }
     }
 }
