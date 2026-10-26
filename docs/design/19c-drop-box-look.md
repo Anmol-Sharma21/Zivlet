@@ -233,7 +233,7 @@ the Move action's toasts); new ones are marked *new*. Counts use the existing `c
 | Clear toast | "Cleared" (*new*) with Undo for 10 s | "Box cleared. Undo available" |
 | Tooltips and labels | "Share", "AirDrop", "Copy", "Move to…", "Copy to…", "Copy Paths", "Move to Trash", "Remove from Box", "Clear Box", "More", "Grid", "List", "Open Drop Box", "Locate…", "Remove Missing" (*new* where not already a wheel or menu title) | the same words |
 | Menu | "Show Drop Box" (*new*; title from 17e §2.3) | — |
-| Settings › General, "Drop Box" | "Open at the notch while dragging", "Shake to open", "Clear items: Never \| After they leave the box \| After 24 hours", "New drops go to: The last box \| A new box" (all *new*) | the same words |
+| Settings › General, "Drop Box" | "Open at the notch while dragging", "Shake to open", "Clear items: Never \| After they leave the box \| After 24 hours", "BOX on the wheel adds to: The last box \| A new box" (all *new*; renamed from "New drops go to" in the M5b review, since a drop on the panel or at the notch always goes to the box it lands on, OWN-APP-1) | the same words |
 | BOX slice toast | "Added 3" (*new*, as the tray's) | "Added 3 items" |
 | Overflow menu, Settings | "Box storage 1.2 GB" (*new*), "Empty Box Storage" (*new*) | the same words |
 | Bulk results | "Copied 12 items" (*new*), "Moved 3 to the Trash" (*new*), "Cleared" (*new*); Move keeps "Moved 12 items"; per-item lines such as "photo.heic is missing." (*new*) | the same words |

@@ -11,7 +11,7 @@ only real hardware, real drags, other apps and the system's assistive technologi
 
 - A Debug build: `make app`. Quit any running Zivlet first (`osascript -e 'quit app "Zivlet"'`).
 - Settings › General › Drop Box: "Open at the notch while dragging" on, "Shake to open" off, "Clear items" off and
-  "New drops go to" the most recent box, unless a row says otherwise.
+  "BOX on the wheel adds to" the most recent box, unless a row says otherwise.
 - Debug-only flags (D-M5b-20; a Release build that carries any of them fails `make release-check`):
   `-ZivletBoxPreview <state>` shows one panel state with made-up items (hidden, docked, collapsed, grid, list,
   selection, dropTarget, busy, attention, confirmTrash, confirmClear, empty, confirmEmpty, storageWarning);

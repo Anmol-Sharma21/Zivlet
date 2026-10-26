@@ -26,7 +26,7 @@ struct SettingsPaneSnapshotTests {
         #expect(
             DropBoxSection.trayLabel == "Open at the notch while dragging"
                 && DropBoxSection.shakeLabel == "Shake to open")
-        #expect(DropBoxSection.clearLabel == "Clear items" && DropBoxSection.dropsLabel == "New drops go to")
+        #expect(DropBoxSection.clearLabel == "Clear items" && DropBoxSection.dropsLabel == "BOX on the wheel adds to")
         #expect(
             BoxAutoClearChoice.allCases.map(DropBoxSection.label) == [
                 "Never", "After they leave the box", "After 24 hours",

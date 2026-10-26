@@ -8,8 +8,10 @@ import os
 
 /// The Drop Box in the app (P2-55, P2-141): one controller over the standard stores, restored at launch and saved at
 /// quit; the BOX slice's adapter; the menu command; drop results and save errors shown as action toasts and cards.
-/// Settings › Drop Box: "New drops go to" decides the slice's box here and "Clear items" is the controller's
-/// auto-clear policy; "Open at the notch while dragging" and "Shake to open" are read by the tray and its driver.
+/// Settings › Drop Box: "BOX on the wheel adds to" decides the slice's box here (a drop on the panel or at the notch
+/// always goes to the box it lands on, OWN-APP-1) and "Clear items" is the controller's auto-clear policy; "Open at
+/// the notch while dragging" and "Shake to open" are read by the tray and its driver. A change to Reduce
+/// Transparency, Increase Contrast or Reduce Motion redraws a shown panel at once (19c §6).
 final class BoxWiring {
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
     /// Undo on the Clear toast put the items back.
@@ -22,6 +24,7 @@ final class BoxWiring {
     var tray: TrayClient?
     var driver: TrayDriver?
     var zoneWatch: Task<Void, Never>?
+    private var displayOptions: (any NSObjectProtocol)?
     #if DEBUG
         let previewFlags: BoxShotFlags
         var previewBox: TrayPreviewBox?
@@ -38,6 +41,11 @@ final class BoxWiring {
         controller.onPresented = { base, frame in Self.log(base, frame: frame) }
         controller.onResult = { [weak self] result, frame in self?.present(result, frame.map(Self.anchor)) }
         controller.autoClear = { [settings] in AutoClear(rawValue: settings().autoClear.rawValue) ?? .off }
+        displayOptions = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main
+        ) { [weak controller] _ in
+            MainActor.assumeIsolated { controller?.displayOptionsChanged() }
+        }
     }
 
     /// A bulk action's toast or card sits under the panel's centre when the placement is near the drop.
@@ -64,6 +72,7 @@ final class BoxWiring {
 
     func quit() {
         zoneWatch?.cancel()
+        if let displayOptions { NSWorkspace.shared.notificationCenter.removeObserver(displayOptions) }
         controller.quit()
     }
 }

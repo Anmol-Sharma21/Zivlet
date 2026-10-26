@@ -78,7 +78,8 @@ struct DropBoxSection: View {
     static let trayLabel = "Open at the notch while dragging"
     static let shakeLabel = "Shake to open"
     static let clearLabel = "Clear items"
-    static let dropsLabel = "New drops go to"
+    /// Only the BOX slice chooses: a drop on the panel or at the notch goes to the box it lands on (OWN-APP-1).
+    static let dropsLabel = "BOX on the wheel adds to"
     static let storageLabel = "Box storage"
     static let emptyLabel = "Empty Box Storage"
     static let emptyQuestion = "Empty box storage?"
