@@ -36,7 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let updater = UpdaterWiring()
     lazy var settingsWindow = SettingsWindowWiring(
         store: settings.store, conversions: conversions, displays: island.reader,
-        checkForUpdates: updater.checkForUpdates
+        checkForUpdates: updater.checkForUpdates, boxStorage: { [weak self] in self?.box.controller.storageBytes ?? 0 },
+        emptyBoxStorage: { [weak self] in self?.box.controller.emptyStorage() }
     ) {
         [weak self] in self?.trigger?.trace.lines ?? []
     }

@@ -79,6 +79,18 @@ struct DropBoxSection: View {
     static let shakeLabel = "Shake to open"
     static let clearLabel = "Clear items"
     static let dropsLabel = "New drops go to"
+    static let storageLabel = "Box storage"
+    static let emptyLabel = "Empty Box Storage"
+    static let emptyQuestion = "Empty box storage?"
+    static let emptyAnswer = "Empty"
+
+    /// "1.2 GB": decimal, as Finder and the box's overflow menu show it.
+    static func storageValue(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowsNonnumericFormatting = false
+        return formatter.string(fromByteCount: bytes)
+    }
 
     let model: SettingsModel
 
@@ -106,6 +118,32 @@ struct DropBoxSection: View {
             }
             Picker(Self.dropsLabel, selection: model.binding(\.box.dropsGo)) {
                 ForEach(BoxDropsChoice.allCases, id: \.self) { Text(Self.label($0)).tag($0) }
+            }
+            if let bytes = model.boxStorageBytes { BoxStorageRow(bytes: bytes, empty: model.emptyBoxStorage) }
+        }
+    }
+}
+
+/// "Box storage 1.2 GB" with Empty Box Storage; the button asks on the same row first, no alert (19c D-BL9).
+struct BoxStorageRow: View {
+    let bytes: Int64
+    let empty: () -> Void
+    @State private var asking = false
+
+    var body: some View {
+        LabeledContent(DropBoxSection.storageLabel) {
+            HStack {
+                Text(DropBoxSection.storageValue(bytes)).monospacedDigit()
+                if asking {
+                    Text(DropBoxSection.emptyQuestion)
+                    Button(DropBoxSection.emptyAnswer) {
+                        asking = false
+                        empty()
+                    }
+                    Button("Cancel") { asking = false }
+                } else {
+                    Button(DropBoxSection.emptyLabel) { asking = true }.disabled(bytes == 0)
+                }
             }
         }
     }

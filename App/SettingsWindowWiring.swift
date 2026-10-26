@@ -18,18 +18,23 @@ final class SettingsWindowWiring {
     private let displays: any DisplayGeometryProvider
     private let triggerTrace: () -> [String]
     private let checkForUpdates: (() -> Void)?
+    private let boxStorage: (() -> Int64)?
+    private let emptyBoxStorage: (() -> Void)?
     private var controller: SettingsWindowController?
     private var model: SettingsModel?
     private var observer: Task<Void, Never>?
 
     init(
         store: SettingsStore, conversions: ConversionService, displays: any DisplayGeometryProvider,
-        checkForUpdates: (() -> Void)?, triggerTrace: @escaping () -> [String]
+        checkForUpdates: (() -> Void)?, boxStorage: (() -> Int64)? = nil, emptyBoxStorage: (() -> Void)? = nil,
+        triggerTrace: @escaping () -> [String]
     ) {
         self.store = store
         self.conversions = conversions
         self.displays = displays
         self.checkForUpdates = checkForUpdates
+        self.boxStorage = boxStorage
+        self.emptyBoxStorage = emptyBoxStorage
         self.triggerTrace = triggerTrace
     }
 
@@ -37,6 +42,7 @@ final class SettingsWindowWiring {
         if controller == nil { make() }
         guard let controller, let model else { return }
         model.loginItem = LoginItemModel()  // the status can change in System Settings while the window is closed
+        model.refreshBoxStorage()
         Task { [conversions] in model.helperVersions = await conversions.helperVersions() }
         controller.show(pane)
         let window = controller.window?.windowNumber ?? 0
@@ -66,7 +72,8 @@ final class SettingsWindowWiring {
             chooseFallbackFolder: { [weak self] in self?.chooseFallbackFolder() },
             checkForUpdates: checkForUpdates,
             copyDiagnostics: { [weak self] in self?.copyDiagnostics() },
-            openAcknowledgements: Self.acknowledgements.map { url in { NSWorkspace.shared.open(url) } })
+            openAcknowledgements: Self.acknowledgements.map { url in { NSWorkspace.shared.open(url) } },
+            boxStorage: boxStorage, emptyBoxStorage: emptyBoxStorage)
     }
 
     private func copyDiagnostics() {

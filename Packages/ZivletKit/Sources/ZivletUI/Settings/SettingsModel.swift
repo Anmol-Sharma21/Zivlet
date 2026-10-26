@@ -18,18 +18,25 @@ public struct SettingsCommands {
     public var checkForUpdates: (() -> Void)?
     public var copyDiagnostics: (() -> Void)?
     public var openAcknowledgements: (() -> Void)?
+    /// Bytes of the Drop Box's owned copies; nil hides the storage row.
+    public var boxStorage: (() -> Int64)?
+    /// Empty Box Storage, after the row's inline confirm.
+    public var emptyBoxStorage: (() -> Void)?
 
     public init(
         write: @escaping (_ transform: (ZivletSettings.Settings) -> ZivletSettings.Settings) -> ZivletSettings.Settings,
         chooseFallbackFolder: @escaping () -> Void = {},
         checkForUpdates: (() -> Void)? = nil, copyDiagnostics: (() -> Void)? = nil,
-        openAcknowledgements: (() -> Void)? = nil
+        openAcknowledgements: (() -> Void)? = nil, boxStorage: (() -> Int64)? = nil,
+        emptyBoxStorage: (() -> Void)? = nil
     ) {
         self.write = write
         self.chooseFallbackFolder = chooseFallbackFolder
         self.checkForUpdates = checkForUpdates
         self.copyDiagnostics = copyDiagnostics
         self.openAcknowledgements = openAcknowledgements
+        self.boxStorage = boxStorage
+        self.emptyBoxStorage = emptyBoxStorage
     }
 }
 
@@ -43,6 +50,8 @@ public final class SettingsModel {
     public var loginItem: LoginItemModel?
     /// The latch of design/19 §3.2: this Mac has shown a built-in display with a notch (D-M5a-11).
     public var hasBuiltInNotch = false
+    /// The Drop Box's owned copies, counted when the window opens; nil hides the row.
+    public private(set) var boxStorageBytes: Int64?
     @ObservationIgnored let commands: SettingsCommands
     @ObservationIgnored private var notchWatch: Task<Void, Never>?
 
@@ -51,6 +60,15 @@ public final class SettingsModel {
         let current = TerminalCatalog.resolve(settings.actions.terminal)
         terminalChoices = installedTerminals.contains(current) ? installedTerminals : installedTerminals + [current]
         self.commands = commands
+    }
+
+    /// Counts the Drop Box's owned copies again (each time the window opens).
+    public func refreshBoxStorage() { boxStorageBytes = commands.boxStorage?() }
+
+    /// Empty Box Storage, after the row's inline confirm; the count follows.
+    func emptyBoxStorage() {
+        commands.emptyBoxStorage?()
+        refreshBoxStorage()
     }
 
     /// Settings changed elsewhere (the status menu's Pause, onboarding).
