@@ -22,6 +22,7 @@ let package = Package(
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "EngineMedia", "EngineImage",
                 "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions", "ZivletSettings", "ZivletUI",
                 "ZivletNotchCore", "ZivletNotch", "ZivletShelfCore", "ZivletBox", "ZivletIPC",
+                "ZivletWorkerCore",
             ])
     ],
     targets: [
@@ -39,6 +40,10 @@ let package = Package(
         .target(name: "EngineMedia", dependencies: ["ZivletEngineKit"], swiftSettings: strict),
         // The worker's messages, their protocol version, request validation and the peer rule (P2-01, plan 18c).
         .target(name: "ZivletIPC", dependencies: ["ZivletCore", "ZivletEngineKit"], swiftSettings: strict),
+        // The worker's service without XPC: validation, engines, cancel and the idle exit (P2-01, plan 18c C3).
+        .target(
+            name: "ZivletWorkerCore", dependencies: ["ZivletIPC", "ZivletCore", "ZivletEngineKit"],
+            swiftSettings: strict),
         // Built by Vendor/ensure-native.sh before every make target that reads this manifest (D-M4-9).
         .binaryTarget(name: "CWebP", path: "../../Vendor/out/CWebP.xcframework"),
         .binaryTarget(name: "CZivletSVG", path: "../../Vendor/out/CZivletSVG.xcframework"),
@@ -93,6 +98,10 @@ let package = Package(
         .testTarget(name: "ZivletCoreTests", dependencies: ["ZivletCore"], swiftSettings: strict),
         .testTarget(
             name: "ZivletIPCTests", dependencies: ["ZivletIPC", "ZivletCore", "ZivletEngineKit", "TestSupport"],
+            swiftSettings: strict),
+        .testTarget(
+            name: "ZivletWorkerCoreTests",
+            dependencies: ["ZivletWorkerCore", "ZivletIPC", "ZivletCore", "ZivletEngineKit", "EngineTestSupport", "TestSupport"],
             swiftSettings: strict),
         .testTarget(
             name: "ZivletTriggerTests",

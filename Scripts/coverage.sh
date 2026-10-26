@@ -2,7 +2,7 @@
 # Line coverage per module over every test bundle; fails below the gate (owner rule: 80 %).
 source "$(dirname "$0")/env.sh"
 GATE="${COVERAGE_GATE:-80}"
-GATED_MODULES="${GATED_MODULES:-ZivletCore ZivletTrigger ZivletWheelCore ZivletEngineKit EngineMedia EngineImage ZivletRuntime ZivletTriggerHost ZivletWheel ZivletActions ZivletSettings ZivletUI ZivletNotchCore ZivletNotch ZivletShelfCore ZivletBox ZivletIPC}"
+GATED_MODULES="${GATED_MODULES:-ZivletCore ZivletTrigger ZivletWheelCore ZivletEngineKit EngineMedia EngineImage ZivletRuntime ZivletTriggerHost ZivletWheel ZivletActions ZivletSettings ZivletUI ZivletNotchCore ZivletNotch ZivletShelfCore ZivletBox ZivletIPC ZivletWorkerCore}"
 cd "$KIT"
 swift test --enable-code-coverage >/dev/null
 BIN="$(swift build --show-bin-path)"
