@@ -1,5 +1,6 @@
 import AppKit
 import ZivletActions
+import ZivletShelfCore
 
 @testable import ZivletBox
 
@@ -55,6 +56,32 @@ final class FakeBoxFolders: FolderChoosing {
 
     func chooseFolder(for items: [MoveItem]) async -> URL? {
         asked += 1
+        return answer
+    }
+}
+
+/// A Trash that records what it was given and refuses the paths in `refusing`; nothing is really trashed.
+final class FakeBoxTrash: Trashing, @unchecked Sendable {
+    private let lock = NSLock()
+    private var received: [URL] = []
+    var refusing: Set<String> = []
+
+    var calls: [URL] { lock.withLock { received } }
+
+    func trash(_ url: URL) throws(ShelfError) {
+        guard !refusing.contains(url.lastPathComponent) else { throw .trashFailed }
+        lock.withLock { received.append(url) }
+    }
+}
+
+/// Locate…'s open panel: a fixed answer (nil = cancelled) and the names it was asked for.
+@MainActor
+final class FakeLocator: FileLocating {
+    var answer: URL?
+    private(set) var asked: [String] = []
+
+    func locate(_ name: String, lastSeenIn folder: URL?) async -> URL? {
+        asked.append(name)
         return answer
     }
 }

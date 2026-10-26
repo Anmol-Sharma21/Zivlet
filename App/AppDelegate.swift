@@ -183,8 +183,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.defaultRoute(hasBuiltInNotch: island.hasBuiltInNotch).usable(islandHasDisplay: island.canShow)
     }
 
-    /// Undo for conversions and Moves alike; the reply is the sentence the HUD shows.
+    /// Undo for conversions, Moves, copies and the Drop Box's Clear alike; the reply is the sentence the HUD shows.
     private func undo(_ batch: BatchID) async -> UndoReply {
+        if box.controller.undoClear(batch) { return UndoReply(message: BoxWiring.restoredMessage, canRetry: false) }
         guard let result = await undoHistory.undo(batch) else {
             return UndoReply(message: "This can no longer be undone.", canRetry: false)
         }

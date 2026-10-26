@@ -38,6 +38,11 @@ final class BoxRig {
     var mounted = true
     private(set) var turns = 0
     let folders: FakeBoxFolders
+    let trash = FakeBoxTrash()
+    let locator = FakeLocator()
+    /// Clear's 10 s wait: held (until the clear is undone and its task cancelled) or over at once.
+    var sleepHolds = true
+    private(set) var slept: [Duration] = []
     let undo: UndoHistory
     var clock = 0.0
     var displays = [BoxRig.display]
@@ -61,7 +66,8 @@ final class BoxRig {
                 isMounted: { [unowned self] _ in mounted },
                 promises: FakePromises(names: []), thumbnails: NoThumbnails(), quickLook: quickLook,
                 visibleFrames: { [unowned self] in displays }, finish: { .solid },
-                now: { Date(timeIntervalSince1970: 1_000) }, uptime: { [unowned self] in clock }),
+                now: { Date(timeIntervalSince1970: 1_000) }, uptime: { [unowned self] in clock }, trash: trash,
+                locator: locator, sleep: { [weak self] duration in await self?.wait(duration) }),
             actions: actions)
         box.onResult = { [results] result, anchor in results.record(result, anchor) }
         return box
@@ -73,6 +79,12 @@ final class BoxRig {
             airDrop: AirDropAction(service: sharing), optionHeld: { [unowned self] in optionHeld },
             nextTurn: { [unowned self] in turns += 1 },
             service: ActionService(folders: folders, undoHistory: undo, nextTurn: {}))
+    }
+
+    private func wait(_ duration: Duration) async {
+        slept.append(duration)
+        guard sleepHolds else { return }
+        try? await Task.sleep(for: .seconds(3_600))
     }
 
     func files(_ count: Int, prefix: String = "f") throws -> [URL] {

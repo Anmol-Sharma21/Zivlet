@@ -31,15 +31,18 @@ extension BoxController {
             let hit = GridSelection.marquee(rect, cells: BoxGrid.cells(count: order.count)).map { order[$0] }
             select(GridSelection(selected: Set(hit), anchor: hit.first, focus: hit.last))
         case .more: break
-        case .cancelBusy: onBulk(.cancelBusy, [])
+        case .cancelBusy: running?.cancel()
         case .share: share()
         case .airDrop: airDrop()
         case .copy: copyItems()
         case .copyPaths: copyPaths(shellQuoted: actions.optionHeld())
         case .moveTo: moveItems()
         case .copyTo: copyItemsTo()
-        case .trash, .remove, .clear, .locate, .removeMissing:
-            onBulk(press, targets())
+        case .trash: trashItems()
+        case .remove: removeItems()
+        case .clear: requestClear()
+        case .locate: locate()
+        case .removeMissing: removeMissing()
         }
     }
 
@@ -62,8 +65,8 @@ extension BoxController {
         case .moveTo: moveItems()
         case .copyTo: copyItemsTo()
         case .share: share()
-        case .remove: onBulk(.remove, targets())
-        case .trash: onBulk(.trash, targets())
+        case .remove: removeItems()
+        case .trash: trashItems()
         case .newBox: makeNewBox()
         case .grid: setViewMode(.grid)
         case .list: setViewMode(.list)

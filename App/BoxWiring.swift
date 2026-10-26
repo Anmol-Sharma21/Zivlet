@@ -12,6 +12,8 @@ import os
 /// by the parts that use them as they are added (plan 16 streams C and D).
 final class BoxWiring {
     private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
+    /// Undo on the Clear toast put the items back.
+    static let restoredMessage = "Back in the box."
     let controller: BoxController
     private let settings: () -> BoxGroup
     /// Shows a result where the placement says (set by the composition root).

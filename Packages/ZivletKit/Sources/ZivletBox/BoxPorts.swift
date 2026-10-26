@@ -20,12 +20,20 @@ public struct BoxPorts {
     public let now: () -> Date
     /// Seconds on a monotonic clock, for type-to-select.
     public let uptime: () -> Double
+    /// Owned copies and Move to Trash go through it; never `unlink`.
+    public let trash: any Trashing
+    public let locator: any FileLocating
+    /// Waits out Clear's undo window before its owned copies go to the Trash.
+    public let sleep: (Duration) async -> Void
 
     public init(
         store: BoxStore, storage: OwnedStorage, maker: any BookmarkMaking, resolver: any BookmarkResolving,
         isMounted: @escaping (String) -> Bool, promises: any PromiseReceiving, thumbnails: any ThumbnailMaking,
         quickLook: any QuickLookPresenting, visibleFrames: @escaping () -> [Rect2D], finish: @escaping () -> BoxFinish,
-        now: @escaping () -> Date = Date.init, uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }
+        now: @escaping () -> Date = Date.init,
+        uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime },
+        trash: any Trashing = SystemTrash(), locator: any FileLocating = SystemFileLocator(),
+        sleep: @escaping (Duration) async -> Void = { try? await Task.sleep(for: $0) }
     ) {
         self.store = store
         self.storage = storage
@@ -39,6 +47,9 @@ public struct BoxPorts {
         self.finish = finish
         self.now = now
         self.uptime = uptime
+        self.trash = trash
+        self.locator = locator
+        self.sleep = sleep
     }
 
     /// The same ports over another store and storage (the debug demo keeps its box away from `boxes.json`).
@@ -46,7 +57,7 @@ public struct BoxPorts {
         BoxPorts(
             store: store, storage: storage, maker: maker, resolver: resolver, isMounted: isMounted, promises: promises,
             thumbnails: thumbnails, quickLook: quickLook, visibleFrames: visibleFrames, finish: finish, now: now,
-            uptime: uptime)
+            uptime: uptime, trash: trash, locator: locator, sleep: sleep)
     }
 
     /// The real stores and system ports: `boxes.json` and `Box/` in Application Support, Foundation bookmarks

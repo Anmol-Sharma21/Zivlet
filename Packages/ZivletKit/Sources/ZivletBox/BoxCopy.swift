@@ -18,6 +18,15 @@ nonisolated enum BoxCopy {
         }
     }
 
+    static let cleared = "Cleared"
+    static let nothingTrashed = "Nothing was moved to the Trash."
+    static let someStayed = "Some items stayed in the box."
+
+    static func trashed(_ count: Int) -> String { "Moved \(count) to the Trash" }
+    static func notTrashed(_ name: String) -> String { "\(name) couldn't be moved to the Trash." }
+    static func copyStayed(_ name: String) -> String { "\(name) stayed: its kept copy couldn't be moved to the Trash." }
+    static func locateMessage(_ name: String) -> String { "Find “\(name)”." }
+
     static func items(_ count: Int) -> String { counted(count, "item") }
 
     static func size(_ bytes: Int64) -> String {

@@ -28,11 +28,14 @@ public final class BoxController {
     var resolvedBox: UUID?
     var requestedThumbnails: Set<UUID> = []
     var canSave = true
-    /// The bulk action in flight (AirDrop, Move, Copy to), so tests and the next action can wait for it.
+    /// The bulk action in flight (AirDrop, Move, Copy to, Locate), so tests and the next action can wait for it.
     var running: Task<Void, Never>?
+    /// Move to Trash of more than one item, waiting for the inline answer.
+    var pendingTrash: BulkTargets?
+    /// The last Clear, while its Undo still works, and the wait that ends it.
+    var pendingClear: PendingClear?
+    var clearing: Task<Void, Never>?
 
-    /// A bulk action on its targets (the selection, else every item); stream C runs them.
-    public var onBulk: (BoxPress, [ShelfItem]) -> Void = { _, _ in }
     /// A bulk action finished: its result for the toast or the card, and the panel's frame as the anchor.
     public var onResult: (ActionResult, CGRect?) -> Void = { _, _ in }
     /// The library or the presentation changed (the menu and the tray follow it).
@@ -88,8 +91,13 @@ public final class BoxController {
 
     public func hidePanel() { apply(.hide) }
 
-    /// Saves the library and the panel's state; called when Zivlet quits.
-    public func quit() { persist() }
+    /// Saves the library and the panel's state; called when Zivlet quits. A Clear still in its undo window ends now,
+    /// so its owned copies do not outlive it.
+    public func quit() {
+        clearing?.cancel()
+        if let pending = pendingClear { finishClear(pending.batch) }
+        persist()
+    }
 
     public func dock(_ edge: DockEdge) { apply(.dock(edge)) }
 
@@ -145,8 +153,8 @@ public final class BoxController {
                 resolvedBox = nil
                 requestedThumbnails = []
             case .persist: persist()
-            case .confirmed(let kind): onBulk(kind == .clear ? .clear : .trash, targets())
-            case .cancelBusy: onBulk(.cancelBusy, [])
+            case .confirmed(let kind): confirmed(kind)
+            case .cancelBusy: running?.cancel()
             }
         }
         render()
