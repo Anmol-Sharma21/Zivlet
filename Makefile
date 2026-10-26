@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -64,6 +64,10 @@ notch-states:
 # Every Drop Box and notch tray state from the Debug app into build/box-states/ (19c §4, plan 16 Y5).
 box-states:
 	$(ENV) Scripts/demo-box-states.sh
+
+# Y4: the Debug app adds four fixtures to a demo box, shows it, relaunches and restores it (never boxes.json).
+box-demo:
+	$(ENV) Scripts/demo-box.sh
 
 # NB5: the notch-proximity rule over synthetic traces; with TRACES=<folder>, also over recorded ones (OS-M5b-1).
 drag-replay:
