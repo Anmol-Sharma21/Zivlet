@@ -32,6 +32,20 @@ struct TriggerHostTests {
             rig.scheduler.current == SamplingPlan(events: [.mouseDown, .mouseUp], sampling: true, escapeHotkey: true))
     }
 
+    /// Convert all (17e §2.3): a drag out of the Drop Box writes file URLs, which the real reader sees as a file drag,
+    /// so the modifier opens the wheel for every item (a local monitor delivers the box's own events).
+    @Test func aDragOfFileURLsFromZivletsOwnWindowOpensTheWheel() async {
+        let board = NSPasteboard(name: NSPasteboard.Name("app.zivlet.test.\(UUID().uuidString)"))
+        defer { board.releaseGlobally() }
+        board.clearContents()
+        board.writeObjects([URL(filePath: "/tmp/a.png") as NSURL, URL(filePath: "/tmp/b.png") as NSURL])
+        let rig = HostRig()
+        rig.input.fileTypesPresent = SystemInputReader(pasteboard: board).dragHasFileTypes()
+        await rig.startFileDrag()
+        rig.event(.frame, at: 70, mods: .shift)
+        #expect(rig.wheelEffects.first.map { if case .show = $0 { true } else { false } } == true)
+    }
+
     @Test func aShowBeginsTheTriggerToFrameSignpost() async {
         let signpost = TriggerFrameSignpost()
         let rig = HostRig(signpost: signpost)

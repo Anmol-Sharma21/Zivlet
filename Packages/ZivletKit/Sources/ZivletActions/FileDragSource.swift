@@ -94,14 +94,19 @@ public final class DragSourceView: NSView, NSDraggingSource {
 
     override public func mouseDragged(with event: NSEvent) {
         dragged = true
-        let items = urls.enumerated().map { offset, url in
-            let item = NSDraggingItem(pasteboardWriter: url as NSURL)
-            let shift = CGFloat(offset) * 4
-            item.setDraggingFrame(bounds.offsetBy(dx: shift, dy: -shift), contents: image)
-            return item
-        }
+        let items = Self.draggingItems(for: urls, frame: bounds, image: image)
         guard !items.isEmpty else { return }
         beginDraggingSession(with: items, event: event, source: self)
+    }
+
+    /// One item per URL, each a file URL on the drag pasteboard (what the trigger and Finder read), fanned 4 pt apart.
+    public static func draggingItems(for urls: [URL], frame: CGRect, image: NSImage? = nil) -> [NSDraggingItem] {
+        urls.enumerated().map { offset, url in
+            let item = NSDraggingItem(pasteboardWriter: url as NSURL)
+            let shift = CGFloat(offset) * 4
+            item.setDraggingFrame(frame.offsetBy(dx: shift, dy: -shift), contents: image)
+            return item
+        }
     }
 
     public func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext)
