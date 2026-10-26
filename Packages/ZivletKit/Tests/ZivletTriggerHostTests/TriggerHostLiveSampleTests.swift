@@ -85,13 +85,20 @@ struct TriggerHostLiveSampleTests {
         #expect(log.dragEnds == 1)
     }
 
-    @Test func pauseStopsTheHooks() async {
+    @Test func pauseStopsTheHooksAndEndsTheDragOnce() async {
         let rig = HostRig()
         let log = HookLog(rig.host)
         await rig.startFileDrag()
         rig.host.stop()
         rig.event(.frame, at: 30)
         rig.event(.mouseUp, at: 40, down: false)
-        #expect(log.samples == [.milliseconds(18)] && log.dragEnds == 0)
+        #expect(log.samples == [.milliseconds(18)] && log.dragEnds == 1)
+    }
+
+    @Test func stoppingWithoutADragEndsNothing() {
+        let rig = HostRig()
+        let log = HookLog(rig.host)
+        rig.host.stop()
+        #expect(log.dragEnds == 0)
     }
 }

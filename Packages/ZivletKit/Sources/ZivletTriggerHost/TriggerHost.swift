@@ -46,13 +46,17 @@ public final class TriggerHost {
     /// Idle: only the mouse-down monitors, no timers (03a §1.5: zero idle wakeups).
     public func start() { applyPlanIfChanged() }
 
+    /// Pause or quit: back to idle with every monitor off. A file drag in flight ends here for the hooks, so the tray
+    /// and the shake detector do not wait for a drag end that will never come.
     public func stop() {
+        let wasFileDrag = isFileDrag
         probeTask?.cancel()
         machine = TriggerMachine(config: machine.config)
         dragEvents = []
         sampling = false
         plan = .off
         scheduler.apply(.off)
+        if wasFileDrag { onDragEnded() }
     }
 
     /// T19: new bindings apply from the next edge.
