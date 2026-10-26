@@ -66,6 +66,10 @@ let package = Package(
         .executableTarget(
             name: "zivlet-bench", dependencies: ["ZivletCore", "ZivletEngineKit", "EngineImage", "EngineMedia"],
             swiftSettings: strict),
+        // Scores and tunes the notch-proximity rule on drag traces (NB5, OS-M5b-1); a dev tool, not shipped or gated.
+        .executableTarget(
+            name: "zivlet-traces", dependencies: ["ZivletTrigger", "ZivletCore", "ZivletNotchCore"],
+            swiftSettings: strict),
         .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: strict),
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
@@ -87,6 +91,9 @@ let package = Package(
             name: "ZivletTriggerTests",
             dependencies: ["ZivletTrigger", "ZivletCore", "TestSupport", "DragTraceSupport"],
             swiftSettings: strict),
+        .testTarget(
+            name: "ZivletTracesToolTests",
+            dependencies: ["zivlet-traces", "ZivletTrigger", "TestSupport", "DragTraceSupport"], swiftSettings: strict),
         .testTarget(
             name: "ZivletWheelCoreTests", dependencies: ["ZivletWheelCore", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "ZivletTriggerHostTests", dependencies: ["ZivletTriggerHost"], swiftSettings: shell),
