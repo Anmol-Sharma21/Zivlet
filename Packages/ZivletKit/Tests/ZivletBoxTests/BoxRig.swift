@@ -1,0 +1,57 @@
+import AppKit
+import TestSupport
+import Testing
+import ZivletCore
+import ZivletShelfCore
+
+@testable import ZivletBox
+
+/// A thumbnail maker that has none: the controller tests never wait on Quick Look.
+@MainActor
+struct NoThumbnails: ThumbnailMaking {
+    func thumbnail(for url: URL, side: Double, scale: Double) async -> CGImage? { nil }
+}
+
+@MainActor
+final class FakeQuickLook: QuickLookPresenting {
+    private(set) var previews: [[URL]] = []
+
+    func preview(_ urls: [URL]) { previews.append(urls) }
+}
+
+/// One store, storage and set of fakes shared by every controller a test makes, so a second controller is a
+/// relaunch. Displays sit far off screen, so panels never show on the real screen.
+@MainActor
+final class BoxRig {
+    static let display = Rect2D(x: -8000, y: -8000, width: 1800, height: 1100)
+
+    let dir: TempDir
+    let bookmarks = FakeBoxBookmarks()
+    let quickLook = FakeQuickLook()
+    var clock = 0.0
+    var displays = [BoxRig.display]
+
+    init() throws { dir = try TempDir(prefix: "zivlet-box-rig") }
+
+    var store: BoxStore { BoxStore(file: dir.url.appending(path: "boxes.json")) }
+    var storage: OwnedStorage { OwnedStorage(root: dir.url.appending(path: "Box")) }
+
+    func controller() -> BoxController {
+        BoxController(
+            ports: BoxPorts(
+                store: store, storage: storage, maker: bookmarks, resolver: bookmarks, isMounted: { _ in true },
+                promises: FakePromises(names: []), thumbnails: NoThumbnails(), quickLook: quickLook,
+                visibleFrames: { [unowned self] in displays }, finish: { .solid },
+                now: { Date(timeIntervalSince1970: 1_000) }, uptime: { [unowned self] in clock }))
+    }
+
+    func files(_ count: Int, prefix: String = "f") throws -> [URL] {
+        try (0..<count).map { try dir.file("files/\(prefix)\($0).txt") }
+    }
+
+    /// The library as saved on disk.
+    func saved() -> ShelfLibrary? {
+        guard case .loaded(let library, _) = store.load() else { return nil }
+        return library
+    }
+}

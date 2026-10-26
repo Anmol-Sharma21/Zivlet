@@ -159,3 +159,26 @@ extension BoxPresentation {
             missing: missing ?? self.missing, isEmpty: isEmpty ?? self.isEmpty)
     }
 }
+
+extension BoxPresentation.Base {
+    /// The value `boxes.json` holds: "hidden", "collapsed", "expanded", "docked-left" or "docked-right".
+    public var stored: String {
+        switch self {
+        case .hidden: "hidden"
+        case .collapsed: "collapsed"
+        case .expanded: "expanded"
+        case .docked(let edge): "docked-\(edge.rawValue)"
+        }
+    }
+
+    /// A stored value; anything missing or unknown is hidden.
+    public init(stored: String?) {
+        switch stored {
+        case "collapsed": self = .collapsed
+        case "expanded": self = .expanded
+        case "docked-left": self = .docked(.left)
+        case "docked-right": self = .docked(.right)
+        default: self = .hidden
+        }
+    }
+}

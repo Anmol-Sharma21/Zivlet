@@ -41,7 +41,7 @@ public struct BoxIntake {
         return (objects as? [URL] ?? []).filter(\.isFileURL)
     }
 
-    private func references(_ urls: [URL]) -> IntakeResult {
+    func references(_ urls: [URL]) -> IntakeResult {
         var seen: Set<String> = []
         var items: [ShelfItem] = []
         var rejected: [String] = []
