@@ -47,6 +47,14 @@ extension BoxController {
         }
     }
 
+    /// Copy to…: the folder chooser and one undo entry; the box keeps pointing at the originals.
+    func copyItemsTo() {
+        guard let targets = usableTargets(.copyTo) else { return }
+        running = Task { [actions] in
+            report(await actions.copy(to: targets.urls).listing(lines: targets.failures))
+        }
+    }
+
     /// Points the items that moved at their new paths (new bookmarks too) and saves.
     func follow(_ moved: [MovedItem], in box: UUID, targets: BulkTargets) {
         let ids = Dictionary(

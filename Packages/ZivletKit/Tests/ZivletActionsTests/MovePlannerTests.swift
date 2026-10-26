@@ -109,4 +109,21 @@ struct MovePlannerTests {
             MoveRefusal.noFreeName(Fx.url("/s/a.txt")).userMessage
                 == "Every name for “a.txt” is already taken in that folder.")
     }
+
+    @Test func copyModeCopiesEveryItemAndNeverSkipsItsOwnFolder() throws {
+        let plan = try MovePlanner.plan(
+            items: [Fx.file("/dst/a.txt"), Fx.file("/src/b.txt")], destination: Fx.folder("/dst"),
+            volumes: { _ in vol }, existing: ["/dst/a.txt"], mode: .copy)
+        #expect(plan.mode == .copy && plan.skipped.isEmpty)
+        #expect(plan.steps.map(\.target.lastPathComponent) == ["a 2.txt", "b.txt"])
+        #expect(plan.steps.map(\.kind) == [.copy, .copy])
+    }
+
+    @Test func copyModeStillRefusesAFolderIntoItself() {
+        #expect(throws: MoveRefusal.intoItself(Fx.url("/src/f"))) {
+            try MovePlanner.plan(
+                items: [Fx.folder("/src/f")], destination: Fx.folder("/src/f"), volumes: { _ in vol }, existing: [],
+                mode: .copy)
+        }
+    }
 }

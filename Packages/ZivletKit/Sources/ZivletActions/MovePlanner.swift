@@ -25,6 +25,8 @@ nonisolated public struct MoveStep: Sendable, Equatable {
         case rename
         /// Another volume: copy under a hidden name, verify, rename, then trash the original.
         case copyThenTrash
+        /// Copy to… (D-M5b-13): copy under a hidden name, verify, rename; the original stays where it is.
+        case copy
     }
 
     public let source: URL
@@ -54,16 +56,29 @@ nonisolated public enum MoveRefusal: Error, Sendable, Equatable {
 }
 
 nonisolated public struct MovePlan: Sendable, Equatable {
+    /// Move to… puts items elsewhere; Copy to… leaves them and makes copies (D-M5b-13).
+    public enum Mode: Sendable, Equatable { case move, copy }
+
     public let destination: URL
     public let steps: [MoveStep]
     public let skipped: [MoveSkip]
+    public let mode: Mode
+
+    public init(destination: URL, steps: [MoveStep], skipped: [MoveSkip], mode: Mode = .move) {
+        self.destination = destination
+        self.steps = steps
+        self.skipped = skipped
+        self.mode = mode
+    }
 }
 
 /// Pure Move planning (P1-45, 03b §7 row 4). `volumes` answers the volume of a path; `existing` holds the paths
-/// already in the destination. Targets never collide with `existing` or with each other.
+/// already in the destination. Targets never collide with `existing` or with each other. In copy mode every item is
+/// copied, an item already in the destination too (its copy takes the next free name).
 nonisolated public enum MovePlanner {
     public static func plan(
-        items: [MoveItem], destination: MoveItem, volumes: (URL) -> VolumeID?, existing: Set<String>
+        items: [MoveItem], destination: MoveItem, volumes: (URL) -> VolumeID?, existing: Set<String>,
+        mode: MovePlan.Mode = .move
     ) throws(MoveRefusal) -> MovePlan {
         guard destination.kind == .folder else { throw .notAFolder }
         let folder = destination.url.standardizedFileURL
@@ -74,18 +89,17 @@ nonisolated public enum MovePlanner {
         let destinationVolume = volumes(folder)
         for item in items {
             let source = item.url.standardizedFileURL
-            if source.deletingLastPathComponent().path == folder.path {
+            if mode == .move, source.deletingLastPathComponent().path == folder.path {
                 skipped.append(.alreadyThere(item.url))
                 continue
             }
             let target = try freeTarget(for: item, in: folder, taken: taken)
             taken.insert(MoveNames.key(target.path))
             let sameVolume = destinationVolume != nil && volumes(source) == destinationVolume
-            steps.append(
-                MoveStep(
-                    source: source, target: target, kind: sameVolume ? .rename : .copyThenTrash, itemKind: item.kind))
+            let kind: MoveStep.Kind = mode == .copy ? .copy : (sameVolume ? .rename : .copyThenTrash)
+            steps.append(MoveStep(source: source, target: target, kind: kind, itemKind: item.kind))
         }
-        return MovePlan(destination: folder, steps: steps, skipped: skipped)
+        return MovePlan(destination: folder, steps: steps, skipped: skipped, mode: mode)
     }
 
     /// A folder or package contains `folder` when it is `folder` or one of its ancestors.

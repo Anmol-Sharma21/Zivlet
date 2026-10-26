@@ -8,12 +8,12 @@ import Foundation
 nonisolated public struct MoveSurvey: Sendable {
     public init() {}
 
-    public func plan(items: [URL], destination: URL) throws(MoveRefusal) -> MovePlan {
+    public func plan(items: [URL], destination: URL, mode: MovePlan.Mode = .move) throws(MoveRefusal) -> MovePlan {
         let folder = destination.standardizedFileURL
         let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
         let existing = Set(names.map { folder.appending(path: $0).path })
         return try MovePlanner.plan(
-            items: items.map(item), destination: item(folder), volumes: volume, existing: existing)
+            items: items.map(item), destination: item(folder), volumes: volume, existing: existing, mode: mode)
     }
 
     public func item(_ url: URL) -> MoveItem {

@@ -36,6 +36,8 @@ public struct BoxActions {
 
     func move(_ urls: [URL]) async -> (ActionResult, MoveReport?) { await service.moveReporting(urls) }
 
+    func copy(to urls: [URL]) async -> ActionResult { await service.copyReporting(urls).0 }
+
     func send(_ urls: [URL]) async -> ActionResult {
         await nextTurn()
         return ActionResult(await airDrop.send(urls))

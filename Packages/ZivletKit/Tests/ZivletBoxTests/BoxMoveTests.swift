@@ -62,3 +62,33 @@ struct BoxMoveTests {
         box.hidePanel()
     }
 }
+
+@Suite("Copy to… from the box: copies with one undo, the box keeps the originals (P2-142)")
+@MainActor
+struct BoxCopyToTests {
+    @Test func copyToCopiesEveryTargetAndTheBoxStaysAsItWas() async throws {
+        let rig = try BoxRig()
+        let box = rig.controller()
+        box.start()
+        let files = try rig.files(2)
+        _ = await box.add(files, newBox: false)
+        let before = box.library
+        box.press(.copyTo)
+        await box.running?.value
+        #expect(rig.results.results.map(\.toast) == ["Copied 2 items"] && rig.results.results.first?.undo != nil)
+        #expect(await rig.undo.recent().first?.kind == .copy && box.library == before)
+        #expect(FileManager.default.fileExists(atPath: rig.destination.appending(path: "f1.txt").path))
+        #expect(files.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+    }
+
+    @Test func theCopyToKeyCopiesTheSelection() async throws {
+        let rig = try BoxRig()
+        let box = rig.controller()
+        box.start()
+        _ = await box.add(try rig.files(3), newBox: false)
+        box.press(.select(box.viewModel.items[2].id, extend: false, toggle: false))
+        #expect(box.handleKey(BoxKeyStroke(chars: "c", command: true, shift: true)))
+        await box.running?.value
+        #expect(rig.results.results.map(\.toast) == ["Copied 1 item"])
+    }
+}

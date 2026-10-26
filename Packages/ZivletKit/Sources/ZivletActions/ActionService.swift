@@ -72,17 +72,33 @@ public final class ActionService {
     /// Move to… for callers that need to know where each item went (the Drop Box updates its references): one run-loop
     /// turn, the folder chooser, the plan, the executor and one undo entry for the whole batch. The report is nil when
     /// nothing ran (the choice was cancelled or the plan refused).
-    public func moveReporting(_ urls: [URL]) async -> (ActionResult, MoveReport?) {
+    public func moveReporting(_ urls: [URL]) async -> (ActionResult, MoveReport?) { await transfer(urls, .move) }
+
+    /// Copy to… (P2-142, D-M5b-13): as Move to…, but every item is copied and the originals stay; one undo entry puts
+    /// the copies that are still unchanged in the Trash.
+    public func copyReporting(_ urls: [URL]) async -> (ActionResult, MoveReport?) { await transfer(urls, .copy) }
+
+    private func transfer(_ urls: [URL], _ mode: MovePlan.Mode) async -> (ActionResult, MoveReport?) {
         await nextTurn()
         guard let folder = await folders.chooseFolder(for: urls.map(survey.item)) else { return (.cancelled, nil) }
         let plan: MovePlan
         do {
-            plan = try survey.plan(items: urls, destination: folder)
+            plan = try survey.plan(items: urls, destination: folder, mode: mode)
         } catch {
             return (.failed(ActionCard(title: error.userMessage)), nil)
         }
         let report = await executor.run(plan)
-        return (Self.result(report, undo: await recordUndo(report.moved)), report)
+        let undo = mode == .move ? await recordUndo(report.moved) : await recordUndo(copies: report.moved)
+        return (Self.result(report, undo: undo, mode: mode), report)
+    }
+
+    /// Records the copies that could be stamped; nil when there is nothing to undo.
+    private func recordUndo(copies: [MovedItem]) async -> BatchID? {
+        let entries = copies.compactMap { item in item.stamp.map { UndoCopy(copy: item.target, stamp: $0) } }
+        guard !entries.isEmpty else { return nil }
+        let batch = BatchID()
+        await undoHistory.record(batch, copies: entries)
+        return batch
     }
 
     /// Records the moved items that could be stamped; nil when there is nothing to undo.
@@ -96,16 +112,18 @@ public final class ActionService {
         return batch
     }
 
-    static func result(_ report: MoveReport, undo: BatchID?) -> ActionResult {
-        let lines = report.failures.map(\.userMessage)
+    static func result(_ report: MoveReport, undo: BatchID?, mode: MovePlan.Mode = .move) -> ActionResult {
+        let lines = report.failures.map { $0.userMessage(for: mode) }
+        let copying = mode == .copy
         guard !report.moved.isEmpty else {
-            return lines.isEmpty
+            return lines.isEmpty && !copying
                 ? .done(toast: "Already in that folder", undo: nil)
-                : .failed(ActionCard(title: "Nothing was moved.", lines: lines))
+                : .failed(ActionCard(title: copying ? "Nothing was copied." : "Nothing was moved.", lines: lines))
         }
-        let toast = "Moved " + counted(report.moved.count, "item")
+        let toast = (copying ? "Copied " : "Moved ") + counted(report.moved.count, "item")
         guard !lines.isEmpty else { return .done(toast: toast, undo: undo) }
-        return .partial(toast: toast, card: ActionCard(title: "Some items weren't moved.", lines: lines), undo: undo)
+        let title = copying ? "Some items weren't copied." : "Some items weren't moved."
+        return .partial(toast: toast, card: ActionCard(title: title, lines: lines), undo: undo)
     }
 
     /// Resumes on the next pass of the main run loop.

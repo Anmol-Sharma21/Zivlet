@@ -5,7 +5,8 @@ import ZivletRuntime
 /// Runs a `MovePlan` (P1-45, 03b §7 row 4). Same volume: `renamex_np(RENAME_EXCL)`, stepping to the next free name
 /// when something appeared at the target since planning. Another volume: copy into a hidden
 /// `.zivlet-move-<id>` in the destination, check size and item count, rename into place exclusively, then trash
-/// the original. A failed check removes the copy and leaves the original alone. Each item is independent.
+/// the original. A failed check removes the copy and leaves the original alone. Copy to… runs the same copy, check
+/// and rename on every volume and never trashes the original (D-M5b-13). Each item is independent.
 nonisolated public struct MoveExecutor: Sendable {
     public typealias Copy = @Sendable (_ source: URL, _ copy: URL) throws(MoveIOError) -> Void
     public typealias Trash = @Sendable (URL) throws -> Void
@@ -26,7 +27,7 @@ nonisolated public struct MoveExecutor: Sendable {
         var moved: [MovedItem] = []
         var failures: [MoveFailure] = []
         for step in plan.steps {
-            switch step.kind == .rename ? rename(step) : copyThenTrash(step, in: plan.destination) {
+            switch perform(step, in: plan.destination) {
             case .success(let target):
                 moved.append(MovedItem(source: step.source, target: target, stamp: FileStamp.read(target)))
             case .failure(let reason): failures.append(MoveFailure(url: step.source, reason: reason))
@@ -35,12 +36,32 @@ nonisolated public struct MoveExecutor: Sendable {
         return MoveReport(moved: moved, failures: failures, skipped: plan.skipped)
     }
 
+    private func perform(_ step: MoveStep, in folder: URL) -> Result<URL, MoveFailure.Reason> {
+        switch step.kind {
+        case .rename: rename(step)
+        case .copyThenTrash: copyThenTrash(step, in: folder)
+        case .copy: copyAndPlace(step, in: folder)
+        }
+    }
+
     private func rename(_ step: MoveStep) -> Result<URL, MoveFailure.Reason> {
         claim(step) { renamex_np(step.source.path, $0.path, UInt32(RENAME_EXCL)) == 0 ? nil : errno }
             .mapError(Self.reason)
     }
 
     private func copyThenTrash(_ step: MoveStep, in folder: URL) -> Result<URL, MoveFailure.Reason> {
+        let placed = copyAndPlace(step, in: folder)
+        guard case .success = placed else { return placed }
+        do {
+            try trash(step.source)
+        } catch {
+            return .failure(.originalKept)
+        }
+        return placed
+    }
+
+    /// Copies under a hidden name in the destination, checks size and item count, then claims the name exclusively.
+    private func copyAndPlace(_ step: MoveStep, in folder: URL) -> Result<URL, MoveFailure.Reason> {
         let hidden = folder.appending(path: Self.hiddenPrefix + UUID().uuidString, directoryHint: .notDirectory)
         do {
             try copy(step.source, hidden)
@@ -53,19 +74,8 @@ nonisolated public struct MoveExecutor: Sendable {
             return .failure(.verifyFailed)
         }
         let placed = claim(step) { renamex_np(hidden.path, $0.path, UInt32(RENAME_EXCL)) == 0 ? nil : errno }
-        let target: URL
-        switch placed {
-        case .success(let claimed): target = claimed
-        case .failure(let error):
-            remove(hidden)
-            return .failure(Self.reason(error))
-        }
-        do {
-            try trash(step.source)
-        } catch {
-            return .failure(.originalKept)
-        }
-        return .success(target)
+        if case .failure = placed { remove(hidden) }
+        return placed.mapError(Self.reason)
     }
 
     /// Tries the planned target, then `name 2`, `name 3`, … while the kernel answers `EEXIST`.

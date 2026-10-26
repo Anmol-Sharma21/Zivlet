@@ -131,4 +131,11 @@ struct MenuInputTests {
         #expect(MenuRecent(batch: batch, urls: urls).title == "a.png and 2 more")
         #expect(MenuRecent(batch: batch, urls: [urls[0]]).title == "a.png")
     }
+
+    @Test func aCopyToEntryIsTitledByItsCopies() {
+        let copy = UndoCopy(
+            copy: URL(filePath: "/tmp/dst/a 2.png"), stamp: FileStamp(fileID: 1, byteCount: 1, modified: .distantPast))
+        let entry = UndoEntry(batch: BatchID(), date: .distantPast, copies: [copy])
+        #expect(MenuRecent(entry).title == "a 2.png" && MenuRecent(entry).urls == [copy.copy])
+    }
 }

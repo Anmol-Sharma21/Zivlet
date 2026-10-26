@@ -147,6 +147,54 @@ struct MoveExecutorTests {
         #expect(throws: MoveRefusal.notAFolder) { try survey.plan(items: [folder], destination: file) }
     }
 
+    @Test func copyIntoTheSameFolderKeepsTheOriginalAndNamesTheCopy() async throws {
+        let file = try dir.file("a.txt", "x")
+        let plan = try MoveSurvey().plan(items: [file], destination: dir.url, mode: .copy)
+        let report = await executor.run(plan)
+        #expect(report.moved.map(\.target.lastPathComponent) == ["a 2.txt"])
+        #expect(FileManager.default.fileExists(atPath: file.path))
+        #expect(try listing(trash.folder).isEmpty)
+    }
+
+    @Test func aCopyToAnotherFolderIsANewFileAndTheOriginalStays() async throws {
+        let source = try dir.file("src/Album/one.txt", "1")
+        let destination = try dir.folder("dst")
+        let plan = try MoveSurvey().plan(
+            items: [source.deletingLastPathComponent()], destination: destination, mode: .copy)
+        let report = await executor.run(plan)
+        let copy = destination.appending(path: "Album/one.txt")
+        #expect(report.failures.isEmpty && FileManager.default.fileExists(atPath: source.path))
+        #expect(try String(contentsOf: copy, encoding: .utf8) == "1")
+        #expect(FileStamp.read(copy)?.fileID != FileStamp.read(source)?.fileID && report.moved.first?.stamp != nil)
+    }
+
+    @Test func aCopyThatFailsItsCheckLeavesNoHiddenFile() async throws {
+        let source = try dir.file("src/a.txt", "full contents")
+        let destination = try dir.folder("dst")
+        let short = MoveExecutor(
+            copy: { _, copy throws(MoveIOError) in
+                guard FileManager.default.createFile(atPath: copy.path, contents: Data("full".utf8)) else {
+                    throw MoveIOError(code: EIO)
+                }
+            }, trash: trash.trash)
+        let report = await short.run(try MoveSurvey().plan(items: [source], destination: destination, mode: .copy))
+        #expect(report.failures == [MoveFailure(url: source, reason: .verifyFailed)])
+        #expect(try listing(destination).isEmpty && FileManager.default.fileExists(atPath: source.path))
+    }
+
+    @Test func copyFailuresSayCopied() {
+        let url = URL(fileURLWithPath: "/s/a.txt")
+        #expect(
+            MoveFailure(url: url, reason: .verifyFailed).userMessage(for: .copy)
+                == "“a.txt” wasn't copied: the copy didn't match the original.")
+        #expect(
+            MoveFailure(url: url, reason: .moveFailed(errno: EACCES)).userMessage(for: .copy)
+                == "“a.txt” couldn't be copied there (error \(EACCES)).")
+        #expect(
+            MoveFailure(url: url, reason: .noFreeName).userMessage(for: .copy)
+                == MoveFailure(url: url, reason: .noFreeName).userMessage)
+    }
+
     @Test func failureReasonsHaveUserCopy() {
         let url = URL(fileURLWithPath: "/s/a.txt")
         #expect(

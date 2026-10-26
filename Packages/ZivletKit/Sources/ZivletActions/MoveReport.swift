@@ -32,8 +32,19 @@ nonisolated public struct MoveFailure: Sendable, Equatable {
     }
 
     /// One line for the result card, naming the item.
-    public var userMessage: String {
+    public var userMessage: String { userMessage(for: .move) }
+
+    /// The line in the words of the action that ran: Copy to… never moves anything.
+    public func userMessage(for mode: MovePlan.Mode) -> String {
         let name = "“\(url.lastPathComponent)”"
+        switch (reason, mode) {
+        case (.moveFailed(let code), .copy): return "\(name) couldn't be copied there (error \(code))."
+        case (.verifyFailed, .copy): return "\(name) wasn't copied: the copy didn't match the original."
+        default: return moveMessage(name)
+        }
+    }
+
+    private func moveMessage(_ name: String) -> String {
         switch reason {
         case .moveFailed(let code): return "\(name) couldn't be moved there (error \(code))."
         case .copyFailed(let code): return "\(name) couldn't be copied there (error \(code))."

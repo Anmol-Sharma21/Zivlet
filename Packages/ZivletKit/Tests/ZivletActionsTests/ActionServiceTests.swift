@@ -196,6 +196,33 @@ struct ActionServiceTests {
         #expect(result == .cancelled && report == nil)
     }
 
+    @Test func copyReportingCopiesWithOneUndoBatchAndKeepsTheOriginals() async throws {
+        let rig = try ServiceRig()
+        let files = [try rig.dir.file("src/a.txt"), try rig.dir.file("src/b.txt")]
+        let (result, report) = await rig.service.copyReporting(files)
+        #expect(result.toast == "Copied 2 items" && result.undo != nil && rig.turns == 1)
+        #expect(report?.moved.map(\.target.lastPathComponent) == ["a.txt", "b.txt"])
+        #expect(files.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+        #expect(await rig.history.recent().first?.kind == .copy)
+    }
+
+    @Test func copiesThatFailAreACard() {
+        let failure = MoveFailure(url: URL(fileURLWithPath: "/s/a.txt"), reason: .verifyFailed)
+        let none = MoveReport(moved: [], failures: [failure], skipped: [])
+        let line = failure.userMessage(for: .copy)
+        #expect(
+            ActionService.result(none, undo: nil, mode: .copy)
+                == .failed(ActionCard(title: "Nothing was copied.", lines: [line])))
+        let one = MovedItem(
+            source: URL(fileURLWithPath: "/s/b.txt"), target: URL(fileURLWithPath: "/d/b.txt"), stamp: nil)
+        let some = MoveReport(moved: [one], failures: [failure], skipped: [])
+        #expect(
+            ActionService.result(some, undo: nil, mode: .copy)
+                == .partial(
+                    toast: "Copied 1 item", card: ActionCard(title: "Some items weren't copied.", lines: [line]),
+                    undo: nil))
+    }
+
     @Test func cancellingIsSilent() async throws {
         let rig = try ServiceRig()
         let file = try rig.dir.file("src/a.txt")

@@ -40,9 +40,15 @@ public struct MenuRecent: Sendable, Equatable {
         self.init(batch: batch, title: title, urls: urls)
     }
 
-    /// Outputs for a conversion, the items' new places for a Move.
+    /// Outputs for a conversion, the items' new places for a Move, the copies for a Copy to….
     public init(_ entry: UndoEntry) {
-        self.init(batch: entry.batch, urls: entry.kind == .move ? entry.moves.map(\.moved) : entry.outputs.map(\.url))
+        let urls: [URL]
+        switch entry.kind {
+        case .conversion: urls = entry.outputs.map(\.url)
+        case .move: urls = entry.moves.map(\.moved)
+        case .copy: urls = entry.copies.map(\.copy)
+        }
+        self.init(batch: entry.batch, urls: urls)
     }
 }
 
