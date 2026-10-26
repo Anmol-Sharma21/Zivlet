@@ -34,3 +34,10 @@ extension ShelfFixtures {
             .0
     }
 }
+
+extension ShelfFixtures {
+    /// A box holding exactly `items`.
+    static func shelf(_ items: ShelfItem...) throws -> Shelf {
+        try Shelf.empty(name: "Box").adding(items, cap: ShelfLibrary.maxItemsPerBox).0
+    }
+}

@@ -17,6 +17,10 @@ public enum ShelfError: Error, Equatable, Sendable {
     case invalidIdentity
     /// A new box past `ShelfLibrary.maxBoxes`.
     case tooManyBoxes
+    /// Something that is not a file URL was offered as a file.
+    case notAFileURL
+    /// The system could not make a bookmark for the file (it is gone, or unreadable).
+    case bookmarkFailed
 
     public var userMessage: String {
         switch self {
@@ -28,6 +32,8 @@ public enum ShelfError: Error, Equatable, Sendable {
         case .ownedPathOutsideBox: "This kept copy is outside the box's folder."
         case .invalidIdentity: "This item couldn't be told apart from others."
         case .tooManyBoxes: "You have 8 boxes. Clear one to start another."
+        case .notAFileURL: "Only files and folders can go in a box."
+        case .bookmarkFailed: "Zivlet couldn't keep track of this file."
         }
     }
 }
