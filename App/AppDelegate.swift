@@ -11,8 +11,8 @@ import ZivletWheelCore
 import os
 
 /// Composition root only (02 ADR-02, 14 §3.1): builds the trigger host, the wheel, the conversion service, the result
-/// HUD, the notch island (one reader, one set of hosts, one Notch HUD), the actions and the status menu, and wires
-/// them. A drop on a conversion slice starts a batch (05 P1-33); a
+/// HUD, the notch island (one reader, one set of hosts, one Notch HUD), the actions, the Drop Box and the status menu,
+/// and wires them. A drop on a conversion slice starts a batch (05 P1-33); a
 /// drop on an action petal runs the action (P1-44, P1-45).
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Debug builds only: `-ZivletFlagsMonitor YES` adds the global `flagsChanged` monitor for spike P-T2 (off by
@@ -39,9 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ) {
         [weak self] in self?.trigger?.trace.lines ?? []
     }
+    lazy var box = BoxWiring(settings: { [weak self] in self?.settings.settings.box ?? BoxGroup() })
     private lazy var actions = ActionWiring(
         undoHistory: undoHistory, notch: island.hud, route: { [weak self] in self?.defaultRoute ?? .nearDrop },
-        terminalID: { [weak self] in self?.settings.terminalID ?? "" }
+        box: box.adding, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
     ) { [weak self] batch in
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
@@ -83,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.trigger = trigger
         settings.attach(trigger)
         conversion.start()
+        startBox()
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
         Task {
             wheel.capabilities = CapabilitySnapshot(
@@ -94,7 +96,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func applicationWillTerminate(_ notification: Notification) { trigger?.stop() }
+    func applicationWillTerminate(_ notification: Notification) {
+        trigger?.stop()
+        box.quit()
+    }
+
+    /// The Drop Box: results go where the placement says; the panel comes back as it was (P2-55 §9.5).
+    private func startBox() {
+        box.present = { [weak self] result, point in self?.actions.present(result, near: point) }
+        box.start()
+    }
 
     /// Opening Zivlet again while it runs (Finder, Spotlight) opens Settings (03b §8.3).
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -139,6 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             settings: { [weak self] in self?.settingsWindow.show() },
             practice: { [weak self] in self?.onboarding.show(.practiceConvert) },
+            showDropBox: { [weak self] in self?.box.show() },
             checkForUpdates: updater.checkForUpdates)
         menu.install(wheel: wheel)
         actions.onFinished = { [menu] in menu.refreshRecent() }

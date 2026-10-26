@@ -6,10 +6,10 @@ import ZivletUI
 import os
 
 /// Wires a drop on an action petal to `ActionService` and its result to the action HUD or the notch island, by the
-/// placement at the time of the drop (P1-44, P1-45, D-M5a-3). Float stays hidden until its shelf exists (D-M4-13).
-/// The terminal is the one chosen in Settings.
+/// placement at the time of the drop (P1-44, P1-45, D-M5a-3). The BOX slice adds to the Drop Box (P2-55 §9.5), so no
+/// action is hidden any more. The terminal is the one chosen in Settings.
 final class ActionWiring {
-    static let unavailableActions: Set<ActionID> = [.pinFloating]
+    static let unavailableActions: Set<ActionID> = []
 
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "actions")
     private let service: ActionService
@@ -20,10 +20,10 @@ final class ActionWiring {
     var onFinished: () -> Void = {}
 
     init(
-        undoHistory: UndoHistory, notch: NotchHUD, route: @escaping () -> HUDRoute,
+        undoHistory: UndoHistory, notch: NotchHUD, route: @escaping () -> HUDRoute, box: any BoxAdding,
         terminalID: @escaping () -> String, undo: @escaping (BatchID) async -> UndoReply
     ) {
-        service = ActionService(undoHistory: undoHistory, terminalID: terminalID)
+        service = ActionService(undoHistory: undoHistory, box: box, terminalID: terminalID)
         self.notch = notch
         self.route = route
         hud.onUndo = undo
@@ -55,6 +55,11 @@ final class ActionWiring {
     /// centre of the main screen or the menu-bar display's island.
     func announce(_ message: String) {
         presenter.show(.done(toast: message, undo: nil), near: nil)
+    }
+
+    /// A result from elsewhere (a drop on the Drop Box panel), where the placement says.
+    func present(_ result: ActionResult, near point: CGPoint?) {
+        presenter.show(result, near: point)
     }
 
     /// Toasts hold counts and app names only, so they are public; card titles may name files, so they are private.

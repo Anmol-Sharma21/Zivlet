@@ -11,6 +11,7 @@ struct MenuHandlers {
     var undo: (BatchID) -> Void = { _ in }
     var settings: () -> Void = {}
     var practice: () -> Void = {}
+    var showDropBox: () -> Void = {}
     /// Nil until the updater runs (D-M4-11): Check for Updates… stays disabled.
     var checkForUpdates: (() -> Void)?
 }
@@ -76,6 +77,7 @@ final class MenuWiring {
         case .togglePause: settings.update { $0.with(\.trigger.paused, !$0.trigger.paused) }
         case .checkForUpdates: handlers.checkForUpdates?()
         case .showProgress: island.hosts.expandRequested()
+        case .showDropBox: handlers.showDropBox()
         case .about:
             NSApplication.shared.activate()
             NSApplication.shared.orderFrontStandardAboutPanel(nil)
