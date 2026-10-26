@@ -72,13 +72,15 @@ public final class ActionService {
     /// Move to… for callers that need to know where each item went (the Drop Box updates its references): one run-loop
     /// turn, the folder chooser, the plan, the executor and one undo entry for the whole batch. The report is nil when
     /// nothing ran (the choice was cancelled or the plan refused).
-    public func moveReporting(_ urls: [URL], progress: TransferProgress = .silent) async -> (ActionResult, MoveReport?) {
+    public func moveReporting(_ urls: [URL], progress: TransferProgress = .silent) async -> (ActionResult, MoveReport?)
+    {
         await transfer(urls, .move, progress)
     }
 
     /// Copy to… (P2-142, D-M5b-13): as Move to…, but every item is copied and the originals stay; one undo entry puts
     /// the copies that are still unchanged in the Trash.
-    public func copyReporting(_ urls: [URL], progress: TransferProgress = .silent) async -> (ActionResult, MoveReport?) {
+    public func copyReporting(_ urls: [URL], progress: TransferProgress = .silent) async -> (ActionResult, MoveReport?)
+    {
         await transfer(urls, .copy, progress)
     }
 
