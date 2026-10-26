@@ -20,10 +20,8 @@ public struct OwnedStorage: Sendable {
         root.appending(path: box.uuidString, directoryHint: .isDirectory)
     }
 
-    /// A free file URL for `name` in the box's folder (made, 0700, when missing): the name made safe, then
-    /// "name 2.ext", "name 3.ext" … on a clash. The file itself is not created.
-    public func reserve(name: String, in box: UUID) throws(ShelfError) -> URL {
-        guard let safe = Self.sanitized(name) else { throw .invalidName }
+    /// The box's folder, made (0700) when missing: where received file promises land.
+    public func makeFolder(for box: UUID) throws(ShelfError) -> URL {
         let folder = folder(for: box)
         do {
             try FileManager.default.createDirectory(
@@ -31,6 +29,14 @@ public struct OwnedStorage: Sendable {
         } catch {
             throw .storageFailed
         }
+        return folder
+    }
+
+    /// A free file URL for `name` in the box's folder (made, 0700, when missing): the name made safe, then
+    /// "name 2.ext", "name 3.ext" … on a clash. The file itself is not created.
+    public func reserve(name: String, in box: UUID) throws(ShelfError) -> URL {
+        guard let safe = Self.sanitized(name) else { throw .invalidName }
+        let folder = try makeFolder(for: box)
         for number in 1...Self.maxNumber {
             let candidate = Self.numbered(safe, number)
             guard ShelfItem.isValidName(candidate) else { break }
