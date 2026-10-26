@@ -60,7 +60,7 @@ import ZivletShelfCore
         private static func overlay(_ state: BoxShotFlags.State) -> BoxPresentation.Overlay? {
             switch state {
             case .dropTarget: .dropTarget(count: 3)
-            case .busy: .busy(verb: "Moving 8 items", fraction: 0.4)
+            case .busy: .busy(verb: BoxCopy.trashing(200), fraction: 0.4)
             case .confirmTrash: .confirm(.trash(count: 3))
             case .confirmClear: .confirm(.clear)
             case .confirmEmpty: .confirm(.emptyStorage)
