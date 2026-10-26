@@ -4,19 +4,10 @@ import ZivletNotch
 
 @testable import ZivletUI
 
-@Suite("Island tokens (19b §3)")
+@Suite("Island tokens in the notch HUD (19b §3)")
 struct NotchLookTests {
-    @Test func spacingIsOnTheFourPointGrid() {
-        for value in NotchLook.Spacing.all { #expect(value.truncatingRemainder(dividingBy: 4) == 0) }
-    }
-
-    @Test func innerRadiiAreConcentric() {
-        #expect(IslandLook.Radius.inner == IslandLook.Radius.card - NotchLook.Spacing.l)
-    }
-
-    /// The luminance the ink's contrast tests assume covers the lightest glass measured over white (19b §4.2 P7).
-    @Test func theAssumedGlassIsNoDarkerThanTheMeasuredOne() {
-        #expect(IslandLook.worstGlassLuminance >= 0.102)
+    @Test func theHUDReadsTheSharedTokens() {
+        #expect(NotchLook.Spacing.l == IslandContentLook.Spacing.l && NotchInk.secondaryOpacity == 0.8)
     }
 
     @Test func theRingsStepsFollowItsStrokeAtTwiceScale() {

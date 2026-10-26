@@ -1,4 +1,5 @@
 import SwiftUI
+import ZivletNotch
 import ZivletNotchCore
 
 /// The expanded list when a display has several items (19b §5): failed rows first, one line each (glyph, the row's

@@ -1,5 +1,6 @@
 import SwiftUI
 import ZivletActions
+import ZivletNotch
 import ZivletRuntime
 
 /// The island's failure card (19b §5): the triangle, the reason (up to two lines) over the file name, the details box

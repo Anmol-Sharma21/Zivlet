@@ -1,4 +1,5 @@
 import SwiftUI
+import ZivletNotch
 import ZivletNotchCore
 
 /// The toast row (19b §5, D-NL7, D-NL8): the check mark, the error glyph or the action's glyph, a primary line and a

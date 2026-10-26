@@ -1,4 +1,5 @@
 import SwiftUI
+import ZivletNotch
 import ZivletNotchCore
 
 /// The collapsed island's tab (design/19 §3.4, §4.3): the target's family symbol left, "3 jobs" in the middle, the ring,

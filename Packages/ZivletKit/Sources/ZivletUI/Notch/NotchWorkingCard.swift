@@ -1,5 +1,6 @@
 import SwiftUI
 import ZivletCore
+import ZivletNotch
 import ZivletRuntime
 
 /// The island's working card (19b §5, F2): two rows. Row 1: the target's family symbol, "holiday.mov → MP4" (the name

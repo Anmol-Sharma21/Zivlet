@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import ZivletNotch
 
 /// Text ink for the HUD's glass (NFR-14 ≥ 4.5:1): a colour-scheme scrim under the content, and secondary text at a
 /// fixed opacity of the primary colour instead of `.secondary`. The values hold even when the glass lets the
@@ -25,9 +26,7 @@ enum HUDInk {
         return (max(a, b) + 0.05) / (min(a, b) + 0.05)
     }
 
-    static func luminance(_ grey: Double) -> Double {
-        grey <= 0.04045 ? grey / 12.92 : pow((grey + 0.055) / 1.055, 2.4)
-    }
+    static func luminance(_ grey: Double) -> Double { IslandInk.luminance(grey) }
 }
 
 /// The HUD surface: the scrim, then Liquid Glass behind it, in the HUD's rounded rectangle.

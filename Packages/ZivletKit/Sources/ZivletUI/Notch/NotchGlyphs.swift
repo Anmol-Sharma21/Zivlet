@@ -1,5 +1,6 @@
 import SwiftUI
 import ZivletCore
+import ZivletNotch
 
 /// The tab's left end (19b D-NL10): the target's family symbol, or the check mark of a done action.
 struct NotchTabIcon: View {
