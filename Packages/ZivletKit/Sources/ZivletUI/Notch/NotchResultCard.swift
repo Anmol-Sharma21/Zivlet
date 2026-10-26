@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ZivletActions
 import ZivletNotch
 import ZivletRuntime
 

@@ -3,33 +3,41 @@ import SwiftUI
 
 /// Makes its content a drag source for several file URLs at once (P1-41 drag-out): SwiftUI's own drag supports one
 /// item, so an AppKit view starts the session with one dragging item per file. `onDrag` hears the session begin
-/// (true) and end (false), so the notch island can hold while a drag from it is in flight (D-N13).
-struct FileDragSource: NSViewRepresentable {
-    let urls: [URL]
-    let image: NSImage
-    var onDrag: (Bool) -> Void = { _ in }
+/// (true) and end (false), so the notch island can hold while a drag from it is in flight (D-N13). Shared by the
+/// result cards and the Drop Box (D-M5b-1), so every multi-file drag out of Zivlet behaves the same.
+public struct FileDragSource: NSViewRepresentable {
+    public let urls: [URL]
+    public let image: NSImage
+    public var onDrag: (Bool) -> Void = { _ in }
 
-    func makeNSView(context: Context) -> DragSourceView {
+    public init(urls: [URL], image: NSImage, onDrag: @escaping (Bool) -> Void = { _ in }) {
+        self.urls = urls
+        self.image = image
+        self.onDrag = onDrag
+    }
+
+    public func makeNSView(context: Context) -> DragSourceView {
         let view = DragSourceView(urls: urls, image: image)
         view.onDrag = onDrag
         return view
     }
 
-    func updateNSView(_ view: DragSourceView, context: Context) {
+    public func updateNSView(_ view: DragSourceView, context: Context) {
         view.urls = urls
         view.image = image
         view.onDrag = onDrag
     }
 }
 
-final class DragSourceView: NSView, NSDraggingSource {
-    var urls: [URL]
-    var image: NSImage {
+/// The AppKit view behind `FileDragSource`: one dragging item per URL, fanned 4 pt apart.
+public final class DragSourceView: NSView, NSDraggingSource {
+    public var urls: [URL]
+    public var image: NSImage {
         didSet { needsDisplay = true }
     }
-    var onDrag: (Bool) -> Void = { _ in }
+    public var onDrag: (Bool) -> Void = { _ in }
 
-    init(urls: [URL], image: NSImage) {
+    public init(urls: [URL], image: NSImage) {
         self.urls = urls
         self.image = image
         super.init(frame: .zero)
@@ -39,7 +47,7 @@ final class DragSourceView: NSView, NSDraggingSource {
     required init?(coder: NSCoder) { nil }
 
     /// Aspect-fit, centred.
-    override func draw(_ dirtyRect: NSRect) {
+    override public func draw(_ dirtyRect: NSRect) {
         let size = image.size
         guard size.width > 0, size.height > 0 else { return }
         let scale = min(bounds.width / size.width, bounds.height / size.height)
@@ -50,7 +58,7 @@ final class DragSourceView: NSView, NSDraggingSource {
                 height: fitted.height))
     }
 
-    override func mouseDragged(with event: NSEvent) {
+    override public func mouseDragged(with event: NSEvent) {
         let items = urls.enumerated().map { offset, url in
             let item = NSDraggingItem(pasteboardWriter: url as NSURL)
             let shift = CGFloat(offset) * 4
@@ -61,15 +69,15 @@ final class DragSourceView: NSView, NSDraggingSource {
         beginDraggingSession(with: items, event: event, source: self)
     }
 
-    func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext)
+    public func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext)
         -> NSDragOperation
     {
         context == .outsideApplication ? [.copy, .link, .generic] : []
     }
 
-    func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) { onDrag(true) }
+    public func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) { onDrag(true) }
 
-    func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+    public func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         onDrag(false)
     }
 }

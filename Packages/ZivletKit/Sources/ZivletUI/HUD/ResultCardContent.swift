@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ZivletActions
 
 /// The finished batch's card content (P1-41) without a surface: thumbnail (a drag source for every output), title,
 /// sizes, notes, the undo reply, and the buttons the model offers. `ResultCard` puts it on today's glass panel; the
