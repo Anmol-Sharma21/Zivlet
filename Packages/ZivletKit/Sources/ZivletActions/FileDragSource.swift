@@ -77,7 +77,8 @@ public final class DragSourceView: NSView, NSDraggingSource {
 
     public func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) { onDrag(true) }
 
-    public func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+    public func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation)
+    {
         onDrag(false)
     }
 }
