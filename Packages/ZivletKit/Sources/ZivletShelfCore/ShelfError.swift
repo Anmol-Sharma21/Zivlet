@@ -15,6 +15,8 @@ public enum ShelfError: Error, Equatable, Sendable {
     case ownedPathOutsideBox
     /// A file identity without a volume.
     case invalidIdentity
+    /// A new box past `ShelfLibrary.maxBoxes`.
+    case tooManyBoxes
 
     public var userMessage: String {
         switch self {
@@ -25,6 +27,7 @@ public enum ShelfError: Error, Equatable, Sendable {
         case .negativeSize: "This item's size couldn't be read."
         case .ownedPathOutsideBox: "This kept copy is outside the box's folder."
         case .invalidIdentity: "This item couldn't be told apart from others."
+        case .tooManyBoxes: "You have 8 boxes. Clear one to start another."
         }
     }
 }

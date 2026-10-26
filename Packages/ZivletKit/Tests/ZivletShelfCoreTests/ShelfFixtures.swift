@@ -19,3 +19,18 @@ enum ShelfFixtures {
             addedAt: addedAt, ownership: ownership, identity: identity)
     }
 }
+
+extension ShelfFixtures {
+    /// A box holding one item per name, each at its own path.
+    static func shelf(names: [String], name: String = "Box") throws -> Shelf {
+        let items = try names.map { try item($0) }
+        return try Shelf.empty(name: name).adding(items, cap: ShelfLibrary.maxItemsPerBox).0
+    }
+
+    /// Two boxes, "Box" (two items) and "Box 2" (one item, current).
+    static func libraryWithTwoBoxes() throws -> ShelfLibrary {
+        let lib = try ShelfLibrary().adding([item("a"), item("b", size: nil)], to: .current, now: .t0).0
+        return try lib.adding([item("c", identity: FileIdentity(volumeUUID: "V", fileID: 3))], to: .newBox, now: .t1)
+            .0
+    }
+}
