@@ -85,6 +85,11 @@ struct NotchProximityTests {
         #expect(events(rest + [away]) == [.entered(display: 1), .left(display: 1)])
     }
 
+    @Test func aPointerPinnedToTheTopEdgeIsInTheZone() {
+        let samples = Samples.rest(at: Point2D(x: 900, y: 1169), from: .seconds(1), for: .milliseconds(120))
+        #expect(events(samples) == [.entered(display: 1)])
+    }
+
     @Test func twoZonesOnTwoDisplaysReportTheRightDisplay() {
         let pill = NotchProximity.Zone(display: 2, rect: Rect2D(x: -1100, y: 1055, width: 280, height: 25))
         let samples = Samples.rest(at: Point2D(x: -960, y: 1065), from: .seconds(1), for: .milliseconds(150))

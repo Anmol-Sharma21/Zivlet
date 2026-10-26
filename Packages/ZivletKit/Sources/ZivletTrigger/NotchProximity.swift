@@ -70,7 +70,7 @@ public struct NotchProximity: Sendable, Equatable {
         let fix = Fix(uptime: sample.uptime, location: sample.location)
         if let last, fix.uptime <= last.uptime { return (self, nil) }
         if let entered { return observingWhileEntered(entered, fix) }
-        let zone = zones.first { $0.rect.contains(fix.location) }
+        let zone = zones.first { $0.rect.containsClosed(fix.location) }
         guard let zone, isSlow(fix) else { return (with(entered: nil, dwell: nil, last: fix), nil) }
         let dwell =
             dwellingSince.flatMap { $0.display == zone.display ? $0 : nil }

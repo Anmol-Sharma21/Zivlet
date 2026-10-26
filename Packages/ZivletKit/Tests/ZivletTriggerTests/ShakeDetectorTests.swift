@@ -80,8 +80,10 @@ struct ShakeDetectorTests {
     }
 
     @Test func recordedNormalDragsNeverShake() throws {
-        guard let folder = RecordedTrace.folder else { return }  // the owner's run (OS-M5b-1), not CI
-        let normal = try RecordedTrace.load(from: folder).filter { $0.label == "normal" }
+        guard let folder = RecordedDrags.folder else { return }  // the owner's run (OS-M5b-1), not CI
+        let loaded = try DragTraceFolder.load(from: folder)
+        #expect(loaded.invalid.isEmpty, "refused: \(loaded.invalid.map { "\($0.name): \($0.reason)" })")
+        let normal = loaded.traces.map(\.trace).filter { $0.label == .normal }
         let shaking = normal.filter { ShakeDetector.fires(on: $0.inputSamples) }
         #expect(shaking.isEmpty, "\(shaking.count) of \(normal.count) recorded normal drags fired")
     }
