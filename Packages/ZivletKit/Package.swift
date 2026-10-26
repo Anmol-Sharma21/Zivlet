@@ -49,7 +49,7 @@ let package = Package(
         .binaryTarget(name: "CZivletSVG", path: "../../Vendor/out/CZivletSVG.xcframework"),
         .target(name: "EngineImage", dependencies: ["ZivletEngineKit", "CWebP", "CZivletSVG"], swiftSettings: strict),
         .target(
-            name: "ZivletRuntime", dependencies: ["ZivletEngineKit", "EngineMedia", "EngineImage"],
+            name: "ZivletRuntime", dependencies: ["ZivletEngineKit", "EngineMedia", "EngineImage", "ZivletIPC"],
             swiftSettings: strict),
         // Copy, Copy Path, AirDrop, Move, Terminal (02 §6): AppKit side effects behind small ports.
         .target(name: "ZivletActions", dependencies: ["ZivletCore", "ZivletRuntime"], swiftSettings: shell),
@@ -80,6 +80,10 @@ let package = Package(
             name: "zivlet-traces", dependencies: ["ZivletTrigger", "ZivletCore", "ZivletNotchCore"],
             swiftSettings: strict),
         .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: strict),
+        // A loopback worker transport (JSON both ways, crashes on demand) for the connection and retry tests.
+        .target(
+            name: "WorkerTestSupport", dependencies: ["ZivletRuntime", "ZivletWorkerCore", "ZivletIPC", "ZivletEngineKit"],
+            path: "Tests/WorkerTestSupport", swiftSettings: strict),
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
             swiftSettings: strict),
@@ -128,7 +132,10 @@ let package = Package(
             name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG"],
             resources: [.copy("Goldens")], swiftSettings: strict),
         .testTarget(
-            name: "ZivletRuntimeTests", dependencies: ["ZivletRuntime", "EngineTestSupport"], swiftSettings: strict),
+            name: "ZivletRuntimeTests",
+            dependencies: [
+                "ZivletRuntime", "EngineTestSupport", "TestSupport", "WorkerTestSupport", "ZivletIPC", "ZivletWorkerCore",
+            ], swiftSettings: strict),
         .testTarget(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
         .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings"], swiftSettings: strict),

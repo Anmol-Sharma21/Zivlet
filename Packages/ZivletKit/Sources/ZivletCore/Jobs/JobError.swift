@@ -37,6 +37,10 @@ public enum JobError: Error, Sendable, Equatable, Codable {
     /// The helper made no progress for its watchdog limit and was stopped (03a §4.6).
     case stalled
     case cancelled
+    /// The worker process ended while this job's step was in flight (P2-01); the job is retried once.
+    case workerCrashed
+    /// The worker ended twice while running this file: the file is the likely cause, so it is not tried again.
+    case engineCrashedOnInput
     // outcome
     case verificationFailed(String)
     /// The engine could not write its output (an encoder or Quartz failure that is not the input's fault).

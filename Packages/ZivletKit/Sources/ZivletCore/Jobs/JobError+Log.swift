@@ -18,6 +18,8 @@ extension JobError {
         case .helperFailed(let code): "helperFailed(errno: \(code))"
         case .stalled: "stalled"
         case .cancelled: "cancelled"
+        case .workerCrashed: "workerCrashed"
+        case .engineCrashedOnInput: "engineCrashedOnInput"
         case .verificationFailed: "verificationFailed"
         case .writeFailed: "writeFailed"
         case .publishFailed(let code): "publishFailed(errno: \(code))"

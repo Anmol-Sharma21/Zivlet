@@ -82,6 +82,10 @@ public enum JobErrorCopy {
         case .stalled:
             ErrorCopy("The converter stopped making progress, so Zivlet stopped it.", detail: "No progress for 60 s.")
         case .cancelled: ErrorCopy("Cancelled.")
+        case .workerCrashed: ErrorCopy("The converter stopped unexpectedly.")
+        case .engineCrashedOnInput:
+            ErrorCopy(
+                "This file made the engine crash.", detail: "Zivlet tried it twice. Other files were not affected.")
         case .verificationFailed(let detail):
             ErrorCopy("The result didn't pass checks and wasn't saved.", detail: detail)
         case .writeFailed(let detail): ErrorCopy("The converted file couldn't be written.", detail: detail)

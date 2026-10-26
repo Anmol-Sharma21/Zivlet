@@ -97,7 +97,7 @@ struct RequestsAndCopyTests {
         .diskFull, .processFailed(status: 1, stderrTail: "a\nb"), .crashed(signal: 11), .stalled, .cancelled,
         .verificationFailed("short"), .publishFailed(errno: EACCES), .internalInvariant("bug"),
         .helperFailed(errno: EMFILE), .writeFailed("encoder"), .engineDamaged(.media), .engineDamaged(.image),
-        .engineDamaged(.worker), .engineMissing(.worker),
+        .engineDamaged(.worker), .engineMissing(.worker), .workerCrashed, .engineCrashedOnInput,
     ]
 
     @Test(arguments: everyError)
