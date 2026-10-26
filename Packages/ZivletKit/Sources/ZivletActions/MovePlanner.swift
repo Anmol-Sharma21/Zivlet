@@ -102,11 +102,18 @@ nonisolated public enum MovePlanner {
         return MovePlan(destination: folder, steps: steps, skipped: skipped, mode: mode)
     }
 
-    /// A folder or package contains `folder` when it is `folder` or one of its ancestors.
+    /// A folder or package contains `folder` when it is `folder` or one of its ancestors, as written or with symbolic
+    /// links resolved: a destination that is a link into the source would otherwise copy the source into itself until
+    /// the path grew too long.
     private static func contains(_ item: MoveItem, _ folder: URL) -> Bool {
         guard item.kind != .file else { return false }
-        let path = item.url.standardizedFileURL.path
-        return folder.path == path || folder.path.hasPrefix(path.hasSuffix("/") ? path : path + "/")
+        let pairs = [
+            (item.url.standardizedFileURL.path, folder.path),
+            (item.url.resolvingSymlinksInPath().path, folder.resolvingSymlinksInPath().path),
+        ]
+        return pairs.contains { path, inner in
+            inner == path || inner.hasPrefix(path.hasSuffix("/") ? path : path + "/")
+        }
     }
 
     private static func freeTarget(for item: MoveItem, in folder: URL, taken: Set<String>) throws(MoveRefusal)

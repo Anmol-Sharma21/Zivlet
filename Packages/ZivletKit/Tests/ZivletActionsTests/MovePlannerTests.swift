@@ -38,6 +38,20 @@ struct MovePlannerTests {
         #expect(plan.steps.map(\.target.lastPathComponent) == ["My.Folder 2", "Tool 2.app", "b 2.tar.gz", ".env 2"])
     }
 
+    @Test func aDestinationLinkedIntoTheSourceIsIntoItself() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "zivlet-planner-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = root.appending(path: "src/f")
+        try FileManager.default.createDirectory(at: source.appending(path: "inner"), withIntermediateDirectories: true)
+        let link = root.appending(path: "link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: source.appending(path: "inner"))
+        #expect(throws: MoveRefusal.intoItself(source)) {
+            try MovePlanner.plan(
+                items: [MoveItem(url: source, kind: .folder)], destination: MoveItem(url: link, kind: .folder),
+                volumes: { _ in vol }, existing: [], mode: .copy)
+        }
+    }
+
     @Test func aFolderCannotMoveIntoItselfOrItsChild() {
         #expect(throws: MoveRefusal.intoItself(Fx.url("/src/f"))) {
             try MovePlanner.plan(
