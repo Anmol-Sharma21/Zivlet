@@ -261,3 +261,55 @@ performance, fl failure handling.
 | L20 | LOW | fl | Resolution failures and save errors not logged usefully; save errors repeated | F | Counts logged after each resolution; the save log names the kind; the same error is told once until a save works |
 | L21 | LOW | fl | The undo log ignores its schema and is overwritten when unreadable | F | `bb2f458` |
 | L22 | LOW | fl | Y6 passes on an empty TCC stream | F | `022a536` |
+
+## 10. Verification (2026-10-26, clean clone at `e163191`)
+
+A fresh `git clone` of the local repository with `m5b` checked out (77 commits on top of `main`), run under
+`nice -n 10` with the owner's other work going (load average 2.2–5.5). The clone did not rebuild the vendor tree: the
+ignored `Vendor/out` (FFmpeg stage, CWebP, CZivletSVG) was copied in, and each component's stamp matched the cache
+key computed in the clone, so `ensure-native` and `ensure-media` printed "up to date".
+
+| Gate | Exit | Numbers |
+|---|---|---|
+| `make test` | 0 | 18 test bundles, 1771 tests, 0 failures |
+| `make lint` | 0 | swift-format strict and the log-privacy check clean |
+| `make coverage` | 0 | every one of the 16 gated modules ≥ 80 %: ZivletCore 97, ZivletTrigger 99, ZivletWheelCore 99, ZivletEngineKit 97, EngineMedia 97, EngineImage 95, ZivletRuntime 95, ZivletTriggerHost 93, ZivletWheel 96, ZivletActions 89, ZivletSettings 96, ZivletUI 95, ZivletNotchCore 98, ZivletNotch 96, **ZivletShelfCore 98 (950/966)**, **ZivletBox 93 (3251/3491)** |
+| `make release-check` | 0 | no Homebrew path, island preview, Drop Box debug flag or drag recorder in Release; 2 helpers, 7 libraries; 45.0 MB installed (limit 85 MB) |
+| `make app` | 0 | `BUILD SUCCEEDED` |
+| `make licence-gate` | 2, then 0 | The first run failed: "licence file missing" for Sparkle and resvg, and "cargo tree listed no crates". The gate reads `Vendor/src` and `Vendor/downloads`, which a clone does not have and the copied `Vendor/out` does not bring. With the fetched sources copied in, it passed: "Licences OK: 13 components, 58 crates" |
+| `make script-test` | 0 | 28 of 28 PASS on the first run (the media stage was already in place) |
+
+Exit rows (Y1 and Y2 are the gates above, X1 is the same set, and Y3 runs X2–X5):
+
+| Row | Result | What the log shows |
+|---|---|---|
+| Y3 | **fail**, then pass | First run under `nice`, two failures. X2: `NotchHUDTimingTests` missed its 50 ms bound (G-M5b-5). X3: `build/fixtures/small/srgb.heic` does not exist in a fresh clone, because `demo-notch.sh` does not make the fixtures (unlike `demo-box.sh`, which made them later, in Y4). X4 and X5 passed. Rerun by name, `make notch-timing` passed (1 test). Then Y3–Y6 were run together without `nice` at load about 2.5, and X2–X5 all passed |
+| Y4 | pass (both runs) | `Box: shown`, `Box: items 4`, the panel captured, `Box: restored 4 items` |
+| Y5 | pass (both runs) | 63 captures. Over white: panel 6.82:1, docked tab 4.99:1, tray drop target 5.55:1, pill drop target 5.13:1 (need 4.5:1) |
+| Y6 | pass (both runs) | 6,224 TCC lines read in the first run; no request with `preflight=no` and no preflight check for Zivlet. A run of Y3 and Y6 alone was refused as designed ("Y6 needs Y3, Y4 and Y5 in the same run") |
+| Y7 | pass | 17 tests in 2 suites. Synthetic drags: detection 98–100 % (49 or 50 of 50), 0 of 200 accidental opens on both displays. Synthetic only; P2-197 is still unmeasured |
+| Y8 | pass | Debug: baseline 0.008 %. Panel shown 0.000 % over baseline, tray sensor 0.000 % over, armed box −0.008 % over (limit 0.1 %) |
+| Y9 | pass | signed off, no `Co-Authored-By`, no file ≥ 800 lines, no personal path, shelf-core imports, no `NSAlert` in `ZivletBox` |
+| X6 | **fail** | 8 states, 6 pass. indeterminate +1.225 %, fast-progress +1.784 % over the 1 % limit (progress +0.884 %, pill-progress +0.909 %). G-M5a-1 is still open, as in 15 §10 |
+| X7 | pass | hygiene since the M5a baseline |
+
+In the working repository, `make app` failed once, then passed. The failure was an incremental build that could not
+copy Sparkle's `Installer.xpc` into a framework whose `XPCServices` folder `trim-sparkle.sh` had removed; a plain
+rerun passed. With the screen awake (load about 2.3–4), `Scripts/demo-box-states.sh` wrote its 63 captures and the
+same four contrast numbers to a folder outside the repository, and `Scripts/demo-box.sh` wrote the relaunch demo
+(4 items, restored). All 64 images were looked at. None caught a surface before it drew, none clipped text, and no
+new defect was found. Points already on record still show: the selection fill sits right against the item names
+(G-M5b-11), text files are the brightest thing on the glass (G-M5b-14), and on the glass finish the collapsed card
+lets text behind it show through.
+
+A leak scan of `main..m5b` (patches and messages) found nothing to fix:
+- All 77 commits are signed off, with one author and committer identity (the same as on `main`). None has
+  `Co-Authored-By`.
+- No personal or scratch path. The only `/Users/` strings are the `/Users/u/…` test fixtures and the hygiene check's
+  own patterns.
+- No `docs/research`, and no keys or tokens.
+- "Open-Tangerine" appears only in the three clean-room sentences, as on `main`. No other notch or shelf app is named.
+- No binaries: 281 files (255 Swift, 11 shell, 10 Markdown, the Makefile), the largest 45 KB.
+
+Not run: the owner rows in [qa/drop-box.md](qa/drop-box.md), Release idle CPU, and recorded drags (OS-M5b-1). The
+real accessibility settings, a real external display and real drags were not tried either.
