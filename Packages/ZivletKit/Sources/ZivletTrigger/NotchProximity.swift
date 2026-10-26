@@ -30,9 +30,12 @@ public struct NotchProximity: Sendable, Equatable {
             self.release = release
         }
 
-        /// From a synthetic grid search (plan 16 §3.6); a starting point until the owner's recordings decide.
+        /// Tuned on the synthetic replay (`make drag-replay`): plan 16 §3.6 proposed 40 pt, 100 ms and 800 pt/s, but the
+        /// Swift generator's ten seeded sets gave 1–6 accidental opens per 200 everyday drags with it. 30 pt, 240 ms and
+        /// 600 pt/s is the middle of the region with none in every set and detection of at least 98 %. Made-up
+        /// movement decided this; the owner's recordings (OS-M5b-1) decide the real numbers.
         public static let provisional = Config(
-            margin: 40, dwell: .milliseconds(100), maxSpeed: 800, release: 24)
+            margin: 30, dwell: .milliseconds(240), maxSpeed: 600, release: 24)
     }
 
     /// One display's zone, in global points with y up, the margin already applied.

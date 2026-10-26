@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit notch-demo notch-timing notch-idle notch-states
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit notch-demo notch-timing notch-idle notch-states drag-replay
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -60,6 +60,10 @@ notch-idle:
 
 notch-states:
 	$(ENV) Scripts/demo-notch-states.sh
+
+# NB5: the notch-proximity rule over synthetic traces; with TRACES=<folder>, also over recorded ones (OS-M5b-1).
+drag-replay:
+	$(ENV) $(NATIVE) cd "$$KIT" && ZIVLET_DRAG_TRACES="$(if $(TRACES),$(abspath $(TRACES)),)" swift test --filter "NotchProximityReplayTests|ShakeDetectorTests"
 
 m5a-exit:
 	Scripts/m5a-exit.sh

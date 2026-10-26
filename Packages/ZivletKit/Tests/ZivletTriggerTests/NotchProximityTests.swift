@@ -8,15 +8,17 @@ import ZivletCore
 struct NotchProximityTests {
     let zone = NotchProximity.Zone(display: 1, rect: Rect2D(x: 750, y: 1131, width: 300, height: 38))
     let onHousing = Point2D(x: 900, y: 1150)
+    /// The rule of plan 16 §3.6, fixed here so these table tests check the mechanics, not the tuned constants.
+    let rule = NotchProximity.Config(margin: 40, dwell: .milliseconds(100), maxSpeed: 800, release: 24)
 
     private func events(_ samples: [InputSample], zones: [NotchProximity.Zone]? = nil) -> [NotchProximityEvent] {
-        NotchProximity(zones: zones ?? [zone], config: .provisional).events(for: samples)
+        NotchProximity(zones: zones ?? [zone], config: rule).events(for: samples)
     }
 
-    @Test func theProvisionalRuleIsTheDecidedOne() {
+    @Test func theProvisionalRuleIsTheReplayTunedOne() {
         let config = NotchProximity.Config.provisional
-        #expect(config.margin == 40 && config.dwell == .milliseconds(100))
-        #expect(config.maxSpeed == 800 && config.release == 24)
+        #expect(config.margin == 30 && config.dwell == .milliseconds(240))
+        #expect(config.maxSpeed == 600 && config.release == 24)
     }
 
     @Test func restingOnTheHousingEntersAfterTheDwell() {
@@ -26,7 +28,7 @@ struct NotchProximityTests {
 
     @Test func itEntersOnTheSampleThatReachesTheDwell() {
         let samples = Samples.rest(at: onHousing, from: .zero, for: .milliseconds(100), hz: 120)
-        var proximity = NotchProximity(zones: [zone], config: .provisional)
+        var proximity = NotchProximity(zones: [zone], config: rule)
         var enteredAt: Int?
         for (index, sample) in samples.enumerated() {
             let (next, event) = proximity.observing(sample)
@@ -106,16 +108,16 @@ struct NotchProximityTests {
     @Test func resetForgetsTheDwellAndTheEntry() {
         let half = Samples.rest(at: onHousing, from: .seconds(1), for: .milliseconds(60))
         let rest = Samples.rest(at: onHousing, from: .seconds(2), for: .milliseconds(60))
-        let started = NotchProximity(zones: [zone], config: .provisional).feeding(half)
+        let started = NotchProximity(zones: [zone], config: rule).feeding(half)
         #expect(started.reset().events(for: rest).isEmpty)
-        let entered = NotchProximity(zones: [zone], config: .provisional).feeding(half + rest)
+        let entered = NotchProximity(zones: [zone], config: rule).feeding(half + rest)
         #expect(entered.entered == 1)
         #expect(entered.reset().entered == nil)
     }
 
     @Test func newZonesForgetTheOldOnes() {
         let moved = NotchProximity.Zone(display: 1, rect: Rect2D(x: 0, y: 0, width: 100, height: 38))
-        let proximity = NotchProximity(zones: [zone], config: .provisional).replacingZones([moved])
+        let proximity = NotchProximity(zones: [zone], config: rule).replacingZones([moved])
         #expect(proximity.zones == [moved])
         let samples = Samples.rest(at: onHousing, from: .seconds(1), for: .milliseconds(150))
         #expect(proximity.events(for: samples).isEmpty)
