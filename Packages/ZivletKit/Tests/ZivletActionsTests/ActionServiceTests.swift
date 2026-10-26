@@ -82,7 +82,7 @@ struct ActionServiceTests {
         let rig = try ServiceRig()
         let file = try rig.dir.file("src/a.txt")
         let result = await rig.perform(.moveTo, [file])
-        guard case .done(let toast, let undo?) = result else {
+        guard case .done(let toast, let undo?, _) = result else {
             Issue.record("expected an undoable toast, got \(result)")
             return
         }

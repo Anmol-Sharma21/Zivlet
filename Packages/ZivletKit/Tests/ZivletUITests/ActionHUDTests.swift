@@ -62,6 +62,13 @@ struct ActionHUDTests {
         hud.hide()
     }
 
+    @Test func aToastLingersForItsOwnUndoWindow() {
+        #expect(ActionHUD.linger(for: Self.toast) == ActionHUD.toastLinger)
+        #expect(ActionHUD.linger(for: .done(toast: "Moved 1 item", undo: BatchID())) == ActionHUD.undoLinger)
+        let cleared = ActionResult.done(toast: "Cleared", undo: BatchID(), linger: .seconds(10))
+        #expect(ActionHUD.linger(for: cleared) == .seconds(10))
+    }
+
     @Test func thePanelIsTheKeyableHUDWindow() {
         #expect(ActionHUD().canBecomeKey)
     }

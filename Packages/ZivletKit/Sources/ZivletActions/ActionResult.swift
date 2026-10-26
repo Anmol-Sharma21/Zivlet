@@ -18,9 +18,11 @@ public struct ActionCard: Sendable, Equatable {
 }
 
 /// What the HUD shows after an action (03b §7 "Success feedback"): a toast, with Undo when `undo` is set; a toast
-/// plus a card when part of the drop was left out or failed; a card alone; or nothing after a cancel.
+/// plus a card when part of the drop was left out or failed; a card alone; or nothing after a cancel. A toast may
+/// say how long it stays (`linger`), so the undo window it offers is the one the person gets: the Drop Box's Clear
+/// offers Undo for 10 s (D-M5b-21); nil keeps the presenters' own times.
 public enum ActionResult: Sendable, Equatable {
-    case done(toast: String, undo: BatchID?)
+    case done(toast: String, undo: BatchID?, linger: Duration? = nil)
     case partial(toast: String, card: ActionCard, undo: BatchID?)
     case failed(ActionCard)
     case cancelled
@@ -35,7 +37,7 @@ public enum ActionResult: Sendable, Equatable {
 
     public var toast: String? {
         switch self {
-        case .done(let toast, _), .partial(let toast, _, _): toast
+        case .done(let toast, _, _), .partial(let toast, _, _): toast
         case .failed, .cancelled: nil
         }
     }
@@ -49,9 +51,15 @@ public enum ActionResult: Sendable, Equatable {
 
     public var undo: BatchID? {
         switch self {
-        case .done(_, let undo), .partial(_, _, let undo): undo
+        case .done(_, let undo, _), .partial(_, _, let undo): undo
         case .failed, .cancelled: nil
         }
+    }
+
+    /// How long the toast stays, when the result says; nil leaves it to the presenter.
+    public var linger: Duration? {
+        if case .done(_, _, let linger) = self { return linger }
+        return nil
     }
 
     /// Items refused at the boundary are always listed (a cancel stays silent: the person stopped the action).
@@ -62,7 +70,7 @@ public enum ActionResult: Sendable, Equatable {
     public func listing(lines: [String]) -> ActionResult {
         guard !lines.isEmpty else { return self }
         switch self {
-        case .done(let toast, let undo):
+        case .done(let toast, let undo, _):
             let title = counted(lines.count, "item") + (lines.count == 1 ? " was" : " were") + " left out."
             return .partial(toast: toast, card: ActionCard(title: title, lines: lines), undo: undo)
         case .partial(let toast, let card, let undo):

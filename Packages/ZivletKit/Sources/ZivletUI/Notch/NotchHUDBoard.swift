@@ -241,7 +241,7 @@ extension NotchHUDBoard {
     }
 
     /// How long the item rests as a toast: 4 s for a saved batch or a failure's toast, 1.5 s or 4 s with Undo for an
-    /// action; three times as long with assistive tech.
+    /// action (or the action's own undo window); three times as long with assistive tech.
     private func lingerDuration(_ item: NotchHUDItem) -> Duration? {
         let base: Duration
         switch item.kind {
@@ -252,7 +252,7 @@ extension NotchHUDBoard {
             if result.card != nil {
                 base = Self.failureToast
             } else {
-                base = result.undo == nil ? ActionHUD.toastLinger : ActionHUD.undoLinger
+                base = ActionHUD.linger(for: result)
             }
         }
         return assistiveTech ? base * Self.assistiveFactor : base

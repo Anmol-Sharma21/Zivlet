@@ -78,6 +78,14 @@ struct NotchHUDBoardTests {
         #expect(move.expiring(now: t0 + .seconds(4)).request(on: 1) == nil)
     }
 
+    @Test func anActionToastStaysForTheUndoWindowItOffers() {
+        let cleared = ActionResult.done(toast: "Cleared", undo: BatchID(), linger: .seconds(10))
+        let board = NotchHUDBoard().updating(cleared, display: 1, now: t0)
+        #expect(board.nextDeadline == t0 + .seconds(10) && cleared.linger == .seconds(10))
+        #expect(board.expiring(now: t0 + .seconds(4)).request(on: 1) != nil)
+        #expect(board.expiring(now: t0 + .seconds(10)).request(on: 1) == nil)
+    }
+
     @Test func aFailedActionShowsItsTitleThenWaits() {
         let failed = NotchHUDBoard().updating(.failed(ActionCard(title: "Could not copy")), display: 1, now: t0)
         #expect(failed.toastLine(on: 1) == "Could not copy" && failed.toastGlyph(on: 1) == .failed)

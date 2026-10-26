@@ -126,7 +126,7 @@ public final class ActionHUD: ActionPresenter {
     private func scheduleHide() {
         cancelHide()
         guard let result = model.result, result.card == nil, !hovering, !model.undoInFlight else { return }
-        let linger = result.undo == nil ? Self.toastLinger : Self.undoLinger
+        let linger = Self.linger(for: result)
         hideTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: linger)
@@ -135,6 +135,11 @@ public final class ActionHUD: ActionPresenter {
             }
             self?.hide()
         }
+    }
+
+    /// The result's own linger (Clear's 10 s undo window), else 1.5 s, or 4 s with Undo.
+    static func linger(for result: ActionResult) -> Duration {
+        result.linger ?? (result.undo == nil ? toastLinger : undoLinger)
     }
 
     private func cancelHide() {
