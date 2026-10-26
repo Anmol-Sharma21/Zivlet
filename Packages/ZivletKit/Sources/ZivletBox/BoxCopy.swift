@@ -19,6 +19,9 @@ nonisolated enum BoxCopy {
     }
 
     static let cleared = "Cleared"
+    static let undo = "Undo"
+    /// The tray's refusal when a drop at the notch carries nothing stored on this Mac (19c §4.2).
+    static let onlyLocal = "Only items stored on this Mac can be added"
     static let storageEmptied = "Box storage emptied"
 
     static func storage(_ bytes: Int64) -> String { "Box storage \(size(bytes))" }
