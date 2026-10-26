@@ -103,7 +103,7 @@ struct ShelfItemTests {
     @Test func everyErrorSpeaksZivletsWords() {
         let all: [ShelfError] = [
             .badBookmark, .relativePath("a"), .invalidPath, .invalidName, .negativeSize, .ownedPathOutsideBox,
-            .invalidIdentity,
+            .invalidIdentity, .tooManyBoxes, .notAFileURL, .bookmarkFailed, .trashFailed, .storageFailed,
         ]
         for error in all { #expect(!error.userMessage.isEmpty && !error.userMessage.contains("/")) }
         #expect(Set(all.map(\.userMessage)).count == all.count)

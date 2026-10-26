@@ -21,6 +21,10 @@ public enum ShelfError: Error, Equatable, Sendable {
     case notAFileURL
     /// The system could not make a bookmark for the file (it is gone, or unreadable).
     case bookmarkFailed
+    /// An owned copy could not be moved to the Trash.
+    case trashFailed
+    /// The box's own folder could not be made.
+    case storageFailed
 
     public var userMessage: String {
         switch self {
@@ -34,6 +38,8 @@ public enum ShelfError: Error, Equatable, Sendable {
         case .tooManyBoxes: "You have 8 boxes. Clear one to start another."
         case .notAFileURL: "Only files and folders can go in a box."
         case .bookmarkFailed: "Zivlet couldn't keep track of this file."
+        case .trashFailed: "Zivlet couldn't move this kept copy to the Trash."
+        case .storageFailed: "Zivlet couldn't make room to keep this copy."
         }
     }
 }
