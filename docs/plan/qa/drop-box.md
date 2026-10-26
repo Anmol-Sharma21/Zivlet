@@ -47,6 +47,19 @@ only real hardware, real drags, other apps and the system's assistive technologi
 | B16 | Restore after a relaunch | With a box shown at a moved position and one docked, quit and relaunch; then move one item's file to the Trash, unmount a disk holding another, delete a third, and relaunch again | The frame, dock edge and items come back; the three items show "in the Trash", "not connected" and "missing" | |
 | B17 | Storage line and the 2 GB dot | Repeat B6–B8 until the owned copies pass 2 GB; then Settings › Drop Box › "Empty Box Storage" | The overflow symbol shows the storage dot after 2 GB; the overflow menu and Settings show the same total; Empty asks once inside Settings and frees the space | |
 
+## M6. Box follow-ups (G-M5b-8, G-M5b-9, G-M5b-10; plan 18a)
+
+The automated tests cover the same paths with fakes (`BoxBusyTests`, `BoxTrashTests`, `BoxResolveTests`,
+`BoxExitTests`); these rows are the real drives, Trash and screen. No result is written until it is seen.
+
+| # | Check | Steps | Expected | Result |
+|---|---|---|---|---|
+| DB-A1 | Move to a USB drive, cancelled | Add 200 files to a box; Move to… a folder on a USB drive; press Cancel when the bar is part-way; then Undo | "Moving 200 items" with a bar that fills; Cancel stops it after the item in progress; the toast says how many moved and the card "Stopped. N items weren't moved."; no `.zivlet-move-` folder is left on the drive; Undo puts the moved files back and the box follows them | |
+| DB-A2 | Copy to… with Esc | Copy to… 50 files to another folder; press Esc while the bar runs | "Copying 50 items"; Esc stops it like Cancel; the card says "Stopped. N items weren't copied."; the originals stay; Undo puts the unchanged copies in the Trash | |
+| DB-A3 | Trash, cancelled, then Undo | Move 200 items to the Trash (answer the inline question); press Cancel part-way; then Undo | "Moving 200 items to the Trash" with the bar; the panel stays responsive; the card says "Stopped. N items are still here."; Undo brings the trashed files back from the Trash and their items return to their old places | |
+| DB-A4 | The exit fade | Hide the box with Esc and with ⌘W, with Reduce Motion off and then on (System Settings › Accessibility › Display) | Off: the panel fades out over about half a second, no jump; on: a short fade (0.18 s); showing it again during the fade keeps it, fully opaque | |
+| DB-A5 | Resolve at show | Add 100 items from a USB drive; eject the drive; show the box | The panel draws at once with its items; a moment later they turn grey as unavailable; the panel never stalls | |
+
 ## T. Notch tray
 
 | # | Check | Steps | Expected | Result |
