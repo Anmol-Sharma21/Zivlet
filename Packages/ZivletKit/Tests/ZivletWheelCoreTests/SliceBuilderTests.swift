@@ -97,6 +97,13 @@ struct SliceBuilderTests {
         #expect(CapabilitySnapshot.full.unavailableActions.isEmpty)
     }
 
+    /// P2-100: a combining tool never brings a folder into Tools; READ QR would accept the files.
+    @Test func aFolderInAMixKeepsToolsEmpty() {
+        let items = [SelectionItem(.png), SelectionItem(.pdf), SelectionItem(nil, kind: .folder)]
+        #expect(builder.content(for: .tools, items: items) == .empty(.noTools(nil)))
+        #expect(targets(builder.content(for: .tools, items: files(.png, .pdf))) == [.tool(.qrScan)])
+    }
+
     @Test func emptyStateCopy() {
         #expect(builder.message(for: .noInstalledConverter(.gz)) == "GZIP needs an engine that isn't installed")
         #expect(builder.message(for: .noTools(.ogg)) == "No tools for OGG files")

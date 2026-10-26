@@ -25,4 +25,6 @@ public struct ToolSpec: Sendable, Hashable, Codable {
     public let presentation: ToolPresentation
     public let cardinality: ToolCardinality
     public let outputSuffix: String?  // default suffix; OutputNamer applies variants (03a §4.4)
+    /// The formats a combining tool takes when a selection mixes families; nil for every other tool (P2-100).
+    public let accepts: Set<FormatID>?
 }

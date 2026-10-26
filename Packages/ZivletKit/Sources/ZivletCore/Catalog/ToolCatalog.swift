@@ -38,6 +38,8 @@ public struct ToolCatalog: Sendable {
         tools(for: formats, visibility: .extra)
     }
 
+    /// One format → its row; a same-family mix → the intersection of its rows; if that is empty or the families
+    /// differ → the combining tools that accept every item (P2-100).
     private func tools(for formats: [FormatID], visibility: ToolVisibility) -> [ToolID] {
         guard let first = formats.first else { return [] }
         let distinct = formats.uniqued()
@@ -45,8 +47,7 @@ public struct ToolCatalog: Sendable {
         if distinct.count == 1 { return tools(for: first, count: count, visibility: visibility) }
         let shared = sharedTools(distinct, count: count, visibility: visibility)
         if !shared.isEmpty { return shared }
-        guard visibility == .defaultVisible else { return [] }
-        return distinct.allSatisfy(qualifiesForQRScan) ? [.qrScan] : []
+        return combiningTools(distinct, count: count, visibility: visibility)
     }
 
     /// The row's entries for `count` items with this visibility; empty for formats without tools.
@@ -65,8 +66,27 @@ public struct ToolCatalog: Sendable {
         }
     }
 
-    /// Read QR survives a mixed selection when every format is an image, a GIF or a PDF.
-    private func qualifiesForQRScan(_ format: FormatID) -> Bool {
-        format == .gif || format == .pdf || registry.format(format).family == .image
+    /// Tools in catalog order whose `accepts` covers every format and whose cardinality allows `count`.
+    private func combiningTools(_ distinct: [FormatID], count: Int, visibility: ToolVisibility) -> [ToolID] {
+        specs.filter { spec in
+            guard let accepts = spec.accepts, accepts.isSuperset(of: distinct), allows(spec.cardinality, count) else {
+                return false
+            }
+            return mixVisibility(spec.id, distinct, count: count) == visibility
+        }.map(\.id)
+    }
+
+    /// A combining tool marked extra in any of the mixed formats' rows stays extra in the mix.
+    private func mixVisibility(_ id: ToolID, _ distinct: [FormatID], count: Int) -> ToolVisibility {
+        let marked = distinct.contains { tools(for: $0, count: count, visibility: .extra).contains(id) }
+        return marked ? .extra : .defaultVisible
+    }
+
+    private func allows(_ cardinality: ToolCardinality, _ count: Int) -> Bool {
+        switch cardinality {
+        case .single: count == 1
+        case .multiAllowed: count >= 1
+        case .multiOnly: count >= 2
+        }
     }
 }

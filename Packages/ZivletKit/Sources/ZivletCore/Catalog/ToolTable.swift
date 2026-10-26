@@ -72,17 +72,20 @@ extension ToolCatalog {
         spec(.imageRedact, "REDACT", "eye.slash", .editor, .single, "Redacted"),
         spec(.videoRedact, "REDACT", "eye.slash", .editor, .single, "Redacted"),
         spec(.audioBleep, "BLEEP", "waveform.badge.minus", .editor, .single, "Bleeped"),
-        spec(.qrScan, "READ QR", "qrcode.viewfinder", .instant, .multiAllowed, nil),
+        spec(.qrScan, "READ QR", "qrcode.viewfinder", .instant, .multiAllowed, nil, accepts: qrScanAccepts),
     ]
 
     private static func spec(
         _ id: ToolID, _ label: String, _ symbol: String, _ presentation: ToolPresentation,
-        _ cardinality: ToolCardinality, _ suffix: String?
+        _ cardinality: ToolCardinality, _ suffix: String?, accepts: Set<FormatID>? = nil
     ) -> ToolSpec {
         ToolSpec(
             id: id, wheelLabel: label, symbolName: symbol, presentation: presentation,
-            cardinality: cardinality, outputSuffix: suffix)
+            cardinality: cardinality, outputSuffix: suffix, accepts: accepts)
     }
+
+    /// READ QR combines every image format, GIF and PDF.
+    private static let qrScanAccepts: Set<FormatID> = [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .svg, .gif, .pdf]
 }
 
 extension [ToolCatalog.ApplicabilityRow.Entry] {
