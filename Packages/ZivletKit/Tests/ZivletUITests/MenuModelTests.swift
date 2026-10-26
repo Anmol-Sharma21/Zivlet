@@ -26,7 +26,8 @@ struct MenuModelTests {
         #expect(
             titles == [
                 "Zivlet is ready", "⇧: Convert · ⌘: Tools · ⌃: Actions", "—", "Show Progress and Results",
-                "Settings…", "Practice…", "Pause Zivlet", "Check for Updates…", "—", "About Zivlet", "Quit Zivlet",
+                "Show Drop Box", "Settings…", "Practice…", "Pause Zivlet", "Check for Updates…", "—", "About Zivlet",
+                "Quit Zivlet",
             ])
     }
 
@@ -46,6 +47,15 @@ struct MenuModelTests {
         #expect(show?.isEnabled == false && show?.action == .showProgress)
         let busy = MenuState(bindings: .standard, paused: false, batches: [], recent: [], islandHasItems: true)
         #expect(MenuModel.make(state: busy).first { $0.title == "Show Progress and Results" }?.isEnabled == true)
+    }
+
+    @Test func showDropBoxFollowsShowProgressAndIsAlwaysEnabled() {
+        let entries = MenuModel.make(state: .idle(bindings: .standard))
+        let titles = entries.map(\.title)
+        let index = titles.firstIndex(of: "Show Drop Box")
+        #expect(index != nil && index == titles.firstIndex(of: "Show Progress and Results").map { $0 + 1 })
+        let entry = entries.first { $0.title == "Show Drop Box" }
+        #expect(entry?.action == .showDropBox && entry?.isEnabled == true)
     }
 
     @Test func checkForUpdatesIsDisabledUntilTheUpdaterRuns() {

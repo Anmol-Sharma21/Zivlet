@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Testing
 import ZivletActions
+import ZivletSettings
 
 @testable import ZivletUI
 
@@ -17,6 +18,22 @@ struct SettingsPaneSnapshotTests {
     @Test func generalPaneListsOnlyInstalledTerminals() {
         let model = SettingsModel.preview(installedTerminals: [.terminal, .ghostty])
         #expect(model.terminalChoices.map(\.name) == ["Terminal", "Ghostty"])
+    }
+
+    /// The Drop Box rows of 19c §5 (D-M5b-19 defaults), in Zivlet's words.
+    @Test func generalPaneHasTheDropBoxRows() {
+        #expect(DropBoxSection.title == "Drop Box")
+        #expect(
+            DropBoxSection.trayLabel == "Open at the notch while dragging"
+                && DropBoxSection.shakeLabel == "Shake to open")
+        #expect(DropBoxSection.clearLabel == "Clear items" && DropBoxSection.dropsLabel == "New drops go to")
+        #expect(
+            BoxAutoClearChoice.allCases.map(DropBoxSection.label) == [
+                "Never", "After they leave the box", "After 24 hours",
+            ])
+        #expect(BoxDropsChoice.allCases.map(DropBoxSection.label) == ["The last box", "A new box"])
+        let image = ImageRenderer(content: Form { DropBoxSection(model: .preview) }.frame(width: 520)).nsImage
+        #expect((image?.size.height ?? 0) > 100)
     }
 
     @Test func paneTitlesAreZivletsOwn() {

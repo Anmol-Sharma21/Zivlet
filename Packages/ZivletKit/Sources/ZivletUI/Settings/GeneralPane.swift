@@ -38,6 +38,7 @@ struct GeneralPane: View {
                 }
             }
             PlacementSection(model: model)
+            DropBoxSection(model: model)
             Section("Actions") {
                 Picker("Open folders in", selection: model.binding(\.actions.terminal)) {
                     ForEach(model.terminalChoices) { Text($0.name).tag($0.id) }
@@ -66,6 +67,45 @@ struct PlacementSection: View {
             ) {
                 Text(model.notchLabel).tag(HUDPlacement.notch)
                 Text(PlacementCopy.nearDropLabel).tag(HUDPlacement.nearDrop)
+            }
+        }
+    }
+}
+
+/// The Drop Box group (19c §5, D-M5b-19): the tray while dragging, shake to open, auto-clear and where new drops go.
+struct DropBoxSection: View {
+    static let title = "Drop Box"
+    static let trayLabel = "Open at the notch while dragging"
+    static let shakeLabel = "Shake to open"
+    static let clearLabel = "Clear items"
+    static let dropsLabel = "New drops go to"
+
+    let model: SettingsModel
+
+    static func label(_ choice: BoxAutoClearChoice) -> String {
+        switch choice {
+        case .off: "Never"
+        case .afterLeaving: "After they leave the box"
+        case .after24Hours: "After 24 hours"
+        }
+    }
+
+    static func label(_ choice: BoxDropsChoice) -> String {
+        switch choice {
+        case .recentBox: "The last box"
+        case .newBox: "A new box"
+        }
+    }
+
+    var body: some View {
+        Section(Self.title) {
+            Toggle(Self.trayLabel, isOn: model.binding(\.box.trayWhileDragging))
+            Toggle(Self.shakeLabel, isOn: model.binding(\.box.shakeToOpen))
+            Picker(Self.clearLabel, selection: model.binding(\.box.autoClear)) {
+                ForEach(BoxAutoClearChoice.allCases, id: \.self) { Text(Self.label($0)).tag($0) }
+            }
+            Picker(Self.dropsLabel, selection: model.binding(\.box.dropsGo)) {
+                ForEach(BoxDropsChoice.allCases, id: \.self) { Text(Self.label($0)).tag($0) }
             }
         }
     }

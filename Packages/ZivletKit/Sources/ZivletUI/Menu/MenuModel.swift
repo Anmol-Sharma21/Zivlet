@@ -10,6 +10,8 @@ public enum MenuAction: Sendable, Equatable {
     case settings, practice, togglePause, checkForUpdates, about, quit
     /// Opens the notch island with the keyboard (D-N12).
     case showProgress
+    /// Opens the Drop Box panel (P2-55, 17e §2.3).
+    case showDropBox
 }
 
 /// One menu item as a value. A separator has the title "—"; `children` make a submenu.
@@ -113,7 +115,7 @@ public enum MenuModel {
     private static func commands(_ state: MenuState) -> [MenuEntry] {
         [
             .separator, MenuEntry("Show Progress and Results", action: .showProgress, isEnabled: state.islandHasItems),
-            MenuEntry("Settings…", action: .settings, key: ","),
+            MenuEntry("Show Drop Box", action: .showDropBox), MenuEntry("Settings…", action: .settings, key: ","),
             MenuEntry("Practice…", action: .practice),
             MenuEntry(state.paused ? "Resume Zivlet" : "Pause Zivlet", action: .togglePause),
             MenuEntry("Check for Updates…", action: .checkForUpdates, isEnabled: state.canCheckForUpdates),
