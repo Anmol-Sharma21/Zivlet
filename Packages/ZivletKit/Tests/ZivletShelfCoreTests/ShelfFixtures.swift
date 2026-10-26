@@ -41,3 +41,17 @@ extension ShelfFixtures {
         try Shelf.empty(name: "Box").adding(items, cap: ShelfLibrary.maxItemsPerBox).0
     }
 }
+
+extension ShelfFixtures {
+    /// A box of "a.txt", "b.txt" … : the first `present` items present at their own paths, the next `missing` ones
+    /// missing.
+    static func box(present: Int, missing: Int) throws -> (Shelf, [UUID: ItemStatus]) {
+        let names = (0..<(present + missing)).map { "\(Character(UnicodeScalar(UInt8(97 + $0)))).txt" }
+        let shelf = try shelf(names: names)
+        let statuses = Dictionary(
+            uniqueKeysWithValues: shelf.items.enumerated().map { index, item in
+                (item.id, index < present ? ItemStatus.present(path: item.lastKnownPath) : .missing)
+            })
+        return (shelf, statuses)
+    }
+}
