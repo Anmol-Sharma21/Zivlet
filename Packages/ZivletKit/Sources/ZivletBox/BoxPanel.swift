@@ -28,7 +28,9 @@ public final class BoxPanel: NSPanel {
         hasShadow = true
         hidesOnDeactivate = false
         isMovableByWindowBackground = true
-        becomesKeyOnlyIfNeeded = true
+        // False: with true, AppKit makes the panel key only for views that ask (`needsPanelToBecomeKey`), and the
+        // hosting view and the cells' drag views do not, so a click never gave the box the keyboard (17e §2.3).
+        becomesKeyOnlyIfNeeded = false
         isReleasedWhenClosed = false
         animationBehavior = .none
         appearance = NSAppearance(named: .darkAqua)

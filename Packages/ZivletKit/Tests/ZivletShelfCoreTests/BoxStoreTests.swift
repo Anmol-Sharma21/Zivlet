@@ -56,10 +56,60 @@ struct BoxStoreTests {
         try dir.file("boxes.damaged.json", "an older damaged file")
         let store = BoxStore(file: try dir.file("boxes.json", contents))
         #expect(store.load() == .damaged)
-        let aside = dir.url.appending(path: "boxes.damaged.json")
+        let older = dir.url.appending(path: "boxes.damaged.json")
+        let aside = dir.url.appending(path: "boxes.damaged 2.json")
+        #expect(try String(contentsOf: older, encoding: .utf8) == "an older damaged file")
         #expect(try String(contentsOf: aside, encoding: .utf8) == contents)
         #expect(!FileManager.default.fileExists(atPath: store.file.path))
         #expect(store.load() == .empty)
+    }
+
+    @Test func aFileThatCannotBeReadIsLeftAloneAndNeverOverwritten() throws {
+        let dir = try TempDir()
+        let file = try dir.file("boxes.json", #"{"schema":1,"boxes":[]}"#)
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: file.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path) }
+        let store = BoxStore(file: file)
+        #expect(store.load() == .unreadable)
+        #expect(FileManager.default.fileExists(atPath: file.path))
+        #expect(!FileManager.default.fileExists(atPath: dir.url.appending(path: "boxes.damaged.json").path))
+        #expect(BoxLoad.unreadable.notice != nil && BoxLoad.damaged.notice != nil)
+    }
+
+    @Test func aLossyLoadKeepsACopyOfTheFileAsItWas() throws {
+        let box = try ShelfFixtures.shelf(ShelfFixtures.item("a", bookmark: Data([7, 7, 7])), ShelfFixtures.item("b"))
+        let firstBookmark = try JSONEncoder().encode(box.items[0].bookmark)
+        let broken = try storedJSON([box], current: box.id).replacingOccurrences(
+            of: String(decoding: firstBookmark, as: UTF8.self), with: #""""#)
+        let dir = try TempDir()
+        let load = BoxStore(file: try dir.file("boxes.json", broken)).load()
+        guard case .loaded(_, let dropped) = load else {
+            Issue.record("the library did not load")
+            return
+        }
+        let kept = try String(contentsOf: dir.url.appending(path: "boxes.before-repair.json"), encoding: .utf8)
+        #expect(dropped == 1 && kept == broken)
+        #expect(load.notice != nil && BoxLoad.loaded(ShelfLibrary(), dropped: 0).notice == nil)
+    }
+
+    @Test func aNewerFileWrittenAfterASaveIsStillNeverOverwritten() throws {
+        let dir = try TempDir()
+        let store = BoxStore(file: dir.url.appending(path: "boxes.json"))
+        try store.save(ShelfLibrary())
+        try store.save(ShelfLibrary())
+        try Data(#"{"schema":2,"boxes":[],"later":true}"#.utf8).write(to: store.file)
+        #expect(throws: BoxStoreError.wouldOverwriteNewer) { try store.save(ShelfLibrary()) }
+    }
+
+    @Test func twoItemsWithOneIDKeepTheFirst() throws {
+        let item = try ShelfFixtures.item("a")
+        let twin = try ShelfItem(
+            id: item.id, bookmark: Data([9]), lastKnownPath: "/y/b", displayName: "b", byteCount: 1, addedAt: .t0)
+        let both = try Shelf(name: "Box", items: [item, twin], updatedAt: .t0)
+        let dir = try TempDir()
+        let load = BoxStore(file: try dir.file("boxes.json", try storedJSON([both]))).load()
+        let once = try Shelf(id: both.id, name: "Box", items: [item], updatedAt: .t0)
+        #expect(load == .loaded(ShelfLibrary(boxes: [once]), dropped: 1))
     }
 
     @Test func aNewerSchemaIsNeverOverwritten() throws {

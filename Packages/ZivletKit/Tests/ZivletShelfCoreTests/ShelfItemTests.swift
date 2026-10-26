@@ -55,8 +55,11 @@ struct ShelfItemTests {
     }
 
     @Test func anOwnedPathInsideItsFolderIsAccepted() throws {
-        let item = try ShelfFixtures.item("a.txt", ownership: .owned(relativePath: "B0/Clipping.txt"))
-        #expect(item.ownership == .owned(relativePath: "B0/Clipping.txt") && item.isOwned)
+        let item = try ShelfFixtures.item(
+            "a.txt", ownership: .owned(relativePath: "\(ShelfOwnershipTests.box.uuidString)/Clipping.txt"))
+        #expect(
+            item.ownership == .owned(relativePath: "\(ShelfOwnershipTests.box.uuidString)/Clipping.txt") && item.isOwned
+        )
     }
 
     @Test func anEmptyVolumeIdentityIsRefused() {
@@ -67,7 +70,8 @@ struct ShelfItemTests {
 
     @Test func relocatingReturnsANewItemAndLeavesTheOldOne() throws {
         let item = try ShelfFixtures.item("a.txt", path: "/Users/u/Downloads/a.txt")
-        let moved = try item.relocated(to: "/Users/u/Desktop/b.txt", bookmark: Data([2]))
+        let moved = try item.relocated(
+            to: "/Users/u/Desktop/b.txt", bookmark: Data([2]), identity: nil, storage: ShelfOwnershipTests.storage)
         #expect(moved.lastKnownPath.hasSuffix("Desktop/b.txt") && item.lastKnownPath.hasSuffix("Downloads/a.txt"))
         #expect(moved.id == item.id && moved.bookmark == Data([2]) && item.bookmark == Data([1]))
         #expect(moved.displayName == "b.txt" && item.displayName == "a.txt")
@@ -75,8 +79,13 @@ struct ShelfItemTests {
 
     @Test func relocatingRunsTheSameRules() throws {
         let item = try ShelfFixtures.item("a.txt")
-        #expect(throws: ShelfError.relativePath("b.txt")) { try item.relocated(to: "b.txt", bookmark: Data([2])) }
-        #expect(throws: ShelfError.self) { try item.relocated(to: "/b.txt", bookmark: Data()) }
+        let storage = ShelfOwnershipTests.storage
+        #expect(throws: ShelfError.relativePath("b.txt")) {
+            try item.relocated(to: "b.txt", bookmark: Data([2]), identity: nil, storage: storage)
+        }
+        #expect(throws: ShelfError.self) {
+            try item.relocated(to: "/b.txt", bookmark: Data(), identity: nil, storage: storage)
+        }
     }
 
     @Test func aNewSizeIsANewItem() throws {
@@ -88,7 +97,8 @@ struct ShelfItemTests {
 
     @Test func anItemRoundTripsThroughJSON() throws {
         let item = try ShelfFixtures.item(
-            "a.txt", ownership: .owned(relativePath: "B/a.txt"), identity: FileIdentity(volumeUUID: "V", fileID: 9))
+            "a.txt", ownership: .owned(relativePath: "\(ShelfOwnershipTests.box.uuidString)/a.txt"),
+            identity: FileIdentity(volumeUUID: "V", fileID: 9))
         let decoded = try JSONDecoder().decode(ShelfItem.self, from: JSONEncoder().encode(item))
         #expect(decoded == item)
     }
@@ -104,6 +114,7 @@ struct ShelfItemTests {
         let all: [ShelfError] = [
             .badBookmark, .relativePath("a"), .invalidPath, .invalidName, .negativeSize, .ownedPathOutsideBox,
             .invalidIdentity, .tooManyBoxes, .notAFileURL, .bookmarkFailed, .trashFailed, .storageFailed,
+            .promiseFailed, .clippingTooLarge,
         ]
         for error in all { #expect(!error.userMessage.isEmpty && !error.userMessage.contains("/")) }
         #expect(Set(all.map(\.userMessage)).count == all.count)

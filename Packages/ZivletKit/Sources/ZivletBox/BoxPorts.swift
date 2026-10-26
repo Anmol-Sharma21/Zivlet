@@ -93,14 +93,19 @@ public enum BoxAnchor: Sendable, Equatable {
 public struct AddOutcome: Sendable, Equatable {
     public let added: Int
     public let duplicates: [String]
+    /// The names that did not fit under the box's cap: the box is full, not a duplicate.
+    public let overCap: [String]
     /// "name: reason" lines for the action card.
     public let rejected: [String]
     /// Why nothing could be added, in Zivlet's words; nil when something was.
     public let failure: String?
 
-    public init(added: Int, duplicates: [String] = [], rejected: [String] = [], failure: String? = nil) {
+    public init(
+        added: Int, duplicates: [String] = [], overCap: [String] = [], rejected: [String] = [], failure: String? = nil
+    ) {
         self.added = added
         self.duplicates = duplicates
+        self.overCap = overCap
         self.rejected = rejected
         self.failure = failure
     }

@@ -25,6 +25,10 @@ public enum ShelfError: Error, Equatable, Sendable {
     case trashFailed
     /// The box's own folder could not be made.
     case storageFailed
+    /// The app that offered a file promise did not deliver the file.
+    case promiseFailed
+    /// A text or image clipping larger than the box keeps.
+    case clippingTooLarge
 
     public var userMessage: String {
         switch self {
@@ -40,6 +44,8 @@ public enum ShelfError: Error, Equatable, Sendable {
         case .bookmarkFailed: "Zivlet couldn't keep track of this file."
         case .trashFailed: "Zivlet couldn't move this kept copy to the Trash."
         case .storageFailed: "Zivlet couldn't make room to keep this copy."
+        case .promiseFailed: "The app it came from didn't hand over the file."
+        case .clippingTooLarge: "This clipping is too large to keep in the box."
         }
     }
 }

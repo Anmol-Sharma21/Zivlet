@@ -1,5 +1,6 @@
 import AppKit
 import NotchTestSupport
+import ZivletActions
 import ZivletCore
 import ZivletNotch
 import ZivletNotchCore
@@ -15,8 +16,15 @@ final class FakeTrayBox: TrayBox {
     private(set) var undone: [[UUID]] = []
     private(set) var panels: [BoxAnchor] = []
     private(set) var presses: [BoxPress] = []
+    private(set) var prepared = 0
+    private(set) var reported: [ActionResult] = []
 
     init(count: Int) { self.count = count }
+
+    var trayCount: Int { count }
+    var trayBytes: Int64 { Int64(count) * 1_000_000 }
+    func prepareTray(redraw: @escaping () -> Void) { prepared += 1 }
+    func report(_ result: ActionResult) { reported.append(result) }
 
     var trayModel: BoxViewModel {
         let items = (0..<count).map { index in
@@ -51,6 +59,9 @@ final class TrayRig {
     let box: FakeTrayBox
     let tray: TrayClient
     var opensWhileDragging = true
+    /// Holds each toast's linger until `releaseLingers()`, for tests that read the toast after an async drop.
+    var holdsLingers = false
+    private var heldLingers: [CheckedContinuation<Void, Never>] = []
     private(set) var lingers: [Duration] = []
     private(set) var surfaces: [(UInt32, IslandSurface)] = []
 
@@ -70,7 +81,11 @@ final class TrayRig {
         var rig: TrayRig?
         tray = TrayClient(
             hosts: hosts, box: real ?? fake, opensWhileDragging: { rig?.opensWhileDragging ?? true },
-            linger: { duration in rig?.lingers.append(duration) })
+            linger: { duration in
+                rig?.lingers.append(duration)
+                guard rig?.holdsLingers == true else { return }
+                await withCheckedContinuation { rig?.heldLingers.append($0) }
+            })
         rig = self
         hosts.onSurface = { display, surface, _ in rig?.surfaces.append((display, surface)) }
         hosts.register(tray, as: .tray)
@@ -80,5 +95,13 @@ final class TrayRig {
     /// Surfaces shown on `display`, in order.
     func shown(on display: UInt32) -> [IslandSurface] { surfaces.filter { $0.0 == display }.map(\.1) }
 
-    isolated deinit { hosts.close() }
+    func releaseLingers() {
+        heldLingers.forEach { $0.resume() }
+        heldLingers = []
+    }
+
+    isolated deinit {
+        releaseLingers()
+        hosts.close()
+    }
 }

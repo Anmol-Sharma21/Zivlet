@@ -47,6 +47,13 @@ final class BoxRig {
     var clock = 0.0
     var now = Date(timeIntervalSince1970: 1_000)
     var displays = [BoxRig.display]
+    var finish = BoxFinish.solid
+    /// Quick Look for the controllers made after it is set; none by default.
+    var thumbnailMaker: (any ThumbnailMaking)?
+    var promises: (any PromiseReceiving)?
+    /// Another bookmark maker or folder chooser for the controllers made after it is set.
+    var maker: (any BookmarkMaking)?
+    var chooser: (any FolderChoosing)?
 
     init() throws {
         dir = try TempDir(prefix: "zivlet-box-rig")
@@ -63,11 +70,13 @@ final class BoxRig {
     func controller() -> BoxController {
         let box = BoxController(
             ports: BoxPorts(
-                store: store, storage: storage, maker: bookmarks, resolver: bookmarks,
-                isMounted: { [unowned self] _ in mounted },
-                promises: FakePromises(names: []), thumbnails: NoThumbnails(), quickLook: quickLook,
-                visibleFrames: { [unowned self] in displays }, finish: { .solid },
-                now: { [unowned self] in now }, uptime: { [unowned self] in clock }, trash: trash,
+                store: store, storage: storage, maker: maker ?? bookmarks, resolver: bookmarks,
+                isMounted: { [weak self] _ in self?.mounted ?? true },
+                promises: promises ?? FakePromises(names: []), thumbnails: thumbnailMaker ?? NoThumbnails(),
+                quickLook: quickLook, visibleFrames: { [weak self] in self?.displays ?? [BoxRig.display] },
+                finish: { [weak self] in self?.finish ?? .solid },
+                now: { [weak self] in self?.now ?? Date(timeIntervalSince1970: 1_000) },
+                uptime: { [weak self] in self?.clock ?? 0 }, trash: trash,
                 locator: locator, sleep: { [weak self] duration in await self?.wait(duration) }),
             actions: actions)
         box.onResult = { [results] result, anchor in results.record(result, anchor) }
@@ -77,9 +86,9 @@ final class BoxRig {
     var actions: BoxActions {
         BoxActions(
             sharePicker: picker, clipboard: ClipboardAction(pasteboard: board.board),
-            airDrop: AirDropAction(service: sharing), optionHeld: { [unowned self] in optionHeld },
-            nextTurn: { [unowned self] in turns += 1 },
-            service: ActionService(folders: folders, undoHistory: undo, nextTurn: {}))
+            airDrop: AirDropAction(service: sharing), optionHeld: { [weak self] in self?.optionHeld ?? false },
+            nextTurn: { [weak self] in self?.turns += 1 },
+            service: ActionService(folders: chooser ?? folders, undoHistory: undo, nextTurn: {}))
     }
 
     private func wait(_ duration: Duration) async {

@@ -53,17 +53,21 @@ struct FailingBookmarks: BookmarkMaking {
 @MainActor
 final class FakePromises: PromiseReceiving {
     let names: [String]
+    let failed: Int
     private(set) var calls = 0
 
-    init(names: [String]) { self.names = names }
+    init(names: [String], failed: Int = 0) {
+        self.names = names
+        self.failed = failed
+    }
 
-    func hasPromises(on pasteboard: NSPasteboard) -> Bool { !names.isEmpty }
+    func hasPromises(on pasteboard: NSPasteboard) -> Bool { !names.isEmpty || failed > 0 }
 
     func receivePromises(from pasteboard: NSPasteboard, into folder: URL) async -> PromiseOutcome {
         calls += 1
         let files = names.map { folder.appending(path: $0) }
         for file in files { try? Data("promised".utf8).write(to: file) }
-        return PromiseOutcome(received: files, failed: 0)
+        return PromiseOutcome(received: files, failed: failed)
     }
 }
 

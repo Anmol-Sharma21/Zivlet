@@ -30,15 +30,21 @@ public final class BoxSliceAdding: BoxAdding {
 
 extension AddOutcome {
     /// The toast and card for an add (19c §5): "Added 3"; a card for what was left out; "Already in the box" when
-    /// every item was there; the reason when nothing could be added.
+    /// every item was there; "The box is full." when nothing fitted; the reason when nothing could be added. The
+    /// panel, the BOX slice and the tray all show this.
     public var actionResult: ActionResult {
-        let lines = duplicates.map { "\($0) is already in the box." } + rejected
+        let lines = duplicates.map(BoxCopy.alreadyIn) + overCap.map(BoxCopy.didNotFit) + rejected
         if let toast {
             guard !lines.isEmpty else { return .done(toast: toast, undo: nil) }
-            return .partial(toast: toast, card: ActionCard(title: "Some items weren't added.", lines: lines), undo: nil)
+            return .partial(toast: toast, card: ActionCard(title: BoxCopy.someNotAdded, lines: lines), undo: nil)
         }
-        if !duplicates.isEmpty, rejected.isEmpty { return .done(toast: "Already in the box", undo: nil) }
-        let title = failure.map { $0.hasSuffix(".") ? $0 : $0 + "." } ?? "Nothing was added."
-        return .failed(ActionCard(title: title, lines: rejected.filter { $0 != failure }))
+        if !duplicates.isEmpty, rejected.isEmpty, overCap.isEmpty {
+            return .done(toast: BoxCopy.alreadyInBox, undo: nil)
+        }
+        if !overCap.isEmpty, failure == nil {
+            return .failed(ActionCard(title: BoxCopy.boxFull, lines: duplicates.map(BoxCopy.alreadyIn) + rejected))
+        }
+        let title = failure.map { $0.hasSuffix(".") ? $0 : $0 + "." } ?? BoxCopy.nothingAdded
+        return .failed(ActionCard(title: title, lines: lines.filter { $0 != failure }))
     }
 }

@@ -7,7 +7,8 @@ import SwiftUI
 /// how it ended (none when nothing took the files), so the Drop Box can clear items that left it. Shared by the
 /// result cards and the Drop Box (D-M5b-1), so every multi-file drag out of Zivlet behaves the same.
 public struct FileDragSource: NSViewRepresentable {
-    public let urls: [URL]
+    /// The files a drag carries, asked for when the drag starts, so a view body never builds a large payload.
+    public let urls: () -> [URL]
     public let image: NSImage
     public var onDrag: (Bool) -> Void = { _ in }
     public var onEnded: (NSDragOperation) -> Void = { _ in }
@@ -20,6 +21,16 @@ public struct FileDragSource: NSViewRepresentable {
         urls: [URL], image: NSImage, drawsImage: Bool = true, onDrag: @escaping (Bool) -> Void = { _ in },
         onEnded: @escaping (NSDragOperation) -> Void = { _ in }, onClick: ((NSEvent.ModifierFlags) -> Void)? = nil
     ) {
+        self.init(
+            provide: { urls }, image: image, drawsImage: drawsImage, onDrag: onDrag, onEnded: onEnded, onClick: onClick)
+    }
+
+    /// A drag source whose files are worked out only when a drag starts.
+    public init(
+        provide urls: @escaping () -> [URL], image: NSImage, drawsImage: Bool = true,
+        onDrag: @escaping (Bool) -> Void = { _ in }, onEnded: @escaping (NSDragOperation) -> Void = { _ in },
+        onClick: ((NSEvent.ModifierFlags) -> Void)? = nil
+    ) {
         self.urls = urls
         self.image = image
         self.drawsImage = drawsImage
@@ -29,13 +40,13 @@ public struct FileDragSource: NSViewRepresentable {
     }
 
     public func makeNSView(context: Context) -> DragSourceView {
-        let view = DragSourceView(urls: urls, image: image)
+        let view = DragSourceView(urls: [], image: image)
         updateNSView(view, context: context)
         return view
     }
 
     public func updateNSView(_ view: DragSourceView, context: Context) {
-        view.urls = urls
+        view.provide = urls
         view.image = image
         view.drawsImage = drawsImage
         view.onDrag = onDrag
@@ -44,9 +55,19 @@ public struct FileDragSource: NSViewRepresentable {
     }
 }
 
-/// The AppKit view behind `FileDragSource`: one dragging item per URL, fanned 4 pt apart.
+/// The AppKit view behind `FileDragSource`: one dragging item per URL; the first few are drawn fanned 4 pt apart.
 public final class DragSourceView: NSView, NSDraggingSource {
-    public var urls: [URL]
+    /// How many dragging items carry the image; the rest add their file to the pasteboard and nothing to the picture,
+    /// so a 2,000-item drag starts as fast as a 5-item one and its image stays small.
+    public static let drawnItems = 5
+    static let fan: CGFloat = 4
+
+    /// The files the next drag carries, asked for at its start.
+    public var provide: () -> [URL]
+    public var urls: [URL] {
+        get { provide() }
+        set { provide = { newValue } }
+    }
     public var image: NSImage {
         didSet { needsDisplay = true }
     }
@@ -59,7 +80,7 @@ public final class DragSourceView: NSView, NSDraggingSource {
     private var dragged = false
 
     public init(urls: [URL], image: NSImage) {
-        self.urls = urls
+        provide = { urls }
         self.image = image
         super.init(frame: .zero)
     }
@@ -99,11 +120,16 @@ public final class DragSourceView: NSView, NSDraggingSource {
         beginDraggingSession(with: items, event: event, source: self)
     }
 
-    /// One item per URL, each a file URL on the drag pasteboard (what the trigger and Finder read), fanned 4 pt apart.
+    /// One item per URL, each a file URL on the drag pasteboard (what the trigger and Finder read). The first
+    /// `drawnItems` are fanned 4 pt apart with the image; the rest sit under the first with no size and no image.
     public static func draggingItems(for urls: [URL], frame: CGRect, image: NSImage? = nil) -> [NSDraggingItem] {
         urls.enumerated().map { offset, url in
             let item = NSDraggingItem(pasteboardWriter: url as NSURL)
-            let shift = CGFloat(offset) * 4
+            guard offset < drawnItems else {
+                item.setDraggingFrame(CGRect(origin: frame.origin, size: .zero), contents: nil)
+                return item
+            }
+            let shift = CGFloat(offset) * fan
             item.setDraggingFrame(frame.offsetBy(dx: shift, dy: -shift), contents: image)
             return item
         }

@@ -1,4 +1,5 @@
 import AppKit
+import ZivletActions
 import ZivletNotch
 import ZivletNotchCore
 import ZivletTrigger
@@ -14,6 +15,11 @@ import ZivletTrigger
         public var trayModel: BoxViewModel {
             BoxPreview.model(.grid, finish: .glass, maxHeight: 600, icon: icon)
         }
+
+        public var trayCount: Int { trayModel.items.count }
+        public var trayBytes: Int64 { trayModel.totalBytes }
+        public func prepareTray(redraw: @escaping () -> Void) {}
+        public func report(_ result: ActionResult) {}
 
         public func addDrop(_ pasteboard: NSPasteboard) async -> TrayAdded {
             TrayAdded(outcome: AddOutcome(added: 0), ids: [])

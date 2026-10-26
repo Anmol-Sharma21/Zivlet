@@ -36,10 +36,12 @@ struct SystemBookmarksTests {
         let item = try ShelfItem.referencing(file, using: bookmarks, now: .t0)
         let moved = try dir.folder("other").appending(path: "a renamed.txt")
         try FileManager.default.moveItem(at: file, to: moved)
-        let first = try ShelfFixtures.shelf(item).resolving(with: bookmarks, maker: bookmarks, isMounted: mounted)
+        let first = try ShelfFixtures.shelf(item).resolving(
+            with: bookmarks, maker: bookmarks, isMounted: mounted, storage: ShelfOwnershipTests.storage)
         #expect(first.statuses[item.id] == .present(path: real(moved)))
         #expect(first.shelf.items.first?.displayName == "a renamed.txt")
-        let again = first.shelf.resolving(with: bookmarks, maker: bookmarks, isMounted: mounted)
+        let again = first.shelf.resolving(
+            with: bookmarks, maker: bookmarks, isMounted: mounted, storage: ShelfOwnershipTests.storage)
         #expect(again.shelf == first.shelf)  // nothing stale the second time
     }
 
@@ -49,7 +51,8 @@ struct SystemBookmarksTests {
         let item = try ShelfItem.referencing(file, using: bookmarks, now: .t0)
         let trashed = try dir.folder(".Trash").appending(path: "a.txt")
         try FileManager.default.moveItem(at: file, to: trashed)
-        let resolved = try ShelfFixtures.shelf(item).resolving(with: bookmarks, maker: bookmarks, isMounted: mounted)
+        let resolved = try ShelfFixtures.shelf(item).resolving(
+            with: bookmarks, maker: bookmarks, isMounted: mounted, storage: ShelfOwnershipTests.storage)
         #expect(resolved.statuses[item.id] == .inTrash(path: real(trashed)))
     }
 

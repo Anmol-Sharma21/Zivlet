@@ -30,16 +30,23 @@ extension BoxController {
     /// Draws the presentation: the content, the frame for its base, on or off screen.
     func render() {
         let model = viewModel
+        rendered = model
+        renders += 1
         hosting.rootView = AnyView(BoxPanelView(model: model) { [weak self] in self?.press($0) })
         guard let frame = frame(for: model) else {
             panel.orderOut(nil)
             report(nil)
             return
         }
-        panel.setFrame(frame.cgRect, display: true)
+        if panel.frame != frame.cgRect { panel.setFrame(frame.cgRect, display: true) }
         if !panel.isVisible { panel.show() }
         report(frame.cgRect)
-        loadThumbnails(model)
+    }
+
+    /// Reduce Transparency or Increase Contrast changed: a shown panel takes the new finish at once (19c §6).
+    public func displayOptionsChanged() {
+        guard panel.isVisible else { return }
+        render()
     }
 
     private func report(_ frame: CGRect?) {
@@ -96,23 +103,6 @@ extension BoxController {
             presentation = presentation.withDock(nil)
         case .below(let island):
             place(.point(Point2D(x: island.midX, y: island.minY - PanelFrames.inset)))
-        }
-    }
-
-    /// Asks Quick Look for the visible items' thumbnails once per show; each arrival redraws.
-    func loadThumbnails(_ model: BoxViewModel) {
-        let shown = model.items.prefix(ThumbnailCache.countLimit / 4).filter { $0.url != nil }
-        thumbnails.setVisible(Set(shown.map(\.id)))
-        for item in shown where !requestedThumbnails.contains(item.id) {
-            guard let url = item.url else { continue }
-            requestedThumbnails.insert(item.id)
-            Task { [weak self] in
-                guard let self, let image = await thumbnails.thumbnail(for: item.id, url: url, size: .cell) else {
-                    return
-                }
-                images[item.id] = image
-                render()
-            }
         }
     }
 }

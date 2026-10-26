@@ -107,12 +107,18 @@ extension BoxController {
         return true
     }
 
-    /// The window ended (or Zivlet quits, or another Clear starts): the cleared owned copies go to the Trash.
+    /// The window ended (or Zivlet quits, or another Clear starts): the cleared owned copies go to the Trash. A copy
+    /// the Trash refuses comes back into its box with a line, so it can be tried again and is never left unreachable.
     func finishClear(_ batch: BatchID) {
         guard let pending = pendingClear, pending.batch == batch else { return }
         pendingClear = nil
-        let lines = trashOwnedCopies(pending.shelf.items).lines
-        if !lines.isEmpty { report(.failed(ActionCard(title: BoxCopy.nothingTrashed, lines: lines))) }
+        let (kept, lines) = trashOwnedCopies(pending.shelf.items)
+        guard !lines.isEmpty else { return }
+        if let box = library.boxes.first(where: { $0.id == pending.shelf.id }) {
+            let back = pending.shelf.items.filter { kept.contains($0.id) }
+            replace(library.replacing(box.adding(back, cap: ShelfLibrary.maxItemsPerBox).0))
+        }
+        report(.failed(ActionCard(title: BoxCopy.someStayed, lines: lines)))
     }
 
     /// Locate… for the one selected item that is missing: the open panel, then a new bookmark at the chosen place.
@@ -121,12 +127,12 @@ extension BoxController {
             let item = shelf.items.first(where: { $0.id == id }), statuses[id]?.isAvailable == false
         else { return }
         let folder = URL(filePath: item.lastKnownPath).deletingLastPathComponent()
-        running = Task { [ports] in
+        runBulk { [self, ports] in
             guard let found = await ports.locator.locate(item.displayName, lastSeenIn: folder), found.isFileURL,
                 let box = library.boxes.first(where: { $0.id == shelf.id })
             else { return }
             let path = found.standardizedFileURL.path
-            let (next, failed) = box.relocating([id: path], using: ports.maker)
+            let (next, failed) = box.relocating([id: path], using: ports.maker, storage: ports.storage)
             guard failed.isEmpty else {
                 return report(.failed(ActionCard(title: ShelfError.bookmarkFailed.userMessage)))
             }
@@ -147,16 +153,20 @@ extension BoxController {
         replace(library.replacing(shelf.removing(Set(gone.map(\.id)))))
     }
 
-    /// Trashes the owned copies among `items` (a copy already gone counts as done); the ids whose copy the Trash
-    /// refused, with a line each.
+    /// Trashes the owned copies among `items`; the ids whose copy the Trash refused, with a line each. A copy that
+    /// is gone counts as done, and so does a path that now holds something else: the box only trashes the file the
+    /// item itself points at, never a symbolic link or whatever later took the copy's name.
     func trashOwnedCopies(_ items: [ShelfItem]) -> (kept: Set<UUID>, lines: [String]) {
         var kept: Set<UUID> = []
         var lines: [String] = []
         for item in items {
-            guard case .owned(let relative) = item.ownership,
-                let url = try? ports.storage.url(forRelativePath: relative),
-                FileManager.default.fileExists(atPath: url.path)
-            else { continue }
+            guard case .owned(let relative) = item.ownership else { continue }
+            guard let url = try? ports.storage.url(forRelativePath: relative) else {
+                kept.insert(item.id)
+                lines.append(BoxCopy.copyStayed(item.displayName))
+                continue
+            }
+            guard isOwnCopy(item, at: url) else { continue }
             do {
                 try ports.trash.trash(url)
             } catch {
@@ -165,5 +175,19 @@ extension BoxController {
             }
         }
         return (kept, lines)
+    }
+
+    /// The file at `url` is there, is not a symbolic link, and is the item's own: the item's path (and its status,
+    /// when resolved) name it, and its identity matches when both are known.
+    func isOwnCopy(_ item: ShelfItem, at url: URL) -> Bool {
+        let path = url.standardizedFileURL.path
+        guard let values = try? url.resourceValues(forKeys: [.isSymbolicLinkKey]), values.isSymbolicLink != true,
+            URL(filePath: item.lastKnownPath).standardizedFileURL.path == path
+        else { return false }
+        if case .present(let now) = statuses[item.id], URL(filePath: now).standardizedFileURL.path != path {
+            return false
+        }
+        if let identity = item.identity, let found = ports.maker.identity(of: url), found != identity { return false }
+        return true
     }
 }

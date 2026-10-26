@@ -62,6 +62,25 @@ public struct OwnedStorage: Sendable {
         return root.appending(path: relative, directoryHint: .notDirectory)
     }
 
+    /// Every entry `<box id>/<name>` under the root whose relative path is not in `keeping`: copies no item points
+    /// at (a crash inside Clear's undo window, a drop the box did not take). Hidden files and anything outside a
+    /// box folder are left alone; nothing below a box folder's own entries is looked at.
+    public func strays(keeping: Set<String>) -> [URL] {
+        let manager = FileManager.default
+        let folders = (try? manager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
+        return folders.filter { UUID(uuidString: $0.lastPathComponent) != nil }.flatMap { folder in
+            let entries =
+                (try? manager.contentsOfDirectory(
+                    at: folder, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
+            return entries.filter { !keeping.contains("\(folder.lastPathComponent)/\($0.lastPathComponent)") }
+        }.sorted { $0.path < $1.path }
+    }
+
+    /// Removes the box's folder when it holds nothing (`rmdir`, which refuses a folder with anything in it).
+    public func removeFolderIfEmpty(for box: UUID) {
+        _ = rmdir(folder(for: box).path)
+    }
+
     /// Bytes of the owned copies of one box; 0 when it has none.
     public func bytes(in box: UUID) -> Int64 { Self.bytes(under: folder(for: box)) }
 

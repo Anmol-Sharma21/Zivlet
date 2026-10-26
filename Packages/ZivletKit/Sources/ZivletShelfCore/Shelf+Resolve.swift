@@ -13,9 +13,11 @@ public struct ResolvedShelf: Sendable, Equatable {
 }
 
 extension Shelf {
-    /// Resolves every item, lazily called when the box or tray is shown, never at launch (P2-141).
+    /// Resolves every item, lazily called when the box or tray is shown, never at launch (P2-141). A stale owned copy
+    /// found outside `storage` becomes a reference.
     public func resolving(
-        with resolver: any BookmarkResolving, maker: any BookmarkMaking, isMounted: (String) -> Bool
+        with resolver: any BookmarkResolving, maker: any BookmarkMaking, isMounted: (String) -> Bool,
+        storage: OwnedStorage
     ) -> ResolvedShelf {
         var statuses: [UUID: ItemStatus] = [:]
         var failed: Set<UUID> = []
@@ -25,7 +27,7 @@ extension Shelf {
             statuses[item.id] = status
             guard case .resolved(let path, true) = resolution, status.isAvailable else { return item }
             do {
-                return try item.relocated(to: path, bookmark: maker.bookmark(for: URL(filePath: path)))
+                return try item.relocated(to: path, using: maker, storage: storage)
             } catch {
                 failed.insert(item.id)
                 return item

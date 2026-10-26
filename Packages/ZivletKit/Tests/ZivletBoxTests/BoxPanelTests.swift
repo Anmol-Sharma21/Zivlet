@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 
 @testable import ZivletBox
@@ -11,7 +12,7 @@ struct BoxPanelTests {
         #expect(panel.styleMask.contains(.nonactivatingPanel) && panel.styleMask.contains(.borderless))
         #expect(panel.level == .floating)
         #expect(panel.collectionBehavior.contains([.canJoinAllSpaces, .fullScreenAuxiliary]))
-        #expect(panel.canBecomeKey && !panel.canBecomeMain && panel.becomesKeyOnlyIfNeeded)
+        #expect(panel.canBecomeKey && !panel.canBecomeMain && !panel.becomesKeyOnlyIfNeeded)
         #expect(panel.appearance?.name == .darkAqua)
         #expect(!panel.hidesOnDeactivate && !panel.isOpaque && panel.hasShadow && panel.backgroundColor == .clear)
         #expect(panel.isMovableByWindowBackground)
@@ -23,6 +24,23 @@ struct BoxPanelTests {
         panel.show()
         #expect(panel.isVisible && !panel.isKeyWindow)
         panel.orderOut(nil)
+    }
+
+    @Test func aRealClickOnItsContentMakesItKey() throws {
+        let panel = BoxPanel()
+        panel.contentView = NSHostingView(rootView: Color.black.frame(width: 200, height: 120))
+        panel.setFrame(NSRect(x: -5000, y: -5000, width: 200, height: 120), display: false)
+        panel.show()
+        defer { panel.orderOut(nil) }
+        let point = NSPoint(x: 100, y: 60)
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = try #require(
+                NSEvent.mouseEvent(
+                    with: type, location: point, modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber,
+                    context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+            panel.sendEvent(event)
+        }
+        #expect(panel.isKeyWindow)
     }
 
     @Test func aClickMakesItKeyAndEscapeReachesTheClosure() {

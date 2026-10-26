@@ -85,6 +85,31 @@ struct OwnedStorageTests {
         #expect(storage.bytes(in: UUID()) == 0)
     }
 
+    @Test func straysAreTheBoxFolderEntriesNoItemKeeps() throws {
+        let dir = try TempDir()
+        let storage = OwnedStorage(root: dir.url)
+        let box = UUID()
+        let kept = try storage.reserve(name: "kept.txt", in: box)
+        try Data("k".utf8).write(to: kept)
+        let stray = try storage.reserve(name: "stray.txt", in: box)
+        try Data("s".utf8).write(to: stray)
+        try dir.file("not-a-box/x.txt", "left alone")
+        try dir.file("\(box.uuidString)/.DS_Store", "hidden")
+        let strays = storage.strays(keeping: ["\(box.uuidString)/kept.txt"])
+        #expect(strays.map(\.lastPathComponent) == ["stray.txt"])
+    }
+
+    @Test func anEmptyBoxFolderIsRemovedAndAFullOneStays() throws {
+        let storage = OwnedStorage(root: try TempDir().url)
+        let (empty, full) = (UUID(), UUID())
+        _ = try storage.makeFolder(for: empty)
+        try Data("x".utf8).write(to: try storage.reserve(name: "a.txt", in: full))
+        storage.removeFolderIfEmpty(for: empty)
+        storage.removeFolderIfEmpty(for: full)
+        #expect(!FileManager.default.fileExists(atPath: storage.folder(for: empty).path))
+        #expect(FileManager.default.fileExists(atPath: storage.folder(for: full).path))
+    }
+
     @Test func theStandardRootLivesInApplicationSupport() {
         #expect(OwnedStorage.standard().root.path.hasSuffix("Application Support/Zivlet/Box"))
     }

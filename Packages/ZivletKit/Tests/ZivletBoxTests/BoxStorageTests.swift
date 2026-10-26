@@ -36,6 +36,7 @@ struct BoxStorageTests {
 
     @Test func emptyBoxStorageRemovesOwnedItemsFromEveryBoxAfterTheInlineConfirm() async throws {
         let rig = try BoxRig()
+        rig.trash.removes = true
         let box = rig.controller()
         box.start()
         _ = await box.add(try rig.files(1), newBox: false)

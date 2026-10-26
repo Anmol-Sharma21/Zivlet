@@ -8,13 +8,13 @@ extension BoxController {
         let items = (current?.items ?? []).map { item in
             BoxItemModel(id: item.id, name: item.displayName, bytes: item.byteCount, status: statuses[item.id])
         }
-        let placeholders = Dictionary(
-            uniqueKeysWithValues: items.map { ($0.id, images[$0.id] ?? thumbnails.placeholder(forName: $0.name)) })
+        let images = Dictionary(items.map { ($0.id, image(for: $0)) }, uniquingKeysWith: { first, _ in first })
         return BoxViewModel(
             items: items, selection: selection.selected, presentation: presentation,
-            viewMode: current?.viewMode ?? .grid, finish: ports.finish(), images: placeholders,
+            viewMode: current?.viewMode ?? .grid, finish: ports.finish(), images: images,
             maxHeight: CGFloat(PanelFrames.maxHeight(in: display(for: current?.frame))),
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, storageBytes: ownedBytes)
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, storageBytes: ownedBytes,
+            focus: selection.focus)
     }
 
     /// A press in the panel or the tray.
@@ -31,6 +31,8 @@ extension BoxController {
             let hit = GridSelection.marquee(rect, cells: BoxGrid.cells(count: order.count)).map { order[$0] }
             select(GridSelection(selected: Set(hit), anchor: hit.first, focus: hit.last))
         case .more: break
+        case .shown(let id, let shown): itemShown(id, shown)
+        case .quickLook: showQuickLook()
         case .cancelBusy: running?.cancel()
         case .share: share()
         case .airDrop: airDrop()

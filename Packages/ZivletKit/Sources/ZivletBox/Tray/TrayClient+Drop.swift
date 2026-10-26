@@ -1,4 +1,5 @@
 import AppKit
+import ZivletActions
 import ZivletNotch
 import ZivletNotchCore
 
@@ -67,16 +68,8 @@ extension TrayClient: IslandDropHandling {
     }
 
     private func show(_ added: TrayAdded, on display: UInt32) {
-        let outcome = added.outcome
-        let toast: TrayToastModel
-        if let text = outcome.toast {
-            toast = TrayToastModel(
-                display: display, text: text, spoken: BoxSpeech.added(outcome.added), failed: false,
-                undoIDs: added.ids)
-        } else {
-            let reason = outcome.failure ?? IntakeResult.nothingUsable
-            toast = TrayToastModel(display: display, text: reason, spoken: reason, failed: true, undoIDs: [])
-        }
+        let toast = Self.toast(for: added, on: display)
+        if let card = Self.card(for: added.outcome) { box.report(.failed(card)) }
         lastToast = toast
         hosts.request(
             IslandRequest(client: .tray, display: display, resting: .toast, hoverSurface: .expanded), from: .tray)
@@ -90,6 +83,42 @@ extension TrayClient: IslandDropHandling {
         toastTask?.cancel()
         toastTask = nil
         lastToast = nil
+    }
+}
+
+extension TrayClient {
+    /// The toast for a drop, from the same mapping as the panel's and the slice's (`AddOutcome.actionResult`):
+    /// "Added 3" with Undo, "Already in the box", or the refusal with the triangle.
+    static func toast(for added: TrayAdded, on display: UInt32) -> TrayToastModel {
+        let outcome = added.outcome
+        switch outcome.actionResult {
+        case .done(let text, _, _), .partial(let text, _, _):
+            let spoken = outcome.added > 0 ? BoxSpeech.added(outcome.added) : text
+            return TrayToastModel(display: display, text: text, spoken: spoken, failed: false, undoIDs: added.ids)
+        case .failed(let card):
+            let reason = outcome.failure ?? String(card.title.trimmingSuffix("."))
+            return TrayToastModel(display: display, text: reason, spoken: reason, failed: true, undoIDs: [])
+        case .cancelled:
+            return TrayToastModel(
+                display: display, text: BoxCopy.nothingAdded, spoken: BoxCopy.nothingAdded, failed: true, undoIDs: [])
+        }
+    }
+
+    /// The card listing what a drop left out (duplicates beside new items, refusals, items over the cap), shown
+    /// beside the toast; nil when the toast says it all.
+    static func card(for outcome: AddOutcome) -> ActionCard? {
+        switch outcome.actionResult {
+        case .done, .cancelled: nil
+        case .partial(_, let card, _): card
+        case .failed(let card): card.lines.isEmpty ? nil : card
+        }
+    }
+}
+
+extension String {
+    /// The string without one trailing `suffix`.
+    func trimmingSuffix(_ suffix: String) -> Substring {
+        hasSuffix(suffix) ? dropLast(suffix.count) : Substring(self)
     }
 }
 

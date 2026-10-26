@@ -33,6 +33,8 @@ public final class TrayClient {
     var dropTask: Task<Void, Never>?
     /// Displays whose island is held (pointer, focus, a drag from the strip): a toast there waits.
     var heldDisplays: Set<UInt32> = []
+    /// Displays whose compact view has asked the box to resolve and load thumbnails since it opened.
+    var preparedDisplays: Set<UInt32> = []
 
     public init(
         hosts: IslandHosts, box: any TrayBox, opensWhileDragging: @escaping () -> Bool,
@@ -82,7 +84,7 @@ public final class TrayClient {
     /// Puts every display at rest: a sensor on notch displays while the box has items, no request elsewhere. The
     /// display showing the drop target or a drop's toast keeps it.
     func rest() {
-        let hasItems = !box.trayModel.items.isEmpty
+        let hasItems = box.trayCount > 0
         for display in hosts.displayIDs where display != dropTarget?.display && display != lastToast?.display {
             guard hasItems, let geometry = hosts.display(display), NotchGeometry.hasNotch(geometry) else {
                 hosts.withdraw(.tray, on: display)

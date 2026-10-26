@@ -41,12 +41,25 @@ public struct ShelfItem: Sendable, Equatable, Codable, Identifiable {
 
     public var isOwned: Bool { ownership != .reference }
 
-    /// The same item at a new place (a stale bookmark was refreshed); the name follows the file.
-    public func relocated(to path: String, bookmark: Data) throws(ShelfError) -> ShelfItem {
+    /// The same item at a new place (a stale bookmark was refreshed, Move to…, Locate…). The name follows the file and
+    /// the identity is the new file's, so de-dup keeps working after a move across volumes. An owned copy stays owned
+    /// only while it is still inside `storage`: once elsewhere it is the person's file, so the box never trashes it,
+    /// nor whatever later takes its old name in the box's folder.
+    public func relocated(
+        to path: String, bookmark: Data, identity: FileIdentity?, storage: OwnedStorage
+    ) throws(ShelfError) -> ShelfItem {
         let name = (path as NSString).lastPathComponent
         return try ShelfItem(
             id: id, bookmark: bookmark, lastKnownPath: path, displayName: name.isEmpty ? displayName : name,
-            byteCount: byteCount, addedAt: addedAt, ownership: ownership, identity: identity)
+            byteCount: byteCount, addedAt: addedAt, ownership: Self.ownership(ownership, at: path, in: storage),
+            identity: identity)
+    }
+
+    /// A reference stays one; an owned copy keeps its ownership, at its new relative path, only inside `storage`.
+    static func ownership(_ old: Ownership, at path: String, in storage: OwnedStorage) -> Ownership {
+        guard case .owned = old, let relative = storage.relativePath(of: URL(filePath: path)), isInsideFolder(relative)
+        else { return .reference }
+        return .owned(relativePath: relative)
     }
 
     /// The same item with a newly read size; nil for folders or when the size is unknown.
@@ -92,9 +105,24 @@ extension ShelfItem {
             && !name.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }
 
-    /// Relative, non-empty, without NUL bytes or `..` components.
+    /// Exactly `<box id>/<file name>`: a UUID folder and one valid name that is not `.` or `..`. Anything else
+    /// (the storage root, a whole box folder, a nested path) would let a damaged `boxes.json` steer what the box
+    /// trashes.
     static func isInsideFolder(_ relative: String) -> Bool {
-        !relative.isEmpty && !relative.hasPrefix("/") && !relative.utf8.contains(0)
-            && relative.utf8.count <= maxPathBytes && !relative.split(separator: "/").contains("..")
+        let parts = relative.split(separator: "/", omittingEmptySubsequences: false)
+        guard parts.count == 2, UUID(uuidString: String(parts[0])) != nil else { return false }
+        let name = String(parts[1])
+        return name != "." && name != ".." && isValidName(name)
+    }
+}
+
+extension ShelfItem {
+    /// The item at `path` with a bookmark and identity made there by `maker`.
+    func relocated(to path: String, using maker: any BookmarkMaking, storage: OwnedStorage) throws(ShelfError)
+        -> ShelfItem
+    {
+        let url = URL(filePath: path)
+        return try relocated(
+            to: path, bookmark: maker.bookmark(for: url), identity: maker.identity(of: url), storage: storage)
     }
 }

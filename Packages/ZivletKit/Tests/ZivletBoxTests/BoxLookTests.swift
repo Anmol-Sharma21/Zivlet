@@ -56,7 +56,7 @@ struct BoxLookTests {
     }
 
     @Test func everySymbolOf19cIsListedOnce() {
-        #expect(BoxSymbols.all.count == 24 && Set(BoxSymbols.all).count == 24)
+        #expect(BoxSymbols.all.count == 25 && Set(BoxSymbols.all).count == 25)
     }
 }
 

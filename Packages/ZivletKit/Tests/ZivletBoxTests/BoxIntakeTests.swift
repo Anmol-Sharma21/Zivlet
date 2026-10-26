@@ -82,6 +82,36 @@ struct BoxIntakeTests {
         #expect(result.items.map(\.displayName) == ["Clipping.png"] && (result.ownedBytes) > 0)
     }
 
+    @Test func aPromiseTheSenderDidNotKeepSaysSo() async throws {
+        let dir = try TempDir()
+        let intake = BoxIntake(
+            maker: FakeBoxBookmarks(), storage: OwnedStorage(root: dir.url.appending(path: "Box")),
+            promises: FakePromises(names: ["a.eml"], failed: 1))
+        let result = await intake.receive(from: TestPasteboard().board, box: UUID())
+        #expect(result.items.map(\.displayName) == ["a.eml"])
+        #expect(result.rejected == [ShelfError.promiseFailed.userMessage])
+    }
+
+    @Test func pasteboardItemsThatAreNotFilesAreNamed() async throws {
+        let dir = try TempDir()
+        let pasteboard = TestPasteboard(urls: [try dir.file("a.txt")], string: "a note")
+        let result = await intake(dir).receive(from: pasteboard.board, box: UUID())
+        #expect(result.items.map(\.displayName) == ["a.txt"])
+        #expect(result.rejected == [BoxCopy.notFiles(1)])
+    }
+
+    @Test func aClippingTooLargeIsRefusedAndNothingIsWritten() async throws {
+        let dir = try TempDir()
+        let storage = OwnedStorage(root: dir.url.appending(path: "Box"))
+        let intake = BoxIntake(
+            maker: FakeBoxBookmarks(), storage: storage, promises: FakePromises(names: []), maxClippingBytes: 4)
+        let pasteboard = TestPasteboard(string: "too long")
+        let result = await intake.receive(from: pasteboard.board, box: UUID())
+        #expect(result.items.isEmpty)
+        #expect(result.rejected == [ShelfError.clippingTooLarge.userMessage])
+        #expect(!FileManager.default.fileExists(atPath: storage.root.path))
+    }
+
     @Test func nothingUsableSaysWhy() async throws {
         let dir = try TempDir()
         let pasteboard = TestPasteboard()

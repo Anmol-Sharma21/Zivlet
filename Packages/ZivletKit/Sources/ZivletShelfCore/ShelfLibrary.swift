@@ -22,16 +22,23 @@ public struct ShelfLibrary: Sendable, Equatable, Codable {
 
     public var current: Shelf? { boxes.first { $0.id == currentID } }
 
+    /// The id of the box a drop to `destination` lands in: the current box, or nil when the drop makes a new box.
+    /// The caller picks the new box's id then, writes owned copies into its folder and passes it as `newID`.
+    public func destinationID(_ destination: Destination) -> UUID? {
+        destination == .current ? current?.id : nil
+    }
+
     /// Adds `items` to the current box (made as "Box" when there is none) or to a new numbered box, which becomes
-    /// current. The box is marked used at `now`.
-    public func adding(_ items: [ShelfItem], to destination: Destination, now: Date) throws(ShelfError) -> (
-        ShelfLibrary, AddReport
-    ) {
+    /// current; a new box takes `newID`, so owned copies written for it sit in its own folder. The box is marked used
+    /// at `now`.
+    public func adding(
+        _ items: [ShelfItem], to destination: Destination, now: Date, newID: UUID = UUID()
+    ) throws(ShelfError) -> (ShelfLibrary, AddReport) {
         let target: Shelf
         if destination == .current, let current {
             target = current
         } else {
-            target = try newBox()
+            target = try newBox(id: newID)
         }
         let (filled, report) = target.adding(items, cap: Self.maxItemsPerBox)
         return (upserting(filled.touched(at: now)), report)
@@ -56,9 +63,18 @@ public struct ShelfLibrary: Sendable, Equatable, Codable {
         return ShelfLibrary(boxes: boxes, currentID: id)
     }
 
-    private func newBox() throws(ShelfError) -> Shelf {
+    private func newBox(id: UUID) throws(ShelfError) -> Shelf {
         guard boxes.count < Self.maxBoxes else { throw .tooManyBoxes }
-        return try Shelf.empty(name: nextName())
+        return try Shelf.empty(name: nextName(), id: id)
+    }
+
+    /// The owned relative paths of every item in every box.
+    public var ownedPaths: Set<String> {
+        Set(
+            boxes.flatMap(\.items).compactMap { item in
+                if case .owned(let relative) = item.ownership { return relative }
+                return nil
+            })
     }
 
     /// "Box", then "Box 2", "Box 3" …: the first name no box uses.

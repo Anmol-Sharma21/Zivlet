@@ -8,19 +8,27 @@ public protocol ThumbnailMaking {
     func thumbnail(for url: URL, side: Double, scale: Double) async -> CGImage?
 }
 
-/// `QLThumbnailGenerator`: the work happens off the main thread; a cancelled task cancels the request.
+/// `QLThumbnailGenerator`: the work happens off the main thread; a cancelled task cancels the request. Icon mode
+/// gives Finder's decorated thumbnails (a page with its edge and shadow, the type's icon for plain text), so a box of
+/// documents does not turn into a wall of white squares on the dark glass.
 public struct SystemThumbnailMaker: ThumbnailMaking {
     public init() {}
 
     public func thumbnail(for url: URL, side: Double, scale: Double) async -> CGImage? {
-        let request = QLThumbnailGenerator.Request(
-            fileAt: url, size: CGSize(width: side, height: side), scale: scale, representationTypes: .thumbnail)
+        let request = Self.request(for: url, side: side, scale: scale)
         let generator = QLThumbnailGenerator.shared
         return await withTaskCancellationHandler {
             try? await generator.generateBestRepresentation(for: request).cgImage
         } onCancel: {
             generator.cancel(request)
         }
+    }
+
+    nonisolated static func request(for url: URL, side: Double, scale: Double) -> QLThumbnailGenerator.Request {
+        let request = QLThumbnailGenerator.Request(
+            fileAt: url, size: CGSize(width: side, height: side), scale: scale, representationTypes: .thumbnail)
+        request.iconMode = true
+        return request
     }
 }
 

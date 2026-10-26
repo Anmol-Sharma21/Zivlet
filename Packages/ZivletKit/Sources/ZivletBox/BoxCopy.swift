@@ -18,6 +18,24 @@ nonisolated enum BoxCopy {
         }
     }
 
+    static let someNotAdded = "Some items weren't added."
+    static let nothingAdded = "Nothing was added."
+    static let alreadyInBox = "Already in the box"
+    static let boxFull = "The box is full."
+    static func alreadyIn(_ name: String) -> String { "\(name) is already in the box." }
+    static func didNotFit(_ name: String) -> String {
+        "\(name) didn't fit: a box holds \(ShelfLibrary.maxItemsPerBox.formatted()) items."
+    }
+    static func notFiles(_ count: Int) -> String {
+        count == 1
+            ? "1 item couldn't be added: only files and folders on this Mac can go in a box."
+            : "\(count) items couldn't be added: only files and folders on this Mac can go in a box."
+    }
+    static let leftOut = "Some items were left out."
+    static func lostTrack(_ name: String) -> String { "\(name) moved, but the box lost track of it." }
+    static func changed(_ name: String) -> String { "\(name) is no longer the file that was added." }
+    static let sharingFailed = "Sharing didn't finish."
+
     static let cleared = "Cleared"
     static let undo = "Undo"
     static let storageEmptied = "Box storage emptied"
@@ -75,11 +93,12 @@ nonisolated enum BoxCopy {
         case .list: "List"
         case .openPanel: "Open Drop Box"
         case .locate: "Locate…"
+        case .quickLook: "Quick Look"
         case .removeMissing: "Remove Missing"
         case .emptyStorage: "Empty Box Storage"
         case .cancelBusy, .confirm(false): "Cancel"
         case .confirm(true): "Confirm"
-        case .select, .clearSelection, .marquee, .draggedOut: ""
+        case .select, .clearSelection, .marquee, .draggedOut, .shown: ""
         }
     }
 }

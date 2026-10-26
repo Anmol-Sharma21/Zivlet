@@ -24,10 +24,21 @@ public final class BoxController {
     var statuses: [UUID: ItemStatus] = [:]
     var selection = GridSelection()
     var typed = TypeSelect()
-    var images: [UUID: NSImage] = [:]
     var resolvedBox: UUID?
-    var requestedThumbnails: Set<UUID> = []
+    /// The cells on screen now (their `onAppear` and `onDisappear`): the only items whose thumbnails are asked for.
+    var onScreen: Set<UUID> = []
+    /// One redraw for every thumbnail that arrives in the same turn.
+    var thumbnailRedraw: Task<Void, Never>?
+    /// Redraws the tray's compact view when one of its thumbnails arrives.
+    var trayRedraw: (() -> Void)?
+    /// The last model drawn and how many draws there were, for the tests.
+    var rendered: BoxViewModel?
+    var renders = 0
     var canSave = true
+    /// The library as last written or read, so an unchanged library is not written again.
+    var lastSaved: ShelfLibrary?
+    /// The last save error told to the person; the same error is not told again until a save works.
+    var lastSaveError: BoxStoreError?
     /// The bulk action in flight (AirDrop, Move, Copy to, Locate), so tests and the next action can wait for it.
     var running: Task<Void, Never>?
     /// Move to Trash of more than one item, waiting for the inline answer.
@@ -35,7 +46,7 @@ public final class BoxController {
     /// The last Clear, while its Undo still works, and the wait that ends it.
     var pendingClear: PendingClear?
     var clearing: Task<Void, Never>?
-    /// Bytes of every box's owned copies, counted on disk at launch, on show and after every change.
+    /// Bytes of every box's owned copies, from their items' sizes (no walk of the folder on the main thread).
     var ownedBytes: Int64 = 0
 
     /// When items leave the box on their own (Settings › Drop Box); off until the app says otherwise.
@@ -59,6 +70,8 @@ public final class BoxController {
         intake = BoxIntake(maker: ports.maker, storage: ports.storage, promises: ports.promises, now: ports.now)
         thumbnails = ThumbnailCache(maker: ports.thumbnails)
         wirePanel()
+        actions.sharePicker.onFailure = { [weak self] in self?.report(.failed(ActionCard(title: BoxCopy.sharingFailed)))
+        }
     }
 
     public var current: Shelf? { library.current }
@@ -66,15 +79,19 @@ public final class BoxController {
     /// The system icon for a name's type; no file is read.
     public func placeholder(forName name: String) -> NSImage { thumbnails.placeholder(forName: name) }
 
-    /// Loads the boxes and restores the panel as it was, without resolving anything.
+    /// Loads the boxes and restores the panel as it was, without resolving anything. A load that lost something or
+    /// set the file aside says so; only a clean load sweeps copies no item points at (a crash in Clear's window).
     public func start() {
-        switch ports.store.load() {
-        case .loaded(let loaded, _): library = loaded
-        case .newer:
-            canSave = false
-            onError(BoxStoreError.wouldOverwriteNewer.userMessage)
-        case .empty, .damaged: break
+        let load = ports.store.load()
+        if case .loaded(let loaded, let dropped) = load {
+            library = loaded
+            if dropped == 0 {
+                lastSaved = loaded
+                sweepStrays()
+            }
         }
+        canSave = load.canSave
+        if let notice = load.notice { onError(notice) }
         clearAutomatically(left: [])
         refreshStorage()
         let shelf = library.current
@@ -107,21 +124,6 @@ public final class BoxController {
     }
 
     public func dock(_ edge: DockEdge) { apply(.dock(edge)) }
-
-    /// Adds files to the current box, or to a new one (⌥ on BOX, or the setting).
-    public func add(_ urls: [URL], newBox: Bool) async -> AddOutcome {
-        let local = urls.filter(\.isFileURL)
-        guard !local.isEmpty else { return AddOutcome(added: 0, failure: IntakeResult.nothingUsable) }
-        return store(intake.references(local), newBox: newBox)
-    }
-
-    /// A drop on the panel, inside `performDragOperation`.
-    public func receiveDrop(_ pasteboard: NSPasteboard) async -> AddOutcome {
-        let result = await intake.receive(from: pasteboard, box: library.current?.id ?? UUID())
-        let outcome = store(result, newBox: false)
-        apply(.dropped)
-        return outcome
-    }
 
     public func dragEntered(count: Int) { apply(.dragEntered(count: count)) }
 
@@ -158,36 +160,16 @@ public final class BoxController {
             case .present:
                 resolveIfNeeded()
                 clearAutomatically(left: [])
-                refreshStorage()
             case .dismiss:
                 resolvedBox = nil
-                requestedThumbnails = []
+                onScreen = []
+                thumbnails.setVisible([], size: .cell)
             case .persist: persist()
             case .confirmed(let kind): confirmed(kind)
             case .cancelBusy: running?.cancel()
             }
         }
         render()
-    }
-
-    func store(_ result: IntakeResult, newBox: Bool) -> AddOutcome { adding(result, newBox: newBox).outcome }
-
-    /// Adds the intake's items and says which ones went in, so a tray drop can be undone exactly.
-    func adding(_ result: IntakeResult, newBox: Bool) -> TrayAdded {
-        guard !result.items.isEmpty else {
-            return TrayAdded(
-                outcome: AddOutcome(added: 0, rejected: result.rejected, failure: result.rejected.first), ids: [])
-        }
-        do {
-            let (next, report) = try library.adding(result.items, to: newBox ? .newBox : .current, now: ports.now())
-            replace(next)
-            let outcome = AddOutcome(
-                added: report.added.count, duplicates: report.duplicates + report.overCap, rejected: result.rejected)
-            return TrayAdded(outcome: outcome, ids: report.added)
-        } catch {
-            return TrayAdded(
-                outcome: AddOutcome(added: 0, rejected: result.rejected, failure: error.userMessage), ids: [])
-        }
     }
 
     /// A new library: saved, the counts given to the presentation, the selection kept to what is left.
@@ -206,8 +188,10 @@ public final class BoxController {
     func resolveIfNeeded() {
         guard let shelf = current, resolvedBox != shelf.id else { return }
         resolvedBox = shelf.id
-        let resolved = shelf.resolving(with: ports.resolver, maker: ports.maker, isMounted: ports.isMounted)
+        let resolved = shelf.resolving(
+            with: ports.resolver, maker: ports.maker, isMounted: ports.isMounted, storage: ports.storage)
         statuses = resolved.statuses
+        Self.logResolution(resolved)
         if resolved.shelf != shelf {
             library = library.replacing(resolved.shelf)
             save()
@@ -231,14 +215,29 @@ public final class BoxController {
         library = library.replacing(shelf.placed(frame: frame, dock: shelf.dock))
     }
 
+    /// Writes the library when it changed since the last write; a failure is told once until a save works again.
     func save() {
-        guard canSave else { return }
+        guard canSave, library != lastSaved else { return }
         do {
             try ports.store.save(library)
+            lastSaved = library
+            lastSaveError = nil
         } catch {
-            Self.logger.error("Drop Box not saved")
+            let reason = error == .wouldOverwriteNewer ? "a newer file is there" : "the write failed"
+            Self.logger.error("Drop Box not saved: \(reason, privacy: .public)")
+            guard error != lastSaveError else { return }
+            lastSaveError = error
             onError(error.userMessage)
         }
+    }
+
+    /// Counts of what one resolution found, never names: why an item shows as missing can then be told from logs.
+    static func logResolution(_ resolved: ResolvedShelf) {
+        let missing = resolved.missingCount
+        let failed = resolved.refreshFailed.count
+        guard missing > 0 || failed > 0 else { return }
+        logger.notice(
+            "Drop Box resolved: \(missing, privacy: .public) unavailable, \(failed, privacy: .public) not refreshed")
     }
 
     /// The selection's items, or every item when nothing is selected.

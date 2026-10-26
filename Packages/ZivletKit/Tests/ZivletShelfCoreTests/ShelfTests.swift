@@ -40,7 +40,8 @@ struct ShelfTests {
     }
 
     @Test func totalsCountUnknownSizesSeparately() throws {
-        let owned = try ShelfFixtures.item("c", size: 5, path: "/c", ownership: .owned(relativePath: "B/c"))
+        let owned = try ShelfFixtures.item(
+            "c", size: 5, path: "/c", ownership: .owned(relativePath: "\(ShelfOwnershipTests.box.uuidString)/c"))
         let shelf = try Shelf.empty(name: "Box").adding(
             [try ShelfFixtures.item("a", size: 10), try ShelfFixtures.item("b", size: nil, path: "/b"), owned],
             cap: 10

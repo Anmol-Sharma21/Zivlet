@@ -41,8 +41,10 @@ public struct BoxItemModel: Identifiable, Equatable {
 /// What a press in the box asks for. The views only report presses; the controller decides.
 public enum BoxPress: Sendable, Equatable {
     case share, airDrop, copy, moveTo, copyTo, copyPaths, trash, remove, clear, more
-    case grid, list, openPanel, locate, removeMissing, cancelBusy, emptyStorage
+    case grid, list, openPanel, locate, removeMissing, cancelBusy, emptyStorage, quickLook
     case confirm(Bool)
+    /// A cell came on screen (true) or left it (false): only cells on screen ask for thumbnails.
+    case shown(UUID, Bool)
     /// A click on an item: ⇧ extends the range, ⌘ toggles the item.
     case select(UUID, extend: Bool, toggle: Bool)
     case clearSelection
@@ -58,7 +60,8 @@ public enum BoxPress: Sendable, Equatable {
     /// Every press with words, for the copy test.
     public static let buttons: [BoxPress] =
         bar + overflow + [
-            .more, .grid, .list, .openPanel, .locate, .removeMissing, .cancelBusy, .emptyStorage, .confirm(true),
+            .more, .grid, .list, .openPanel, .locate, .removeMissing, .cancelBusy, .emptyStorage, .quickLook,
+            .confirm(true),
         ]
 
     var symbol: String {
@@ -77,11 +80,12 @@ public enum BoxPress: Sendable, Equatable {
         case .list: BoxSymbols.list
         case .openPanel: BoxSymbols.openPanel
         case .locate: BoxSymbols.locate
+        case .quickLook: BoxSymbols.quickLook
         case .removeMissing: BoxSymbols.removeMissing
         case .cancelBusy: BoxSymbols.cancel
         case .emptyStorage: BoxSymbols.trash
         case .confirm(let yes): yes ? BoxSymbols.trash : BoxSymbols.close
-        case .select, .clearSelection, .marquee, .draggedOut: BoxSymbols.box
+        case .select, .clearSelection, .marquee, .draggedOut, .shown: BoxSymbols.box
         }
     }
 }
@@ -99,11 +103,13 @@ public struct BoxViewModel {
     public let reduceMotion: Bool
     /// Bytes of every box's owned copies, for the overflow menu's first line and its dot.
     public let storageBytes: Int64
+    /// The moving end of the selection: the arrows and type-to-select scroll it into view.
+    public let focus: UUID?
 
     public init(
         items: [BoxItemModel], selection: Set<UUID>, presentation: BoxPresentation, viewMode: Shelf.ViewMode,
         finish: BoxFinish, images: [UUID: NSImage] = [:], maxHeight: CGFloat, reduceMotion: Bool = false,
-        storageBytes: Int64 = 0
+        storageBytes: Int64 = 0, focus: UUID? = nil
     ) {
         self.items = items
         self.selection = selection.intersection(items.map(\.id))
@@ -114,6 +120,7 @@ public struct BoxViewModel {
         self.maxHeight = maxHeight
         self.reduceMotion = reduceMotion
         self.storageBytes = storageBytes
+        self.focus = focus
     }
 
     public var totalBytes: Int64 { items.compactMap(\.bytes).reduce(0, +) }
@@ -154,6 +161,6 @@ public struct BoxViewModel {
     public func with(images: [UUID: NSImage]) -> BoxViewModel {
         BoxViewModel(
             items: items, selection: selection, presentation: presentation, viewMode: viewMode, finish: finish,
-            images: images, maxHeight: maxHeight, reduceMotion: reduceMotion, storageBytes: storageBytes)
+            images: images, maxHeight: maxHeight, reduceMotion: reduceMotion, storageBytes: storageBytes, focus: focus)
     }
 }

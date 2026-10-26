@@ -103,20 +103,23 @@ extension Shelf {
     }
 
     /// Adds `incoming` in order, skipping files already in the box (or earlier in `incoming`) and every item past
-    /// `cap`. De-dup: the same `FileIdentity` when both items have one, else the same standardised path.
+    /// `cap`. De-dup: the same item id, the same `FileIdentity` when both items have one, else the same standardised
+    /// path.
     public func adding(_ incoming: [ShelfItem], cap: Int) -> (Shelf, AddReport) {
         var index = DuplicateIndex(items)
         var kept = items
+        var ids = Set(items.map(\.id))
         var added: [UUID] = []
         var duplicates: [String] = []
         var overCap: [String] = []
         for item in incoming {
-            if index.contains(item) {
+            if ids.contains(item.id) || index.contains(item) {
                 duplicates.append(item.displayName)
             } else if kept.count >= cap {
                 overCap.append(item.displayName)
             } else {
                 index.insert(item)
+                ids.insert(item.id)
                 kept.append(item)
                 added.append(item.id)
             }
@@ -131,20 +134,23 @@ extension Shelf {
     /// The items named in `ids` first, in that order, then every other item in its old order. Unknown ids are
     /// ignored.
     public func reordering(_ ids: [UUID]) -> Shelf {
-        let byID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        let byID = Dictionary(items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let front = ids.uniqued().compactMap { byID[$0] }
         let named = Set(front.map(\.id))
         return with(items: front + items.filter { !named.contains($0.id) })
     }
 
-    /// The items in `moves` (id → new path) at their new places, with bookmarks made there (P2-142 Move to…), and the
-    /// ids whose bookmark could not be made: those keep their old reference and are found again on the next show.
-    public func relocating(_ moves: [UUID: String], using maker: any BookmarkMaking) -> (Shelf, failed: Set<UUID>) {
+    /// The items in `moves` (id → new path) at their new places, with bookmarks and identities read there (P2-142
+    /// Move to…, Locate…), and the ids whose bookmark could not be made: those keep their old reference and are found
+    /// again on the next show. An owned copy moved out of `storage` becomes a reference.
+    public func relocating(
+        _ moves: [UUID: String], using maker: any BookmarkMaking, storage: OwnedStorage
+    ) -> (Shelf, failed: Set<UUID>) {
         var failed: Set<UUID> = []
         let next = items.map { item in
             guard let path = moves[item.id] else { return item }
             do {
-                return try item.relocated(to: path, bookmark: maker.bookmark(for: URL(filePath: path)))
+                return try item.relocated(to: path, using: maker, storage: storage)
             } catch {
                 failed.insert(item.id)
                 return item

@@ -4,20 +4,27 @@ import UniformTypeIdentifiers
 
 /// Thumbnails for the box (D-M5b-14, 19c D-BL11). A cell first shows the system icon for its item's type, which needs
 /// only the name; Quick Look's thumbnail follows for visible items only, at most four requests at a time, cached by
-/// item and size. An item that leaves the visible set loses its request, waiting or running.
+/// item and size (the one place images live, so the count limit bounds them). Each size has its own visible set (the
+/// panel's cells, the tray's strip); an item that leaves it loses its request, waiting or running. Two requests for
+/// the same item and size share one Quick Look request.
 public final class ThumbnailCache {
     public static let maxConcurrent = 4
     public static let countLimit = 400
+
+    struct Key: Hashable {
+        let id: UUID
+        let size: ThumbnailSize
+    }
 
     private let maker: any ThumbnailMaking
     private let limit: Int
     private let scale: Double
     private let images = NSCache<NSString, NSImage>()
     private var icons: [String: NSImage] = [:]
-    private var visible: Set<UUID> = []
+    private var visible: [ThumbnailSize: Set<UUID>] = [:]
     private var running = 0
-    private var waiting: [(id: UUID, gate: CheckedContinuation<Bool, Never>)] = []
-    private var inFlight: [UUID: Task<CGImage?, Never>] = [:]
+    private var waiting: [(key: Key, gate: CheckedContinuation<Bool, Never>)] = []
+    private var requests: [Key: Task<NSImage?, Never>] = [:]
 
     public init(
         maker: any ThumbnailMaking, maxConcurrent: Int = ThumbnailCache.maxConcurrent,
@@ -41,38 +48,59 @@ public final class ThumbnailCache {
 
     public func cached(_ id: UUID, size: ThumbnailSize) -> NSImage? { images.object(forKey: Self.key(id, size)) }
 
-    /// The items on screen now; requests for every other item are cancelled.
-    public func setVisible(_ ids: Set<UUID>) {
-        visible = ids
-        let (keep, drop) = (waiting.filter { ids.contains($0.id) }, waiting.filter { !ids.contains($0.id) })
-        waiting = keep
-        drop.forEach { $0.gate.resume(returning: false) }
-        for (id, task) in inFlight where !ids.contains(id) { task.cancel() }
+    /// The items on screen now at `size`; requests for every other item at that size are cancelled.
+    public func setVisible(_ ids: Set<UUID>, size: ThumbnailSize = .cell) {
+        visible[size] = ids
+        let gone = { (key: Key) in key.size == size && !ids.contains(key.id) }
+        let dropped = waiting.filter { gone($0.key) }
+        waiting.removeAll { gone($0.key) }
+        dropped.forEach { $0.gate.resume(returning: false) }
+        for (key, task) in requests where gone(key) { task.cancel() }
     }
 
     /// Quick Look's thumbnail for a visible item, from the cache when it has one; nil when the item is not visible,
-    /// leaves the visible set, or Quick Look has none.
+    /// leaves the visible set, or Quick Look has none. Cancelling the caller cancels the request.
     public func thumbnail(for id: UUID, url: URL, size: ThumbnailSize) async -> NSImage? {
         if let hit = cached(id, size: size) { return hit }
-        guard visible.contains(id), await acquire(id) else { return nil }
+        let key = Key(id: id, size: size)
+        guard isVisible(key) else { return nil }
+        let request = requests[key] ?? start(key, url: url)
+        return await withTaskCancellationHandler {
+            await request.value
+        } onCancel: {
+            request.cancel()
+        }
+    }
+
+    private func start(_ key: Key, url: URL) -> Task<NSImage?, Never> {
+        let task = Task { [weak self] () -> NSImage? in
+            guard let self else { return nil }
+            defer { requests[key] = nil }
+            return await make(key, url: url)
+        }
+        requests[key] = task
+        return task
+    }
+
+    private func make(_ key: Key, url: URL) async -> NSImage? {
+        guard await acquire(key) else { return nil }
         defer { release() }
-        guard visible.contains(id) else { return nil }
-        let task = Task { [maker, scale] in await maker.thumbnail(for: url, side: size.side, scale: scale) }
-        inFlight[id] = task
-        let made = await task.value
-        inFlight[id] = nil
-        guard let made, visible.contains(id), !task.isCancelled else { return nil }
-        let image = NSImage(cgImage: made, size: NSSize(width: size.side, height: size.side))
-        images.setObject(image, forKey: Self.key(id, size))
+        guard isVisible(key), !Task.isCancelled else { return nil }
+        let made = await maker.thumbnail(for: url, side: key.size.side, scale: scale)
+        guard let made, isVisible(key), !Task.isCancelled else { return nil }
+        let image = NSImage(cgImage: made, size: NSSize(width: key.size.side, height: key.size.side))
+        images.setObject(image, forKey: Self.key(key.id, key.size))
         return image
     }
 
-    private func acquire(_ id: UUID) async -> Bool {
+    private func isVisible(_ key: Key) -> Bool { visible[key.size]?.contains(key.id) ?? false }
+
+    private func acquire(_ key: Key) async -> Bool {
         guard running >= limit else {
             running += 1
             return true
         }
-        return await withCheckedContinuation { waiting.append((id, $0)) }
+        return await withCheckedContinuation { waiting.append((key, $0)) }
     }
 
     /// Hands the slot to the next waiting request, or frees it.

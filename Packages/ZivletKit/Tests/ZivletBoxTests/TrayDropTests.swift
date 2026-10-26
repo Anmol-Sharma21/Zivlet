@@ -22,6 +22,7 @@ struct TrayDropTests {
         let box = boxRig.controller()
         box.start()
         let rig = try TrayRig(box: box)
+        rig.holdsLingers = true
         rig.tray.proximity(.entered(display: 1), itemCount: 3)
         let board = TestPasteboard(urls: try files(boxRig, 3))
         let info = FakeDraggingInfo(pasteboard: board.board)
@@ -31,6 +32,7 @@ struct TrayDropTests {
         #expect(box.current?.items.count == 3)
         #expect(rig.shown(on: 1).contains(.toast))
         #expect(rig.tray.lastToast?.text == "Added 3" && rig.tray.lastToast?.spoken == "Added 3 items")
+        rig.releaseLingers()
         await rig.tray.toastTask?.value
         #expect(rig.lingers == [.seconds(4)])
         withExtendedLifetime((boxRig, board)) {}
@@ -42,6 +44,7 @@ struct TrayDropTests {
         box.start()
         _ = await box.add([try boxRig.dir.file("kept.png")], newBox: false)
         let rig = try TrayRig(box: box)
+        rig.holdsLingers = true
         rig.tray.proximity(.entered(display: 1), itemCount: 3)
         let board = TestPasteboard(urls: try files(boxRig, 3))
         #expect(rig.tray.performDrop(FakeDraggingInfo(pasteboard: board.board), display: 1))

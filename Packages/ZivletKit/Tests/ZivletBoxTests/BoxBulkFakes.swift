@@ -14,6 +14,7 @@ final class FakeSharePicker: SharePicking {
     }
 
     private(set) var shown: [Shown] = []
+    var onFailure: () -> Void = {}
 
     func show(_ urls: [URL], relativeTo rect: CGRect, of view: NSView, edge: NSRectEdge) {
         shown.append(Shown(urls: urls, rect: rect, edge: edge))
@@ -60,17 +61,20 @@ final class FakeBoxFolders: FolderChoosing {
     }
 }
 
-/// A Trash that records what it was given and refuses the paths in `refusing`; nothing is really trashed.
+/// A Trash that records what it was given and refuses the paths in `refusing`. With `removes`, a file it takes
+/// is deleted, as the real Trash takes it out of its folder; otherwise nothing is touched.
 final class FakeBoxTrash: Trashing, @unchecked Sendable {
     private let lock = NSLock()
     private var received: [URL] = []
     var refusing: Set<String> = []
+    var removes = false
 
     var calls: [URL] { lock.withLock { received } }
 
     func trash(_ url: URL) throws(ShelfError) {
         guard !refusing.contains(url.lastPathComponent) else { throw .trashFailed }
         lock.withLock { received.append(url) }
+        if removes { try? FileManager.default.removeItem(at: url) }
     }
 }
 
