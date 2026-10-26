@@ -90,6 +90,11 @@ struct ToolCatalogTests {
     }
 
     @Test func actionsAreSixInFixedOrder() {
-        #expect(ActionID.allCases.map(\.wheelLabel) == ["AIRDROP", "FLOAT", "COPY", "MOVE", "COPY PATH", "TERMINAL"])
+        #expect(ActionID.allCases.map(\.wheelLabel) == ["AIRDROP", "BOX", "COPY", "MOVE", "COPY PATH", "TERMINAL"])
+    }
+
+    /// The Drop Box replaces Float (P2-55 §9.5, OWN-APP-1): the stored raw value stays, the slice says BOX.
+    @Test func theBoxSliceKeepsFloatsRawValue() {
+        #expect(ActionID.pinFloating.rawValue == "pinFloating" && ActionID.pinFloating.symbolName == "tray.full")
     }
 }

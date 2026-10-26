@@ -2,7 +2,7 @@ import Foundation
 import ZivletCore
 import ZivletRuntime
 
-/// One entry point for the five Phase 1 actions (P1-44, P1-45): validates the drop, runs the action and turns its
+/// One entry point for the six actions (P1-44, P1-45; BOX from P2-55): validates the drop, runs the action and turns its
 /// outcome into a toast, a card or nothing. AirDrop, Move and Terminal wait one run-loop turn first, so the wheel
 /// and the drag session are gone before a sheet or panel takes focus (03b §7 "Ordering"). Moves are recorded in
 /// the undo history.
@@ -16,6 +16,7 @@ public final class ActionService {
     private let survey: MoveSurvey
     private let executor: MoveExecutor
     private let undoHistory: UndoHistory
+    private let box: (any BoxAdding)?
     private let terminalID: () -> String
     private let nextTurn: NextTurn
 
@@ -23,7 +24,7 @@ public final class ActionService {
         clipboard: ClipboardAction = ClipboardAction(), airDrop: AirDropAction = AirDropAction(),
         terminal: TerminalAction = TerminalAction(), folders: any FolderChoosing = MovePanel(),
         survey: MoveSurvey = MoveSurvey(), executor: MoveExecutor = MoveExecutor(), undoHistory: UndoHistory,
-        terminalID: @escaping () -> String = { TerminalCatalog.standard.id },
+        box: (any BoxAdding)? = nil, terminalID: @escaping () -> String = { TerminalCatalog.standard.id },
         nextTurn: @escaping NextTurn = ActionService.runLoopTurn
     ) {
         self.clipboard = clipboard
@@ -33,6 +34,7 @@ public final class ActionService {
         self.survey = survey
         self.executor = executor
         self.undoHistory = undoHistory
+        self.box = box
         self.terminalID = terminalID
         self.nextTurn = nextTurn
     }
@@ -63,7 +65,9 @@ public final class ActionService {
         case .moveTo:
             await nextTurn()
             return await move(request.items)
-        case .pinFloating: return ActionResult(.failed(.floatNotYetAvailable))
+        case .pinFloating:
+            guard let box else { return ActionResult(.failed(.boxUnavailable)) }
+            return await box.add(request.items, newBox: request.optionHeld)
         }
     }
 

@@ -32,6 +32,7 @@ final class ServiceRig {
     var folders: FakeFolders
     var pasteboard: (any PasteboardWriting)?
     var terminalID = "com.apple.Terminal"
+    var box: FakeBoxAdding? = FakeBoxAdding()
     private(set) var turns = 0
 
     init() throws {
@@ -48,7 +49,7 @@ final class ServiceRig {
             clipboard: ClipboardAction(pasteboard: pasteboard ?? board), airDrop: AirDropAction(service: sharing),
             terminal: TerminalAction(workspace: workspace), folders: folders,
             executor: MoveExecutor(trash: trash.trash), undoHistory: history,
-            terminalID: { [unowned self] in terminalID }, nextTurn: { [unowned self] in turns += 1 })
+            box: box, terminalID: { [unowned self] in terminalID }, nextTurn: { [unowned self] in turns += 1 })
     }
 
     func perform(_ action: ActionID, _ urls: [URL], option: Bool = false) async -> ActionResult {
@@ -189,11 +190,27 @@ struct ActionServiceTests {
         #expect(FileManager.default.fileExists(atPath: file.path))
     }
 
-    @Test func floatIsNotAvailableYet() async throws {
+    @Test func theBoxSliceAddsToTheCurrentBoxOrANewOneWithOption() async throws {
         let rig = try ServiceRig()
         let file = try rig.dir.file("a.txt")
+        #expect(await rig.perform(.pinFloating, [file], option: true) == .done(toast: "Added 1", undo: nil))
+        _ = await rig.perform(.pinFloating, [file])
+        #expect(rig.box?.calls == [.init(count: 1, newBox: true), .init(count: 1, newBox: false)])
+    }
+
+    @Test func theBoxSliceRefusesNothingLocalInItsOwnWords() async throws {
+        let rig = try ServiceRig()
+        let result = await rig.perform(.pinFloating, [URL(string: "https://example.com/a.png")!])
+        #expect(result.card?.title == "Only items stored on this Mac can be added.")
+        #expect(rig.box?.calls.isEmpty == true)
+    }
+
+    @Test func withoutABoxTheSliceSaysSo() async throws {
+        let rig = try ServiceRig()
+        rig.box = nil
+        let file = try rig.dir.file("a.txt")
         #expect(
-            await rig.perform(.pinFloating, [file]) == .failed(ActionCard(title: "Float arrives in a later version.")))
+            await rig.perform(.pinFloating, [file]) == .failed(ActionCard(title: "Zivlet couldn't open the Drop Box.")))
     }
 
     @Test func toastsAndCardsSayWhetherTheyCanBeUndone() {
@@ -208,4 +225,20 @@ struct ActionServiceTests {
 extension ActionID {
     /// The five actions of Phase 1 (Float waits for the shelf, D-M4-13).
     nonisolated static let phaseOne: [ActionID] = [.shareAirDrop, .copyTo, .moveTo, .copyFilePath, .openInTerminal]
+}
+
+/// Records what the BOX slice asked the box to add, and answers as the box would.
+@MainActor
+final class FakeBoxAdding: BoxAdding {
+    struct Call: Equatable {
+        let count: Int
+        let newBox: Bool
+    }
+
+    private(set) var calls: [Call] = []
+
+    func add(_ urls: [URL], newBox: Bool) async -> ActionResult {
+        calls.append(Call(count: urls.count, newBox: newBox))
+        return .done(toast: "Added \(urls.count)", undo: nil)
+    }
 }
