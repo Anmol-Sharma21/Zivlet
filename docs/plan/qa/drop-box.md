@@ -86,7 +86,7 @@ Rows for what the branch review changed and only a person on real hardware can s
 | V4 | VoiceOver actions | With VoiceOver on, move to an item; press VO-Space; open the actions (VO-⌘-Space) | VO-Space selects the item; the actions list Quick Look and Remove from Box (and Locate… for a missing item), and each acts on that item alone | |
 | V5 | A slow or failing promise | Drag a large attachment (several hundred MB) out of Mail into the panel; then drag one and quit Mail at once | The first lands; the "Add 1" overlay leaves when it does. The second ends within two minutes with a card naming what did not arrive; the panel never stays in "Add" | |
 | V6 | The tray after a relaunch | Quit and relaunch with items in the box; without opening the panel, hover the notch and drag a strip thumbnail to Finder; delete one item's file in Finder first | The file arrives in Finder; the deleted item shows its badge in the strip; the strip shows thumbnails, not only type icons | |
-| V7 | Many text files | Add 30 small `.txt` files; look at the grid on glass | Judge whether the page thumbnails (Quick Look's icon mode, as Finder draws them) read well on the dark glass (G-M5b-14) | |
+| V7 | Many text files | Add 30 small `.txt` files; look at the grid on glass | Each text file shows its type icon, not a page thumbnail (owner, 2026-10-26; G-M5b-14 closed) | |
 | V8 | Scrolling to the selection | With 40 items, select the first and hold the down arrow past the panel's bottom | The selection stays in view; the scroll indicator shows that more items are below | |
 
 ## C4. Reads before and after a drop

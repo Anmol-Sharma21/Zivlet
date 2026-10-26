@@ -180,3 +180,18 @@ chat.
 | OWN-UI-4 | **The collapsed tab keeps the format-family symbol**, not the Finder file icon | Confirms 19b D-NL10 (plan 14 §6 (b)) |
 | OWN-UI-5 | **Toasts keep "Saved" as their first word** | Confirms plan 14 §6 (c) |
 | OWN-PLAN-5 | **Merge and push:** M5a and the notch design pass go to `main` and are pushed | G-M5a-1 (fast-progress CPU) stays open and is recorded, not a merge blocker |
+
+## Owner decisions, 2026-10-26: M5b sign-off
+
+Date: 2026-10-26, after M5b was built (see [17-m5b-record.md](../plan/17-m5b-record.md)). The owner answered "yes" to each
+point, given in chat.
+
+| ID | Decision | Consequences |
+|---|---|---|
+| OWN-BOX-1 | **The Drop Box panel stays dark in Light mode**, like the island | One set of contrast numbers (OP-M5b-1) |
+| OWN-BOX-2 | **The idle tray is an invisible sensor** over the housing while the box has items; nothing is drawn at the notch until a drag or hover | OP-M5b-2, D-M5b-17 |
+| OWN-BOX-3 | **Settings defaults stay:** tray while dragging on, shake off, auto-clear off, drops go to the most recent box | OP-M5b-4 |
+| OWN-BOX-4 | **Zip waits** for the archive engine (P2-111) | P2-142 stays open for Zip (OP-M5b-5) |
+| OWN-BOX-5 | **Text files keep their type icon** in the box; Quick Look's white page is not used | G-M5b-14 closed |
+| OWN-PLAN-6 | **Merge and push M5b** before the hardware QA | The hardware rows stay open in the record and QA list |
+

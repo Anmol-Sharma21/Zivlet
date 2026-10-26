@@ -144,7 +144,7 @@ before a drop. Y6 saw no request that could prompt during the demos. **C4a–C4d
 | G-M5b-11 | The selection fill has no inner padding and `GridSelection.focus` has no visible indicator (D-BL6's focus ring) | With the owner's look review (OS-M5b-3); it changes the grid's metrics |
 | G-M5b-12 | VoiceOver: items have actions now, but the items' container has no list role (SwiftUI on macOS offers none) and nothing was tried with VoiceOver | QA V4 |
 | G-M5b-13 | Most review fixes were tested with the fix rather than test-first (§9.1); only the panel's key test was seen to fail on the old code | Accepted for this round; noted so the record does not overstate TDD |
-| G-M5b-14 | In Quick Look's icon mode, plain-text files are white pages: better than full squares, still the brightest thing on the glass | QA V7; the owner decides whether text keeps its type icon instead |
+| G-M5b-14 | In Quick Look's icon mode, plain-text files are white pages: better than full squares, still the brightest thing on the glass | **Closed** 2026-10-26: the owner chose the type icon; text files no longer ask Quick Look (§11) |
 | G-M5a-1 | The fast-progress CPU item from M5a | Unchanged and untouched in M5b |
 
 ## 8. Owner steps
@@ -156,11 +156,11 @@ before a drop. Y6 saw no request that could prompt during the demos. **C4a–C4d
 | OS-M5b-3 | Review the `make box-states` pictures with 19c open | open (the agent's review is in §4) |
 | OS-M5b-4 | Merge and push `m5b` (`git switch main && git merge --no-ff m5b`, then `git push`), once OS-M5b-1/2/5 and the quiet-Mac timing check (G-M5b-5) are done, or with them recorded as open | open |
 | OS-M5b-5 | The review's hardware rows, QA §V (V1–V8): the click and the keyboard, an owned copy moved out, the accessibility settings while shown, VoiceOver actions, a slow or failing promise, the tray after a relaunch, many text files, scrolling to the selection | open |
-| OP-M5b-1 | The panel stays dark in Light mode | open (built as recommended: dark) |
-| OP-M5b-2 | The idle tray is an invisible sensor, not a visible tab | open (built as recommended: sensor) |
+| OP-M5b-1 | The panel stays dark in Light mode | decided by the owner 2026-10-26: keep dark |
+| OP-M5b-2 | The idle tray is an invisible sensor, not a visible tab | decided by the owner 2026-10-26: keep the sensor |
 | OP-M5b-3 | What to do if thumbnails after a relaunch raise a folder prompt | open (waits for C4b) |
-| OP-M5b-4 | Settings defaults: tray while dragging on, shake off, auto-clear off, drops to the most recent box | open (built as recommended) |
-| OP-M5b-5 | Zip stays deferred | open (built as recommended: no Zip) |
+| OP-M5b-4 | Settings defaults: tray while dragging on, shake off, auto-clear off, drops to the most recent box | decided by the owner 2026-10-26: keep |
+| OP-M5b-5 | Zip stays deferred | decided by the owner 2026-10-26: Zip waits for P2-111 |
 
 ## 9. Review
 
@@ -313,3 +313,15 @@ A leak scan of `main..m5b` (patches and messages) found nothing to fix:
 
 Not run: the owner rows in [qa/drop-box.md](qa/drop-box.md), Release idle CPU, and recorded drags (OS-M5b-1). The
 real accessibility settings, a real external display and real drags were not tried either.
+
+## 11. Owner sign-off (2026-10-26)
+
+- The owner answered "yes" to each open point: the panel stays dark in Light mode (OP-M5b-1), the idle tray stays an
+  invisible sensor (OP-M5b-2), the Settings defaults stay (OP-M5b-4), Zip waits for P2-111 (OP-M5b-5), and text files
+  keep their type icon (G-M5b-14). OP-M5b-3 still waits for QA C4b.
+- Text files: `ThumbnailCache` no longer asks Quick Look for any type that conforms to `public.text` (decided from
+  the name, no file read), so the cell keeps the system type icon. Tests: `plainTextKeepsItsTypeIcon` (txt, md, csv,
+  swift) failed first and now pass; the thumbnail tests that used `.txt` fixtures now use `.png`.
+- The owner approved merging `m5b` into `main` and pushing (OS-M5b-4). The hardware rows (OS-M5b-1, -2, -5) stay
+  with the owner and are not claimed; P2-142 (Zip), P2-143 and P2-197 stay open for them.
+
