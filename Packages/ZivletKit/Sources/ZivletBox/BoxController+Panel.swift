@@ -33,11 +33,19 @@ extension BoxController {
         hosting.rootView = AnyView(BoxPanelView(model: model) { [weak self] in self?.press($0) })
         guard let frame = frame(for: model) else {
             panel.orderOut(nil)
+            report(nil)
             return
         }
         panel.setFrame(frame.cgRect, display: true)
         if !panel.isVisible { panel.show() }
+        report(frame.cgRect)
         loadThumbnails(model)
+    }
+
+    private func report(_ frame: CGRect?) {
+        if let lastReport, lastReport.base == presentation.base, lastReport.frame == frame { return }
+        lastReport = (presentation.base, frame)
+        onPresented(presentation.base, frame)
     }
 
     /// The display a frame sits on, else the first one.

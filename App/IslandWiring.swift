@@ -59,6 +59,9 @@ final class IslandWiring {
         }
     }
 
+    /// The finish settings now, also for the Drop Box panel's debug previews.
+    var finishSettingsNow: IslandFinish.Settings { finishSettings(NSWorkspace.shared) }
+
     /// Reduce Transparency and Increase Contrast pick the island's finish (19b D-NL3), unless a debug screenshot
     /// forces it.
     private func finishSettings(_ workspace: NSWorkspace) -> IslandFinish.Settings {

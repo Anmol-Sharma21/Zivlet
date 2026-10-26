@@ -41,6 +41,14 @@ public struct BoxPorts {
         self.uptime = uptime
     }
 
+    /// The same ports over another store and storage (the debug demo keeps its box away from `boxes.json`).
+    public func with(store: BoxStore, storage: OwnedStorage) -> BoxPorts {
+        BoxPorts(
+            store: store, storage: storage, maker: maker, resolver: resolver, isMounted: isMounted, promises: promises,
+            thumbnails: thumbnails, quickLook: quickLook, visibleFrames: visibleFrames, finish: finish, now: now,
+            uptime: uptime)
+    }
+
     /// The real stores and system ports: `boxes.json` and `Box/` in Application Support, Foundation bookmarks
     /// (never security-scoped), Quick Look, the screens' visible frames and the accessibility display options.
     public static func standard() -> BoxPorts {

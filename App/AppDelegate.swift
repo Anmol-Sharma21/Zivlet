@@ -1,5 +1,6 @@
 import AppKit
 import ZivletActions
+import ZivletBox
 import ZivletCore
 import ZivletRuntime
 import ZivletSettings
@@ -39,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ) {
         [weak self] in self?.trigger?.trace.lines ?? []
     }
-    lazy var box = BoxWiring(settings: { [weak self] in self?.settings.settings.box ?? BoxGroup() })
+    lazy var box = BoxWiring(settings: { [weak self] in self?.settings.settings.box ?? BoxGroup() }, ports: boxPorts)
     private lazy var actions = ActionWiring(
         undoHistory: undoHistory, notch: island.hud, route: { [weak self] in self?.defaultRoute ?? .nearDrop },
         box: box.adding, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
@@ -53,6 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var coach = CoachWiring(store: settings.store)
     #if DEBUG
         private let debugHUD = DebugHUD()
+        private let boxFlags = BoxShots.flags()
+        private var boxPreview: BoxPreviewPanel?
     #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -105,6 +108,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startBox() {
         box.present = { [weak self] result, point in self?.actions.present(result, near: point) }
         box.start()
+        #if DEBUG
+            boxPreview = BoxShots.run(
+                boxFlags, controller: box.controller, finish: BoxFinish.resolve(island.finishSettingsNow))
+        #endif
+    }
+
+    /// The standard stores; Debug demos and previews use their own (D-M5b-20).
+    private var boxPorts: BoxPorts {
+        #if DEBUG
+            BoxShots.ports(boxFlags)
+        #else
+            BoxPorts.standard()
+        #endif
     }
 
     /// Opening Zivlet again while it runs (Finder, Spotlight) opens Settings (03b §8.3).

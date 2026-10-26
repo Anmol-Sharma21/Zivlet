@@ -1,4 +1,5 @@
 import AppKit
+import TestSupport
 import Testing
 import ZivletActions
 import ZivletCore
@@ -51,5 +52,19 @@ struct BoxSliceAddingTests {
             AddOutcome(added: 0, rejected: ["x: y"], failure: "Only items stored on this Mac can be added").actionResult
                 == .failed(ActionCard(title: "Only items stored on this Mac can be added.", lines: ["x: y"])))
         #expect(AddOutcome(added: 0).actionResult == .failed(ActionCard(title: "Nothing was added.")))
+    }
+}
+
+@Suite("Ports over another store (debug demo)")
+@MainActor
+struct BoxPortsTests {
+    @Test func anotherStoreKeepsEveryOtherPort() throws {
+        let rig = try BoxRig()
+        let other = BoxStore(file: rig.dir.url.appending(path: "demo/boxes.json"))
+        let ports = BoxPorts.standard().with(store: other, storage: rig.storage)
+        #expect(ports.store.file == other.file && ports.storage.root == rig.storage.root)
+        #expect(BoxPorts.standard().store.file.lastPathComponent == "boxes.json")
+        _ = ports.finish()
+        #expect(!ports.visibleFrames().isEmpty || NSScreen.screens.isEmpty)
     }
 }

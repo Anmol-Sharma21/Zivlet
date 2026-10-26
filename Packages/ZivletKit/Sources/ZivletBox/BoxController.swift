@@ -35,6 +35,9 @@ public final class BoxController {
     public var onError: (String) -> Void = { _ in }
     /// A drop on the panel finished: what it added, for the toast.
     public var onAdded: (AddOutcome) -> Void = { _ in }
+    /// The panel's base or frame changed (nil when it is off screen): for the log the demo scripts read.
+    public var onPresented: (BoxPresentation.Base, CGRect?) -> Void = { _, _ in }
+    var lastReport: (base: BoxPresentation.Base, frame: CGRect?)?
 
     public init(ports: BoxPorts) {
         self.ports = ports
@@ -44,6 +47,9 @@ public final class BoxController {
     }
 
     public var current: Shelf? { library.current }
+
+    /// The system icon for a name's type; no file is read.
+    public func placeholder(forName name: String) -> NSImage { thumbnails.placeholder(forName: name) }
 
     /// Loads the boxes and restores the panel as it was, without resolving anything.
     public func start() {
@@ -64,8 +70,13 @@ public final class BoxController {
     /// The menu command, the BOX slice, shake or the tray: the full box at its anchor.
     public func showPanel(_ anchor: BoxAnchor = .saved) {
         place(anchor)
-        apply(.show)
-        if presentation.base != .expanded { apply(.show) }
+        var (next, effects) = presentation.handling(.show)
+        if next.base != .expanded {
+            let (expanded, more) = next.handling(.show)
+            next = expanded
+            effects += more.filter { !effects.contains($0) }
+        }
+        commit(next, effects)
     }
 
     public func hidePanel() { apply(.hide) }
@@ -114,6 +125,11 @@ public final class BoxController {
     /// Runs one presentation event and its effects, then draws.
     func apply(_ event: BoxPresentationEvent) {
         let (next, effects) = presentation.handling(event)
+        commit(next, effects)
+    }
+
+    /// Takes a new presentation, runs its effects and draws once.
+    func commit(_ next: BoxPresentation, _ effects: [BoxPresentationEffect]) {
         presentation = next
         for effect in effects {
             switch effect {

@@ -241,3 +241,20 @@ struct BoxMarqueeRectTests {
                 == Rect2D(x: 10, y: 0, width: 40, height: 40))
     }
 }
+
+@Suite("What the controller reports for the logs and the demo scripts")
+@MainActor
+struct BoxControllerReportTests {
+    @Test func eachNewStateAndFrameIsReportedOnce() async throws {
+        let rig = try BoxRig()
+        let box = rig.controller()
+        var reports: [String] = []
+        box.onPresented = { base, frame in reports.append("\(base.stored) \(frame == nil ? "none" : "frame")") }
+        box.start()
+        _ = await box.add(try rig.files(1), newBox: false)
+        box.showPanel()
+        box.press(.select(box.viewModel.items[0].id, extend: false, toggle: false))
+        box.hidePanel()
+        #expect(reports == ["hidden none", "expanded frame", "hidden none"])
+    }
+}
