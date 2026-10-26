@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import ZivletCore
 
 @testable import ZivletShelfCore
 
@@ -41,5 +42,17 @@ struct ShelfShownTests {
             return
         }
         #expect(library.current?.shown == .docked(.right) && library.current?.dock == .right)
+    }
+}
+
+@Suite("A resolution made off the main thread lands on the box as it is now (G-M5b-8)")
+struct ShelfRefreshedItemsTests {
+    @Test func theRefreshedItemsArriveAndTheBoxKeepsItsPlaceAndState() throws {
+        let asked = try ShelfFixtures.shelf(names: ["a.txt", "b.txt"])
+        let now = asked.presented(.expanded).placed(frame: Rect2D(x: 1, y: 2, width: 3, height: 4), dock: nil)
+        let refreshed = asked.removing([asked.items[0].id])
+        let next = now.withItems(of: refreshed)
+        #expect(next.items == refreshed.items && next.shown == .expanded && next.frame == now.frame)
+        #expect(next.id == now.id && next.name == now.name)
     }
 }

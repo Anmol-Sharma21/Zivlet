@@ -11,7 +11,8 @@ public struct BoxPorts {
     public let storage: OwnedStorage
     public let maker: any BookmarkMaking
     public let resolver: any BookmarkResolving
-    public let isMounted: (String) -> Bool
+    /// Whether a volume path is mounted; called off the main thread while the box resolves.
+    public let isMounted: @Sendable (String) -> Bool
     public let promises: any PromiseReceiving
     public let thumbnails: any ThumbnailMaking
     public let quickLook: any QuickLookPresenting
@@ -31,7 +32,8 @@ public struct BoxPorts {
 
     public init(
         store: BoxStore, storage: OwnedStorage, maker: any BookmarkMaking, resolver: any BookmarkResolving,
-        isMounted: @escaping (String) -> Bool, promises: any PromiseReceiving, thumbnails: any ThumbnailMaking,
+        isMounted: @escaping @Sendable (String) -> Bool, promises: any PromiseReceiving,
+        thumbnails: any ThumbnailMaking,
         quickLook: any QuickLookPresenting, visibleFrames: @escaping () -> [Rect2D], finish: @escaping () -> BoxFinish,
         now: @escaping () -> Date = Date.init,
         uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime },

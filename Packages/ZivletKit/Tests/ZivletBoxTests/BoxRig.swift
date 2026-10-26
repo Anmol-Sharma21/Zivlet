@@ -21,6 +21,19 @@ final class FakeQuickLook: QuickLookPresenting {
     func preview(_ urls: [URL]) { previews.append(urls) }
 }
 
+/// A Boolean that any thread can read and set.
+nonisolated final class LockedFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: Bool
+
+    init(_ value: Bool) { stored = value }
+
+    var value: Bool {
+        get { lock.withLock { stored } }
+        set { lock.withLock { stored = newValue } }
+    }
+}
+
 /// One store, storage and set of fakes shared by every controller a test makes, so a second controller is a
 /// relaunch. Displays sit far off screen, so panels never show on the real screen.
 @MainActor
@@ -35,7 +48,12 @@ final class BoxRig {
     let board = TestPasteboard()
     var sharing = FakeBoxSharing()
     var optionHeld = false
-    var mounted = true
+    /// Whether every volume counts as mounted; read off the main thread while the box resolves.
+    var mounted: Bool {
+        get { mountFlag.value }
+        set { mountFlag.value = newValue }
+    }
+    private let mountFlag = LockedFlag(true)
     private(set) var turns = 0
     let folders: FakeBoxFolders
     let trash = FakeBoxTrash()
@@ -53,6 +71,8 @@ final class BoxRig {
     var promises: (any PromiseReceiving)?
     /// Another bookmark maker or folder chooser for the controllers made after it is set.
     var maker: (any BookmarkMaking)?
+    /// Another bookmark resolver for the controllers made after it is set (one that holds).
+    var resolver: (any BookmarkResolving)?
     var chooser: (any FolderChoosing)?
     /// Another move executor for the controllers made after it is set (a gated rename).
     var executor: MoveExecutor?
@@ -72,8 +92,8 @@ final class BoxRig {
     func controller() -> BoxController {
         let box = BoxController(
             ports: BoxPorts(
-                store: store, storage: storage, maker: maker ?? bookmarks, resolver: bookmarks,
-                isMounted: { [weak self] _ in self?.mounted ?? true },
+                store: store, storage: storage, maker: maker ?? bookmarks, resolver: resolver ?? bookmarks,
+                isMounted: { [mountFlag] _ in mountFlag.value },
                 promises: promises ?? FakePromises(names: []), thumbnails: thumbnailMaker ?? NoThumbnails(),
                 quickLook: quickLook, visibleFrames: { [weak self] in self?.displays ?? [BoxRig.display] },
                 finish: { [weak self] in self?.finish ?? .solid },

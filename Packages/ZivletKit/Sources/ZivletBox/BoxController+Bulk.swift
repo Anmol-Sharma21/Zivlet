@@ -14,10 +14,15 @@ extension BoxController {
         guard let shelf = current else { return BulkTargets(urls: [], ids: [], failures: []) }
         let chosen =
             selection.selected.isEmpty ? shelf.items : shelf.items.filter { selection.selected.contains($0.id) }
-        for item in chosen {
+        refreshStatuses(chosen)
+        return verified(BulkTargets.resolve(selection: selection.selected, in: shelf, statuses: statuses), in: shelf)
+    }
+
+    /// Resolves `items` again now, so an action never trusts a status from before a resolution still running.
+    func refreshStatuses(_ items: [ShelfItem]) {
+        for item in items {
             statuses[item.id] = ItemStatus.from(ports.resolver.resolve(item.bookmark), isMounted: ports.isMounted)
         }
-        return verified(BulkTargets.resolve(selection: selection.selected, in: shelf, statuses: statuses), in: shelf)
     }
 
     /// The targets without the items whose file is no longer the one that was added (its identity changed).

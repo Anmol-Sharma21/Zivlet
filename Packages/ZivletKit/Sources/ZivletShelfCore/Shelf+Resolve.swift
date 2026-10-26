@@ -13,6 +13,10 @@ public struct ResolvedShelf: Sendable, Equatable {
 }
 
 extension Shelf {
+    /// This box with the items of `resolved`, keeping its own name, frame and state as they are now: a resolution
+    /// made off the main thread lands on the box as it has become meanwhile.
+    public func withItems(of resolved: Shelf) -> Shelf { with(items: resolved.items) }
+
     /// Resolves every item, lazily called when the box or tray is shown, never at launch (P2-141). A stale owned copy
     /// found outside `storage` becomes a reference.
     public func resolving(

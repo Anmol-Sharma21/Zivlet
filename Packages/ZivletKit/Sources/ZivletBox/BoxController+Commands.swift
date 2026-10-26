@@ -22,8 +22,10 @@ extension BoxController {
         remove(shelf.items.filter { selection.selected.contains($0.id) }, from: shelf)
     }
 
-    /// Takes `chosen` out of `shelf`; owned copies go to the Trash, and those that cannot stay with a card.
+    /// Takes `chosen` out of `shelf`; owned copies go to the Trash, and those that cannot stay with a card. The owned
+    /// ones are resolved again first, so a copy is judged by where its bookmark says it is now.
     func remove(_ chosen: [ShelfItem], from shelf: Shelf) {
+        refreshStatuses(chosen.filter(\.isOwned))
         let (kept, lines) = trashOwnedCopies(chosen)
         replace(library.replacing(shelf.removing(Set(chosen.map(\.id)).subtracting(kept))))
         if !lines.isEmpty { report(.failed(ActionCard(title: BoxCopy.someStayed, lines: lines))) }

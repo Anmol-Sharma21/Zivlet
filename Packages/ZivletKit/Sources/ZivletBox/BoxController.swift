@@ -25,6 +25,8 @@ public final class BoxController {
     var selection = GridSelection()
     var typed = TypeSelect()
     var resolvedBox: UUID?
+    /// The resolution of the shown box, running off the main thread (G-M5b-8).
+    var resolving: Task<Void, Never>?
     /// The cells on screen now (their `onAppear` and `onDisappear`): the only items whose thumbnails are asked for.
     var onScreen: Set<UUID> = []
     /// One redraw for every thumbnail that arrives in the same turn.
@@ -186,22 +188,12 @@ public final class BoxController {
         onChange()
     }
 
-    /// Resolves the current box once per show (P2-141 lazy resolution) and saves refreshed bookmarks.
+    /// Resolves the current box once per show (P2-141 lazy resolution), off the main thread: the panel draws at once
+    /// with the statuses it last knew, and the new ones (and refreshed bookmarks, saved) arrive when ready.
     func resolveIfNeeded() {
         guard let shelf = current, resolvedBox != shelf.id else { return }
         resolvedBox = shelf.id
-        let resolved = shelf.resolving(
-            with: ports.resolver, maker: ports.maker, isMounted: ports.isMounted, storage: ports.storage)
-        statuses = resolved.statuses
-        Self.logResolution(resolved)
-        if resolved.shelf != shelf {
-            library = library.replacing(resolved.shelf)
-            save()
-        }
-        presentation =
-            presentation.handling(
-                .itemsChanged(count: resolved.shelf.items.count, missing: resolved.missingCount)
-            ).0
+        resolve(shelf)
     }
 
     /// The current box with the panel's base, frame and dock, saved.

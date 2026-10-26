@@ -63,7 +63,7 @@ public struct BoxIntake {
             return IntakeResult(items: [], rejected: [error.userMessage], ownedBytes: 0)
         }
         let outcome = await promises.receivePromises(from: pasteboard, into: folder)
-        let owned = outcome.received.map { url in (url, owning(url)) }
+        let owned = await OwnedItemMaker(maker: maker, storage: storage, now: now()).items(for: outcome.received)
         let strays = owned.compactMap { url, result in (try? result.get()) == nil ? url : nil }
         let failures = Array(repeating: ShelfError.promiseFailed.userMessage, count: outcome.failed)
         return Self.result(owned.map(\.1), extraRejected: failures, strays: strays)
@@ -92,27 +92,11 @@ public struct BoxIntake {
         }
         guard FileManager.default.createFile(atPath: url.path, contents: data, attributes: [.posixPermissions: 0o600])
         else { return Self.result([.failure(.storageFailed)]) }
-        let item = owning(url)
+        let item = OwnedItemMaker(maker: maker, storage: storage, now: now()).item(for: url)
         return Self.result([item], strays: (try? item.get()) == nil ? [url] : [])
     }
 
-    /// An owned copy as an item: its bookmark, its path relative to the storage root, its size and identity (so the
-    /// box can tell its own copy from a file that later takes its name).
-    private func owning(_ url: URL) -> Result<ShelfItem, ShelfError> {
-        guard let relative = storage.relativePath(of: url) else { return .failure(.ownedPathOutsideBox) }
-        do {
-            let file = url.standardizedFileURL
-            return .success(
-                try ShelfItem(
-                    bookmark: maker.bookmark(for: file), lastKnownPath: file.path, displayName: file.lastPathComponent,
-                    byteCount: Self.size(of: file) ?? maker.size(of: file), addedAt: now(),
-                    ownership: .owned(relativePath: relative), identity: maker.identity(of: file)))
-        } catch {
-            return .failure(error)
-        }
-    }
-
-    private static func size(of url: URL) -> Int64? {
+    nonisolated static func size(of url: URL) -> Int64? {
         (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap { $0 }.map(Int64.init)
     }
 
@@ -127,6 +111,35 @@ public struct BoxIntake {
         return IntakeResult(
             items: items, rejected: rejected + extraRejected, ownedBytes: items.compactMap(\.byteCount).reduce(0, +),
             strays: strays)
+    }
+}
+
+/// Owned copies (received promises, clippings) as items, as a value that can leave the main actor (G-M5b-8): a
+/// promise of many files is made into items on a concurrent thread.
+nonisolated struct OwnedItemMaker: Sendable {
+    let maker: any BookmarkMaking
+    let storage: OwnedStorage
+    let now: Date
+
+    /// Each file with its item, or why it could not become one.
+    @concurrent func items(for urls: [URL]) async -> [(URL, Result<ShelfItem, ShelfError>)] {
+        urls.map { ($0, item(for: $0)) }
+    }
+
+    /// An owned copy as an item: its bookmark, its path relative to the storage root, its size and identity (so the
+    /// box can tell its own copy from a file that later takes its name).
+    func item(for url: URL) -> Result<ShelfItem, ShelfError> {
+        guard let relative = storage.relativePath(of: url) else { return .failure(.ownedPathOutsideBox) }
+        do {
+            let file = url.standardizedFileURL
+            return .success(
+                try ShelfItem(
+                    bookmark: maker.bookmark(for: file), lastKnownPath: file.path, displayName: file.lastPathComponent,
+                    byteCount: BoxIntake.size(of: file) ?? maker.size(of: file), addedAt: now,
+                    ownership: .owned(relativePath: relative), identity: maker.identity(of: file)))
+        } catch {
+            return .failure(error)
+        }
     }
 }
 

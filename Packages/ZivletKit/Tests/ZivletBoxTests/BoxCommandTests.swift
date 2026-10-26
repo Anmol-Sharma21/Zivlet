@@ -155,6 +155,7 @@ struct BoxCommandTests {
         box.start()
         _ = await box.add(files, newBox: false)
         box.showPanel()
+        await box.resolving?.value
         box.press(.select(box.viewModel.items[0].id, extend: false, toggle: false))
         #expect(box.viewModel.canLocate)
         rig.locator.answer = found
@@ -174,6 +175,7 @@ struct BoxCommandTests {
         box.start()
         _ = await box.add(files, newBox: false)
         box.showPanel()
+        await box.resolving?.value
         let before = box.library
         box.press(.select(box.viewModel.items[0].id, extend: false, toggle: false))
         box.press(.locate)
@@ -196,6 +198,7 @@ struct BoxCommandTests {
         box.start()
         _ = await box.add(files, newBox: false)
         box.showPanel()
+        await box.resolving?.value
         box.press(.removeMissing)
         #expect(box.library.current?.items.map(\.displayName) == ["f0.txt", "f3.txt"] && rig.trash.calls.isEmpty)
         box.hidePanel()

@@ -27,6 +27,7 @@ struct BoxControllerTests {
         rig.bookmarks.resolutions[files[0].standardizedFileURL.path] = .resolved(
             path: "/Users/u/Moved/f0.txt", stale: true)
         box.showPanel()
+        await box.resolving?.value
         #expect(rig.bookmarks.resolveCalls == 2)
         #expect(rig.saved()?.current?.items.first?.lastKnownPath == "/Users/u/Moved/f0.txt")
         box.press(.list)
@@ -43,6 +44,7 @@ struct BoxControllerTests {
         rig.bookmarks.resolutions[files[1].standardizedFileURL.path] = .failed(
             code: 4, storedVolumePath: nil, storedVolumeName: nil)
         box.showPanel()
+        await box.resolving?.value
         #expect(box.presentation.missing == 1 && box.viewModel.missingCount == 1)
         box.hidePanel()
     }
