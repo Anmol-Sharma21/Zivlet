@@ -29,6 +29,7 @@ struct NotchProximityReplayTests {
     func recordedDragsMeetTheBar() throws {
         let folder = try #require(RecordedDrags.folder)
         let verdict = try RecordedVerdict.judge(folder: folder)
+        ReplayReport.write("recorded", verdict.score)
         #expect(verdict.problems.isEmpty, "\(verdict.problems.joined(separator: "; "))")
     }
 
@@ -49,6 +50,11 @@ struct NotchProximityReplayTests {
         #expect(verdict.problems.contains("20 normal traces; the bar needs at least 200"))
     }
 
+    @Test func theReportLineCarriesBothNumbers() {
+        let score = ProximityScore(notchBound: 50, detected: 49, normal: 200, accidental: 0)
+        #expect(ReplayReport.line("x", score) == "proximity x: detection 98.0 % (49/50), accidental opens 0/200\n")
+    }
+
     @Test func aFullGoodFolderPasses() throws {
         let dir = try TempDir()
         try write(try enoughTraces(), to: dir.url)
@@ -61,6 +67,7 @@ struct NotchProximityReplayTests {
         let config = NotchProximity.Config.provisional
         let traces = try SyntheticDrags.proximitySet(on: display, seed: seed)
         let score = TraceEvaluator.score(traces, zones: TraceZones.provider(config), config: config)
+        ReplayReport.write("synthetic display \(display.id) seed \(seed)", score)
         #expect(score.notchBound == 50 && score.normal == 200)
         #expect(score.detection >= 0.95, "detection \(score.detection) on display \(display.id), seed \(seed)")
         #expect(score.accidental == 0, "\(score.accidental) accidental opens on display \(display.id), seed \(seed)")
@@ -75,6 +82,20 @@ struct NotchProximityReplayTests {
             let name = "\(trace.label.rawValue)-\(String(index + 1000)).json"
             try JSONEncoder().encode(trace).write(to: folder.appending(path: name))
         }
+    }
+}
+
+/// One line per replayed set on standard error, so the Y7 log carries the numbers and not only a pass (G-M5b-6):
+/// "proximity <set>: detection 98.0 % (49/50), accidental opens 0/200".
+enum ReplayReport {
+    static func line(_ name: String, _ score: ProximityScore) -> String {
+        let percent = String(format: "%.1f", score.detection * 100)
+        return "proximity \(name): detection \(percent) % (\(score.detected)/\(score.notchBound)), "
+            + "accidental opens \(score.accidental)/\(score.normal)\n"
+    }
+
+    static func write(_ name: String, _ score: ProximityScore) {
+        FileHandle.standardError.write(Data(line(name, score).utf8))
     }
 }
 
