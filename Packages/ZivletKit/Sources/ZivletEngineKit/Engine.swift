@@ -61,7 +61,7 @@ public struct ExecutionContext: Sendable {
 
 /// Whether a catalog route can run on this machine (03a §3.5). `unavailable` names what is missing, for example
 /// `["libvorbis"]`, so Settings and the result card can say why.
-public enum RouteAvailability: Sendable, Equatable {
+public enum RouteAvailability: Sendable, Equatable, Codable {
     case available
     case unavailable([String])
 

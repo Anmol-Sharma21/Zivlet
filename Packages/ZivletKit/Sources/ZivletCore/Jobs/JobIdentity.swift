@@ -18,7 +18,8 @@ public struct BatchID: Hashable, Codable, Sendable, CustomStringConvertible {
     public var description: String { raw.uuidString.lowercased() }
 }
 
-/// The engine that runs a plan (02 §7.3). M3 ships the ffmpeg media engine and the ImageIO image engine.
+/// The engine that runs a plan (02 §7.3). M3 ships the ffmpeg media engine and the ImageIO image engine; `worker`
+/// names the out-of-process worker that hosts engines (P2-01), for damage and crash reports.
 public enum EngineID: String, CaseIterable, Codable, Sendable {
-    case media, image
+    case media, image, worker
 }

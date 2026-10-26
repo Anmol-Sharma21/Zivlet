@@ -97,6 +97,7 @@ struct RequestsAndCopyTests {
         .diskFull, .processFailed(status: 1, stderrTail: "a\nb"), .crashed(signal: 11), .stalled, .cancelled,
         .verificationFailed("short"), .publishFailed(errno: EACCES), .internalInvariant("bug"),
         .helperFailed(errno: EMFILE), .writeFailed("encoder"), .engineDamaged(.media), .engineDamaged(.image),
+        .engineDamaged(.worker), .engineMissing(.worker),
     ]
 
     @Test(arguments: everyError)
@@ -120,6 +121,9 @@ struct RequestsAndCopyTests {
             JobErrorCopy.copy(for: .engineDamaged(.media)).message
                 == "Zivlet's media engine is damaged. Reinstall Zivlet to fix it.")
         #expect(JobErrorCopy.copy(for: .engineDamaged(.image)).message.contains("Reinstall Zivlet"))
+        #expect(
+            JobErrorCopy.copy(for: .engineDamaged(.worker)).message
+                == "Zivlet's converter is damaged. Reinstall Zivlet.")
     }
 
     @Test func aHelperThatCannotStartSaysWhy() {
