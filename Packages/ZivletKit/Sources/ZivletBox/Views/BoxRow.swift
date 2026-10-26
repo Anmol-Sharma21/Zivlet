@@ -33,6 +33,7 @@ struct BoxRow: View {
         .frame(height: BoxLook.List.rowHeight)
         .background(BoxSelectionFill(isSelected: isSelected))
         .overlay { BoxItemDrag(item: item, model: model, press: press) }
+        .modifier(BoxContextMenu(press: press))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.spoken)
         .accessibilityAddTraits(isSelected ? .isSelected : [])

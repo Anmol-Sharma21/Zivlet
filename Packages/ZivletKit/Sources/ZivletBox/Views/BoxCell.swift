@@ -27,6 +27,7 @@ struct BoxCell: View {
         .frame(width: BoxLook.Grid.cell, height: BoxLook.Grid.rowHeight)
         .background(BoxSelectionFill(isSelected: isSelected))
         .overlay { BoxItemDrag(item: item, model: model, press: press) }
+        .modifier(BoxContextMenu(press: press))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.spoken)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -56,5 +57,18 @@ struct BoxItemDrag: View {
             onClick: { flags in
                 press(.select(item.id, extend: flags.contains(.shift), toggle: flags.contains(.command)))
             })
+    }
+}
+
+/// The context menu (17e §2.3): the bar's and the overflow's commands, acting on the selection or every item.
+struct BoxContextMenu: ViewModifier {
+    let press: (BoxPress) -> Void
+
+    func body(content: Content) -> some View {
+        content.contextMenu {
+            ForEach(BoxPress.bar + BoxPress.overflow, id: \.self.menuID) { item in
+                Button(BoxCopy.title(item)) { press(item) }
+            }
+        }
     }
 }
