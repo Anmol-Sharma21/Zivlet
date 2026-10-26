@@ -20,14 +20,16 @@ public actor ConversionService {
     private var listener: Task<Void, Never>?
     private let loadMonitor: SystemLoadMonitor?
     private let loadFeed: Task<Void, Never>?
+    private let worker: WorkerSelection?
 
     /// `engines` answer `unavailableTargets`; the scheduler has its own list. `loadMonitor` (kept alive here) narrows
     /// the scheduler's lanes under memory pressure and Low Power.
     public init(
         scheduler: JobScheduler, engines: [any Engine] = [], factory: JobRequestFactory = JobRequestFactory(),
-        loadMonitor: SystemLoadMonitor? = nil
+        loadMonitor: SystemLoadMonitor? = nil, worker: WorkerSelection? = nil
     ) {
         (snapshots, feed) = AsyncStream.makeStream(of: BatchSnapshot.self)
+        self.worker = worker
         self.scheduler = scheduler
         self.engines = engines
         self.factory = factory
@@ -39,14 +41,24 @@ public actor ConversionService {
         }
     }
 
-    /// The production wiring: media (ffmpeg) and image (ImageIO) engines, standard lanes, job records on disk, live
-    /// system load.
-    public static func standard() -> ConversionService {
+    /// The production wiring: the image engine in the worker when it is there and sound, else in-process (P2-01,
+    /// D-M6-9); the media engine in-process (ffmpeg is already its own process, D-M6-5); standard lanes, job records
+    /// on disk, live system load.
+    public static func standard(worker: WorkerSelection = .standard()) -> ConversionService {
         let caches = URL.cachesDirectory.appending(
             path: "app.zivlet.Zivlet/Capabilities", directoryHint: .isDirectory)
-        let engines: [any Engine] = [ImageEngine(), MediaEngine(capabilityCache: caches)]
+        let engines: [any Engine] = [
+            WorkerRoutedEngine(local: ImageEngine(), selection: worker), MediaEngine(capabilityCache: caches),
+        ]
         return ConversionService(
-            scheduler: JobScheduler(engines: engines), engines: engines, loadMonitor: SystemLoadMonitor())
+            scheduler: JobScheduler(engines: engines), engines: engines, loadMonitor: SystemLoadMonitor(),
+            worker: worker)
+    }
+
+    /// Where conversions run, for Diagnostics.
+    public func workerStatus() async -> WorkerStatus {
+        guard let worker else { return .inProcess(reason: "no worker in this build") }
+        return await worker.status
     }
 
     /// The `drop→admit` signpost covers checking the drop and handing its jobs to the scheduler (10 §8.7).
@@ -101,9 +113,11 @@ public actor ConversionService {
         await scheduler.cancel(batch: batch)
     }
 
-    /// Quit: cancel everything and wait at most `limit` (03a §4.2).
+    /// Quit: cancel everything and wait at most `limit` (03a §4.2), then end the worker session.
     public func shutdown(within limit: Duration) async -> Bool {
-        await scheduler.shutdown(within: limit)
+        let stopped = await scheduler.shutdown(within: limit)
+        worker?.workerConnection.close()
+        return stopped
     }
 
     private func remember(_ snapshot: BatchSnapshot) {

@@ -43,6 +43,15 @@ struct DiagnosticsTests {
         #expect(unseen.contains("## Displays\n\nbuilt-in notch seen: no\n"))
     }
 
+    @Test func theWorkerSectionSaysWhereConversionsRunWithoutPaths() async throws {
+        let running = try await Diagnostics.build(.fake.with(worker: WorkerStatus.running(pid: 42).line))
+        #expect(running.contains("## Worker\n\nWorker: running (pid 42)\n"))
+        let fallback = try await Diagnostics.build(
+            .fake.with(worker: WorkerStatus.inProcess(reason: "worker missing").line))
+        #expect(fallback.contains("## Worker\n\nWorker: in-process (worker missing)\n"))
+        #expect(try await Diagnostics.build(.fake).contains("## Worker\n\nWorker: not started yet\n"))
+    }
+
     @Test func reportHasEverySectionAndNoNetworkFields() async throws {
         let report = try await Diagnostics.build(.fake)
         for section in ["Zivlet", "macOS", "Helpers", "Capabilities", "Settings", "Recent log", "Trigger trace"] {

@@ -35,6 +35,11 @@ public actor WorkerService {
         idle.arm()
     }
 
+    /// The app ended its session: nothing will read these jobs' replies.
+    public func cancelAll() {
+        for task in jobs.values { task.cancel() }
+    }
+
     /// The jobs whose step is running now.
     public var runningJobs: Set<JobID> { Set(jobs.keys) }
 

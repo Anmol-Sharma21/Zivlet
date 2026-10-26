@@ -56,6 +56,21 @@ public actor WorkerSelection {
         self.sleep = sleep
     }
 
+    /// `Contents/XPCServices/ZivletWorker.xpc` inside an app bundle.
+    public static func workerBundle(in app: URL) -> URL {
+        app.appending(path: "Contents/XPCServices/ZivletWorker.xpc", directoryHint: .isDirectory)
+    }
+
+    /// The running app's worker: inside its bundle, signature-checked like a helper (P1-50), reached over XPC with
+    /// the peer requirement from the app's own signature (D-M6-7).
+    public static func standard(bundle: Bundle = .main) -> WorkerSelection {
+        let requirement = WorkerPeerPolicy.requirement(own: .current(), peer: WorkerPeerPolicy.workerIdentifier)
+        return WorkerSelection(
+            workerBundle: workerBundle(in: bundle.bundleURL),
+            verify: { url throws(JobError) in try HelperIntegrity.check(url, policy: .current(), engine: .worker) },
+            connection: WorkerConnection(transport: XPCSessionFactory(requirement: requirement)))
+    }
+
     /// The worker connection whatever the choice, so quit can close it.
     public nonisolated var workerConnection: WorkerConnection { connection }
 

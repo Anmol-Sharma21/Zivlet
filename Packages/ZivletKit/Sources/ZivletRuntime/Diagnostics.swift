@@ -32,11 +32,13 @@ public struct DiagnosticsSources: Sendable, Equatable {
     public let displays: [String]
     /// The notch latch (design/19 §3.2): this Mac has shown a built-in display with a notch.
     public let builtInNotchSeen: Bool
+    /// Where conversions run (`WorkerStatus.line`): the worker's pid or the in-process reason, never a path.
+    public let worker: String
 
     public init(
         version: String, build: String, macOS: String, model: String, helpers: [HelperReport], capabilities: String,
         settings: String, log: [String], trigger: [String], home: String, displays: [String] = [],
-        builtInNotchSeen: Bool = false
+        builtInNotchSeen: Bool = false, worker: String = WorkerStatus.notStarted.line
     ) {
         self.version = version
         self.build = build
@@ -50,20 +52,28 @@ public struct DiagnosticsSources: Sendable, Equatable {
         self.home = home
         self.displays = displays
         self.builtInNotchSeen = builtInNotchSeen
+        self.worker = worker
     }
 
     public func with(log: [String]) -> DiagnosticsSources {
         DiagnosticsSources(
             version: version, build: build, macOS: macOS, model: model, helpers: helpers,
             capabilities: capabilities, settings: settings, log: log, trigger: trigger, home: home,
-            displays: displays, builtInNotchSeen: builtInNotchSeen)
+            displays: displays, builtInNotchSeen: builtInNotchSeen, worker: worker)
     }
 
     public func with(displays: [String], builtInNotchSeen: Bool) -> DiagnosticsSources {
         DiagnosticsSources(
             version: version, build: build, macOS: macOS, model: model, helpers: helpers,
             capabilities: capabilities, settings: settings, log: log, trigger: trigger, home: home,
-            displays: displays, builtInNotchSeen: builtInNotchSeen)
+            displays: displays, builtInNotchSeen: builtInNotchSeen, worker: worker)
+    }
+
+    public func with(worker: String) -> DiagnosticsSources {
+        DiagnosticsSources(
+            version: version, build: build, macOS: macOS, model: model, helpers: helpers,
+            capabilities: capabilities, settings: settings, log: log, trigger: trigger, home: home,
+            displays: displays, builtInNotchSeen: builtInNotchSeen, worker: worker)
     }
 
     /// Fixed sources for tests and previews.
@@ -99,6 +109,7 @@ public enum Diagnostics {
             ("Zivlet", "\(sources.version) (\(sources.build))"),
             ("macOS", "\(sources.macOS)\nMac model: \(sources.model)"),
             ("Helpers", sources.helpers.map(helperLine).joined(separator: "\n")),
+            ("Worker", sources.worker),
             ("Capabilities", sources.capabilities),
             ("Settings", sources.settings),
             ("Displays", (sources.displays + [notchLine(sources.builtInNotchSeen)]).joined(separator: "\n")),

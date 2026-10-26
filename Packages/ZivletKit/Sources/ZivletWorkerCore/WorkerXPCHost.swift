@@ -34,7 +34,10 @@ public enum WorkerXPCHost {
             incomingMessageHandler: { (message: XPCReceivedMessage) -> (any Encodable)? in
                 answer(message, service: service, session: session)
             },
-            cancellationHandler: { _ in logger.notice("The app ended its worker session") })
+            cancellationHandler: { _ in
+                logger.notice("The app ended its worker session")
+                Task { await service.cancelAll() }
+            })
         session.set(accepted)
         return decision
     }

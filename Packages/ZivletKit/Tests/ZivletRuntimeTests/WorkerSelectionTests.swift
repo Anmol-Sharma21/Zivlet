@@ -129,3 +129,29 @@ struct WorkerSelectionTests {
         #expect(WorkerStatus.inProcess(reason: "worker missing").line == "Worker: in-process (worker missing)")
     }
 }
+
+@Suite("The app's worker wiring (plan 18c C11)")
+struct WorkerWiringTests {
+    @Test func theServiceReportsWhereConversionsRunAndClosesTheWorkerAtQuit() async throws {
+        let rig = try SelectionRig()
+        let selection = try rig.selection(bundle: false)
+        let scheduler = JobScheduler(engines: [], records: nil)
+        let service = ConversionService(scheduler: scheduler, worker: selection)
+        #expect(await service.workerStatus() == .notStarted)
+        _ = await selection.choice()
+        #expect(await service.workerStatus() == .inProcess(reason: "worker missing"))
+        #expect(await service.shutdown(within: .milliseconds(100)))
+    }
+
+    @Test func theStandardSelectionLooksInsideTheAppBundle() {
+        let bundle = URL(fileURLWithPath: "/Applications/Zivlet.app")
+        #expect(
+            WorkerSelection.workerBundle(in: bundle).path
+                == "/Applications/Zivlet.app/Contents/XPCServices/ZivletWorker.xpc")
+    }
+
+    @Test func aServiceWithoutAWorkerSaysSo() async {
+        let service = ConversionService(scheduler: JobScheduler(engines: [], records: nil))
+        #expect(await service.workerStatus() == .inProcess(reason: "no worker in this build"))
+    }
+}

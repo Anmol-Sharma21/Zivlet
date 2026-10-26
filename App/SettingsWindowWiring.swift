@@ -83,9 +83,10 @@ final class SettingsWindowWiring {
         let notchSeen = displays.hasBuiltInNotch
         Task { [conversions, logger] in
             let helpers = await conversions.helperVersions()
+            let worker = await conversions.workerStatus().line
             let sources = await DiagnosticsCollector().collect(
                 settingsJSON: settingsJSON, triggerTrace: trace, helpers: helpers
-            ).with(displays: displayLines, builtInNotchSeen: notchSeen)
+            ).with(displays: displayLines, builtInNotchSeen: notchSeen).with(worker: worker)
             do {
                 let report = try await Diagnostics.build(sources)
                 NSPasteboard.general.clearContents()
