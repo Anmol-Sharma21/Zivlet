@@ -11,15 +11,28 @@ struct IslandFinishView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            fill
+            SurfaceFill(finish: finish, shape: shape)
             if finish.outlined {
                 IslandOutline(shape: shape, lineWidth: IslandLook.Outline.width)
                     .fill(Color.white.opacity(IslandLook.Outline.opacity))
             }
         }
     }
+}
 
-    @ViewBuilder private var fill: some View {
+/// The fill of a finish in any shape (19b D-NL1 … D-NL3): black, Liquid Glass under the black scrim, or the solid grey
+/// of Reduce Transparency and Increase Contrast, with the housing band on top when there is one. Shared by the island
+/// and the Drop Box (plan 16 D-M5b-22); each draws its own outline.
+public struct SurfaceFill<S: InsettableShape>: View {
+    public let finish: IslandFinish
+    public let shape: S
+
+    public init(finish: IslandFinish, shape: S) {
+        self.finish = finish
+        self.shape = shape
+    }
+
+    public var body: some View {
         switch finish {
         case .black:
             shape.fill(Color.black)

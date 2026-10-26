@@ -36,10 +36,15 @@ public enum IslandFinish: Sendable, Equatable {
         case .collapsed where housing != nil:
             return .black(outline: outline)
         case .collapsed, .toast, .expanded:
-            let band = housing?.height ?? 0
-            let solid = settings.reduceTransparency || settings.increaseContrast
-            return solid ? .solid(band: band, outline: outline) : .glass(band: band)
+            return floating(settings: settings, band: housing?.height ?? 0)
         }
+    }
+
+    /// Glass, or solid under Reduce Transparency or Increase Contrast (outlined under the latter). With no band it is
+    /// the finish of a surface that never meets the housing, such as the Drop Box panel (19c D-BL1, D-BL2).
+    public static func floating(settings: Settings, band: Double = 0) -> IslandFinish {
+        let solid = settings.reduceTransparency || settings.increaseContrast
+        return solid ? .solid(band: band, outline: settings.increaseContrast) : .glass(band: band)
     }
 
     /// The 1 pt outline of Increase Contrast.

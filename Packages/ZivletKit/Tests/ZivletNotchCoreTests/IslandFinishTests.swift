@@ -54,3 +54,15 @@ struct IslandFinishTests {
         #expect(IslandFinish.black(outline: false).band == 0)
     }
 }
+
+@Suite("Floating finish: surfaces that never meet the housing (19c D-BL1)")
+struct FloatingFinishTests {
+    @Test(arguments: [
+        (false, false, IslandFinish.glass(band: 0)), (true, false, .solid(band: 0, outline: false)),
+        (false, true, .solid(band: 0, outline: true)),
+    ])
+    func floatingSurfacesAreGlassOrSolid(reduceTransparency: Bool, increaseContrast: Bool, expected: IslandFinish) {
+        let settings = IslandFinish.Settings(reduceTransparency: reduceTransparency, increaseContrast: increaseContrast)
+        #expect(IslandFinish.floating(settings: settings) == expected)
+    }
+}
