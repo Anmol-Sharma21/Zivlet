@@ -105,4 +105,15 @@ struct BoxActionsTests {
         #expect(rig.results.results == [.failed(card)])
         box.hidePanel()
     }
+
+    @Test func anEmptyBoxDoesNothingAndSaysNothing() async throws {
+        let rig = try BoxRig()
+        let box = rig.controller()
+        box.start()
+        _ = await box.add(try rig.files(1), newBox: false)
+        _ = box.handleKey(BoxKeyStroke(chars: "n", command: true))
+        for press in [BoxPress.copy, .copyPaths, .airDrop, .share, .moveTo, .copyTo, .trash] { box.press(press) }
+        await box.running?.value
+        #expect(rig.results.results.isEmpty && rig.picker.shown.isEmpty && rig.folders.asked == 0)
+    }
 }

@@ -70,8 +70,10 @@ extension BoxController {
         return Set(moves.keys)
     }
 
-    /// The targets when any item can take part; otherwise the card that says nothing can, and nil.
+    /// The targets when any item can take part; otherwise the card that says nothing can, and nil. An empty box has
+    /// nothing to act on and says nothing (its bar is not even drawn).
     func usableTargets(_ press: BoxPress) -> BulkTargets? {
+        guard current?.items.isEmpty == false else { return nil }
         let targets = bulkTargets()
         guard targets.isEmpty else { return targets }
         report(.failed(ActionCard(title: BoxCopy.nothingUsable(press), lines: targets.failures)))
