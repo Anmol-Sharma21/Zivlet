@@ -31,8 +31,8 @@ struct ToolCatalogTests {
 
     @Test func multiFileListsOnlyContainMultiCapableTools() {
         for row in ToolCatalog.applicability {
-            for tool in row.multi { #expect(tools.spec(tool).cardinality != .single, "\(tool)") }
-            for tool in row.single { #expect(tools.spec(tool).cardinality != .multiOnly, "\(tool)") }
+            for tool in row.multi.map(\.id) { #expect(tools.spec(tool).cardinality != .single, "\(tool)") }
+            for tool in row.single.map(\.id) { #expect(tools.spec(tool).cardinality != .multiOnly, "\(tool)") }
         }
     }
 

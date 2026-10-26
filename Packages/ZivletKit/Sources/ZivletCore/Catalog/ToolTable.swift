@@ -1,37 +1,48 @@
 // Tool data (06b Task 4b, 03a §4.4). Symbol names are Zivlet's own choice.
 extension ToolCatalog {
+    /// The tools one format family shows for one item and for several, each marked visible or extra (P2-100).
     struct ApplicabilityRow: Sendable {
+        struct Entry: Sendable, Hashable {
+            let id: ToolID
+            let visibility: ToolVisibility
+
+            static func visible(_ id: ToolID) -> Entry { Entry(id: id, visibility: .defaultVisible) }
+            static func extra(_ id: ToolID) -> Entry { Entry(id: id, visibility: .extra) }
+        }
+
         let formats: Set<FormatID>
-        let single: [ToolID]
-        let multi: [ToolID]
+        let single: [Entry]
+        let multi: [Entry]
+
+        /// The entries for `count` items: `multi` from two items on.
+        func entries(count: Int) -> [Entry] { count >= 2 ? multi : single }
     }
 
+    /// D-M6-17: every current tool is visible by default; a tool moves to `.extra` only when its list would pass 12.
     static let applicability: [ApplicabilityRow] = [
         .init(
             formats: [.jpg, .png, .webp, .heic, .tiff],
-            single: [.shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop, .imageRedact],
-            multi: [.shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage]),
-        .init(formats: [.svg], single: [.qrScan], multi: [.pdfFromImages, .imageCollage, .qrScan]),
-        .init(formats: [.avif, .bmp], single: [.qrScan], multi: [.qrScan]),
+            single: .visible(
+                .shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop, .imageRedact),
+            multi: .visible(.shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage)),
+        .init(formats: [.svg], single: .visible(.qrScan), multi: .visible(.pdfFromImages, .imageCollage, .qrScan)),
+        .init(formats: [.avif, .bmp], single: .visible(.qrScan), multi: .visible(.qrScan)),
         .init(
-            formats: [.pdf], single: [.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .qrScan],
-            multi: [.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .qrScan]),
+            formats: [.pdf], single: .visible(.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .qrScan),
+            multi: .visible(.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .qrScan)),
         .init(
             formats: [.mp3, .m4a, .wav, .flac],
-            single: [
-                .shrink, .stripMetadata, .audioNormalize, .audioWaveform, .audioTrim, .audioChannelMix,
-                .audioBleep,
-            ],
-            multi: [.shrink, .stripMetadata, .audioNormalize]),
+            single: .visible(
+                .shrink, .stripMetadata, .audioNormalize, .audioWaveform, .audioTrim, .audioChannelMix, .audioBleep),
+            multi: .visible(.shrink, .stripMetadata, .audioNormalize)),
         .init(
             formats: [.mp4, .mov, .mkv],
-            single: [
-                .shrink, .stripMetadata, .videoMute, .videoTrim, .videoCrop, .videoSpeed,
-                .videoFrameGrab, .videoClips, .videoRedact,
-            ],
-            multi: [.shrink, .stripMetadata, .videoMute, .videoJoin]),
-        .init(formats: [.gif], single: [.stripMetadata, .qrScan], multi: [.stripMetadata, .qrScan]),
-        .init(formats: [.zip, .tar, .gz, .rar], single: [.archiveUnpack], multi: [.archiveUnpack]),
+            single: .visible(
+                .shrink, .stripMetadata, .videoMute, .videoTrim, .videoCrop, .videoSpeed, .videoFrameGrab,
+                .videoClips, .videoRedact),
+            multi: .visible(.shrink, .stripMetadata, .videoMute, .videoJoin)),
+        .init(formats: [.gif], single: .visible(.stripMetadata, .qrScan), multi: .visible(.stripMetadata, .qrScan)),
+        .init(formats: [.zip, .tar, .gz, .rar], single: .visible(.archiveUnpack), multi: .visible(.archiveUnpack)),
     ]
 
     static let specTable: [ToolSpec] = [
@@ -72,4 +83,9 @@ extension ToolCatalog {
             id: id, wheelLabel: label, symbolName: symbol, presentation: presentation,
             cardinality: cardinality, outputSuffix: suffix)
     }
+}
+
+extension [ToolCatalog.ApplicabilityRow.Entry] {
+    /// Keeps the table readable: every listed tool, in order, visible by default.
+    static func visible(_ ids: ToolID...) -> Self { ids.map(Element.visible) }
 }

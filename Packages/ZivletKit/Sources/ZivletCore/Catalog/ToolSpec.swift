@@ -9,6 +9,10 @@ public enum ToolID: String, CaseIterable, Codable, Sendable {
     case qrScan
 }
 
+/// Whether a tool takes a wheel slot by default or waits in the extras for custom wheels, intents and the CLI
+/// (P2-100, 17 §8.1).
+public enum ToolVisibility: String, Codable, Sendable { case defaultVisible, extra }
+
 public enum ToolPresentation: String, Codable, Sendable { case instant, editor }
 
 /// `.multiAllowed` = 1…n files; `.multiOnly` = combining tools that need ≥ 2.
