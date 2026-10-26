@@ -19,11 +19,11 @@ coverage:
 	$(ENV) $(NATIVE) Scripts/coverage.sh
 
 lint:
-	$(ENV) swift format lint --strict --recursive Packages/ZivletKit/Sources Packages/ZivletKit/Tests App
+	$(ENV) swift format lint --strict --recursive Packages/ZivletKit/Sources Packages/ZivletKit/Tests App Worker
 	Scripts/check-log-privacy.sh
 
 format:
-	$(ENV) swift format format --in-place --recursive Packages/ZivletKit/Sources Packages/ZivletKit/Tests App
+	$(ENV) swift format format --in-place --recursive Packages/ZivletKit/Sources Packages/ZivletKit/Tests App Worker
 
 app:
 	$(ENV) $(NATIVE) /opt/homebrew/bin/xcodegen generate --spec project.yml && \

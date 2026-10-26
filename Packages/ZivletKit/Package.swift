@@ -23,7 +23,11 @@ let package = Package(
                 "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions", "ZivletSettings", "ZivletUI",
                 "ZivletNotchCore", "ZivletNotch", "ZivletShelfCore", "ZivletBox", "ZivletIPC",
                 "ZivletWorkerCore",
-            ])
+            ]),
+        // What ZivletWorker.xpc links (P2-01): the image engine and the worker's service, nothing of the app shell.
+        .library(
+            name: "ZivletWorkerKit",
+            targets: ["ZivletCore", "ZivletEngineKit", "EngineImage", "ZivletIPC", "ZivletWorkerCore"]),
     ],
     targets: [
         .target(name: "ZivletCore", swiftSettings: strict),

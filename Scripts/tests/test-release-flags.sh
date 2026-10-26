@@ -9,7 +9,8 @@ T=$(tmpdir); trap 'rm -rf "$T"' EXIT
 cp /usr/bin/true "$T/clean"
 "$ROOT/Scripts/check-release-paths.sh" --scan-only "$T/clean" >/dev/null || fail "a clean binary passes the scans"
 
-for flag in -ZivletBoxPreview -ZivletBoxDemo -ZivletTrayPreview -ZivletRecordDragTraces -ZivletIslandPreview; do
+for flag in -ZivletBoxPreview -ZivletBoxDemo -ZivletTrayPreview -ZivletRecordDragTraces -ZivletIslandPreview \
+    selfKillForTesting setIdleForTesting; do
     cp /usr/bin/true "$T/with$flag"
     printf '%s\0' "$flag" >>"$T/with$flag"
     status=0; out=$("$ROOT/Scripts/check-release-paths.sh" --scan-only "$T/with$flag" 2>&1) || status=$?

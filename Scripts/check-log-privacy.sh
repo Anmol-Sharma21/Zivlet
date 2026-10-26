@@ -5,7 +5,10 @@
 # of 10 §8.7 as adopted for Phase 1, so Copy Diagnostics and `log stream` can filter by them.
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SOURCES=("$REPO_ROOT/App" "$REPO_ROOT/Packages/ZivletKit/Sources")
+SOURCES=()
+for dir in "$REPO_ROOT/App" "$REPO_ROOT/Worker" "$REPO_ROOT/Packages/ZivletKit/Sources"; do
+    [[ -d "$dir" ]] && SOURCES+=("$dir")
+done
 pattern='(String\(describing: [^)]*\)|localizedDescription|stderrTail|folder), privacy: \.public'
 if grep -rnE "$pattern" "${SOURCES[@]}"; then
     echo "error: an error description or path is logged with privacy: .public (NFR-6)" >&2

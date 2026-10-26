@@ -26,6 +26,9 @@ targets:
         product: ZivletKit
       - package: Sparkle
         product: Sparkle
+      # P2-01: copied into Contents/XPCServices; Scripts/sign-app.sh re-signs it in the embed phase.
+      - target: ZivletWorker
+        embed: true
     info:
       path: App/Info.plist
       properties:
@@ -58,6 +61,24 @@ targets:
       - name: Embed media helpers
         script: '"$SRCROOT/Scripts/embed-helpers.sh"'
         basedOnDependencyAnalysis: false
+  # P2-01 (plan 18c C9): the out-of-process engine worker. Hardened runtime from Base.xcconfig, no entitlements: the
+  # library-validation exception the app needs for Sparkle is turned off here (the worker loads only system libraries).
+  ZivletWorker:
+    type: xpc-service
+    platform: macOS
+    sources: [Worker]
+    dependencies:
+      - package: ZivletKit
+        product: ZivletWorkerKit
+    settings:
+      base:
+        PRODUCT_NAME: ZivletWorker
+        PRODUCT_BUNDLE_IDENTIFIER: app.zivlet.Zivlet.Worker
+        INFOPLIST_FILE: Worker/Info.plist
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION: NO
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+        SKIP_INSTALL: YES
   # Owner-run (D-M4-14): needs an Accessibility/automation grant; not part of make test.
   ZivletUITestsApp:
     type: bundle.ui-testing
