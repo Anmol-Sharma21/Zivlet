@@ -1,6 +1,7 @@
 import AppKit
 import TestSupport
 import Testing
+import ZivletActions
 import ZivletCore
 import ZivletShelfCore
 
@@ -30,6 +31,11 @@ final class BoxRig {
     let quickLook = FakeQuickLook()
     let picker = FakeSharePicker()
     let results = ResultLog()
+    let board = TestPasteboard()
+    var sharing = FakeBoxSharing()
+    var optionHeld = false
+    var mounted = true
+    private(set) var turns = 0
     var clock = 0.0
     var displays = [BoxRig.display]
 
@@ -41,7 +47,8 @@ final class BoxRig {
     func controller() -> BoxController {
         let box = BoxController(
             ports: BoxPorts(
-                store: store, storage: storage, maker: bookmarks, resolver: bookmarks, isMounted: { _ in true },
+                store: store, storage: storage, maker: bookmarks, resolver: bookmarks,
+                isMounted: { [unowned self] _ in mounted },
                 promises: FakePromises(names: []), thumbnails: NoThumbnails(), quickLook: quickLook,
                 visibleFrames: { [unowned self] in displays }, finish: { .solid },
                 now: { Date(timeIntervalSince1970: 1_000) }, uptime: { [unowned self] in clock }),
@@ -50,7 +57,12 @@ final class BoxRig {
         return box
     }
 
-    var actions: BoxActions { BoxActions(sharePicker: picker) }
+    var actions: BoxActions {
+        BoxActions(
+            sharePicker: picker, clipboard: ClipboardAction(pasteboard: board.board),
+            airDrop: AirDropAction(service: sharing), optionHeld: { [unowned self] in optionHeld },
+            nextTurn: { [unowned self] in turns += 1 })
+    }
 
     func files(_ count: Int, prefix: String = "f") throws -> [URL] {
         try (0..<count).map { try dir.file("files/\(prefix)\($0).txt") }

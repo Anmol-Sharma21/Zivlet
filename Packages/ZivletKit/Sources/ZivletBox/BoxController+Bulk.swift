@@ -14,11 +14,34 @@ extension BoxController {
 
     /// The system share picker at the Share button; no toast follows, the system reports nothing useful.
     func share() {
-        let targets = bulkTargets()
-        guard !targets.isEmpty else {
-            return report(.failed(ActionCard(title: BoxCopy.nothingToShare, lines: targets.failures)))
-        }
+        guard let targets = usableTargets(.share) else { return }
         actions.sharePicker.show(targets.urls, relativeTo: BoxLook.Panel.shareAnchor, of: dropView, edge: .minY)
+    }
+
+    func copyItems() {
+        guard let targets = usableTargets(.copy) else { return }
+        report(actions.copy(targets.urls).listing(lines: targets.failures))
+    }
+
+    /// Newline-separated paths; shell-quoted when asked (⌥ on the menu item, never the ⌘⌥C key itself).
+    func copyPaths(shellQuoted: Bool) {
+        guard let targets = usableTargets(.copyPaths) else { return }
+        report(actions.copyPaths(targets.urls, shellQuoted: shellQuoted).listing(lines: targets.failures))
+    }
+
+    func airDrop() {
+        guard let targets = usableTargets(.airDrop) else { return }
+        running = Task { [actions] in
+            report(await actions.send(targets.urls).listing(lines: targets.failures))
+        }
+    }
+
+    /// The targets when any item can take part; otherwise the card that says nothing can, and nil.
+    func usableTargets(_ press: BoxPress) -> BulkTargets? {
+        let targets = bulkTargets()
+        guard targets.isEmpty else { return targets }
+        report(.failed(ActionCard(title: BoxCopy.nothingUsable(press), lines: targets.failures)))
+        return nil
     }
 
     /// Hands a result to the presenters, with the panel's frame (nil when it is off screen) as the anchor.

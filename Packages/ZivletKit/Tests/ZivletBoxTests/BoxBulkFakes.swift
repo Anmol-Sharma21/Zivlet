@@ -30,3 +30,18 @@ final class ResultLog {
         anchors.append(anchor)
     }
 }
+
+/// AirDrop's sharing service: available or not, and the items it was asked to send.
+final class FakeBoxSharing: SharingService {
+    let available: Bool
+    private(set) var performed: [[URL]] = []
+
+    init(available: Bool = true) { self.available = available }
+
+    func canPerform(_ items: [URL]) -> Bool { available && !items.isEmpty }
+
+    func perform(_ items: [URL], completion: @escaping (SharingOutcome) -> Void) {
+        performed.append(items)
+        completion(.sent)
+    }
+}

@@ -25,7 +25,7 @@ public enum ActionResult: Sendable, Equatable {
     case failed(ActionCard)
     case cancelled
 
-    init(_ outcome: ActionOutcome) {
+    public init(_ outcome: ActionOutcome) {
         switch outcome {
         case .done(let toast): self = .done(toast: toast, undo: nil)
         case .failed(let error): self = .failed(ActionCard(error))
@@ -55,12 +55,15 @@ public enum ActionResult: Sendable, Equatable {
     }
 
     /// Items refused at the boundary are always listed (a cancel stays silent: the person stopped the action).
-    func listing(_ rejected: [RejectedItem]) -> ActionResult {
-        guard !rejected.isEmpty else { return self }
-        let lines = rejected.map(\.cardLine)
+    func listing(_ rejected: [RejectedItem]) -> ActionResult { listing(lines: rejected.map(\.cardLine)) }
+
+    /// The same result with one card line per item that was left out (a Drop Box item that is missing, say); a
+    /// success becomes a toast plus a card titled with the count.
+    public func listing(lines: [String]) -> ActionResult {
+        guard !lines.isEmpty else { return self }
         switch self {
         case .done(let toast, let undo):
-            let title = counted(rejected.count, "item") + (rejected.count == 1 ? " was" : " were") + " left out."
+            let title = counted(lines.count, "item") + (lines.count == 1 ? " was" : " were") + " left out."
             return .partial(toast: toast, card: ActionCard(title: title, lines: lines), undo: undo)
         case .partial(let toast, let card, let undo):
             return .partial(toast: toast, card: card.adding(lines), undo: undo)

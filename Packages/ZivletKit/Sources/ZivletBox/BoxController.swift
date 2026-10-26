@@ -28,6 +28,8 @@ public final class BoxController {
     var resolvedBox: UUID?
     var requestedThumbnails: Set<UUID> = []
     var canSave = true
+    /// The bulk action in flight (AirDrop, Move, Copy to), so tests and the next action can wait for it.
+    var running: Task<Void, Never>?
 
     /// A bulk action on its targets (the selection, else every item); stream C runs them.
     public var onBulk: (BoxPress, [ShelfItem]) -> Void = { _, _ in }

@@ -1,11 +1,38 @@
+import AppKit
 import ZivletActions
 
-/// The actions the box's bulk commands run (P2-142): the existing actions of the wheel, reused, never copied. Every
-/// one is a port, so the controller is tested with fakes.
+/// The actions the box's bulk commands run (P2-142): the wheel's own actions, reused, never copied. Every one is a
+/// port, so the controller is tested with fakes and a private pasteboard.
 public struct BoxActions {
     public let sharePicker: any SharePicking
+    public let clipboard: ClipboardAction
+    public let airDrop: AirDropAction
+    /// ⌥ is held now: Copy Paths from the menu writes the shell-quoted form, as the wheel's Copy Path slice does.
+    public let optionHeld: () -> Bool
+    /// Waits one run-loop turn, so the panel's click is over before AirDrop's sheet takes focus.
+    public let nextTurn: ActionService.NextTurn
 
-    public init(sharePicker: any SharePicking = SystemSharePicker()) {
+    public init(
+        sharePicker: any SharePicking = SystemSharePicker(), clipboard: ClipboardAction = ClipboardAction(),
+        airDrop: AirDropAction = AirDropAction(),
+        optionHeld: @escaping () -> Bool = { NSEvent.modifierFlags.contains(.option) },
+        nextTurn: @escaping ActionService.NextTurn = ActionService.runLoopTurn
+    ) {
         self.sharePicker = sharePicker
+        self.clipboard = clipboard
+        self.airDrop = airDrop
+        self.optionHeld = optionHeld
+        self.nextTurn = nextTurn
+    }
+
+    func copy(_ urls: [URL]) -> ActionResult { ActionResult(clipboard.copyItems(urls)) }
+
+    func copyPaths(_ urls: [URL], shellQuoted: Bool) -> ActionResult {
+        ActionResult(clipboard.copyPaths(urls, shellQuoted: shellQuoted))
+    }
+
+    func send(_ urls: [URL]) async -> ActionResult {
+        await nextTurn()
+        return ActionResult(await airDrop.send(urls))
     }
 }

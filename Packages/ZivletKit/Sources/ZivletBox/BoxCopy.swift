@@ -6,7 +6,17 @@ import ZivletShelfCore
 /// decimal, as Finder shows them.
 nonisolated enum BoxCopy {
     static let empty = "Drop files here"
-    static let nothingToShare = "Nothing here can be shared."
+
+    /// The card's title when no item of the selection (or the box) can take part.
+    static func nothingUsable(_ press: BoxPress) -> String {
+        switch press {
+        case .share: "Nothing here can be shared."
+        case .airDrop: "Nothing here can be sent."
+        case .moveTo: "Nothing here can be moved."
+        case .trash: "Nothing here can be moved to the Trash."
+        default: "Nothing here can be copied."
+        }
+    }
 
     static func items(_ count: Int) -> String { counted(count, "item") }
 

@@ -33,7 +33,10 @@ extension BoxController {
         case .more: break
         case .cancelBusy: onBulk(.cancelBusy, [])
         case .share: share()
-        case .airDrop, .copy, .moveTo, .copyTo, .copyPaths, .trash, .remove, .clear, .locate, .removeMissing:
+        case .airDrop: airDrop()
+        case .copy: copyItems()
+        case .copyPaths: copyPaths(shellQuoted: actions.optionHeld())
+        case .moveTo, .copyTo, .trash, .remove, .clear, .locate, .removeMissing:
             onBulk(press, targets())
         }
     }
@@ -52,8 +55,8 @@ extension BoxController {
             let columns = current?.viewMode == .list ? 1 : BoxLook.Grid.columns
             select(selection.moving(direction, extend: extend, in: order, columns: columns))
         case .quickLook: showQuickLook()
-        case .copy: onBulk(.copy, targets())
-        case .copyPaths: onBulk(.copyPaths, targets())
+        case .copy: copyItems()
+        case .copyPaths: copyPaths(shellQuoted: false)
         case .moveTo: onBulk(.moveTo, targets())
         case .copyTo: onBulk(.copyTo, targets())
         case .share: share()
