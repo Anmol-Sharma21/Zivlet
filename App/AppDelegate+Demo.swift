@@ -7,7 +7,8 @@ import ZivletWheelCore
 extension AppDelegate {
     /// DEBUG: `-ZivletDemoWheel <mode> [-ZivletDemoRepeat <n>]` shows the wheel without a drag (n times); `-ZivletDemoConvert <path> <format>
     /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
-    /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, and `-ZivletIslandPreview <state>` puts a made-up
+    /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, `-ZivletWorkerSmoke <folder>` runs the worker smoke
+    /// (`WorkerSmoke`), and `-ZivletIslandPreview <state>` puts a made-up
     /// job on the notch island, so end-to-end checks need no drag. The island preview alone also exists in the CPU
     /// measurement build (`ZIVLET_ISLAND_PREVIEW`, D-ND3); a shipped Release build has none of these.
     func launchDemoIfRequested() {
@@ -20,6 +21,14 @@ extension AppDelegate {
                     conversion.hud.show(try UITestFixture.snapshot(in: dir))
                 }
                 if let demo = try DemoConversion.parse(arguments: arguments) { runDemo(demo) }
+                if let smoke = WorkerSmoke.parse(arguments: arguments) {
+                    Task {
+                        await smoke.run()
+                        // From a run-loop timer, not from this task or a main-queue block: terminate waits in a
+                        // nested event loop for the quit task, which needs the main queue free.
+                        NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
+                    }
+                }
                 if let demo = try DemoAction.parse(arguments: arguments) {
                     let selection = WheelSelection(
                         mode: .actions, target: .action(demo.action), urls: [demo.url], optionHeld: demo.optionHeld)

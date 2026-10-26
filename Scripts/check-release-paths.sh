@@ -7,7 +7,7 @@
 # jobs (only the CPU measurement build of notch-idle.sh CONFIG=release compiles it in). Plan 16 D-M5b-20: the Drop
 # Box's debug flags (-ZivletBoxPreview, -ZivletBoxDemo, -ZivletTrayPreview) and the drag-trace recorder's flag (-ZivletRecordDragTraces,
 # D-M5b-10) are refused the same way; no build compiles them in Release. Plan 18c: so are the worker's DEBUG smoke
-# requests (selfKillForTesting, setIdleForTesting).
+# requests (selfKillForTesting, setIdleForTesting) and the smoke run's flags (-ZivletWorkerSmoke, -ZivletWorkerIdleSeconds).
 # Usage: Scripts/check-release-paths.sh              build and check the Release app
 #        Scripts/check-release-paths.sh --scan-only FILE   only the scans, on one file (script tests)
 source "$(dirname "$0")/env.sh"
@@ -15,7 +15,7 @@ PREVIEW_FLAG="-ZivletIslandPreview"
 BOX_FLAGS=("-ZivletBoxPreview" "-ZivletBoxDemo" "-ZivletTrayPreview")
 TRACE_FLAG="-ZivletRecordDragTraces"
 # Plan 18c (D-M6-18): the worker's DEBUG smoke requests; their Codable case names are the markers.
-WORKER_MARKERS=("selfKillForTesting" "setIdleForTesting")
+WORKER_MARKERS=("selfKillForTesting" "setIdleForTesting" "-ZivletWorkerSmoke" "-ZivletWorkerIdleSeconds")
 
 # Prints what is wrong with one Mach-O file; exits 1 when anything is. Every byte is searched (grep -a), also data
 # after the last segment, which strings skips in a universal file.

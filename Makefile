@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -110,6 +110,10 @@ vendor-unpack:
 	$(ENV) Vendor/unpack.sh "$${TARBALL:?set TARBALL to a zivlet-vendor-<key>.tar.xz}"
 
 # Shell tests of the release and bundle scripts (some need make vendor and make app first).
+# Debug only (plan 18c C12, exit row Z5): the real worker through convert, cancel, crash, retry and idle exit.
+worker-smoke:
+	Scripts/worker-smoke.sh
+
 script-test:
 	@for t in Scripts/tests/test-*.sh; do bash "$$t" || exit 1; done
 
