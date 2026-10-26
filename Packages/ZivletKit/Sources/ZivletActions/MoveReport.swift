@@ -59,6 +59,15 @@ nonisolated public struct MoveReport: Sendable, Equatable {
     public let moved: [MovedItem]
     public let failures: [MoveFailure]
     public let skipped: [MoveSkip]
+    /// The items whose step had not started when the run was cancelled; they are where they were.
+    public let cancelled: [URL]
+
+    public init(moved: [MovedItem], failures: [MoveFailure], skipped: [MoveSkip], cancelled: [URL] = []) {
+        self.moved = moved
+        self.failures = failures
+        self.skipped = skipped
+        self.cancelled = cancelled
+    }
 }
 
 /// A POSIX error from a file operation.

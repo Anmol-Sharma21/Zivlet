@@ -10,6 +10,8 @@ import ZivletRuntime
 nonisolated public struct MoveExecutor: Sendable {
     public typealias Copy = @Sendable (_ source: URL, _ copy: URL) throws(MoveIOError) -> Void
     public typealias Trash = @Sendable (URL) throws -> Void
+    /// Items done so far and the plan's step count; called on the executor's thread after each step.
+    public typealias Progress = @Sendable (_ done: Int, _ total: Int) -> Void
     static let hiddenPrefix = ".zivlet-move-"
 
     private let copy: Copy
@@ -23,15 +25,24 @@ nonisolated public struct MoveExecutor: Sendable {
         self.trash = trash
     }
 
-    @concurrent public func run(_ plan: MovePlan) async -> MoveReport {
+    /// Runs every step in order and reports `progress(done, total)` after each. Cancellation is checked before each
+    /// step, never inside one: an item that has started (a cross-volume copy included) finishes, so no half copy is
+    /// left, and the steps not started are listed in the report's `cancelled`.
+    @concurrent public func run(_ plan: MovePlan, progress: Progress = { _, _ in }) async -> MoveReport {
         var moved: [MovedItem] = []
         var failures: [MoveFailure] = []
-        for step in plan.steps {
+        let total = plan.steps.count
+        for (index, step) in plan.steps.enumerated() {
+            guard !Task.isCancelled else {
+                let rest = plan.steps[index...].map(\.source)
+                return MoveReport(moved: moved, failures: failures, skipped: plan.skipped, cancelled: rest)
+            }
             switch perform(step, in: plan.destination) {
             case .success(let target):
                 moved.append(MovedItem(source: step.source, target: target, stamp: FileStamp.read(target)))
             case .failure(let reason): failures.append(MoveFailure(url: step.source, reason: reason))
             }
+            progress(index + 1, total)
         }
         return MoveReport(moved: moved, failures: failures, skipped: plan.skipped)
     }
