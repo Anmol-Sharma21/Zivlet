@@ -17,7 +17,7 @@ extension SliceBuilder {
     private func sameFamily(_ formats: [FormatID], _ caps: CapabilitySnapshot) -> WheelContent {
         let shared = sharedTargets(formats)
         let available = shared.filter { !caps.unavailableTargets.contains($0) }
-        if !available.isEmpty { return .slices(available.map { slice($0, badge: nil) }) }
+        if !available.isEmpty { return .slices(available.prefix(maxSlots).map { slice($0, badge: nil) }) }
         if formats.count == 1, !shared.isEmpty { return .empty(.noInstalledConverter(formats[0])) }
         return .empty(formats.count == 1 ? .unsupportedFile : .noCommonFormat)
     }

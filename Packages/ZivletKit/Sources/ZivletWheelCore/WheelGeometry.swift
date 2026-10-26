@@ -15,7 +15,7 @@ public struct WheelGeometry: Sendable, Equatable {
     public let outerSlack = 150.0
     public let hysteresis = 3.0 * Double.pi / 180
     public let panelSide = 372.0
-    public let maxSlots = 12
+    public let maxSlots = WheelLimits.maxSlots
 
     /// 40 + (119.52 − 40) × 0.56 = 84.5312.
     public var labelRadius: Double { 40 + (petalOuter - 40) * 0.56 }

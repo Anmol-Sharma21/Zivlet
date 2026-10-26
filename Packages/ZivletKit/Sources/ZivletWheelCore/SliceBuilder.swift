@@ -1,6 +1,7 @@
 import ZivletCore
 
-/// Derives the per-mode slice lists and empty states for a selection (03a §2.6).
+/// Derives the per-mode slice lists and empty states for a selection (03a §2.6). Every list shows at most
+/// `maxSlots` slices in catalog order (P2-100).
 /// Slice ids are "<mode>.<rawValue>" (for example "tools.shrink"), stable for the glass morph.
 public struct SliceBuilder: Sendable {
     let conversions: ConversionCatalog
@@ -10,7 +11,7 @@ public struct SliceBuilder: Sendable {
 
     public init(
         conversions: ConversionCatalog = .standard, tools: ToolCatalog = .standard,
-        registry: FormatRegistry = .standard, maxSlots: Int = WheelGeometry.standard.maxSlots
+        registry: FormatRegistry = .standard, maxSlots: Int = WheelLimits.maxSlots
     ) {
         self.conversions = conversions
         self.tools = tools
@@ -55,13 +56,14 @@ public struct SliceBuilder: Sendable {
             let distinct = formats.uniqued()
             return .empty(.noTools(distinct.count == 1 ? distinct.first : nil))
         }
-        return .slices(ids.map(toolSlice))
+        return .slices(ids.prefix(maxSlots).map(toolSlice))
     }
 
     /// The actions in fixed order for any local selection, folders included (03a §2.6), minus unavailable ones.
     private func actionContent(_ items: [SelectionItem], _ caps: CapabilitySnapshot) -> WheelContent {
         guard items.allSatisfy(\.isLocal) else { return .empty(.onlyLocalItems) }
-        return .slices(ActionID.allCases.filter { !caps.unavailableActions.contains($0) }.map(actionSlice))
+        let available = ActionID.allCases.filter { !caps.unavailableActions.contains($0) }
+        return .slices(available.prefix(maxSlots).map(actionSlice))
     }
 
     private func toolSlice(_ id: ToolID) -> WheelSlice {
