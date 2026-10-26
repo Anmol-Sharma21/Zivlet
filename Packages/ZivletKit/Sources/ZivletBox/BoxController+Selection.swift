@@ -36,7 +36,8 @@ extension BoxController {
         case .airDrop: airDrop()
         case .copy: copyItems()
         case .copyPaths: copyPaths(shellQuoted: actions.optionHeld())
-        case .moveTo, .copyTo, .trash, .remove, .clear, .locate, .removeMissing:
+        case .moveTo: moveItems()
+        case .copyTo, .trash, .remove, .clear, .locate, .removeMissing:
             onBulk(press, targets())
         }
     }
@@ -57,7 +58,7 @@ extension BoxController {
         case .quickLook: showQuickLook()
         case .copy: copyItems()
         case .copyPaths: copyPaths(shellQuoted: false)
-        case .moveTo: onBulk(.moveTo, targets())
+        case .moveTo: moveItems()
         case .copyTo: onBulk(.copyTo, targets())
         case .share: share()
         case .remove: onBulk(.remove, targets())

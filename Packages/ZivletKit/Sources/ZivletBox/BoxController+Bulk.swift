@@ -36,6 +36,29 @@ extension BoxController {
         }
     }
 
+    /// Move to…: the folder chooser, one undo entry for the batch, then the moved items point at their new places.
+    /// Items that were not moved stay as they were and are listed.
+    func moveItems() {
+        guard let targets = usableTargets(.moveTo), let box = current?.id else { return }
+        running = Task { [actions] in
+            let (result, moveReport) = await actions.move(targets.urls)
+            if let moveReport { follow(moveReport.moved, in: box, targets: targets) }
+            report(result.listing(lines: targets.failures))
+        }
+    }
+
+    /// Points the items that moved at their new paths (new bookmarks too) and saves.
+    func follow(_ moved: [MovedItem], in box: UUID, targets: BulkTargets) {
+        let ids = Dictionary(
+            zip(targets.urls.map(\.standardizedFileURL.path), targets.ids), uniquingKeysWith: { first, _ in first })
+        let moves = Dictionary(
+            moved.compactMap { item in ids[item.source.standardizedFileURL.path].map { ($0, item.target.path) } },
+            uniquingKeysWith: { first, _ in first })
+        guard !moves.isEmpty, let shelf = library.boxes.first(where: { $0.id == box }) else { return }
+        for (id, path) in moves { statuses[id] = .present(path: path) }
+        replace(library.replacing(shelf.relocating(moves, using: ports.maker).0))
+    }
+
     /// The targets when any item can take part; otherwise the card that says nothing can, and nil.
     func usableTargets(_ press: BoxPress) -> BulkTargets? {
         let targets = bulkTargets()

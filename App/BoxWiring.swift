@@ -17,9 +17,9 @@ final class BoxWiring {
     /// Shows a result where the placement says (set by the composition root).
     var present: (ActionResult, CGPoint?) -> Void = { _, _ in }
 
-    init(settings: @escaping () -> BoxGroup, ports: BoxPorts = .standard()) {
+    init(settings: @escaping () -> BoxGroup, ports: BoxPorts = .standard(), actions: BoxActions) {
         self.settings = settings
-        controller = BoxController(ports: ports)
+        controller = BoxController(ports: ports, actions: actions)
         controller.onAdded = { [weak self] outcome in self?.present(outcome.actionResult, nil) }
         controller.onError = { [weak self] message in self?.present(.failed(ActionCard(title: message)), nil) }
         controller.onPresented = { base, frame in Self.log(base, frame: frame) }

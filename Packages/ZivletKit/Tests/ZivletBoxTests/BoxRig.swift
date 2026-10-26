@@ -3,6 +3,7 @@ import TestSupport
 import Testing
 import ZivletActions
 import ZivletCore
+import ZivletRuntime
 import ZivletShelfCore
 
 @testable import ZivletBox
@@ -36,10 +37,19 @@ final class BoxRig {
     var optionHeld = false
     var mounted = true
     private(set) var turns = 0
+    let folders: FakeBoxFolders
+    let undo: UndoHistory
     var clock = 0.0
     var displays = [BoxRig.display]
 
-    init() throws { dir = try TempDir(prefix: "zivlet-box-rig") }
+    init() throws {
+        dir = try TempDir(prefix: "zivlet-box-rig")
+        folders = FakeBoxFolders(answer: try dir.folder("dst"))
+        undo = UndoHistory(store: UndoStore(file: dir.url.appending(path: "undo.json")))
+    }
+
+    /// Where Move to… and Copy to… put items unless a test says otherwise.
+    var destination: URL { dir.url.appending(path: "dst") }
 
     var store: BoxStore { BoxStore(file: dir.url.appending(path: "boxes.json")) }
     var storage: OwnedStorage { OwnedStorage(root: dir.url.appending(path: "Box")) }
@@ -61,7 +71,8 @@ final class BoxRig {
         BoxActions(
             sharePicker: picker, clipboard: ClipboardAction(pasteboard: board.board),
             airDrop: AirDropAction(service: sharing), optionHeld: { [unowned self] in optionHeld },
-            nextTurn: { [unowned self] in turns += 1 })
+            nextTurn: { [unowned self] in turns += 1 },
+            service: ActionService(folders: folders, undoHistory: undo, nextTurn: {}))
     }
 
     func files(_ count: Int, prefix: String = "f") throws -> [URL] {

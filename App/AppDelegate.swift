@@ -40,7 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ) {
         [weak self] in self?.trigger?.trace.lines ?? []
     }
-    lazy var box = BoxWiring(settings: { [weak self] in self?.settings.settings.box ?? BoxGroup() }, ports: boxPorts)
+    lazy var box = BoxWiring(
+        settings: { [weak self] in self?.settings.settings.box ?? BoxGroup() }, ports: boxPorts,
+        actions: BoxActions(service: ActionService(undoHistory: undoHistory)))
     private lazy var actions = ActionWiring(
         undoHistory: undoHistory, notch: island.hud, route: { [weak self] in self?.defaultRoute ?? .nearDrop },
         box: box.adding, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
@@ -106,7 +108,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// The Drop Box: results go where the placement says; the panel comes back as it was (P2-55 §9.5).
     private func startBox() {
-        box.present = { [weak self] result, point in self?.actions.present(result, near: point) }
+        box.present = { [weak self] result, point in
+            self?.actions.present(result, near: point)
+            self?.menu.refreshRecent()  // a Move or Copy to… from the box adds to Recent Results
+        }
         box.start()
         #if DEBUG
             boxPreview = BoxShots.run(

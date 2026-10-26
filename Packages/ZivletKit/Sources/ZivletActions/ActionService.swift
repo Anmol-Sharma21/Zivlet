@@ -62,25 +62,27 @@ public final class ActionService {
         case .openInTerminal:
             await nextTurn()
             return ActionResult(await terminal.open(request.items.map(survey.item), terminalID: terminalID()))
-        case .moveTo:
-            await nextTurn()
-            return await move(request.items)
+        case .moveTo: return await moveReporting(request.items).0
         case .pinFloating:
             guard let box else { return ActionResult(.failed(.boxUnavailable)) }
             return await box.add(request.items, newBox: request.optionHeld)
         }
     }
 
-    private func move(_ urls: [URL]) async -> ActionResult {
-        guard let folder = await folders.chooseFolder(for: urls.map(survey.item)) else { return .cancelled }
+    /// Move to… for callers that need to know where each item went (the Drop Box updates its references): one run-loop
+    /// turn, the folder chooser, the plan, the executor and one undo entry for the whole batch. The report is nil when
+    /// nothing ran (the choice was cancelled or the plan refused).
+    public func moveReporting(_ urls: [URL]) async -> (ActionResult, MoveReport?) {
+        await nextTurn()
+        guard let folder = await folders.chooseFolder(for: urls.map(survey.item)) else { return (.cancelled, nil) }
         let plan: MovePlan
         do {
             plan = try survey.plan(items: urls, destination: folder)
         } catch {
-            return .failed(ActionCard(title: error.userMessage))
+            return (.failed(ActionCard(title: error.userMessage)), nil)
         }
         let report = await executor.run(plan)
-        return Self.result(report, undo: await recordUndo(report.moved))
+        return (Self.result(report, undo: await recordUndo(report.moved)), report)
     }
 
     /// Records the moved items that could be stamped; nil when there is nothing to undo.

@@ -45,7 +45,7 @@ public final class BoxController {
     public var onPresented: (BoxPresentation.Base, CGRect?) -> Void = { _, _ in }
     var lastReport: (base: BoxPresentation.Base, frame: CGRect?)?
 
-    public init(ports: BoxPorts, actions: BoxActions = BoxActions()) {
+    public init(ports: BoxPorts, actions: BoxActions) {
         self.ports = ports
         self.actions = actions
         intake = BoxIntake(maker: ports.maker, storage: ports.storage, promises: ports.promises, now: ports.now)

@@ -119,7 +119,8 @@ let package = Package(
         .testTarget(
             name: "ZivletBoxTests",
             dependencies: [
-                "ZivletBox", "ZivletShelfCore", "ZivletActions", "ZivletCore", "TestSupport", "NotchTestSupport",
+                "ZivletBox", "ZivletShelfCore", "ZivletActions", "ZivletRuntime", "ZivletCore", "TestSupport",
+                "NotchTestSupport",
             ],
             swiftSettings: shell),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.

@@ -45,3 +45,16 @@ final class FakeBoxSharing: SharingService {
         completion(.sent)
     }
 }
+
+/// The folder chooser of Move to… and Copy to…: a fixed answer (nil = cancelled), and how often it was asked.
+final class FakeBoxFolders: FolderChoosing {
+    var answer: URL?
+    private(set) var asked = 0
+
+    init(answer: URL?) { self.answer = answer }
+
+    func chooseFolder(for items: [MoveItem]) async -> URL? {
+        asked += 1
+        return answer
+    }
+}

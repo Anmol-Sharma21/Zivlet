@@ -180,6 +180,22 @@ struct ActionServiceTests {
         #expect(await rig.perform(.moveTo, [file]) == .done(toast: "Already in that folder", undo: nil))
     }
 
+    @Test func moveReportingHandsBackTheReportWithOneUndoBatch() async throws {
+        let rig = try ServiceRig()
+        let files = [try rig.dir.file("src/a.txt"), try rig.dir.file("src/b.txt")]
+        let (result, report) = await rig.service.moveReporting(files)
+        #expect(result.toast == "Moved 2 items" && result.undo != nil && rig.turns == 1)
+        #expect(report?.moved.map(\.target.lastPathComponent) == ["a.txt", "b.txt"])
+        #expect(await rig.history.recent().count == 1)
+    }
+
+    @Test func moveReportingWithACancelledFolderChoiceHasNoReport() async throws {
+        let rig = try ServiceRig()
+        rig.folders = FakeFolders(answer: nil)
+        let (result, report) = await rig.service.moveReporting([try rig.dir.file("src/a.txt")])
+        #expect(result == .cancelled && report == nil)
+    }
+
     @Test func cancellingIsSilent() async throws {
         let rig = try ServiceRig()
         let file = try rig.dir.file("src/a.txt")

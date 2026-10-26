@@ -137,6 +137,22 @@ extension Shelf {
         return with(items: front + items.filter { !named.contains($0.id) })
     }
 
+    /// The items in `moves` (id → new path) at their new places, with bookmarks made there (P2-142 Move to…), and the
+    /// ids whose bookmark could not be made: those keep their old reference and are found again on the next show.
+    public func relocating(_ moves: [UUID: String], using maker: any BookmarkMaking) -> (Shelf, failed: Set<UUID>) {
+        var failed: Set<UUID> = []
+        let next = items.map { item in
+            guard let path = moves[item.id] else { return item }
+            do {
+                return try item.relocated(to: path, bookmark: maker.bookmark(for: URL(filePath: path)))
+            } catch {
+                failed.insert(item.id)
+                return item
+            }
+        }
+        return (with(items: next), failed)
+    }
+
     public func renamed(_ name: String) throws(ShelfError) -> Shelf {
         try Shelf(
             id: id, name: name, items: items, frame: frame, dock: dock, viewMode: viewMode, updatedAt: updatedAt,
