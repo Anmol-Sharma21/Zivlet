@@ -60,25 +60,6 @@ extension BoxController {
         apply(.confirmRequested(kind))
     }
 
-    /// The files themselves go to the Trash and leave the box; what the Trash refuses stays and is listed.
-    func trash(_ targets: BulkTargets) {
-        var trashed: Set<UUID> = []
-        var lines = targets.failures
-        for (id, url) in zip(targets.ids, targets.urls) {
-            do {
-                try ports.trash.trash(url)
-                trashed.insert(id)
-            } catch {
-                lines.append(BoxCopy.notTrashed(url.lastPathComponent))
-            }
-        }
-        guard !trashed.isEmpty, let shelf = current else {
-            return report(.failed(ActionCard(title: BoxCopy.nothingTrashed, lines: lines)))
-        }
-        replace(library.replacing(shelf.removing(trashed)))
-        report(ActionResult.done(toast: BoxCopy.trashed(trashed.count), undo: nil).listing(lines: lines))
-    }
-
     /// Every reference goes now; the owned copies wait out the undo window before they go to the Trash.
     func clearBox() {
         guard let shelf = current, !shelf.items.isEmpty else { return }

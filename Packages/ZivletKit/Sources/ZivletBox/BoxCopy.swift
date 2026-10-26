@@ -49,6 +49,11 @@ nonisolated enum BoxCopy {
     static func copying(_ count: Int) -> String { "Copying \(items(count))" }
     static func trashing(_ count: Int) -> String { "Moving \(items(count)) to the Trash" }
 
+    /// The card of a Move to Trash stopped part-way: what is left in the box.
+    static func stillHere(_ count: Int) -> String {
+        "Stopped. \(items(count)) \(count == 1 ? "is" : "are") still here."
+    }
+
     static func trashed(_ count: Int) -> String { "Moved \(count) to the Trash" }
     static func notTrashed(_ name: String) -> String { "\(name) couldn't be moved to the Trash." }
     static func copyStayed(_ name: String) -> String { "\(name) stayed: its kept copy couldn't be moved to the Trash." }

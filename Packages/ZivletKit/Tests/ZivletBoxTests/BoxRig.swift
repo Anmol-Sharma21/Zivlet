@@ -79,7 +79,8 @@ final class BoxRig {
                 finish: { [weak self] in self?.finish ?? .solid },
                 now: { [weak self] in self?.now ?? Date(timeIntervalSince1970: 1_000) },
                 uptime: { [weak self] in self?.clock ?? 0 }, trash: trash,
-                locator: locator, sleep: { [weak self] duration in await self?.wait(duration) }),
+                locator: locator, sleep: { [weak self] duration in await self?.wait(duration) },
+                recordUndo: { [undo] batch, moves in await undo.record(batch, moves: moves) }),
             actions: actions)
         box.onResult = { [results] result, anchor in results.record(result, anchor) }
         return box

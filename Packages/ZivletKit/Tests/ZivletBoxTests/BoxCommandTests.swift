@@ -65,9 +65,11 @@ struct BoxCommandTests {
         let (box, files) = try await Self.box(rig, files: 2)
         box.press(.select(box.viewModel.items[1].id, extend: false, toggle: false))
         #expect(box.handleKey(BoxKeyStroke(special: .delete, command: true)))
+        #expect(box.presentation.overlay == nil)
+        await box.running?.value
         #expect(box.presentation.overlay == nil && rig.trash.calls == [files[1].standardizedFileURL])
         #expect(box.library.current?.items.map(\.displayName) == ["f0.txt"])
-        #expect(rig.results.results == [.done(toast: "Moved 1 to the Trash", undo: nil)])
+        #expect(rig.results.results.map(\.toast) == ["Moved 1 to the Trash"] && rig.results.results[0].undo != nil)
         box.hidePanel()
     }
 
@@ -77,8 +79,9 @@ struct BoxCommandTests {
         box.press(.trash)
         #expect(box.presentation.overlay == .confirm(.trash(count: 2)) && rig.trash.calls.isEmpty)
         box.press(.confirm(true))
+        await box.running?.value
         #expect(rig.trash.calls == files.map(\.standardizedFileURL) && box.library.current?.items.isEmpty == true)
-        #expect(rig.results.results == [.done(toast: "Moved 2 to the Trash", undo: nil)])
+        #expect(rig.results.results.map(\.toast) == ["Moved 2 to the Trash"] && rig.results.results[0].undo != nil)
         box.hidePanel()
     }
 
@@ -97,6 +100,7 @@ struct BoxCommandTests {
         let (box, _) = try await Self.box(rig, files: 1)
         rig.trash.refusing = ["f0.txt"]
         box.press(.trash)
+        await box.running?.value
         let card = ActionCard(
             title: "Nothing was moved to the Trash.", lines: ["f0.txt couldn't be moved to the Trash."])
         #expect(rig.results.results == [.failed(card)] && box.library.current?.items.count == 1)

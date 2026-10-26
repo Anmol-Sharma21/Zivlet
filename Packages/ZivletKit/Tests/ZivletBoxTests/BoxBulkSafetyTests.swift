@@ -42,6 +42,7 @@ struct BoxBulkSafetyTests {
         let renamed = rig.dir.url.appending(path: "files/renamed.txt").path
         rig.bookmarks.resolutions[urls[0].standardizedFileURL.path] = .resolved(path: renamed, stale: false)
         box.press(.trash)
+        await box.running?.value
         #expect(rig.trash.calls.map(\.path) == [renamed])
         box.hidePanel()
     }

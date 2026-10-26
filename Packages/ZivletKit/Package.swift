@@ -50,7 +50,8 @@ let package = Package(
         .target(
             name: "ZivletBox",
             dependencies: [
-                "ZivletCore", "ZivletShelfCore", "ZivletActions", "ZivletNotchCore", "ZivletNotch", "ZivletTrigger",
+                "ZivletCore", "ZivletShelfCore", "ZivletActions", "ZivletRuntime", "ZivletNotchCore", "ZivletNotch",
+                "ZivletTrigger",
             ], swiftSettings: shell),
         // Versioned, validated settings values and their UserDefaults store (03b §8.1); no AppKit.
         .target(name: "ZivletSettings", dependencies: ["ZivletTrigger"], swiftSettings: strict),

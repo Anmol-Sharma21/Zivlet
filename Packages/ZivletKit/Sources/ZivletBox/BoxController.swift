@@ -43,6 +43,8 @@ public final class BoxController {
     var running: Task<Void, Never>?
     /// Move to Trash of more than one item, waiting for the inline answer.
     var pendingTrash: BulkTargets?
+    /// Recent Moves to Trash whose items Undo can put back, newest last.
+    var trashBatches: [TrashBatch] = []
     /// The last Clear, while its Undo still works, and the wait that ends it.
     var pendingClear: PendingClear?
     var clearing: Task<Void, Never>?

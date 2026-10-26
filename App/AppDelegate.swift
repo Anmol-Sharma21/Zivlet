@@ -127,12 +127,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
     }
 
-    /// The standard stores; Debug demos and previews use their own (D-M5b-20).
+    /// The standard stores; Debug demos and previews use their own (D-M5b-20). Move to Trash from the box is
+    /// recorded in the same undo history as every other action.
     private var boxPorts: BoxPorts {
         #if DEBUG
-            BoxShots.ports(boxFlags)
+            BoxShots.ports(boxFlags).with(undoHistory: undoHistory)
         #else
-            BoxPorts.standard()
+            BoxPorts.standard().with(undoHistory: undoHistory)
         #endif
     }
 
@@ -191,7 +192,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.defaultRoute(hasBuiltInNotch: island.hasBuiltInNotch).usable(islandHasDisplay: island.canShow)
     }
 
-    /// Undo for conversions, Moves, copies and the Drop Box's Clear alike; the reply is the sentence the HUD shows.
+    /// Undo for conversions, Moves, copies and the Drop Box's Clear and Move to Trash alike (a box trash gets its
+    /// items back once the files are back); the reply is the sentence the HUD shows.
     private func undo(_ batch: BatchID) async -> UndoReply {
         if box.controller.undoClear(batch) { return UndoReply(message: BoxWiring.restoredMessage, canRetry: false) }
         guard let result = await undoHistory.undo(batch) else {
@@ -200,6 +202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logger.notice(
             "Undo: \(result.trashed.count) trashed, \(result.restored.count) moved back, \(result.skipped.count) left in place"
         )
+        box.controller.trashUndone(batch, restored: result.restored)
         menu.refreshRecent()
         return UndoReply(message: result.message, canRetry: result.canRetry, removed: result.trashed)
     }
