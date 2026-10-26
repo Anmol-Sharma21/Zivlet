@@ -2,8 +2,10 @@
 # M5b exit row Y8: the Debug app's idle CPU with the Drop Box and the notch tray, as a difference from a baseline
 # (plan 16 E5), in the pattern of notch-idle.sh. Each state is one launch: wait for it to settle, sample with
 # idle-cpu.sh, quit. Baseline: the island at the notch, no box shown and nothing at the notch. Then the panel shown
-# and still (grid, made-up items), and the tray at rest on its invisible sensor over a made-up box. Every launch uses
-# a preview store in a temporary folder (D-M5b-20), never the person's boxes.json. WindowServer's CPU over the same
+# and still (grid, made-up items), the tray at rest on its invisible sensor over a made-up box, and the real armed
+# path: -ZivletBoxDemo over four small files in a scratch folder, so the tray's driver, its live-sample hook and the
+# zone watch run as in use (the preview states skip them). Every launch uses a store in a temporary folder
+# (D-M5b-20), never the person's boxes.json. WindowServer's CPU over the same
 # window is printed beside each row, for information; it has no limit. These are Debug numbers taken on whatever
 # else the Mac is doing; the record says so. G-M5a-1's fast-progress row is not part of this script.
 # Usage: Scripts/box-idle.sh      ZIVLET_IDLE_SECONDS (default 120) and ZIVLET_IDLE_SETTLE (default 10) override;
@@ -22,7 +24,9 @@ STATES=(
     "baseline|-ZivletHUDPlacement notch -ZivletBoxPreview hidden|"
     "panel-still|-ZivletHUDPlacement notch -ZivletBoxPreview grid|0.1"
     "tray-sensor|-ZivletHUDPlacement notch -ZivletTrayPreview sensor|0.1"
+    "box-armed|-ZivletHUDPlacement notch -ZivletBoxDemo @DEMO@|0.1"
 )
+DEMO_FILES=4
 
 if [[ "$DRY_RUN" == 1 ]]; then
     echo "debug app $APP"
@@ -34,6 +38,14 @@ if [[ "$DRY_RUN" == 1 ]]; then
     exit 0
 fi
 if [[ ! -d "$APP" ]]; then echo "error: $APP not found; run make app" >&2; exit 1; fi
+
+# The armed state's box: a scratch folder of this script's own, removed at exit, and nothing else.
+DEMO=$(mktemp -d "${TMPDIR:-/tmp}/zivlet-box-idle.XXXXXX")
+for n in $(seq 1 "$DEMO_FILES"); do printf 'Zivlet idle %s\n' "$n" >"$DEMO/idle-$n.txt"; done
+drop_demo_dir() {
+    [[ "$(basename "$DEMO")" == zivlet-box-idle.* ]] || return 0
+    rm -r -f "$DEMO"
+}
 
 quit_app() {
     osascript -e 'quit app "Zivlet"' >/dev/null 2>&1 || true
@@ -59,13 +71,13 @@ sample_state() {
     rm -f "$server_file"
 }
 
-trap quit_app EXIT
+trap 'quit_app; drop_demo_dir' EXIT
 echo "debug load average at start: $(sysctl -n vm.loadavg)"
 status=0
 baseline=""
 for state in "${STATES[@]}"; do
     IFS='|' read -r name arguments limit <<<"$state"
-    result=$(sample_state "$arguments") || result=""
+    result=$(sample_state "${arguments//@DEMO@/$DEMO}") || result=""
     read -r value server <<<"$result"
     server="WindowServer ${server:-n/a} %"
     if [[ -z "$limit" ]]; then

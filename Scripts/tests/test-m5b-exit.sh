@@ -72,6 +72,11 @@ out=$(run "$(printf '%s\n%s' "$signpost" "$checked")" --only Y3,Y4,Y5,Y6) || fai
 assert_contains "$out" "Y6 pass"
 assert_contains "$(cat "$T/logs/Y6.log")" "preflight=yes"
 
+# An empty TCC stream is not "no request": the row fails and says why.
+out=$(run "" --only Y3,Y4,Y5,Y6 || true)
+assert_contains "$out" "Y6 FAIL"
+assert_contains "$(cat "$T/logs/Y6.log")" "nothing to check"
+
 # Y6 checks nothing on its own: the demos it watches must run in the same invocation.
 out=$(run "$signpost" --only Y6 || true)
 assert_contains "$out" "Y6 FAIL"

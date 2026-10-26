@@ -86,7 +86,8 @@ no_tcc_prompts() {
     stream=$("$LOG_TOOL" show --start "$DEMO_START" --style compact --predicate 'subsystem == "com.apple.TCC"') ||
         { echo "log show failed (status $?)"; return 1; }
     echo "TCC lines examined: $(grep -c . <<<"$stream" || true)"
-    [[ -n "$stream" ]] || echo "warning: the TCC stream was empty since $DEMO_START"
+    # An empty stream proves nothing (a window the log no longer holds, no privilege to read it): not a pass.
+    [[ -n "$stream" ]] || { echo "the TCC stream was empty since $DEMO_START: nothing to check"; return 1; }
     lines=$(grep -i 'zivlet' <<<"$stream" || true)
     echo "preflight checks (listed, not failing):"
     grep 'preflight=yes' <<<"$lines" || echo "(none)"
