@@ -61,20 +61,55 @@ final class FakeBoxFolders: FolderChoosing {
     }
 }
 
-/// A Trash that records what it was given and refuses the paths in `refusing`. With `removes`, a file it takes
-/// is deleted, as the real Trash takes it out of its folder; otherwise nothing is touched.
+/// A Trash that records what it was given and refuses the paths in `refusing`. With `removes`, a file it takes is
+/// deleted; with a `folder`, it is moved there, as into the Trash, and that place is returned; otherwise nothing is
+/// touched. With `pauseAt`, the call of that number holds until `resume()`. Set everything before the action runs.
 final class FakeBoxTrash: Trashing, @unchecked Sendable {
-    private let lock = NSLock()
+    private let lock = NSCondition()
     private var received: [URL] = []
+    private var count = 0
+    private var held = false
+    private var released = false
     var refusing: Set<String> = []
     var removes = false
+    var folder: URL?
+    var pauseAt = 0
 
     var calls: [URL] { lock.withLock { received } }
+    var isHeld: Bool { lock.withLock { held } }
 
-    func trash(_ url: URL) throws(ShelfError) {
+    func trash(_ url: URL) throws(ShelfError) -> URL? {
+        hold()
         guard !refusing.contains(url.lastPathComponent) else { throw .trashFailed }
         lock.withLock { received.append(url) }
-        if removes { try? FileManager.default.removeItem(at: url) }
+        if removes {
+            try? FileManager.default.removeItem(at: url)
+            return nil
+        }
+        guard let folder else { return url }
+        let place = folder.appending(path: "\(UUID().uuidString)-\(url.lastPathComponent)")
+        do {
+            try FileManager.default.moveItem(at: url, to: place)
+        } catch {
+            throw .trashFailed
+        }
+        return place
+    }
+
+    func resume() {
+        lock.withLock {
+            released = true
+            lock.broadcast()
+        }
+    }
+
+    private func hold() {
+        lock.withLock {
+            count += 1
+            guard count == pauseAt else { return }
+            held = true
+            while !released { lock.wait() }
+        }
     }
 }
 
