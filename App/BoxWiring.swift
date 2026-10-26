@@ -9,18 +9,29 @@ import os
 /// The Drop Box in the app (P2-55, P2-141): one controller over the standard stores, restored at launch and saved at
 /// quit; the BOX slice's adapter; the menu command; drop results and save errors shown as action toasts and cards.
 /// Settings › Drop Box: "New drops go to" decides the slice's box here and "Clear items" is the controller's
-/// auto-clear policy; the tray and shake rows are read by the parts that use them as they are added (plan 16 stream D).
+/// auto-clear policy; "Open at the notch while dragging" and "Shake to open" are read by the tray and its driver.
 final class BoxWiring {
-    private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
+    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
     /// Undo on the Clear toast put the items back.
     static let restoredMessage = "Back in the box."
     let controller: BoxController
-    private let settings: () -> BoxGroup
+    let settings: () -> BoxGroup
     /// Shows a result where the placement says (set by the composition root).
     var present: (ActionResult, CGPoint?) -> Void = { _, _ in }
+    /// The notch tray and what drives it (`BoxWiring+Tray.swift`).
+    var tray: TrayClient?
+    var driver: TrayDriver?
+    var zoneWatch: Task<Void, Never>?
+    #if DEBUG
+        let previewFlags: BoxShotFlags
+        var previewBox: TrayPreviewBox?
+    #endif
 
     init(settings: @escaping () -> BoxGroup, ports: BoxPorts = .standard(), actions: BoxActions) {
         self.settings = settings
+        #if DEBUG
+            previewFlags = BoxShots.flags()
+        #endif
         controller = BoxController(ports: ports, actions: actions)
         controller.onAdded = { [weak self] outcome in self?.present(outcome.actionResult, nil) }
         controller.onError = { [weak self] message in self?.present(.failed(ActionCard(title: message)), nil) }
@@ -51,5 +62,8 @@ final class BoxWiring {
     /// "Show Drop Box".
     func show() { controller.showPanel(.saved) }
 
-    func quit() { controller.quit() }
+    func quit() {
+        zoneWatch?.cancel()
+        controller.quit()
+    }
 }

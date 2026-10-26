@@ -76,9 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             scheduler: SystemTriggerScheduler(),
             listensToFlagsChanged: Self.debugFlagsMonitorEnabled(),
             probe: { count in await reader.summary(changeCount: count) })
-        trigger.onWheelEffect = { [weak wheel, coach, island] effect in
+        trigger.onWheelEffect = { [weak wheel, coach, island, box] effect in
             guard let wheel else { return }
             island.wheel(effect)
+            box.wheel(effect)
             wheel.apply(effect)
             coach.observe(effect, wheel: wheel)
         }
@@ -94,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             dragTraces = DragTraceRecording.start(trigger: trigger, displays: island.reader)
         #endif
         conversion.start()
-        startBox()
+        startBox(trigger)
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
         Task {
             wheel.capabilities = CapabilitySnapshot(
@@ -111,13 +112,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         box.quit()
     }
 
-    /// The Drop Box: results go where the placement says; the panel comes back as it was (P2-55 §9.5).
-    private func startBox() {
+    /// The Drop Box: results go where the placement says; the panel comes back as it was (P2-55 §9.5); the notch
+    /// tray joins the island and the trigger's live samples (P2-143).
+    private func startBox(_ trigger: TriggerHost) {
         box.present = { [weak self] result, point in
             self?.actions.present(result, near: point)
             self?.menu.refreshRecent()  // a Move or Copy to… from the box adds to Recent Results
         }
         box.start()
+        box.startTray(island: island, trigger: trigger)
         #if DEBUG
             boxPreview = BoxShots.run(
                 boxFlags, controller: box.controller, finish: BoxFinish.resolve(island.finishSettingsNow))

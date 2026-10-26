@@ -5,13 +5,13 @@
 # ad-hoc) and the installed size (P1-52).
 # Plan 14 D-ND3: the same scan refuses the island preview's launch flag, so a shipped build can never show made-up
 # jobs (only the CPU measurement build of notch-idle.sh CONFIG=release compiles it in). Plan 16 D-M5b-20: the Drop
-# Box's debug flags (-ZivletBoxPreview, -ZivletBoxDemo) and the drag-trace recorder's flag (-ZivletRecordDragTraces,
+# Box's debug flags (-ZivletBoxPreview, -ZivletBoxDemo, -ZivletTrayPreview) and the drag-trace recorder's flag (-ZivletRecordDragTraces,
 # D-M5b-10) are refused the same way; no build compiles them in Release.
 # Usage: Scripts/check-release-paths.sh              build and check the Release app
 #        Scripts/check-release-paths.sh --scan-only FILE   only the scans, on one file (script tests)
 source "$(dirname "$0")/env.sh"
 PREVIEW_FLAG="-ZivletIslandPreview"
-BOX_FLAGS=("-ZivletBoxPreview" "-ZivletBoxDemo")
+BOX_FLAGS=("-ZivletBoxPreview" "-ZivletBoxDemo" "-ZivletTrayPreview")
 TRACE_FLAG="-ZivletRecordDragTraces"
 
 # Prints what is wrong with one Mach-O file; exits 1 when anything is. Every byte is searched (grep -a), also data

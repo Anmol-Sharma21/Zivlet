@@ -1,15 +1,22 @@
 import Foundation
 
-// Debug builds only (plan 16 D-M5b-20); `check-release-paths.sh` refuses both flags in a Release binary.
+// Debug builds only (plan 16 D-M5b-20); `check-release-paths.sh` refuses these flags in a Release binary.
 #if DEBUG
     /// Screenshot and demo flags for the Drop Box: `-ZivletBoxPreview <state>` shows one state of the panel with
     /// made-up items (no file is read), and `-ZivletBoxDemo <folder>` adds the folder's files to a demo box kept in
-    /// a store inside that folder, never the person's `boxes.json`. The island's `-ZivletIslandFinish` and
-    /// `-ZivletIslandBackdrop` apply to the panel too.
+    /// a store inside that folder, never the person's `boxes.json`. `-ZivletTrayPreview <state>` shows one state of
+    /// the notch tray over a made-up box. The island's `-ZivletIslandFinish`, `-ZivletIslandPill` and
+    /// `-ZivletIslandBackdrop` apply to the panel and the tray too.
     public struct BoxShotFlags: Sendable, Equatable {
         public enum State: String, Sendable, CaseIterable {
             case hidden, docked, collapsed, grid, list, selection, dropTarget, busy, attention, confirmTrash
             case confirmClear, empty, confirmEmpty, storageWarning
+        }
+
+        /// The tray's states for screenshots (19c §4.2, §4.3): the drop target, the "Added 3" toast, the compact
+        /// view, and the sensor (nothing to see; the log line says it rests).
+        public enum TrayState: String, Sendable, CaseIterable {
+            case dropTarget, toast, compact, sensor
         }
 
         public enum Invalid: Error, Equatable {
@@ -29,13 +36,16 @@ import Foundation
 
         public static let previewFlag = "-ZivletBoxPreview"
         public static let demoFlag = "-ZivletBoxDemo"
+        public static let trayFlag = "-ZivletTrayPreview"
 
         public let preview: State?
         public let demoFolder: URL?
+        public let trayPreview: TrayState?
 
-        public init(preview: State? = nil, demoFolder: URL? = nil) {
+        public init(preview: State? = nil, demoFolder: URL? = nil, trayPreview: TrayState? = nil) {
             self.preview = preview
             self.demoFolder = demoFolder
+            self.trayPreview = trayPreview
         }
 
         public static func parse(arguments: [String]) throws(Invalid) -> BoxShotFlags {
@@ -47,7 +57,11 @@ import Foundation
                 guard raw.hasPrefix("/") else { throw .relativeFolder(demoFlag) }
                 return URL(filePath: raw, directoryHint: .isDirectory)
             }
-            return BoxShotFlags(preview: preview, demoFolder: folder)
+            let tray = try value(trayFlag, in: arguments).map { raw throws(Invalid) in
+                guard let state = TrayState(rawValue: raw) else { throw .unknown(trayFlag, raw) }
+                return state
+            }
+            return BoxShotFlags(preview: preview, demoFolder: folder, trayPreview: tray)
         }
 
         private static func value(_ flag: String, in arguments: [String]) throws(Invalid) -> String? {

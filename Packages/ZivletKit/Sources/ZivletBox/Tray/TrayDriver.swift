@@ -15,6 +15,8 @@ public final class TrayDriver {
     private var proximity: NotchProximity
     private var shake = ShakeDetector()
     private var wheelShowing = false
+    /// The wheel just hid: the shake's cooldown starts at the next sample, on the samples' own clock.
+    private var cooldownPending = false
     private var counted: (changeCount: Int, items: Int)?
 
     public init(
@@ -39,6 +41,10 @@ public final class TrayDriver {
     /// One live sample of a file drag.
     public func observe(_ sample: InputSample) {
         guard !wheelShowing else { return }
+        if cooldownPending {
+            shake = shake.wheelHidden(at: sample.uptime)
+            cooldownPending = false
+        }
         let (nextProximity, event) = proximity.observing(sample)
         proximity = nextProximity
         if let event { tray.proximity(event, itemCount: count(for: sample.dragChangeCount)) }
@@ -61,10 +67,10 @@ public final class TrayDriver {
         tray.wheelShown()
     }
 
-    /// The wheel hid at `uptime` (the samples' clock): the shake waits out its cooldown.
-    public func wheelHidden(at uptime: Duration) {
+    /// The wheel hid: the shake waits out its cooldown from the next sample on.
+    public func wheelHidden() {
         wheelShowing = false
-        shake = shake.wheelHidden(at: uptime)
+        cooldownPending = true
         tray.wheelHidden()
     }
 

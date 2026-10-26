@@ -17,6 +17,18 @@
             #expect(try BoxShotFlags.parse(arguments: ["Z", "-ZivletBoxPreview", state.rawValue]).preview == state)
         }
 
+        @Test(arguments: BoxShotFlags.TrayState.allCases)
+        func everyTrayStateParses(_ state: BoxShotFlags.TrayState) throws {
+            #expect(
+                try BoxShotFlags.parse(arguments: ["Z", "-ZivletTrayPreview", state.rawValue]).trayPreview == state)
+        }
+
+        @Test func anUnknownTrayStateIsRefused() {
+            #expect(throws: BoxShotFlags.Invalid.unknown("-ZivletTrayPreview", "open")) {
+                try BoxShotFlags.parse(arguments: ["Z", "-ZivletTrayPreview", "open"])
+            }
+        }
+
         @Test func anUnknownStateIsRefusedNamingOnlyTheFlag() {
             #expect(throws: BoxShotFlags.Invalid.unknown("-ZivletBoxPreview", "sideways")) {
                 try BoxShotFlags.parse(arguments: ["Z", "-ZivletBoxPreview", "sideways"])

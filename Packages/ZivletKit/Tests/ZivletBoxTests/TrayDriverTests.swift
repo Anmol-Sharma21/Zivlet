@@ -96,7 +96,7 @@ struct TrayDriverTests {
         for sample in rest(at: Self.housing, from: 0, for: 300) { driver.observe(sample) }
         driver.wheelShown()
         #expect(rig.hosts.surface(on: 1) == .sensor)
-        driver.wheelHidden(at: .seconds(10) + .milliseconds(400))
+        driver.wheelHidden()
         for sample in rest(at: Self.housing, from: 500, for: 300) { driver.observe(sample) }
         #expect(rig.hosts.surface(on: 1) == .sensor)
         for sample in rest(at: Point2D(x: -4_100, y: -4_400), from: 900, for: 50) { driver.observe(sample) }
@@ -129,6 +129,17 @@ struct TrayDriverTests {
         driver.dragEnded()
         for sample in rest(at: Self.housing, from: 1_000, for: 300, change: 7) { driver.observe(sample) }
         #expect(recorder.countReads == [1, 7])
+    }
+
+    @Test func aShakeRightAfterTheWheelHidesDoesNotFire() throws {
+        let rig = try TrayRig(boxItems: 0)
+        let recorder = Recorder()
+        recorder.shakeToOpen = true
+        let driver = driver(rig, recorder)
+        driver.wheelShown()
+        driver.wheelHidden()
+        for sample in shake(from: 0) { driver.observe(sample) }
+        #expect(recorder.shakes.isEmpty)
     }
 
     @Test func zonesFollowADisplayChange() throws {
