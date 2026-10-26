@@ -33,6 +33,8 @@ enum SettingsValidation {
     static func isValid(_ group: UpdatesGroup) -> Bool { true }
     /// Every placement is valid; an unknown stored name does not decode and falls back to `.automatic`.
     static func isValid(_ group: HUDGroup) -> Bool { HUDPlacement.allCases.contains(group.placement) }
+    /// Every combination is valid; an unknown stored name does not decode and the group falls back to its default.
+    static func isValid(_ group: BoxGroup) -> Bool { true }
 
     static func isValid(_ group: OnboardingGroup) -> Bool {
         (0..<OnboardingGroup.pageCount).contains(group.page)

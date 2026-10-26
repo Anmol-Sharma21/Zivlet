@@ -64,7 +64,7 @@ public struct OnboardingGroup: Sendable, Equatable, Codable {
     public init() {}
 }
 
-/// Every setting (03b §8.1; the HUD group from design/19 §6). A value: change it with `with(_:_:)`, which returns a copy, and hand the copy to
+/// Every setting (03b §8.1; the HUD group from design/19 §6; the box group from D-M5b-19). A value: change it with `with(_:_:)`, which returns a copy, and hand the copy to
 /// `SettingsStore.update`.
 public struct Settings: Sendable, Equatable {
     public var trigger = TriggerGroup()
@@ -74,6 +74,7 @@ public struct Settings: Sendable, Equatable {
     public var updates = UpdatesGroup()
     public var onboarding = OnboardingGroup()
     public var hud = HUDGroup()
+    public var box = BoxGroup()
 
     public init() {}
 
