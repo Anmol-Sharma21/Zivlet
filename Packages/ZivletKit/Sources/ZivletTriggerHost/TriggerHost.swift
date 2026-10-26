@@ -14,6 +14,11 @@ public final class TriggerHost {
     /// The last 50 state changes, for Copy Diagnostics (P1-48).
     public private(set) var trace = TriggerTrace()
     public var onWheelEffect: (TriggerEffect) -> Void = { _ in }
+    /// Each sample after which the machine is `.live` (a file drag, no wheel), for the tray and shake (D-M5b-16).
+    /// These are the samples the host already takes: no new monitor and no new permission. Pause stops them.
+    public var onLiveSample: (InputSample) -> Void = { _ in }
+    /// Once when a live or wheel drag goes back to idle.
+    public var onDragEnded: () -> Void = {}
 
     private let reader: any InputReading
     private let scheduler: any TriggerScheduling
@@ -63,6 +68,7 @@ public final class TriggerHost {
     }
 
     private func step(_ event: TriggerEvent) {
+        let wasFileDrag = isFileDrag
         let result = machine.step(event)
         if let entry = TriggerTrace.entry(event: event, from: machine.state, step: result, uptime: reader.uptime) {
             trace = trace.recording(entry)
@@ -70,6 +76,8 @@ public final class TriggerHost {
         machine = result.next
         result.effects.forEach(execute)
         applyPlanIfChanged()
+        if case .sample(let sample) = event, case .live = machine.state { onLiveSample(sample) }
+        if wasFileDrag, machine.state == .idle { onDragEnded() }
     }
 
     private func execute(_ effect: TriggerEffect) {
@@ -135,6 +143,14 @@ public final class TriggerHost {
     private var needsWatchdog: Bool {
         switch machine.state {
         case .pressed, .passive: true
+        default: false
+        }
+    }
+
+    /// Live, wheel or releasing: a file drag Zivlet is following.
+    private var isFileDrag: Bool {
+        switch machine.state {
+        case .live, .wheel, .releasing: true
         default: false
         }
     }
