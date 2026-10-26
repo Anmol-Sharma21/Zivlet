@@ -21,7 +21,7 @@ let package = Package(
             targets: [
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "EngineMedia", "EngineImage",
                 "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions", "ZivletSettings", "ZivletUI",
-                "ZivletNotchCore", "ZivletNotch",
+                "ZivletNotchCore", "ZivletNotch", "ZivletShelfCore",
             ])
     ],
     targets: [
@@ -33,6 +33,8 @@ let package = Package(
         // The notch island (design/19, D-N1): pure geometry, layout, machine, arbiter; the AppKit panel and hosts.
         .target(name: "ZivletNotchCore", dependencies: ["ZivletCore"], swiftSettings: strict),
         .target(name: "ZivletNotch", dependencies: ["ZivletNotchCore"], swiftSettings: shell),
+        // The Drop Box's data (D-M5b-1): boxes, items, bookmarks, the store and plans; Foundation only.
+        .target(name: "ZivletShelfCore", dependencies: ["ZivletCore"], swiftSettings: strict),
         .target(name: "ZivletEngineKit", dependencies: ["ZivletCore"], swiftSettings: strict),
         .target(name: "EngineMedia", dependencies: ["ZivletEngineKit"], swiftSettings: strict),
         // Built by Vendor/ensure-native.sh before every make target that reads this manifest (D-M4-9).
@@ -100,6 +102,9 @@ let package = Package(
             name: "ZivletNotchTests",
             dependencies: ["ZivletNotch", "ZivletNotchCore", "ZivletCore", "NotchTestSupport"],
             swiftSettings: shell),
+        .testTarget(
+            name: "ZivletShelfCoreTests", dependencies: ["ZivletShelfCore", "ZivletCore", "TestSupport"],
+            swiftSettings: strict),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.
         .testTarget(
             name: "ZivletMatrixTests",
