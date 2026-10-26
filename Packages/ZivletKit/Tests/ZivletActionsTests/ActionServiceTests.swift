@@ -13,8 +13,13 @@ final class FakeFolders: FolderChoosing {
 
     init(answer: URL?) { self.answer = answer }
 
-    func chooseFolder(for items: [MoveItem]) async -> URL? {
+    private(set) var modes: [MovePlan.Mode] = []
+
+    func chooseFolder(for items: [MoveItem]) async -> URL? { await chooseFolder(for: items, mode: .move) }
+
+    func chooseFolder(for items: [MoveItem], mode: MovePlan.Mode) async -> URL? {
         asked += 1
+        modes.append(mode)
         return answer
     }
 }
@@ -200,7 +205,8 @@ struct ActionServiceTests {
         let rig = try ServiceRig()
         let files = [try rig.dir.file("src/a.txt"), try rig.dir.file("src/b.txt")]
         let (result, report) = await rig.service.copyReporting(files)
-        #expect(result.toast == "Copied 2 items" && result.undo != nil && rig.turns == 1)
+        #expect(
+            result.toast == "Copied 2 items" && result.undo != nil && rig.turns == 1 && rig.folders.modes == [.copy])
         #expect(report?.moved.map(\.target.lastPathComponent) == ["a.txt", "b.txt"])
         #expect(files.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
         #expect(await rig.history.recent().first?.kind == .copy)

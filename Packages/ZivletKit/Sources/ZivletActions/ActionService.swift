@@ -80,7 +80,9 @@ public final class ActionService {
 
     private func transfer(_ urls: [URL], _ mode: MovePlan.Mode) async -> (ActionResult, MoveReport?) {
         await nextTurn()
-        guard let folder = await folders.chooseFolder(for: urls.map(survey.item)) else { return (.cancelled, nil) }
+        guard let folder = await folders.chooseFolder(for: urls.map(survey.item), mode: mode) else {
+            return (.cancelled, nil)
+        }
         let plan: MovePlan
         do {
             plan = try survey.plan(items: urls, destination: folder, mode: mode)
