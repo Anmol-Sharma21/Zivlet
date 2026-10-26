@@ -10,9 +10,12 @@ final class GatedThumbnailMaker: ThumbnailMaking {
     private(set) var requests: [URL] = []
     private(set) var cancelled = 0
     private var gates: [URL: CheckedContinuation<CGImage?, Never>] = [:]
+    /// Finished before their request arrived (a busy main actor): the request returns at once, so no wait is lost.
+    private var early: Set<URL> = []
 
     func thumbnail(for url: URL, side: Double, scale: Double) async -> CGImage? {
         requests.append(url)
+        if early.remove(url) != nil { return Self.image }
         return await withTaskCancellationHandler {
             await withCheckedContinuation { gates[url] = $0 }
         } onCancel: {
@@ -20,7 +23,13 @@ final class GatedThumbnailMaker: ThumbnailMaking {
         }
     }
 
-    func finish(_ url: URL) { gates.removeValue(forKey: url)?.resume(returning: Self.image) }
+    func finish(_ url: URL) {
+        guard let gate = gates.removeValue(forKey: url) else {
+            early.insert(url)
+            return
+        }
+        gate.resume(returning: Self.image)
+    }
 
     private func cancel(_ url: URL) {
         guard let gate = gates.removeValue(forKey: url) else { return }
@@ -46,8 +55,10 @@ final class FailingThumbnailMaker: ThumbnailMaking {
 }
 
 @MainActor
+/// Lets the tasks the test started run: yields, then a short sleep, since parallel suites share the main actor.
 func settle() async {
     for _ in 0..<50 { await Task.yield() }
+    try? await Task.sleep(for: .milliseconds(20))
 }
 
 @Suite("Thumbnail cache (D-M5b-14, 19c D-BL11)")
