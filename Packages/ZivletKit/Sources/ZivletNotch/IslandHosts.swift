@@ -93,13 +93,16 @@ public final class IslandHosts {
     /// The island group's accessibility action (D-N12): that display's island opens and takes keys.
     public func expandRequested(on display: UInt32) { step(.expandRequested(now: clock.now()), on: display) }
 
+    /// The wheel wins (W-8, D-M5b-8): drag types come off every island at once, before the machines step.
     public func wheelShown() {
         wheelShowing = true
+        for host in hosts.values { host.dragsBlocked = true }
         broadcast(.wheelShown(now: clock.now()))
     }
 
     public func wheelHidden() {
         wheelShowing = false
+        for host in hosts.values { host.dragsBlocked = false }
         broadcast(.wheelHidden(now: clock.now()))
     }
 
@@ -166,6 +169,8 @@ public final class IslandHosts {
         router.current = clients[.hud]
         let host = IslandHost(display: display, client: router, motion: animation, clock: clock, pointer: pointer)
         host.finishSettings = finishSettings
+        host.dragsBlocked = wheelShowing
+        host.tracking.dropHandler = { [weak router] in router?.dropHandler }
         let id = display.id
         host.onEvent = { [weak self] event in self?.step(event, on: id) }
         host.onSurface = { [weak self] surface, frame in self?.onSurface(id, surface, frame) }
@@ -208,6 +213,9 @@ public final class IslandHosts {
 /// The client a host draws: the winner of its display, kept after a withdrawal so the fade-out still has content.
 final class IslandClientRouter: IslandClient {
     weak var current: (any IslandClient)?
+
+    /// The current client, when it takes drops (D-M5b-7).
+    var dropHandler: (any IslandDropHandling)? { current as? any IslandDropHandling }
 
     func content(for surface: IslandSurface, display: UInt32) -> AnyView {
         current?.content(for: surface, display: display) ?? AnyView(EmptyView())

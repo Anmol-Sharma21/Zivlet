@@ -1,4 +1,5 @@
 import AppKit
+import NotchTestSupport
 import TestSupport
 import Testing
 import ZivletShelfCore

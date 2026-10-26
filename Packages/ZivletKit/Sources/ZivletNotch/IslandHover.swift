@@ -5,6 +5,9 @@ import AppKit
 final class IslandTrackingView: NSView {
     var onEnter: () -> Void = {}
     var onExit: () -> Void = {}
+    /// Who takes a drop now (`IslandContentView.swift`), and the display it is on.
+    var dropHandler: () -> (any IslandDropHandling)? = { nil }
+    var dropDisplay: UInt32 = 0
     /// The shape in this view's coordinates (bottom-left origin).
     private(set) var shapeRect = CGRect.zero
     private var area: NSTrackingArea?

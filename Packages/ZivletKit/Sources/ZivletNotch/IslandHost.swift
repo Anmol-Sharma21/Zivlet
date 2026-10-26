@@ -52,6 +52,10 @@ public final class IslandHost {
     var lastMeasuredHeight: Double?
     private var applying = false
     private var queued: [IslandEvent] = []
+    /// The wheel is showing: no drag types are registered, whatever the surface (D-M5b-8).
+    var dragsBlocked = false {
+        didSet { if dragsBlocked != oldValue { updateDragRegistration() } }
+    }
 
     public init(
         display: DisplayGeometry, client: any IslandClient, motion: IslandAnimation = .motion,
@@ -63,6 +67,8 @@ public final class IslandHost {
         self.clock = clock
         self.pointer = pointer
         prewarm()
+        tracking.dropDisplay = display.id
+        tracking.dropHandler = { [weak client] in client as? any IslandDropHandling }
     }
 
     public var isVisible: Bool { panel.isVisible }
@@ -117,6 +123,7 @@ public final class IslandHost {
         cancelDeadline()
         panel.orderOut(nil)
         surface = .hidden
+        updateDragRegistration()
     }
 
     func send(_ event: IslandEvent) {
@@ -154,6 +161,7 @@ public final class IslandHost {
         let previous = surface
         surface = target
         client.surfaceChanged(target, display: display.id)
+        updateDragRegistration()
         guard target != .hidden else {
             onSurface(.hidden, .zero)
             return fadeOut(mine)
