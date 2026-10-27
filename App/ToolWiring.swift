@@ -162,7 +162,7 @@ final class ToolWiring {
             logger.notice("Text recognition warm-up done")
         } catch {
             warmup = warmup?.interrupted()
-            logger.error("Text recognition warm-up stopped: \(String(describing: error), privacy: .public)")
+            logger.error("Text recognition warm-up stopped: \(error.logDescription, privacy: .public)")
         }
     }
 

@@ -18,3 +18,20 @@ public enum TextError: Error, Sendable, Equatable, Codable {
     /// The worker ended twice while reading this drop (P2-01's rule).
     case engineCrashedOnInput
 }
+
+extension TextError {
+    /// The case for the log: never Vision's own description, which may name a file (NFR-6).
+    public var logDescription: String {
+        switch self {
+        case .cancelled: "cancelled"
+        case .recognitionFailed: "recognitionFailed"
+        case .unreadable: "unreadable"
+        case .copyingNotAllowed: "copyingNotAllowed"
+        case .pdfLocked: "pdfLocked"
+        case .tooManyPages(let count): "tooManyPages(\(count))"
+        case .tooLarge: "tooLarge"
+        case .unavailable: "unavailable"
+        case .engineCrashedOnInput: "engineCrashedOnInput"
+        }
+    }
+}

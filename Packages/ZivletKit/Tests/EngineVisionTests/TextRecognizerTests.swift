@@ -105,3 +105,15 @@ struct TextRecognizerTests {
         #expect(!RecognizedPage(text: "x").isEmpty)
     }
 }
+
+@Suite("Text errors in the log (NFR-6): the case, never Vision's words")
+struct TextErrorLogTests {
+    @Test func theLogDescriptionHoldsNoDetail() {
+        #expect(TextError.recognitionFailed("/Users/me/secret.png failed").logDescription == "recognitionFailed")
+        #expect(TextError.tooManyPages(900).logDescription == "tooManyPages(900)")
+        let all: [TextError] = [
+            .cancelled, .unreadable, .copyingNotAllowed, .pdfLocked, .tooLarge, .unavailable, .engineCrashedOnInput,
+        ]
+        #expect(all.allSatisfy { !$0.logDescription.contains("/") && !$0.logDescription.isEmpty })
+    }
+}

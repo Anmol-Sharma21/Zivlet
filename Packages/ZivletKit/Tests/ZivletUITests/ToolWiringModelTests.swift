@@ -15,8 +15,10 @@ struct ToolWiringModelTests {
     }
 
     @Test func theWorkingLineSaysWhetherTheOneTimePreparationRuns() {
-        #expect(ToolWiringModel.workingLine(warmupDone: false, fraction: nil) == "Preparing text recognition (one time)…")
-        #expect(ToolWiringModel.workingLine(warmupDone: false, fraction: 0.5) == "Preparing text recognition (one time)…")
+        #expect(
+            ToolWiringModel.workingLine(warmupDone: false, fraction: nil) == "Preparing text recognition (one time)…")
+        #expect(
+            ToolWiringModel.workingLine(warmupDone: false, fraction: 0.5) == "Preparing text recognition (one time)…")
         #expect(ToolWiringModel.workingLine(warmupDone: true, fraction: nil) == "Recognising text…")
         #expect(ToolWiringModel.workingLine(warmupDone: true, fraction: 0.42) == "Recognising text… 42%")
         #expect(ToolWiringModel.workingLine(warmupDone: true, fraction: 1) == "Recognising text… 100%")
@@ -41,7 +43,8 @@ struct ToolWiringModelTests {
 
     @Test func severalFilesNameTheirCountAndKeepEachText() throws {
         let recognized = Self.text([("photo.png", "One"), ("scan.pdf", "Two")])
-        let outcome = try #require(ToolWiringModel.result(recognized, sources: [Self.photo, Self.scan], saved: []).text)
+        let outcome = try #require(
+            ToolWiringModel.result(recognized, sources: [Self.photo, Self.scan], saved: []).text)
         #expect(outcome.windowTitle == "Text from 2 files")
         #expect(outcome.text.files.map(\.text) == ["One\n", "Two\n"])
     }

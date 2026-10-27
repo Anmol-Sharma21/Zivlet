@@ -25,7 +25,8 @@ public enum ToolWiringModel {
         let files = zip(sources, text.perFile).filter { !$0.1.isEmpty }.map { TextFile(source: $0.0, text: $0.1.text) }
         return .text(
             TextOutcome(
-                preview: text.preview, characterCount: text.characterCount, scriptLine: ScriptSummary.line(text.scripts),
+                preview: text.preview, characterCount: text.characterCount,
+                scriptLine: ScriptSummary.line(text.scripts),
                 savedFiles: saved, windowTitle: TextPreviewModel.title(names: text.perFile.map(\.name)),
                 text: TextHolder(text.text, files: files)))
     }
