@@ -37,9 +37,9 @@ struct GeneralPane: View {
                     }
                 }
             }
+            TextRecognitionSection(model: model)
             PlacementSection(model: model)
             DropBoxSection(model: model)
-            TextRecognitionSection(model: model)
             Section("Actions") {
                 Picker("Open folders in", selection: model.binding(\.actions.terminal)) {
                     ForEach(model.terminalChoices) { Text($0.name).tag($0.id) }

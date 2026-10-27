@@ -8,7 +8,8 @@ extension AppDelegate {
     /// DEBUG: `-ZivletDemoWheel <mode> [-ZivletDemoRepeat <n>]` shows the wheel without a drag (n times); `-ZivletDemoConvert <path> <format>
     /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
     /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, `-ZivletWorkerSmoke <folder>` runs the worker smoke
-    /// (`WorkerSmoke`), and `-ZivletIslandPreview <state>` puts a made-up
+    /// (`WorkerSmoke`), `-ZivletCopyTextDemo <folder>` runs Copy Text (`CopyTextDemo`), `-ZivletTextStates <state>`
+    /// shows one Copy Text state (`TextShots`), and `-ZivletIslandPreview <state>` puts a made-up
     /// job on the notch island, so end-to-end checks need no drag. The island preview alone also exists in the CPU
     /// measurement build (`ZIVLET_ISLAND_PREVIEW`, D-ND3); a shipped Release build has none of these.
     func launchDemoIfRequested() {
@@ -28,6 +29,15 @@ extension AppDelegate {
                         // nested event loop for the quit task, which needs the main queue free.
                         NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
                     }
+                }
+                if let demo = CopyTextDemo.parse(arguments: arguments) {
+                    Task {
+                        await demo.run(tools: tools)
+                        NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
+                    }
+                }
+                if let state = TextShots.parse(arguments: arguments) {
+                    TextShots.run(state, island: island, actions: actions, tools: tools)
                 }
                 if let demo = try DemoAction.parse(arguments: arguments) {
                     let selection = WheelSelection(

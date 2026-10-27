@@ -113,6 +113,8 @@ public final class TextPreviewWindow: NSPanel {
         scroll.drawsBackground = false
         let glass = NSGlassEffectView(frame: NSRect(origin: .zero, size: Self.size))
         glass.cornerRadius = HUDInk.cornerRadius
+        // The HUD's scrim, as a tint: the text holds its contrast over a busy or bright desktop.
+        glass.tintColor = NSColor.windowBackgroundColor.withAlphaComponent(HUDInk.scrimOpacity)
         glass.contentView = scroll
         contentView = glass
     }

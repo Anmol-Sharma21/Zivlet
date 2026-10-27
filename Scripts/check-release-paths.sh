@@ -8,6 +8,7 @@
 # Box's debug flags (-ZivletBoxPreview, -ZivletBoxDemo, -ZivletTrayPreview) and the drag-trace recorder's flag (-ZivletRecordDragTraces,
 # D-M5b-10) are refused the same way; no build compiles them in Release. Plan 18c: so are the worker's DEBUG smoke
 # requests (selfKillForTesting, setIdleForTesting) and the smoke run's flags (-ZivletWorkerSmoke, -ZivletWorkerIdleSeconds).
+# Plan 18d D15: so are the Copy Text demo's and the text states' flags (-ZivletCopyTextDemo, -ZivletTextStates).
 # Usage: Scripts/check-release-paths.sh              build and check the Release app
 #        Scripts/check-release-paths.sh --scan-only FILE   only the scans, on one file (script tests)
 source "$(dirname "$0")/env.sh"
@@ -16,6 +17,8 @@ BOX_FLAGS=("-ZivletBoxPreview" "-ZivletBoxDemo" "-ZivletTrayPreview")
 TRACE_FLAG="-ZivletRecordDragTraces"
 # Plan 18c (D-M6-18): the worker's DEBUG smoke requests; their Codable case names are the markers.
 WORKER_MARKERS=("selfKillForTesting" "setIdleForTesting" "-ZivletWorkerSmoke" "-ZivletWorkerIdleSeconds")
+# Plan 18d D15: the Copy Text demo and the text states screenshots.
+TEXT_FLAGS=("-ZivletCopyTextDemo" "-ZivletTextStates")
 
 # Prints what is wrong with one Mach-O file; exits 1 when anything is. Every byte is searched (grep -a), also data
 # after the last segment, which strings skips in a universal file.
@@ -43,6 +46,12 @@ scan_file() {
     for flag in "${WORKER_MARKERS[@]}"; do
         if LC_ALL=C grep -qaF -- "$flag" "$file"; then
             echo "error: the worker's debug request $flag is in $label (Release must not kill or retime its worker)" >&2
+            found=1
+        fi
+    done
+    for flag in "${TEXT_FLAGS[@]}"; do
+        if LC_ALL=C grep -qaF -- "$flag" "$file"; then
+            echo "error: the Copy Text debug flag $flag is in $label (Release must not run demos)" >&2
             found=1
         fi
     done

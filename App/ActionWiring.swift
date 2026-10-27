@@ -68,6 +68,16 @@ final class ActionWiring {
         presenter.show(.done(toast: message, undo: nil), near: nil)
     }
 
+    #if DEBUG
+        /// The DEBUG text states: `result` on the panel near `point`, whatever the placement.
+        func showNearDrop(_ result: ActionResult, near point: CGPoint) {
+            hud.show(result, near: point)
+        }
+
+        /// The panel near the drop, for the DEBUG screenshots.
+        var nearDropFrame: CGRect { hud.panelFrame }
+    #endif
+
     /// A result from elsewhere (a drop on the Drop Box panel), where the placement says.
     func present(_ result: ActionResult, near point: CGPoint?) {
         presenter.show(result, near: point)

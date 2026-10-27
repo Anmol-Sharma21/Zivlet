@@ -28,7 +28,10 @@ final class OnboardingWiring {
                 store.update { $0.with(\.onboarding, OnboardingGroup()) }
             }
         #endif
-        let isDemoRun = arguments.contains { $0.hasPrefix("-ZivletDemo") || $0 == "-UITestFixture" }
+        let demoPrefixes = ["-ZivletDemo", "-ZivletCopyTextDemo", "-ZivletTextStates"]
+        let isDemoRun = arguments.contains { argument in
+            demoPrefixes.contains { argument.hasPrefix($0) } || argument == "-UITestFixture"
+        }
         guard !store.current.onboarding.completed, !isDemoRun else {
             return
         }

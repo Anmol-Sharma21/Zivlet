@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -56,6 +56,14 @@ notch-demo:
 ocr-check:
 	$(ENV) $(NATIVE) cd "$$KIT" && ZIVLET_OCR_FIXTURES=1 ZIVLET_OCR_PDFS="$(if $(PDFS),$(abspath $(PDFS)),)" \
 	  swift test --filter "OCRFixtureTests|VisionCapabilitiesTests|PDFTextSourceTests"
+
+# Z7 (plan 18d D15): Copy Text through the drop path of the Debug app on rendered inputs; skipped when locked.
+copy-text-demo:
+	$(ENV) $(NATIVE) Scripts/demo-copy-text.sh
+
+# Z9 (plan 18d D15): every Copy Text state on screen into build/text-states/; skipped when the screen is locked.
+text-states:
+	$(ENV) Scripts/demo-text-states.sh
 
 notch-timing:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test --filter NotchHUDTimingTests

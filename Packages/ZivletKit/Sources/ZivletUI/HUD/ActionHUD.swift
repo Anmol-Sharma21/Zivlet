@@ -64,6 +64,8 @@ public final class ActionHUD: ActionPresenter {
     }
 
     var hideIsScheduled: Bool { hideTask != nil }
+    /// Where the panel is, for the DEBUG screenshots.
+    public var panelFrame: CGRect { panel.frame }
     var canBecomeKey: Bool { panel.canBecomeKey }
 
     /// Shows `result` near `point`; a cancel shows nothing and leaves the current result alone.

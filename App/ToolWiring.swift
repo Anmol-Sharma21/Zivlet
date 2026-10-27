@@ -18,14 +18,20 @@ final class ToolWiring {
     private let text: TextService
     private let actions: ActionWiring
     private let store: SettingsStore
-    private let clipboard = ClipboardAction()
-    private let preview = TextPreviewWindow()
+    private let clipboard: ClipboardAction
+    /// Show All; the DEBUG text states show it too.
+    let preview = TextPreviewWindow()
     private var capabilities: VisionCapabilities?
     private var warmup: WarmupState?
     private var languageWatch: Task<Void, Never>?
+    /// The DEBUG Copy Text demo's choice, in memory only (the person's settings are never written by a demo).
+    var choiceOverride: TextLanguageChoice?
 
-    init(text: TextService, actions: ActionWiring, store: SettingsStore) {
+    /// `clipboard` is the general pasteboard; the DEBUG Copy Text demo passes a private one.
+    init(text: TextService, actions: ActionWiring, store: SettingsStore, clipboard: ClipboardAction = ClipboardAction())
+    {
         self.text = text
+        self.clipboard = clipboard
         self.actions = actions
         self.store = store
         actions.onTextButton = { [weak self] button, outcome in self?.pressed(button, outcome) }
@@ -58,7 +64,7 @@ final class ToolWiring {
             job.finish()
             presenter.show(result, near: point)
             self.log(result, files: urls.count)
-            await self.warmUpIfNeeded()
+            self.startWarmUpIfNeeded()
             return result
         }
     }
@@ -66,7 +72,8 @@ final class ToolWiring {
     /// After onboarding (at once), and at each launch until it is done (after `delay`, so launch stays quick); never
     /// during a DEBUG demo or UI test run.
     func startWarmUpIfNeeded(after delay: Duration = .zero, arguments: [String] = ProcessInfo.processInfo.arguments) {
-        let isDemoRun = arguments.contains { $0.hasPrefix("-ZivletDemo") || $0.hasPrefix("-ZivletCopyText") }
+        let demoPrefixes = ["-ZivletDemo", "-ZivletCopyTextDemo", "-ZivletTextStates", "-ZivletIslandPreview"]
+        let isDemoRun = arguments.contains { argument in demoPrefixes.contains { argument.hasPrefix($0) } }
         guard store.current.onboarding.completed, !isDemoRun, !arguments.contains("-UITestFixture") else { return }
         Task { @MainActor in
             try? await Task.sleep(for: delay)
@@ -146,7 +153,7 @@ final class ToolWiring {
         let capabilities = try await currentCapabilities()
         let languages = RecognitionLanguages.defaults(
             preferred: Locale.preferredLanguages, inputSources: Self.enabledInputSources(),
-            choice: store.current.text.language, capabilities: capabilities)
+            choice: choiceOverride ?? store.current.text.language, capabilities: capabilities)
         let record = TextWarmupRecord(osBuild: capabilities.osBuild, languages: languages)
         return (languages, store.current.text.warmed == record)
     }

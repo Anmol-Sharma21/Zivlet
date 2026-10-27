@@ -48,13 +48,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var box = BoxWiring(
         settings: { [weak self] in self?.settings.settings.box ?? BoxGroup() }, ports: boxPorts,
         actions: BoxActions(service: ActionService(undoHistory: undoHistory)))
-    private lazy var actions = ActionWiring(
+    lazy var actions = ActionWiring(
         undoHistory: undoHistory, notch: island.hud, route: { [weak self] in self?.defaultRoute ?? .nearDrop },
         box: box.adding, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
     ) { [weak self] batch in
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
-    lazy var tools = ToolWiring(text: TextService(selection: worker), actions: actions, store: settings.store)
+    lazy var tools = ToolWiring(
+        text: TextService(selection: worker), actions: actions, store: settings.store, clipboard: Self.toolClipboard())
     private var trigger: TriggerHost?
     var wheel: WheelController?
     private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory, island: island)
@@ -159,6 +160,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+
+    /// The general pasteboard; the DEBUG Copy Text demo writes to its own, so the person's clipboard is left alone.
+    private static func toolClipboard() -> ClipboardAction {
+        #if DEBUG
+            if CopyTextDemo.isRequested { return ClipboardAction(pasteboard: CopyTextDemo.pasteboard) }
+        #endif
+        return ClipboardAction()
     }
 
     /// Always false in Release, so no shipped build can install a key-class global monitor (no TCC prompt).
