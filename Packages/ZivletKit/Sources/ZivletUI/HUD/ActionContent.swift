@@ -20,7 +20,8 @@ struct ActionContent: View {
             if let status = model.result?.working {
                 working(status)
             } else if let result = model.result, let outcome = result.text {
-                TextResultContent(toast: result.toast ?? "", model: TextResultModel(outcome), press: text)
+                TextResultContent(
+                    toast: result.toast ?? "", model: TextResultModel(outcome), press: text, close: close)
             } else if let result = model.result {
                 if let toast = result.toast { Text(toast).font(.headline).lineLimit(1) }
                 if let card = result.card { cardView(card, isAlone: result.toast == nil) }

@@ -81,6 +81,7 @@ marked "not seen" were read from the code only; nobody captured them.
 | D-NL11 | **Progress ink**: fill white, track white 0.3, on every finish; no accent colour on the island | F4; contrast in §3.5 |
 | D-NL12 | **Redraw only when something visible changes** (§6): a snapshot whose visible content equals the last one stops in `NotchHUD.show`; progress is quantised to what the ring or bar can draw; the chrome stops reading the accessibility value | G-M5a-1, F12 |
 | D-NL13 | Motion keeps M5a's springs (S6) and Reduce Motion rule (D-N5); content enters with opacity and a 0.96 → 1 scale from the top, leaves with opacity only. No `glassEffectID` morphing: the island is one shape that changes size | Probe §4.3: glass follows an animating custom shape and fades with `.opacity`; a second glass view would cost a second glass pass |
+| D-NL14 | **Show All is the exception to D-NL2** (M6, D-M6-21): an AppKit window around an `NSTextView` in the system appearance, so its glass is `NSGlassEffectView` tinted with the HUD scrim, its text is `labelColor`, and Reduce Transparency or Increase Contrast give the solid window background (Increase Contrast with a 1 pt outline), followed live | SwiftUI glass has no text view for long selectable text; the window is not part of the island, has no square top and follows the system appearance with its text, so the light-in-Aqua issue of D-NL2 does not lower its contrast |
 
 ---
 

@@ -21,6 +21,10 @@ enum TextFx {
 @Suite("The text result (P2-104, plan 18d D11): a toast, a short card and three buttons")
 @MainActor
 struct TextResultTests {
+    @Test func theNearDropCardsButtonsHaveTheIslandsHitArea() {
+        #expect(TextResultContent.buttonSide == 28)
+    }
+
     @Test func theResultIsAToastWithAnEightSecondLingerAndNoUndo() {
         let result = ActionResult.text(TextFx.outcome())
         #expect(result.toast == "Text copied")
