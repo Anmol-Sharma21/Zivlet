@@ -194,4 +194,19 @@ out=$(PATH=$T/bin:$PATH ZIVLET_M6_EXIT_LOGS=$T/repo-nobase/logs ZIVLET_M6_BASE=$
     ZIVLET_M6_RELEASE_APP=$T/Release/Zivlet.app "$T/repo-nobase/Scripts/m6-exit.sh" --only Z11 || true)
 assert_contains "$out" "Z11 FAIL"
 assert_contains "$(cat "$T/repo-nobase/logs/Z11.log")" "no commits since"
+# Every script an exit row runs makes the fixtures it names (D-M7-9): a row run alone in a fresh clone must not
+# depend on an earlier row's demo. The list is asserted so a new script that names a fixture is looked at.
+makes_set() {
+    local file=$1 set=$2
+    grep -qF -- "--set $set" "$file" && return 0
+    [[ "$set" == small ]] && grep -qE 'make( -C "\$REPO_ROOT")? fixtures' "$file"
+}
+named=""
+for file in "$ROOT"/Scripts/*.sh; do
+    sets=$(grep -oE 'build/fixtures/[a-z]+' "$file" | sort -u | sed 's|build/fixtures/||' || true)
+    [[ -n "$sets" ]] || continue
+    named+="$(basename "$file") "
+    for set in $sets; do makes_set "$file" "$set" || fail "$(basename "$file") names fixtures/$set but never makes them"; done
+done
+assert_eq "$named" "bench.sh demo-box.sh demo-notch.sh m4-exit.sh m5a-exit.sh " "scripts that name a fixture"
 echo "PASS test-m6-exit"

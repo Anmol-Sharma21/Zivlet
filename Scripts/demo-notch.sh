@@ -2,15 +2,17 @@
 # Debug-app demo of the Notch HUD (M5a exit row X3): converts the small HEIC fixture to JPEG with
 # -ZivletHUDPlacement notch, crops the island's toast from the screen with `screencapture -x -R` using the
 # `Island: frame x y w h` line the app logs, then checks the log for the island and result lines.
-# Usage: Scripts/demo-notch.sh [out-dir]      (default build/m5a-exit; needs `make app` and `make fixtures`)
+# Usage: Scripts/demo-notch.sh [out-dir]      (default build/m5a-exit; needs `make app`; makes the small fixtures
+#        when missing, D-M7-9). ZIVLET_NOTCH_DEMO_FIXTURE and ZIVLET_NOTCH_DEMO_APP are for the script test.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 OUT=${1:-$REPO_ROOT/build/m5a-exit}
-APP="$REPO_ROOT/build/DerivedData/Build/Products/Debug/Zivlet.app"
-FIXTURE="$REPO_ROOT/build/fixtures/small/srgb.heic"
+APP=${ZIVLET_NOTCH_DEMO_APP:-$REPO_ROOT/build/DerivedData/Build/Products/Debug/Zivlet.app}
+FIXTURE=${ZIVLET_NOTCH_DEMO_FIXTURE:-$REPO_ROOT/build/fixtures/small/srgb.heic}
 POLLS=120 # 0.5 s each
+[[ -f "$FIXTURE" ]] || make -C "$REPO_ROOT" fixtures >/dev/null
+if [[ ! -f "$FIXTURE" ]]; then echo "error: $FIXTURE not found after make fixtures" >&2; exit 1; fi
 if [[ ! -d "$APP" ]]; then echo "error: $APP not found; run make app" >&2; exit 1; fi
-if [[ ! -f "$FIXTURE" ]]; then echo "error: $FIXTURE not found; run make fixtures" >&2; exit 1; fi
 mkdir -p "$OUT"
 DIR=$(mktemp -d "${TMPDIR:-/tmp}/zivlet-notch-demo.XXXXXX")
 cleanup() {

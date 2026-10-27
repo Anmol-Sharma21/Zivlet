@@ -76,6 +76,7 @@ DROP_RUNS=${BENCH_DROP_RUNS:-5}
 
 drop_metrics() {
     local run since admits=() huds=()
+    "$REPO_ROOT/Fixtures/generate.sh" --set small >/dev/null
     for run in $(seq 1 "$DROP_RUNS"); do
         mkdir -p "$WORK/drop$run"
         cp "$REPO_ROOT/build/fixtures/small/srgb.png" "$WORK/drop$run/photo.png"

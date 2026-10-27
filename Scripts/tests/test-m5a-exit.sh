@@ -17,8 +17,9 @@ grep -q '^notch-demo:' "$ROOT/Makefile" || fail "Makefile has no notch-demo targ
 T=$(tmpdir); trap 'rm -rf "$T"' EXIT
 mkdir "$T/bin"
 # make fails for the target named in FAKE_MAKE_FAIL; the log reader fails for the TCC stream when FAKE_LOG_FAIL is set.
-printf '#!/usr/bin/env bash\n[[ -n "${FAKE_MAKE_FAIL:-}" && " $* " == *" $FAKE_MAKE_FAIL "* ]] && exit 1\necho "$FAKE_MAKE_OUTPUT"\n' \
-    >"$T/bin/make"
+# Every make call is recorded in $T/make-calls, one line of targets per call.
+printf '#!/usr/bin/env bash\necho "$*" >>"%s/make-calls"\n[[ -n "${FAKE_MAKE_FAIL:-}" && " $* " == *" $FAKE_MAKE_FAIL "* ]] && exit 1\necho "$FAKE_MAKE_OUTPUT"\n' \
+    "$T" >"$T/bin/make"
 printf '#!/usr/bin/env bash\n[[ -n "${FAKE_LOG_FAIL:-}" && "$*" == *com.apple.TCC* ]] && exit 1\nprintf "%%s\\n" "$FAKE_LOG_OUTPUT"\n' \
     >"$T/bin/fake-log"
 chmod +x "$T/bin/make" "$T/bin/fake-log"
@@ -56,6 +57,18 @@ out=$(FAKE_MAKE_FAIL=notch-timing run "$signpost" --only X2 || true)
 assert_contains "$out" "X2 FAIL"
 out=$(FIXTURE=$T/missing.heic run "$signpost" --only X2 || true)
 assert_contains "$out" "X2 FAIL"
+
+# X3 alone in a fresh clone makes its own fixture before the demo (D-M7-9).
+rm -f "$T/make-calls"
+out=$(run "$signpost" --only X3) || fail "X3 alone must pass on the stubs: $out"
+assert_contains "$out" "X3 pass"
+assert_eq "$(tr '\n' ',' <"$T/make-calls")" "fixtures,notch-demo," "X3 makes the fixtures, then runs the demo"
+# The demo itself makes the fixture when it is missing, before it looks for the app.
+rm -f "$T/make-calls"
+out=$(PATH=$T/bin:$PATH ZIVLET_NOTCH_DEMO_FIXTURE=$T/none/srgb.heic ZIVLET_NOTCH_DEMO_APP=$T/none/Zivlet.app \
+    "$ROOT/Scripts/demo-notch.sh" "$T/notch-out" 2>&1 || true)
+assert_contains "$(cat "$T/make-calls")" "fixtures"
+assert_contains "$out" "not found after make fixtures"
 
 out=$(run "no signposts here" --only X2 || true)
 assert_contains "$out" "X2 FAIL"

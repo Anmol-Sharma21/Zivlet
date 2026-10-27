@@ -21,7 +21,7 @@ command_of() {
     case "$1" in
         X1) echo "make test lint coverage app release-check licence-gate" ;;
         X2) echo "make notch-timing, then a notch demo whose log has the drop→island signpost" ;;
-        X3) echo "make notch-demo (heic→jpg at the notch, island lines and a screenshot in build/m5a-exit)" ;;
+        X3) echo "make fixtures, then make notch-demo (heic→jpg at the notch, island lines and a screenshot in build/m5a-exit)" ;;
         X4) echo "make convert-demo PLACEMENT=nearDrop (today's card, no island)" ;;
         X5) echo "no tccd request with preflight=no for Zivlet while X2–X4 ran (D-M5a-5)" ;;
         X6) echo "make notch-idle (Debug app idle CPU per island state minus a baseline, 120 s each)" ;;
@@ -151,7 +151,7 @@ run_row() {
     case "$1" in
         X1) make test lint coverage app release-check licence-gate ;;
         X2) drop_to_island ;;
-        X3) make notch-demo ;;
+        X3) make fixtures >/dev/null && make notch-demo ;;
         X4) near_the_drop ;;
         X5) no_tcc_prompts ;;
         X6) make notch-idle ;;
