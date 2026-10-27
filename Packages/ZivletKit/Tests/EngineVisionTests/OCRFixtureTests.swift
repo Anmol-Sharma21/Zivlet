@@ -1,6 +1,7 @@
 import EngineVision
 import Foundation
 import OCRTestSupport
+import TestSupport
 import Testing
 
 /// Exit row Z6 (`make ocr-check`): the 12 fixtures through real Vision with the production configuration. Opt-in,
@@ -48,6 +49,48 @@ struct OCRFixtureTests {
                 OCRFixtures.log("stress size=\(size) noise=\(Int(noise * 100))% cer=\(Self.format(cer))")
             }
         }
+    }
+
+    /// The PDF fixtures with real Vision: the English layer is read as is, the rest through OCR.
+    @Test(arguments: [PDFFixtures.Kind.english, .hindi, .mixed, .scan])
+    func everyPDFFixtureIsReadWithinOnePercent(_ kind: PDFFixtures.Kind) async throws {
+        let folder = try TempDir()
+        let url = try PDFFixtures.render(kind, into: folder.url)
+        try await Self.check(url, truth: try PDFFixtures.text(of: kind), name: kind.rawValue)
+    }
+
+    @Test func theWebKitPDFIsReadWithinOnePercent() async throws {
+        let folder = try TempDir()
+        let url = try await PDFFixtures.renderWebKit(into: folder.url)
+        try await Self.check(url, truth: try PDFFixtures.text(of: .hindi), name: "webkit")
+    }
+
+    /// OS-M6-3: the owner's private PDFs in `ZIVLET_OCR_PDFS`, printed with their CER against `<name>.txt` when it
+    /// exists; no threshold, the owner judges.
+    @Test func theOwnersPDFsArePrinted() async throws {
+        guard let folder = ProcessInfo.processInfo.environment["ZIVLET_OCR_PDFS"], !folder.isEmpty else { return }
+        let files = try FileManager.default.contentsOfDirectory(atPath: folder).filter { $0.hasSuffix(".pdf") }.sorted()
+        for file in files {
+            let url = URL(fileURLWithPath: folder).appending(path: file)
+            let pages = try await PDFTextSource.read(
+                url, recognizer: VisionTextRecognizer(), languages: Self.production, progress: { _ in })
+            let text = pages.map(\.text).joined(separator: "\n")
+            let sidecar = url.deletingPathExtension().appendingPathExtension("txt")
+            let truth = try? String(contentsOf: sidecar, encoding: .utf8)
+            let score = truth.map { Self.format(CharacterErrorRate.cer(reference: $0, hypothesis: text)) } ?? "no truth"
+            OCRFixtures.log("owner \(file) pages=\(pages.count) cer=\(score) chars=\(text.count)")
+        }
+    }
+
+    static func check(_ url: URL, truth: String, name: String) async throws {
+        let start = ContinuousClock.now
+        let pages = try await PDFTextSource.read(
+            url, recognizer: VisionTextRecognizer(), languages: production, progress: { _ in })
+        let text = pages.map(\.text).joined(separator: "\n")
+        let cer = CharacterErrorRate.cer(reference: truth, hypothesis: text)
+        let ms = (ContinuousClock.now - start).milliseconds
+        OCRFixtures.log("pdf \(name) cer=\(format(cer)) ms=\(ms) text=\(oneLine(text))")
+        #expect(cer <= 0.01, "\(name): \(text)")
     }
 
     static func format(_ value: Double) -> String { String(format: "%.3f", value) }
