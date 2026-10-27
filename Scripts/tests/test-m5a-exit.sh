@@ -17,17 +17,25 @@ grep -q '^notch-demo:' "$ROOT/Makefile" || fail "Makefile has no notch-demo targ
 T=$(tmpdir); trap 'rm -rf "$T"' EXIT
 mkdir "$T/bin"
 # make fails for the target named in FAKE_MAKE_FAIL; the log reader fails for the TCC stream when FAKE_LOG_FAIL is set.
-# Every make call is recorded in $T/make-calls, one line of targets per call.
-printf '#!/usr/bin/env bash\necho "$*" >>"%s/make-calls"\n[[ -n "${FAKE_MAKE_FAIL:-}" && " $* " == *" $FAKE_MAKE_FAIL "* ]] && exit 1\necho "$FAKE_MAKE_OUTPUT"\n' \
+# Every make call is recorded in $T/make-calls, one line of targets per call; the output comes before a failure.
+printf '#!/usr/bin/env bash\necho "$*" >>"%s/make-calls"\necho "$FAKE_MAKE_OUTPUT"\n[[ -n "${FAKE_MAKE_FAIL:-}" && " $* " == *" $FAKE_MAKE_FAIL "* ]] && exit 1\nexit 0\n' \
     "$T" >"$T/bin/make"
+# The load source of timing.sh's guard: FAKE_LOAD (default 1.00) for the 1-minute load.
+printf '#!/usr/bin/env bash\necho "{ ${FAKE_LOAD:-1.00} 1.00 1.00 }"\n' >"$T/bin/fake-load"
 printf '#!/usr/bin/env bash\n[[ -n "${FAKE_LOG_FAIL:-}" && "$*" == *com.apple.TCC* ]] && exit 1\nprintf "%%s\\n" "$FAKE_LOG_OUTPUT"\n' \
     >"$T/bin/fake-log"
-chmod +x "$T/bin/make" "$T/bin/fake-log"
+chmod +x "$T/bin/make" "$T/bin/fake-log" "$T/bin/fake-load"
 touch "$T/srgb.heic"
-signpost="2026-10-23 10:00:01 Zivlet: [app.zivlet.Zivlet:hud] drop→island end"
+# The app's drop→island interval as `log show --signpost --style ndjson` prints it; 24 MHz ticks, so 432000 = 18 ms.
+interval() {
+    printf '{"eventType":"signpostEvent","signpostName":"drop→island","signpostID":7,"signpostType":"%s","machTimestamp":%s}\n' \
+        begin 1000000 end $((1000000 + $1))
+}
+signpost=$(interval 432000)
 card="Result card: <private> · 57 KB → 297 KB"
 run() {
-    PATH=$T/bin:$PATH ZIVLET_M5A_EXIT_LOGS=$T/logs ZIVLET_M5A_LOG=$T/bin/fake-log FAKE_MAKE_OUTPUT=$card \
+    PATH=$T/bin:$PATH ZIVLET_M5A_EXIT_LOGS=$T/logs ZIVLET_M5A_LOG=$T/bin/fake-log FAKE_MAKE_OUTPUT=${MAKE_OUT:-$card} \
+        ZIVLET_LOADAVG=$T/bin/fake-load ZIVLET_PCORES=6 ZIVLET_TIMING_WAIT=0 ZIVLET_M5A_TICKS=24000000 \
         ZIVLET_M5A_FIXTURE=${FIXTURE:-$T/srgb.heic} FAKE_LOG_OUTPUT=$1 "$ROOT/Scripts/m5a-exit.sh" "${@:2}"
 }
 out=$(run "$signpost") || fail "every row stubbed to pass must pass: $out"
@@ -43,7 +51,7 @@ checked="2026-10-23 10:00:03 tccd: AUTHREQ_SUBJECT: msgID=2, function=TCCAccessP
 out=$(run "$(printf '%s\n%s' "$signpost" "$checked")" --only X2,X3,X4,X5) || fail "preflight checks must not fail X5: $out"
 assert_contains "$out" "X5 pass"
 assert_contains "$(cat "$T/logs/X5.log")" "preflight=yes"
-assert_contains "$(cat "$T/logs/X5.log")" "TCC lines examined: 2"
+assert_contains "$(cat "$T/logs/X5.log")" "TCC lines examined: 3"
 
 # X5 checks nothing on its own: the demos it watches must run in the same invocation.
 out=$(run "$signpost" --only X5 || true)
@@ -72,6 +80,23 @@ assert_contains "$out" "not found after make fixtures"
 
 out=$(run "no signposts here" --only X2 || true)
 assert_contains "$out" "X2 FAIL"
+# X2 prints the app's own drop→island time and judges it against 50 ms below the load limit (D-M7-4).
+out=$(run "$signpost" --only X2) || fail "an 18 ms island at a quiet load passes: $out"
+assert_contains "$out" "X2 pass"
+assert_contains "$(cat "$T/logs/X2.log")" "drop→island in the app: 18.0 ms of 50 ms"
+out=$(run "$(interval 1440000)" --only X2 || true)
+assert_contains "$out" "X2 FAIL"
+assert_contains "$(cat "$T/logs/X2.log")" "drop→island in the app: 60.0 ms of 50 ms"
+# Above the load limit the app's time is printed and not judged: the row is skipped, and a skip is not a pass.
+status=0; out=$(FAKE_LOAD=9.00 run "$(interval 1440000)" --only X2) || status=$?
+assert_eq "$status" "1" "a skipped row fails the exit run"
+assert_contains "$out" "X2 SKIP"
+assert_contains "$(cat "$T/logs/X2.log")" "timing: not judged (load 1m 9.00 > 3.0)"
+# The timing suite not judged (make notch-timing exits 3 through make) skips the row too; other failures fail it.
+status=0; out=$(MAKE_OUT="timing: not judged (load 1m 7.10 > 3.0)" FAKE_MAKE_FAIL=notch-timing \
+    run "$signpost" --only X2) || status=$?
+assert_eq "$status" "1" "a row whose timing suite was not judged fails the exit run"
+assert_contains "$out" "X2 SKIP"
 out=$(PATH=$T/bin:$PATH ZIVLET_M5A_EXIT_LOGS=$T/logs ZIVLET_M5A_LOG=$T/bin/fake-log FAKE_LOG_OUTPUT=$signpost \
     ZIVLET_M5A_FIXTURE=$T/srgb.heic FAKE_MAKE_OUTPUT="$(printf '%s\n%s' "$card" "Island: toast")" \
     "$ROOT/Scripts/m5a-exit.sh" --only X4 || true)

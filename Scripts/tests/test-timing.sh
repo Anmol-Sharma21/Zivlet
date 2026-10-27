@@ -80,4 +80,11 @@ out=$(PCORES=4 run 2.10 || true)
 assert_contains "$out" "timing: not judged (load 1m 2.10 > 2.0)"
 status=0; SUITE="x; rm -rf /" run 1.00 >/dev/null || status=$?
 assert_eq "$status" "2" "a suite name that is not a Swift name is refused"
+# --guard only waits for the load (X2 judges the app's own signpost with it): exit 0 at the limit, 3 above it.
+out=$(SUITE=--guard run 2.00) || fail "--guard on a quiet Mac passes: $out"
+assert_contains "$out" "timing: load 1m 2.00, limit 3.0"
+assert_no_file "$T/swift-calls"
+status=0; out=$(SUITE=--guard run 4.00) || status=$?
+assert_eq "$status" "3" "--guard on a busy Mac is not judged"
+assert_contains "$out" "timing: not judged (load 1m 4.00 > 3.0)"
 echo "PASS test-timing"

@@ -183,8 +183,8 @@ let package = Package(
         .testTarget(
             name: "ZivletTimingTests",
             dependencies: [
-                "ZivletUI", "ZivletNotch", "ZivletNotchCore", "ZivletCore", "ZivletEngineKit", "EngineMedia",
-                "NotchTestSupport", "EngineTestSupport", "TestSupport",
+                "ZivletUI", "ZivletNotch", "ZivletNotchCore", "ZivletCore", "ZivletRuntime", "ZivletEngineKit",
+                "EngineMedia", "NotchTestSupport", "EngineTestSupport", "TestSupport",
             ],
             swiftSettings: strict),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.

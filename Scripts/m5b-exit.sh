@@ -9,6 +9,7 @@
 # Usage: Scripts/m5b-exit.sh [--only Y1,Y4,...] [--list]     --list prints the rows and commands without running.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
+source "$(dirname "$0")/exit-lib.sh"
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 LOGS=${ZIVLET_M5B_EXIT_LOGS:-$REPO_ROOT/build/m5b-exit}
 LOG_TOOL=${ZIVLET_M5B_LOG:-/usr/bin/log}
@@ -20,7 +21,6 @@ SHELF_SOURCES=Packages/ZivletKit/Sources/ZivletShelfCore
 BOX_SOURCES=Packages/ZivletKit/Sources/ZivletBox
 # The shelf core is Foundation only (D-M5b-1): Foundation, os and its one dependency, ZivletCore (itself Foundation only).
 SHELF_IMPORTS="Foundation os ZivletCore"
-SKIPPED_LINE="skipped: screen locked"
 
 command_of() {
     case "$1" in
@@ -157,7 +157,7 @@ run_row() {
     case "$1" in
         Y1) gates ;;
         Y2) make script-test ;;
-        Y3) "$REPO_ROOT/Scripts/m5a-exit.sh" --only X2,X3,X4,X5 ;;
+        Y3) earlier_runner "$REPO_ROOT/Scripts/m5a-exit.sh" --only X2,X3,X4,X5 ;;
         Y4) make box-demo ;;
         Y5) make box-states ;;
         Y6) no_tcc_prompts ;;
@@ -186,6 +186,9 @@ for row in $selected; do
         failed=1
     elif grep -qF "$SKIPPED_LINE" "$LOGS/$row.log"; then
         echo "$row SKIP ($((SECONDS - started)) s, screen locked)  $(command_of "$row")"
+        failed=1
+    elif grep -qF "$NOT_JUDGED_LINE" "$LOGS/$row.log"; then
+        echo "$row SKIP ($((SECONDS - started)) s, $NOT_JUDGED_LINE)  $(command_of "$row")"
         failed=1
     else
         echo "$row pass ($((SECONDS - started)) s)  $(command_of "$row")"

@@ -1,26 +1,33 @@
 #!/usr/bin/env bash
 # The automated M5a exit rows X1–X7 (plan 12 §6), in order. Each row's output goes to build/m5a-exit/<row>.log and
-# one line per row says pass or fail; the script exits 1 when any row failed. The owner rows Q1–Q22 are not here:
-# docs/plan/qa/notch.md lists them. ZIVLET_M5A_EXIT_LOGS replaces build/m5a-exit, ZIVLET_M5A_LOG replaces
-# /usr/bin/log and ZIVLET_M5A_FIXTURE the demo's HEIC fixture (script tests only); ZIVLET_M5A_BASE is the commit
-# before M5a (default: the plan's baseline).
+# one line per row says pass, fail or skip; the script exits 1 when any row failed or was skipped. The owner rows
+# Q1–Q22 are not here: docs/plan/qa/notch.md lists them. ZIVLET_M5A_EXIT_LOGS replaces build/m5a-exit,
+# ZIVLET_M5A_LOG replaces /usr/bin/log, ZIVLET_M5A_FIXTURE the demo's HEIC fixture and ZIVLET_M5A_TICKS the tick
+# rate of the log's mach timestamps (script tests only); ZIVLET_M5A_BASE is the commit before M5a (default: the
+# plan's baseline).
+# A row that measured real time above the load limit (Scripts/timing.sh, D-M7-3) prints "timing: not judged" and is
+# reported as SKIP; a skip is not a pass, so the script exits 1.
 # Each row runs in its own bash process with errexit on: inside `if` bash ignores `set -e` for everything a row
 # calls, so a failing step (the 50 ms test, a demo) could otherwise leave the row passing on its last check.
 # Usage: Scripts/m5a-exit.sh [--only X1,X4,...] [--list]     --list prints the rows and commands without running.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
+source "$(dirname "$0")/exit-lib.sh"
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 LOGS=${ZIVLET_M5A_EXIT_LOGS:-$REPO_ROOT/build/m5a-exit}
 LOG_TOOL=${ZIVLET_M5A_LOG:-/usr/bin/log}
 BASE=${ZIVLET_M5A_BASE:-1716912}
 FIXTURE=${ZIVLET_M5A_FIXTURE:-$REPO_ROOT/build/fixtures/small/srgb.heic}
 MAX_LINES=800
+TICKS=${ZIVLET_M5A_TICKS:-$(sysctl -n hw.tbfrequency)}
+JQ=/usr/bin/jq
+BUDGET_MS=50 # P1-40: the HUD is visible ≤ 50 ms after the drop
 ROWS="X1 X2 X3 X4 X5 X6 X7"
 
 command_of() {
     case "$1" in
         X1) echo "make test lint coverage app release-check licence-gate" ;;
-        X2) echo "make notch-timing, then a notch demo whose log has the drop→island signpost" ;;
+        X2) echo "make notch-timing, then a notch demo whose drop→island signpost is ≤ $BUDGET_MS ms (judged below the load limit)" ;;
         X3) echo "make fixtures, then make notch-demo (heic→jpg at the notch, island lines and a screenshot in build/m5a-exit)" ;;
         X4) echo "make convert-demo PLACEMENT=nearDrop (today's card, no island)" ;;
         X5) echo "no tccd request with preflight=no for Zivlet while X2–X4 ran (D-M5a-5)" ;;
@@ -71,16 +78,46 @@ drop_demo_dir() {
     rm -r -f "$dir"
 }
 
-# X2: the 50 ms test, then one notch demo; its signpost interval must be in the log.
+# Milliseconds of each drop→island interval in `log show --signpost --style ndjson` output on stdin.
+interval_ms() {
+    "$JQ" -R -r 'fromjson? | select(.eventType == "signpostEvent" and .signpostName == "drop→island")
+        | "\(.signpostID) \(.signpostType) \(.machTimestamp)"' |
+        awk -v hz="$TICKS" '$2 == "begin" { b[$1] = $3 } $2 == "end" && ($1 in b) {
+            printf "%.1f\n", ($3 - b[$1]) * 1000 / hz; delete b[$1] }'
+}
+
+# X2: the 50 ms suite through the load guard, then one notch demo; the app's own drop→island interval must be in
+# the log, and it is judged against the budget only when the guard found the Mac quiet before the demo (D-M7-4).
 drop_to_island() {
-    local file start
-    make notch-timing
+    local file start out judged=1 ms
+    if ! out=$(make notch-timing 2>&1); then
+        echo "$out"
+        grep -qF "$NOT_JUDGED_LINE" <<<"$out" || return 1
+        judged=0
+    else
+        echo "$out"
+    fi
+    if ! out=$("$REPO_ROOT/Scripts/timing.sh" --guard); then
+        echo "$out"
+        grep -qF "$NOT_JUDGED_LINE" <<<"$out" || return 1
+        judged=0
+    else
+        echo "$out"
+    fi
     file=$(demo_file)
     start=$(date '+%Y-%m-%d %H:%M:%S')
     make convert-demo FILE="$file" TO=jpg PLACEMENT=notch
     drop_demo_dir "$(dirname "$file")"
-    "$LOG_TOOL" show --start "$start" --signpost --style compact \
-        --predicate 'subsystem == "app.zivlet.Zivlet" AND category == "hud"' | grep -F 'drop→island'
+    ms=$("$LOG_TOOL" show --start "$start" --signpost --style ndjson \
+        --predicate 'subsystem == "app.zivlet.Zivlet" AND category == "hud"' | interval_ms | head -1)
+    [[ -n "$ms" ]] || { echo "no drop→island signpost interval in the log since $start"; return 1; }
+    echo "drop→island in the app: $ms ms of $BUDGET_MS ms"
+    if ((judged == 0)); then
+        echo "$NOT_JUDGED_LINE: the budget was not judged above the load limit"
+        return 0
+    fi
+    awk -v ms="$ms" -v budget="$BUDGET_MS" 'BEGIN { exit !(ms <= budget) }' ||
+        { echo "the island took $ms ms, over the $BUDGET_MS ms budget"; return 1; }
 }
 
 # X4: today's card, and no island line.
@@ -173,11 +210,14 @@ for row in $selected; do
     [[ "$row" == X2 ]] && DEMO_START=$(date '+%Y-%m-%d %H:%M:%S')
     [[ "$row" == X[234] ]] && DEMO_ROWS+=" $row"
     started=$SECONDS
-    if bash "$SELF" --row "$row" >"$LOGS/$row.log" 2>&1; then
-        echo "$row pass ($((SECONDS - started)) s)  $(command_of "$row")"
-    else
+    if ! bash "$SELF" --row "$row" >"$LOGS/$row.log" 2>&1; then
         echo "$row FAIL ($((SECONDS - started)) s)  $(command_of "$row")  see $LOGS/$row.log"
         failed=1
+    elif grep -qF "$NOT_JUDGED_LINE" "$LOGS/$row.log"; then
+        echo "$row SKIP ($((SECONDS - started)) s, $NOT_JUDGED_LINE)  $(command_of "$row")  see $LOGS/$row.log"
+        failed=1
+    else
+        echo "$row pass ($((SECONDS - started)) s)  $(command_of "$row")"
     fi
 done
 exit "$failed"

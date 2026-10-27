@@ -46,9 +46,13 @@ printf 'Identifier=%s\nCodeDirectory v=20500 size=1 flags=%s hashes=1+3 location
 EOF
 printf '#!/usr/bin/env bash\n[[ -n "${FAKE_LOG_FAIL:-}" && "$*" == *com.apple.TCC* ]] && exit 1\nprintf "%%s\\n" "$FAKE_LOG_OUTPUT"\n' \
     >"$T/bin/fake-log"
+# The load source of timing.sh's guard, which X2 of m5a-exit.sh reads: FAKE_LOAD (default 1.00).
+printf '#!/usr/bin/env bash\necho "{ ${FAKE_LOAD:-1.00} 1.00 1.00 }"\n' >"$T/bin/fake-load"
 chmod +x "$T/bin/"*
 touch "$T/srgb.heic"
-signpost="2026-10-27 10:00:01 Zivlet: [app.zivlet.Zivlet:hud] drop→island end"
+# The app's 18 ms drop→island interval as `log show --signpost --style ndjson` prints it (24 MHz ticks).
+signpost=$(printf '{"eventType":"signpostEvent","signpostName":"drop→island","signpostID":7,"signpostType":"%s","machTimestamp":%s}\n' \
+    begin 1000000 end 1432000)
 coverage=$(printf '%s\n' "ZivletIPC        900/1000  lines   90%" "ZivletWorkerCore  850/1000  lines   85%" \
     "EngineVision      820/1000  lines   82%" "Result card: <private> · 57 KB → 297 KB")
 # Z6's measurements: one line per fixture, the five PDF lines and the warmed first recognition.
@@ -62,6 +66,7 @@ run() {
         ZIVLET_M6_RELEASE_APP=$T/Release/Zivlet.app \
         ZIVLET_M5B_EXIT_LOGS=$T/m5b-logs ZIVLET_M5B_LOG=$T/bin/fake-log \
         ZIVLET_M5A_EXIT_LOGS=$T/m5a-logs ZIVLET_M5A_LOG=$T/bin/fake-log ZIVLET_M5A_FIXTURE=$T/srgb.heic \
+        ZIVLET_LOADAVG=$T/bin/fake-load ZIVLET_PCORES=6 ZIVLET_TIMING_WAIT=0 ZIVLET_M5A_TICKS=24000000 \
         FAKE_MAKE_OUTPUT=${MAKE_OUTPUT:-$coverage} FAKE_LOG_OUTPUT=$1 "$SCRIPT" "${@:2}"
 }
 out=$(run "$signpost" --only Z1,Z2,Z3,Z4,Z5,Z6,Z7,Z8,Z9,Z10) || fail "every row stubbed to pass must pass: $out"
@@ -69,6 +74,14 @@ for row in Z1 Z2 Z3 Z4 Z5 Z6 Z7 Z8 Z9 Z10; do assert_contains "$out" "$row pass"
 assert_file "$T/logs/Z3.log"
 assert_contains "$(cat "$T/logs/Z4.log")" "app.zivlet.Zivlet.Worker"
 assert_contains "$(cat "$T/logs/Z10.log")" "no tccd request with preflight=no"
+
+# An earlier row that was not judged above the load limit skips Z3 (a skip is not a pass); a failing one fails it.
+status=0; out=$(FAKE_LOAD=9.00 run "$signpost" --only Z3) || status=$?
+assert_eq "$status" "1" "a skipped Z3 fails the exit run"
+assert_contains "$out" "Z3 SKIP"
+assert_contains "$(cat "$T/logs/Z3.log")" "X2 SKIP"
+out=$(run "no signposts here" --only Z3 || true)
+assert_contains "$out" "Z3 FAIL"
 
 # Z1 needs a coverage line with a percentage for every new module: a module without lines is not a pass.
 out=$(MAKE_OUTPUT="ZivletIPC        900/1000  lines   90%" run "$signpost" --only Z1 || true)
@@ -135,7 +148,7 @@ GIT=(git -c user.name=Tester -c user.email=tester@example.com -c commit.gpgsign=
 make_repo() {
     local repo=$1
     mkdir -p "$repo/Scripts" "$repo/Packages/ZivletKit/Sources/EngineVision" "$repo/App" "$repo/Worker"
-    cp "$ROOT/Scripts/m6-exit.sh" "$ROOT/Scripts/env.sh" "$repo/Scripts/"
+    cp "$ROOT/Scripts/m6-exit.sh" "$ROOT/Scripts/env.sh" "$ROOT/Scripts/exit-lib.sh" "$repo/Scripts/"
     printf 'import Vision\n' >"$repo/Packages/ZivletKit/Sources/EngineVision/OCR.swift"
     printf 'let fingerprint = hash(of: data)\n' >"$repo/App/Hash.swift"
     "${GIT[@]}" -C "$repo" init -q

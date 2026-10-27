@@ -27,15 +27,20 @@ printf '#!/usr/bin/env bash\n[[ -n "${FAKE_MAKE_FAIL:-}" && " $* " == *" $FAKE_M
     >"$T/bin/make"
 printf '#!/usr/bin/env bash\n[[ -n "${FAKE_LOG_FAIL:-}" && "$*" == *com.apple.TCC* ]] && exit 1\nprintf "%%s\\n" "$FAKE_LOG_OUTPUT"\n' \
     >"$T/bin/fake-log"
-chmod +x "$T/bin/make" "$T/bin/fake-log"
+# The load source of timing.sh's guard, which X2 of m5a-exit.sh reads: FAKE_LOAD (default 1.00).
+printf '#!/usr/bin/env bash\necho "{ ${FAKE_LOAD:-1.00} 1.00 1.00 }"\n' >"$T/bin/fake-load"
+chmod +x "$T/bin/make" "$T/bin/fake-log" "$T/bin/fake-load"
 touch "$T/srgb.heic"
-signpost="2026-10-26 10:00:01 Zivlet: [app.zivlet.Zivlet:hud] drop→island end"
+# The app's 18 ms drop→island interval as `log show --signpost --style ndjson` prints it (24 MHz ticks).
+signpost=$(printf '{"eventType":"signpostEvent","signpostName":"drop→island","signpostID":7,"signpostType":"%s","machTimestamp":%s}\n' \
+    begin 1000000 end 1432000)
 coverage=$(printf '%s\n%s\n%s' "ZivletShelfCore     900/1000  lines   90%" "ZivletBox          1700/2000  lines   85%" \
     "Result card: <private> · 57 KB → 297 KB")
 # Y3 runs the real m5a-exit.sh, which reads the same stand-ins through its own overrides.
 run() {
     PATH=$T/bin:$PATH ZIVLET_M5B_EXIT_LOGS=$T/logs ZIVLET_M5B_LOG=$T/bin/fake-log \
         ZIVLET_M5A_EXIT_LOGS=$T/m5a-logs ZIVLET_M5A_LOG=$T/bin/fake-log ZIVLET_M5A_FIXTURE=$T/srgb.heic \
+        ZIVLET_LOADAVG=$T/bin/fake-load ZIVLET_PCORES=6 ZIVLET_TIMING_WAIT=0 ZIVLET_M5A_TICKS=24000000 \
         FAKE_MAKE_OUTPUT=${MAKE_OUTPUT:-$coverage} FAKE_LOG_OUTPUT=$1 "$ROOT/Scripts/m5b-exit.sh" "${@:2}"
 }
 out=$(run "$signpost" --only Y1,Y2,Y3,Y4,Y5,Y6,Y7,Y8) || fail "every row stubbed to pass must pass: $out"
@@ -61,6 +66,13 @@ status=0
 out=$(MAKE_OUTPUT="skipped: screen locked" run "$signpost" --only Y5) || status=$?
 assert_contains "$out" "Y5 SKIP"
 assert_eq "$status" "1" "a skipped row exits 1"
+
+# X2 not judged above the load limit skips Y3; a failing X2 fails it.
+status=0; out=$(FAKE_LOAD=9.00 run "$signpost" --only Y3) || status=$?
+assert_eq "$status" "1" "a skipped Y3 fails the exit run"
+assert_contains "$out" "Y3 SKIP"
+out=$(run "no signposts here" --only Y3 || true)
+assert_contains "$out" "Y3 FAIL"
 
 asked="2026-10-26 10:00:02 tccd: AUTHREQ_SUBJECT: msgID=1, function=TCCAccessRequest, service=kTCCServiceSystemPolicyDownloadsFolder, preflight=no, subject=app.zivlet.Zivlet"
 out=$(run "$(printf '%s\n%s' "$signpost" "$asked")" --only Y3,Y4,Y5,Y6 || true)
@@ -91,7 +103,7 @@ GIT=(git -c user.name=Tester -c user.email=tester@example.com -c commit.gpgsign=
 make_repo() {
     local repo=$1
     mkdir -p "$repo/Scripts" "$repo/Packages/ZivletKit/Sources/ZivletShelfCore" "$repo/Packages/ZivletKit/Sources/ZivletBox"
-    cp "$ROOT/Scripts/m5b-exit.sh" "$ROOT/Scripts/env.sh" "$repo/Scripts/"
+    cp "$ROOT/Scripts/m5b-exit.sh" "$ROOT/Scripts/env.sh" "$ROOT/Scripts/exit-lib.sh" "$repo/Scripts/"
     printf 'import Foundation\nimport os\nimport ZivletCore\n' >"$repo/Packages/ZivletKit/Sources/ZivletShelfCore/Item.swift"
     printf 'import AppKit\n' >"$repo/Packages/ZivletKit/Sources/ZivletBox/Panel.swift"
     "${GIT[@]}" -C "$repo" init -q

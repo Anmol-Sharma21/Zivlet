@@ -9,9 +9,13 @@
 # ZIVLET_LOADAVG, ZIVLET_SWIFT, ZIVLET_PCORES, ZIVLET_TIMING_WAIT, ZIVLET_TIMING_POLL and ZIVLET_TIMING_DIR replace
 # the load source, swift, the core count, the wait, the poll and the log folder (script tests only).
 # Usage: Scripts/timing.sh [Suite]      e.g. Scripts/timing.sh NotchHUDTiming
+#        Scripts/timing.sh --guard        only the wait: exit 0 at or under the limit, 3 above it (for exit rows that
+#                                         judge an in-app signpost)
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 SUITE=${1:-}
+GUARD=0
+if [[ "$SUITE" == --guard ]]; then GUARD=1; SUITE=""; fi
 LOADAVG=${ZIVLET_LOADAVG:-sysctl -n vm.loadavg}
 SWIFT=${ZIVLET_SWIFT:-swift}
 PCORES=${ZIVLET_PCORES:-$(sysctl -n hw.perflevel0.physicalcpu)}
@@ -54,6 +58,12 @@ wait_for_quiet() {
     done
     echo "$load"
 }
+
+if ((GUARD)); then
+    if ! BEFORE=$(wait_for_quiet); then echo "$BEFORE"; exit "$NOT_JUDGED"; fi
+    echo "timing: load 1m $BEFORE, limit $LIMIT"
+    exit 0
+fi
 
 mkdir -p "$LOG_DIR"
 LOG=$LOG_DIR/timing.log

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The automated M6 exit rows Z1–Z11 (plan 18 §7), in order. Each row's output goes to build/m6-exit/<row>.log and
 # one line per row says pass, fail or skip; the script exits 1 when any row failed or was skipped. A screenshot row
-# is skipped, not passed, when its script found the screen locked. The owner rows are not here:
+# is skipped, not passed, when its script found the screen locked, and so is a row whose real-time budget was not
+# judged above the load limit (Scripts/timing.sh, D-M7-3). The owner rows are not here:
 # docs/plan/qa/copy-text.md, docs/plan/qa/worker.md and docs/plan/qa/drop-box.md list them.
 # Script tests only: ZIVLET_M6_EXIT_LOGS replaces build/m6-exit, ZIVLET_M6_LOG replaces /usr/bin/log and
 # ZIVLET_M6_RELEASE_APP the Release app of make release-check. ZIVLET_M6_BASE is the commit before M6 (default:
@@ -11,6 +12,7 @@
 # Usage: Scripts/m6-exit.sh [--only Z1,Z5,...] [--list]     --list prints the rows and commands without running.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
+source "$(dirname "$0")/exit-lib.sh"
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 LOGS=${ZIVLET_M6_EXIT_LOGS:-$REPO_ROOT/build/m6-exit}
 LOG_TOOL=${ZIVLET_M6_LOG:-/usr/bin/log}
@@ -24,7 +26,6 @@ DEMOS="Z5 Z6 Z7 Z8 Z9"
 NEW_MODULES="ZivletIPC ZivletWorkerCore EngineVision"
 SOURCE_DIRS="Packages/ZivletKit/Sources App Worker"
 VISION_HOME=Packages/ZivletKit/Sources/EngineVision/
-SKIPPED_LINE="skipped: screen locked"
 
 command_of() {
     case "$1" in
@@ -242,14 +243,19 @@ hygiene() {
     return "$status"
 }
 
+# Z3: both earlier runners, each to the end (exit-lib.sh): a FAIL row fails Z3, SKIP rows only skip it.
+earlier_rows() {
+    local status=0
+    earlier_runner "$REPO_ROOT/Scripts/m5a-exit.sh" --only X2,X3,X4,X5 || status=1
+    earlier_runner "$REPO_ROOT/Scripts/m5b-exit.sh" --only Y4,Y5,Y7 || status=1
+    return "$status"
+}
+
 run_row() {
     case "$1" in
         Z1) gates ;;
         Z2) make script-test ;;
-        Z3)
-            "$REPO_ROOT/Scripts/m5a-exit.sh" --only X2,X3,X4,X5
-            "$REPO_ROOT/Scripts/m5b-exit.sh" --only Y4,Y5,Y7
-            ;;
+        Z3) earlier_rows ;;
         Z4) release_worker ;;
         Z5) make worker-smoke ;;
         Z6) ocr_check ;;
@@ -283,6 +289,9 @@ for row in $selected; do
         failed=1
     elif grep -qF "$SKIPPED_LINE" "$LOGS/$row.log"; then
         echo "$row SKIP ($((SECONDS - started)) s, $SKIPPED_LINE)  $(command_of "$row")"
+        failed=1
+    elif grep -qF "$NOT_JUDGED_LINE" "$LOGS/$row.log"; then
+        echo "$row SKIP ($((SECONDS - started)) s, $NOT_JUDGED_LINE)  $(command_of "$row")"
         failed=1
     else
         echo "$row pass ($((SECONDS - started)) s)  $(command_of "$row")"
