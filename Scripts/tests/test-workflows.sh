@@ -49,6 +49,9 @@ nightly = YAML.safe_load(File.read(File.join(ARGV[0], "nightly.yml")))
 nightly_env = nightly["jobs"].values.map { |j| (j["env"] || {}).merge(*(j["steps"] || []).map { |s| s["env"] || {} }) }
 check.(nightly_env.any? { |e| e["ZIVLET_MATRIX"] == "full" }, "nightly: ZIVLET_MATRIX is not full")
 check.(((nightly["on"] || nightly[true]) || {}).key?("schedule"), "nightly: no schedule")
+# P2-104: a macOS or Vision change that drops Devanagari must fail a CI job; the model compile is too slow for ci.yml.
+nightly_runs = nightly["jobs"].values.flat_map { |j| (j["steps"] || []).map { |s| s["run"].to_s } }
+check.(nightly_runs.any? { |r| r =~ /\bmake ocr-check\b/ }, "nightly: does not run make ocr-check")
 vendor = YAML.safe_load(File.read(File.join(ARGV[0], "vendor.yml")))
 paths = (((vendor["on"] || vendor[true]) || {}).values.compact.map { |t| t["paths"] }).flatten.compact
 check.(paths.include?("Vendor/**"), "vendor: not triggered by Vendor/**")

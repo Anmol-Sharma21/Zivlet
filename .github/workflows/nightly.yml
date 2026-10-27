@@ -1,5 +1,6 @@
-# Nightly (P1-61, P1-62, P1-63, P0-37, G-12): the full 161-pair matrix with the hostile corpus, the benchmark with
-# its regression gate, the vendor reproducibility check and the wheel-test watch. Self-hosted runner only (O-4).
+# Nightly (P1-61, P1-62, P1-63, P0-37, G-12, P2-104): the full 161-pair matrix with the hostile corpus, the benchmark
+# with its regression gate, the vendor reproducibility check, the wheel-test watch and the OCR fixtures through real
+# Vision (a Vision change that drops Devanagari fails here). Self-hosted runner only (O-4).
 name: Nightly
 
 on:
@@ -73,6 +74,19 @@ jobs:
         run: make vendor-fetch
       - name: Two clean media builds compared
         run: Vendor/repro-check.sh
+
+  ocr:
+    name: OCR fixtures through Vision
+    runs-on: [self-hosted, macOS, ARM64, zivlet]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Vendor outputs (runner cache, else build)
+        run: Scripts/ci-vendor.sh
+      - name: 12 fixtures within 1 % CER with their Devanagari, the PDFs, the warmed first recognition
+        run: make ocr-check
 
   wheel-watch:
     name: Wheel tests, 20 runs
