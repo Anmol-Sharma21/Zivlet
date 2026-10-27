@@ -58,7 +58,9 @@ struct WorkerXPCHostTests {
             try await client.send(Envelope(WorkerRequest.ping)) == .pong(pid: getpid(), osBuild: WorkerService.osBuild))
     }
 
-    @Test func eventsArriveBeforeTheReply() async throws {
+    /// Events are best-effort against the reply (XPC sends the reply on its own port), so they are awaited, but they
+    /// keep their order among themselves.
+    @Test func eventsCrossInOrder() async throws {
         let rig = try WorkerRig()
         let client = try RawClient(service: WorkerRig.service([ScriptedEngine(execution: .reportProgress)]))
         let (job, request) = try rig.executeRequest()
@@ -67,6 +69,7 @@ struct WorkerXPCHostTests {
             Issue.record("not staged: \(reply)")
             return
         }
+        for _ in 0..<500 where client.events.all.count < 2 { try await Task.sleep(for: .milliseconds(2)) }
         #expect(
             client.events.all == [.progress(job, JobProgress(fraction: 0.5)), .progress(job, JobProgress(fraction: 1))])
     }

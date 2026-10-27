@@ -7,7 +7,8 @@ import ZivletIPC
 import os
 
 /// The app's XPC transport to `ZivletWorker.xpc` (P2-01, D-M6-2, R4). Each session gets its own serial queue, so the
-/// worker's events and the replies arrive in the order the worker sent them. Any end of the session fails the
+/// worker's events arrive in the order it sent them. A reply travels on the request's own reply port, so XPC does not
+/// order it against the events: an event may come after the reply of its step. Any end of the session fails the
 /// calls in flight with `.workerCrashed`; a reply of another protocol version is a damaged worker.
 public struct XPCSessionFactory: WorkerTransport {
     enum Target: @unchecked Sendable {

@@ -181,7 +181,12 @@ final class LoopbackChannel: WorkerChannel {
         }
         waiting.forEach { $0.resume(returning: .failure(.workerCrashed)) }
         let service = transport.service
-        Task { for job in jobs { _ = await service.handle(.cancel(job), events: { _ in }) } }
+        // Only the steps that run stop: a dead worker forgets everything, so no cancel may be left behind for a retry
+        // of the same job (the service remembers a cancel that comes before its job).
+        Task {
+            let running = await service.runningJobs
+            for job in jobs where running.contains(job) { _ = await service.handle(.cancel(job), events: { _ in }) }
+        }
         onClosed()
     }
 

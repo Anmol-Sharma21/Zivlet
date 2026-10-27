@@ -8,8 +8,9 @@ import os
 
 /// The worker's XPC glue (P2-01, R4): accepts sessions, decodes each `Envelope<WorkerRequest>`, answers through
 /// `WorkerService` on a concurrent queue (`handoffReply`, so a long step never blocks the session's queue and a
-/// cancel can arrive meanwhile) and sends `WorkerEvent`s over the same session before the step's reply. A message of
-/// another protocol version is answered `.failed(.engineDamaged(.worker))`.
+/// cancel can arrive meanwhile) and sends `WorkerEvent`s over the same session while the step runs. The reply goes on
+/// the request's reply port, so the app may see an event after it (events are best-effort). A message of another
+/// protocol version is answered `.failed(.engineDamaged(.worker))`.
 public enum WorkerXPCHost {
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
     static let replies = DispatchQueue(label: "app.zivlet.Zivlet.Worker.replies", attributes: .concurrent)

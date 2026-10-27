@@ -22,7 +22,8 @@ struct XPCSessionFactoryTests {
         let seen = ProgressLog()
         let context = ExecutionContext(progress: ProgressSink(interval: .zero) { seen.append($0.fraction) })
         let output = try await connection.execute(plan, job: job, context: context)
-        #expect(output.byteCount == 3 && seen.values == [0.5, 1])
+        // Events are best-effort against the reply: one that comes after it is dropped, never reordered.
+        #expect(output.byteCount == 3 && [0.5, 1].starts(with: seen.values))
     }
 
     @Test func aFailedReplyAndACancelCrossRealXPC() async throws {

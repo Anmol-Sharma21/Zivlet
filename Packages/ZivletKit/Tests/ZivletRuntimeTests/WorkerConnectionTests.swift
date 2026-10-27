@@ -61,7 +61,8 @@ struct WorkerConnectionTests {
         let (j3, p3) = try rig.plan()
         async let a = outcome { () throws(JobError) in try await connection.execute(p1, job: j1, context: .init()) }
         async let b = outcome { () throws(JobError) in try await connection.execute(p2, job: j2, context: .init()) }
-        while engine.executeCount < 2 { try await Task.sleep(for: .milliseconds(2)) }
+        for _ in 0..<500 where engine.executeCount < 2 { try await Task.sleep(for: .milliseconds(2)) }
+        try #require(engine.executeCount == 2)
         async let c = outcome { () throws(JobError) in try await connection.execute(p3, job: j3, context: .init()) }
         let results = await [a, b, c]
         #expect(results.allSatisfy { $0 == .failure(.workerCrashed) })

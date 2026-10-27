@@ -8,9 +8,12 @@ import os
 
 /// The app's side of the worker (P2-01, 02 §7.4, D-M6-2). It opens a session lazily at the first call and keeps it.
 /// A session that ends with calls in flight fails each of them with `.workerCrashed` (the channel's contract) and is
-/// dropped, so the next call opens a new one; a session the worker ends while idle fails nothing. Events are routed
-/// by job to the context of the call that runs it, synchronously and in order, so progress always arrives before the
-/// step's reply. A cancelled Swift task sends `.cancel(job)` and gets `.cancelled` back from the worker.
+/// dropped and closed, so the next call opens a new one; a session the worker ends while idle fails nothing. After
+/// `close()` (quit) no call opens a session again: each throws `.cancelled`. Events are routed by job to the context
+/// of the call that runs it, in order among themselves; they are best-effort, since XPC does not order them against
+/// the step's reply, and one that comes after the reply is dropped (the reply carries the outcome). A cancelled Swift
+/// task sends `.cancel(job)` on the session its request went to, never on a new one; the worker remembers a cancel
+/// that overtakes its request.
 public final class WorkerConnection: Sendable {
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
 
@@ -22,6 +25,7 @@ public final class WorkerConnection: Sendable {
     private struct State {
         var session: Session?
         var opened = 0
+        var closed = false
         var routes: [JobID: ExecutionContext] = [:]
     }
 
@@ -69,7 +73,7 @@ public final class WorkerConnection: Sendable {
     }
 
     /// A Copy Text job (P2-104). Transport failures throw (`.workerCrashed` among them, for the caller's retry);
-    /// the worker's own outcome is the result. Progress arrives unthrottled, in order, before the reply.
+    /// the worker's own outcome is the result. Progress arrives unthrottled and in order, best-effort.
     public func recognizeText(_ job: TextJob, progress: @escaping @Sendable (Double) -> Void) async throws(JobError)
         -> Result<RecognizedText, TextError>
     {
@@ -91,8 +95,10 @@ public final class WorkerConnection: Sendable {
         }
     }
 
+    /// The warm-up stops in the worker when the calling task is cancelled.
     public func warmUpText(_ languages: [LanguageTag]) async throws(JobError) -> Result<Void, TextError> {
-        switch try await send(.warmUpText(JobID(), languages)) {
+        let job = JobID()
+        switch try await cancellable(.warmUpText(job, languages), job: job) {
         case .accepted: return .success(())
         case .textFailed(let error): return .failure(error)
         default: throw Self.unexpected("warmUpText")
@@ -101,22 +107,16 @@ public final class WorkerConnection: Sendable {
 
     /// One request; a `.failed` reply is thrown.
     public func send(_ request: WorkerRequest) async throws(JobError) -> WorkerReply {
-        let session = try currentSession()
-        let reply: WorkerReply
-        do {
-            reply = try await session.channel.send(request)
-        } catch {
-            if error == .workerCrashed { drop(session.id) }
-            throw error
-        }
-        if case .failed(let error) = reply { throw error }
-        return reply
+        try await send(request, on: try currentSession())
     }
 
-    /// Ends the session (quit). The next call would open a new one.
+    /// Ends the session (quit). No later call opens another: each throws `.cancelled`.
     public func close() {
         let session = state.withLock { state in
-            defer { state.session = nil }
+            defer {
+                state.session = nil
+                state.closed = true
+            }
             return state.session
         }
         session?.channel.close()
@@ -134,23 +134,54 @@ public final class WorkerConnection: Sendable {
         }
     }
 
-    /// A request whose job stops in the worker when the calling task is cancelled.
+    private func send(_ request: WorkerRequest, on session: Session) async throws(JobError) -> WorkerReply {
+        let reply: WorkerReply
+        do {
+            reply = try await session.channel.send(request)
+        } catch {
+            if error == .workerCrashed { drop(session.id, closing: session.channel) }
+            throw error
+        }
+        if case .failed(let error) = reply { throw error }
+        return reply
+    }
+
+    /// A request whose job stops in the worker when the calling task is cancelled. The session is open before the
+    /// cancellation handler is, so a cancel always has the request's session to go to; one that comes before the
+    /// request is sent is caught by the check inside.
     private func cancellable(_ request: WorkerRequest, job: JobID) async throws(JobError) -> WorkerReply {
         if Task.isCancelled { throw .cancelled }
+        let session = try currentSession()
         let result = await withTaskCancellationHandler {
-            await Result { () async throws(JobError) -> WorkerReply in try await send(request) }
+            await Result { () async throws(JobError) -> WorkerReply in
+                if Task.isCancelled { throw .cancelled }
+                return try await send(request, on: session)
+            }
         } onCancel: {
-            Task { _ = try? await self.send(.cancel(job)) }
+            Task { await Self.sendCancel(job, on: session.channel) }
         }
         return try result.get()
+    }
+
+    /// A dead session already cancelled its jobs, so a failed cancel is only logged.
+    private static func sendCancel(_ job: JobID, on channel: any WorkerChannel) async {
+        do {
+            _ = try await channel.send(.cancel(job))
+        } catch {
+            logger.debug("Cancel not delivered: \(error.logDescription, privacy: .public)")
+        }
     }
 
     /// Opens are serialised by their own lock, so two first calls share one session; the transport's callbacks
     /// take only `state`, never this lock.
     private func currentSession() throws(JobError) -> Session {
-        if let session = state.withLock(\.session) { return session }
+        let (current, closed) = state.withLock { ($0.session, $0.closed) }
+        if closed { throw .cancelled }
+        if let current { return current }
         let opened: Result<Session, JobError> = opening.withLock { _ in
-            if let session = state.withLock(\.session) { return .success(session) }
+            let (current, closed) = state.withLock { ($0.session, $0.closed) }
+            if closed { return .failure(.cancelled) }
+            if let current { return .success(current) }
             let id = state.withLock { state in
                 state.opened += 1
                 return state.opened
@@ -166,11 +197,13 @@ public final class WorkerConnection: Sendable {
         return try opened.get()
     }
 
-    /// Forgets session `id` if it is still the current one.
-    private func drop(_ id: Int) {
+    /// Forgets session `id` if it is still the current one; `closing` also ends its channel, so a session that broke
+    /// a reply does not stay connected beside the next one.
+    private func drop(_ id: Int, closing channel: (any WorkerChannel)? = nil) {
         state.withLock { state in
             if state.session?.id == id { state.session = nil }
         }
+        channel?.close()
     }
 
     private static func unexpected(_ step: String) -> JobError {

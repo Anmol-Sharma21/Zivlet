@@ -11,8 +11,8 @@ public protocol WorkerChannel: Sendable {
 }
 
 /// Opens worker sessions: XPC in the app (`XPCSessionFactory`), a loopback in tests. `onEvent` receives the worker's
-/// events in arrival order, before the reply of the step that sent them; `onClosed` runs once when the worker side
-/// ends the session.
+/// events in arrival order, which is not ordered against replies (an event can come after its step's reply);
+/// `onClosed` runs once when the worker side ends the session.
 public protocol WorkerTransport: Sendable {
     func open(onEvent: @escaping @Sendable (WorkerEvent) -> Void, onClosed: @escaping @Sendable () -> Void)
         throws(JobError) -> any WorkerChannel
