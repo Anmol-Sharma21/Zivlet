@@ -72,13 +72,23 @@ final class ToolWiring {
     /// After onboarding (at once), and at each launch until it is done (after `delay`, so launch stays quick); never
     /// during a DEBUG demo or UI test run.
     func startWarmUpIfNeeded(after delay: Duration = .zero, arguments: [String] = ProcessInfo.processInfo.arguments) {
-        let demoPrefixes = ["-ZivletDemo", "-ZivletCopyTextDemo", "-ZivletTextStates", "-ZivletIslandPreview"]
-        let isDemoRun = arguments.contains { argument in demoPrefixes.contains { argument.hasPrefix($0) } }
-        guard store.current.onboarding.completed, !isDemoRun, !arguments.contains("-UITestFixture") else { return }
+        guard store.current.onboarding.completed, !Self.isDemoRun(arguments) else { return }
         Task { @MainActor in
             try? await Task.sleep(for: delay)
             await self.warmUpIfNeeded()
         }
+    }
+
+    /// A DEBUG demo or UI test run; a Release build has none (its flags are never compiled in, check-release-paths).
+    private static func isDemoRun(_ arguments: [String]) -> Bool {
+        #if DEBUG
+            let prefixes = ["-ZivletDemo", "-ZivletCopyTextDemo", "-ZivletTextStates", "-ZivletIslandPreview"]
+            return arguments.contains { argument in
+                prefixes.contains { argument.hasPrefix($0) } || argument == "-UITestFixture"
+            }
+        #else
+            return false
+        #endif
     }
 
     private func copyText(_ urls: [URL], optionHeld: Bool, line: WorkingLine) async -> ActionResult {
