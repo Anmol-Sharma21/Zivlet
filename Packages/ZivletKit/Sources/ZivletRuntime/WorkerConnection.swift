@@ -110,6 +110,15 @@ public final class WorkerConnection: Sendable {
         try await send(request, on: try currentSession())
     }
 
+    /// Drops the current session without latching (the worker did not answer in time): the next call opens a new one.
+    public func reset() {
+        let session = state.withLock { state in
+            defer { state.session = nil }
+            return state.session
+        }
+        session?.channel.close()
+    }
+
     /// Ends the session (quit). No later call opens another: each throws `.cancelled`.
     public func close() {
         let session = state.withLock { state in
