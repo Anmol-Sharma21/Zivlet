@@ -10,6 +10,9 @@ import ZivletRuntime
 extension NotchHUD: IslandClient {
     public func content(for surface: IslandSurface, display: UInt32) -> AnyView {
         let act: (Press, NotchHUDItemID) -> Void = { [weak self] press, id in self?.press(press, onItem: id) }
+        let text: (TextResultButton, NotchHUDItemID) -> Void = { [weak self] button, id in
+            self?.pressText(button, onItem: id)
+        }
         switch surface {
         case .hidden, .dropTarget, .sensor: return AnyView(EmptyView())  // the HUD never asks for the tray's surfaces
         case .collapsed: return AnyView(NotchTab(model: model, display: display, underHousing: hasHousing(display)))
@@ -18,7 +21,8 @@ extension NotchHUD: IslandClient {
             let drag: (Bool) -> Void = { [weak self] began in self?.dragChanged(began, display: display) }
             return AnyView(
                 NotchExpanded(
-                    model: model, display: display, underHousing: hasHousing(display), drag: drag, act: act))
+                    model: model, display: display, underHousing: hasHousing(display), drag: drag, act: act,
+                    text: text))
         }
     }
 
@@ -95,6 +99,12 @@ extension NotchHUD {
         case .close: close(id)
         case .cancel, .reveal, .open, .copy, .retry: break
         }
+    }
+
+    /// A text card button on an action item: the app copies, saves or shows the text.
+    func pressText(_ button: TextResultButton, onItem id: NotchHUDItemID) {
+        guard case .action(let index) = id, let outcome = model.actions[index]?.result?.text else { return }
+        onTextButton(button, outcome)
     }
 
     private func showDetails(_ batch: BatchID) {

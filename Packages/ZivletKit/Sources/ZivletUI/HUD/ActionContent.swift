@@ -12,10 +12,13 @@ struct ActionContent: View {
     var undo: () -> Void = {}
     var details: () -> Void = {}
     var close: () -> Void = {}
+    var text: (TextResultButton) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let result = model.result {
+            if let result = model.result, let outcome = result.text {
+                TextResultContent(toast: result.toast ?? "", model: TextResultModel(outcome), press: text)
+            } else if let result = model.result {
                 if let toast = result.toast { Text(toast).font(.headline).lineLimit(1) }
                 if let card = result.card { cardView(card, isAlone: result.toast == nil) }
                 if let message = model.undoMessage {

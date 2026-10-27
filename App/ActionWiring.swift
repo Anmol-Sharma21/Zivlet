@@ -70,6 +70,7 @@ final class ActionWiring {
         case .partial: kind = "partial"
         case .failed: kind = "failed"
         case .cancelled: kind = "cancelled"
+        case .text: kind = "text"  // never the text itself (plan 18d D14)
         }
         logger.notice(
             "Action finished: \(action.rawValue, privacy: .public) \(kind, privacy: .public): \(result.toast ?? "", privacy: .public)"

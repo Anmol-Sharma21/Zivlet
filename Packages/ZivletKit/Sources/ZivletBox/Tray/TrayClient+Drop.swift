@@ -98,7 +98,7 @@ extension TrayClient {
         case .failed(let card):
             let reason = outcome.failure ?? String(card.title.trimmingSuffix("."))
             return TrayToastModel(display: display, text: reason, spoken: reason, failed: true, undoIDs: [])
-        case .cancelled:
+        case .cancelled, .text:  // a box drop never yields text; it reads as nothing added
             return TrayToastModel(
                 display: display, text: BoxCopy.nothingAdded, spoken: BoxCopy.nothingAdded, failed: true, undoIDs: [])
         }
@@ -108,7 +108,7 @@ extension TrayClient {
     /// beside the toast; nil when the toast says it all.
     static func card(for outcome: AddOutcome) -> ActionCard? {
         switch outcome.actionResult {
-        case .done, .cancelled: nil
+        case .done, .cancelled, .text: nil
         case .partial(_, let card, _): card
         case .failed(let card): card.lines.isEmpty ? nil : card
         }

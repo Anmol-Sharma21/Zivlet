@@ -25,5 +25,7 @@ public protocol HUDPresenter: AnyObject {
 /// Shows action results (D-M5a-3): today's small panel near the drop (`ActionHUD`) or the notch island.
 public protocol ActionPresenter: AnyObject {
     var onUndo: (BatchID) async -> UndoReply { get set }
+    /// A button of Copy Text's card was pressed (P2-104).
+    var onTextButton: (TextResultButton, TextOutcome) -> Void { get set }
     func show(_ result: ActionResult, near point: CGPoint?)
 }

@@ -43,6 +43,7 @@ public final class ActionHUD: ActionPresenter {
 
     /// Undoes a Move and returns the sentence to show in its place.
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
+    public var onTextButton: (TextResultButton, TextOutcome) -> Void = { _, _ in }
 
     let model = ActionHUDModel()
     private let panel = HUDWindow(size: CGSize(width: ActionHUD.width, height: 60))
@@ -55,7 +56,8 @@ public final class ActionHUD: ActionPresenter {
         hosting = NSHostingView(rootView: ActionHUDView(model: model))
         hosting.rootView = ActionHUDView(
             model: model, undo: { [weak self] in self?.undo() }, details: { [weak self] in self?.showDetails() },
-            close: { [weak self] in self?.hide() }, hover: { [weak self] in self?.hover($0) })
+            close: { [weak self] in self?.hide() }, hover: { [weak self] in self?.hover($0) },
+            text: { [weak self] in self?.pressText($0) })
         panel.contentView = hosting
     }
 
@@ -83,6 +85,13 @@ public final class ActionHUD: ActionPresenter {
     func hover(_ inside: Bool) {
         hovering = inside
         if inside { cancelHide() } else { scheduleHide() }
+    }
+
+    /// A text card button: the app copies, saves or shows the text; the card stays for its linger.
+    func pressText(_ button: TextResultButton) {
+        guard let outcome = model.result?.text else { return }
+        onTextButton(button, outcome)
+        scheduleHide()
     }
 
     func undo() {

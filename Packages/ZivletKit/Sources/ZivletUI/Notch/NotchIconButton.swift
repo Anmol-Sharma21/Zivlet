@@ -15,16 +15,7 @@ struct NotchIconButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol ?? Self.symbol(press))
-                .font(NotchLook.Symbol.button)
-                .foregroundStyle(NotchInk.primary)
-                .frame(width: NotchLook.Symbol.buttonSide, height: NotchLook.Symbol.buttonSide)
-                .contentShape(Circle())
-        }
-        .buttonStyle(IslandIconButtonStyle())
-        .help(Self.title(press))
-        .accessibilityLabel(Self.title(press))
+        IslandSymbolButton(symbol: symbol ?? Self.symbol(press), title: Self.title(press), action: action)
     }
 
     /// Today's words for the press (the M5a button titles), unchanged.
@@ -57,5 +48,27 @@ struct NotchIconButton: View {
     /// The background's opacity for a state.
     static func fill(pressed: Bool, hovered: Bool, increaseContrast: Bool) -> Double {
         IslandIconButtonFill.opacity(pressed: pressed, hovered: hovered, increaseContrast: increaseContrast)
+    }
+}
+
+/// One island symbol button: the symbol in the 28 pt round hit area with the island's hover and press fills, the
+/// title as its tooltip and (unless `label` says otherwise) its accessibility label.
+struct IslandSymbolButton: View {
+    let symbol: String
+    let title: String
+    var label: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(NotchLook.Symbol.button)
+                .foregroundStyle(NotchInk.primary)
+                .frame(width: NotchLook.Symbol.buttonSide, height: NotchLook.Symbol.buttonSide)
+                .contentShape(Circle())
+        }
+        .buttonStyle(IslandIconButtonStyle())
+        .help(title)
+        .accessibilityLabel(label ?? title)
     }
 }

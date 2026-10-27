@@ -1,4 +1,5 @@
 import SwiftUI
+import ZivletActions
 import ZivletNotch
 import ZivletNotchCore
 import ZivletRuntime
@@ -13,11 +14,12 @@ struct NotchExpanded: View {
     /// A drag of the result thumbnail began or ended.
     let drag: (Bool) -> Void
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
+    var text: (TextResultButton, NotchHUDItemID) -> Void = { _, _ in }
 
     var body: some View {
         let items = model.board.ordered(on: display)
         if items.count == 1, let item = items.first {
-            NotchCard(model: model, item: item, underHousing: underHousing, drag: drag, act: act)
+            NotchCard(model: model, item: item, underHousing: underHousing, drag: drag, act: act, text: text)
         } else {
             NotchList(model: model, display: display, underHousing: underHousing, act: act)
         }
@@ -48,6 +50,7 @@ struct NotchCard: View {
     let underHousing: Bool
     let drag: (Bool) -> Void
     let act: (NotchHUD.Press, NotchHUDItemID) -> Void
+    var text: (TextResultButton, NotchHUDItemID) -> Void = { _, _ in }
 
     var body: some View {
         content.frame(width: contentWidth, alignment: .topLeading)
@@ -75,7 +78,13 @@ struct NotchCard: View {
             batch(snapshot, id: id)
         case .action:
             if case .action(let index) = id, let action = model.actions[index] {
-                NotchActionCard(model: action, width: contentWidth) { act($0, id) }
+                if let result = action.result, let outcome = result.text {
+                    NotchTextCard(
+                        toast: result.toast ?? "", model: TextResultModel(outcome), width: contentWidth
+                    ) { text($0, id) }
+                } else {
+                    NotchActionCard(model: action, width: contentWidth) { act($0, id) }
+                }
             }
         }
     }

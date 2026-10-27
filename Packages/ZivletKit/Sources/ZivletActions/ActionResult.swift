@@ -26,6 +26,8 @@ public enum ActionResult: Sendable, Equatable {
     case partial(toast: String, card: ActionCard, undo: BatchID?)
     case failed(ActionCard)
     case cancelled
+    /// Copy Text's result (P2-104): "Text copied" with the text card below; no undo.
+    case text(TextOutcome)
 
     public init(_ outcome: ActionOutcome) {
         switch outcome {
@@ -38,6 +40,7 @@ public enum ActionResult: Sendable, Equatable {
     public var toast: String? {
         switch self {
         case .done(let toast, _, _), .partial(let toast, _, _): toast
+        case .text: "Text copied"
         case .failed, .cancelled: nil
         }
     }
@@ -45,20 +48,29 @@ public enum ActionResult: Sendable, Equatable {
     public var card: ActionCard? {
         switch self {
         case .partial(_, let card, _), .failed(let card): card
-        case .done, .cancelled: nil
+        case .done, .cancelled, .text: nil
         }
     }
 
     public var undo: BatchID? {
         switch self {
         case .done(_, let undo, _), .partial(_, _, let undo): undo
-        case .failed, .cancelled: nil
+        case .failed, .cancelled, .text: nil
         }
     }
 
     /// How long the toast stays, when the result says; nil leaves it to the presenter.
     public var linger: Duration? {
-        if case .done(_, _, let linger) = self { return linger }
+        switch self {
+        case .done(_, _, let linger): linger
+        case .text: TextOutcome.linger
+        default: nil
+        }
+    }
+
+    /// The text card's content, for Copy Text's result.
+    public var text: TextOutcome? {
+        if case .text(let outcome) = self { return outcome }
         return nil
     }
 
@@ -77,6 +89,7 @@ public enum ActionResult: Sendable, Equatable {
             return .partial(toast: toast, card: card.adding(lines), undo: undo)
         case .failed(let card): return .failed(card.adding(lines))
         case .cancelled: return .cancelled
+        case .text: return self  // Copy Text checks its files before it runs; the wiring reports refusals itself
         }
     }
 }

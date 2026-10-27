@@ -44,6 +44,7 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     public var onCopy: ([URL]) -> Void = { _ in }
     public var onRetry: (BatchID, CGPoint?) -> Void = { _, _ in }
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
+    public var onTextButton: (TextResultButton, TextOutcome) -> Void = { _, _ in }
     /// Posts a VoiceOver announcement; a test seam.
     var announce: (Announcement) -> Void
     /// Called at the top of every board change; a test seam.
