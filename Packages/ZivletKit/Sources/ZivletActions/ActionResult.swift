@@ -17,6 +17,21 @@ public struct ActionCard: Sendable, Equatable {
     func adding(_ more: [String]) -> ActionCard { ActionCard(title: title, lines: lines + more, detail: detail) }
 }
 
+/// A long action's working line (P2-104): what it says, how far it is when that is known, and the SF Symbol of what
+/// it makes (the island's tab shows it, as a batch shows its format family). It shows a ring, not the done check
+/// mark, and offers Cancel until its result takes its place.
+public struct WorkingStatus: Sendable, Equatable {
+    public let line: String
+    public let fraction: Double?
+    public let symbol: String
+
+    public init(line: String, fraction: Double? = nil, symbol: String) {
+        self.line = line
+        self.fraction = fraction
+        self.symbol = symbol
+    }
+}
+
 /// What the HUD shows after an action (03b §7 "Success feedback"): a toast, with Undo when `undo` is set; a toast
 /// plus a card when part of the drop was left out or failed; a card alone; or nothing after a cancel. A toast may
 /// say how long it stays (`linger`), so the undo window it offers is the one the person gets: the Drop Box's Clear
@@ -28,6 +43,8 @@ public enum ActionResult: Sendable, Equatable {
     case cancelled
     /// Copy Text's result (P2-104): "Text copied" with the text card below; no undo.
     case text(TextOutcome)
+    /// A long action still running: its line and Cancel; no linger (its result replaces it).
+    case working(WorkingStatus)
 
     public init(_ outcome: ActionOutcome) {
         switch outcome {
@@ -41,6 +58,7 @@ public enum ActionResult: Sendable, Equatable {
         switch self {
         case .done(let toast, _, _), .partial(let toast, _, _): toast
         case .text: "Text copied"
+        case .working(let status): status.line
         case .failed, .cancelled: nil
         }
     }
@@ -48,14 +66,14 @@ public enum ActionResult: Sendable, Equatable {
     public var card: ActionCard? {
         switch self {
         case .partial(_, let card, _), .failed(let card): card
-        case .done, .cancelled, .text: nil
+        case .done, .cancelled, .text, .working: nil
         }
     }
 
     public var undo: BatchID? {
         switch self {
         case .done(_, let undo, _), .partial(_, _, let undo): undo
-        case .failed, .cancelled, .text: nil
+        case .failed, .cancelled, .text, .working: nil
         }
     }
 
@@ -66,6 +84,12 @@ public enum ActionResult: Sendable, Equatable {
         case .text: TextOutcome.linger
         default: nil
         }
+    }
+
+    /// The working line, while the action runs.
+    public var working: WorkingStatus? {
+        if case .working(let status) = self { return status }
+        return nil
     }
 
     /// The text card's content, for Copy Text's result.
@@ -89,7 +113,7 @@ public enum ActionResult: Sendable, Equatable {
             return .partial(toast: toast, card: card.adding(lines), undo: undo)
         case .failed(let card): return .failed(card.adding(lines))
         case .cancelled: return .cancelled
-        case .text: return self  // Copy Text checks its files before it runs; the wiring reports refusals itself
+        case .text, .working: return self  // Copy Text reports its own refusals; a working line lists nothing
         }
     }
 }

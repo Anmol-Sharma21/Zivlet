@@ -15,6 +15,8 @@ public struct TabContent: Sendable, Equatable {
     public enum Icon: Sendable, Equatable {
         /// The format family of the batch's target: what is being made.
         case family(FormatFamily)
+        /// A long action still running: its own symbol (Copy Text's text viewfinder).
+        case symbol(String)
         case action
     }
 
@@ -107,10 +109,10 @@ public struct Announcement: Sendable, Equatable {
     }
 }
 
-/// The glyph in front of a toast line: a check mark, the error glyph (a shape, not colour alone), an action icon, or
-/// the neutral stop glyph of a batch whose jobs were all cancelled.
+/// The glyph in front of a toast line: a check mark, the error glyph (a shape, not colour alone), an action icon, the
+/// neutral stop glyph of a batch whose jobs were all cancelled, or the tab's ring while a long action works.
 public enum ToastGlyph: Sendable, Equatable {
-    case saved, failed, action, cancelled
+    case saved, failed, action, cancelled, working
 }
 
 /// One item and its timer. `linger` runs while the item rests as a toast; a failure's runs only for its first 4 s,
@@ -138,7 +140,20 @@ struct NotchHUDItem: Sendable, Equatable {
         return nil
     }
 
-    var isWorking: Bool { snapshot.map { !$0.isFinished } ?? false }
+    var isWorking: Bool {
+        switch kind {
+        case .batch(let snapshot): !snapshot.isFinished
+        case .action(let result): result.working != nil
+        }
+    }
+
+    /// How far a working item is, when it knows.
+    var fraction: Double? {
+        switch kind {
+        case .batch(let snapshot): snapshot.fraction
+        case .action(let result): result.working?.fraction
+        }
+    }
 
     /// A finished batch with nothing saved and nothing failed (BatchPresentation's `.cancelled`).
     var isCancelled: Bool {

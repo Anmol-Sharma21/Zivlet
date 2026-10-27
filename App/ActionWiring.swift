@@ -92,6 +92,7 @@ final class ActionWiring {
         case .failed: kind = "failed"
         case .cancelled: kind = "cancelled"
         case .text: kind = "text"  // never the text itself (plan 18d D14)
+        case .working: kind = "working"
         }
         logger.notice(
             "Action finished: \(action.rawValue, privacy: .public) \(kind, privacy: .public): \(result.toast ?? "", privacy: .public)"

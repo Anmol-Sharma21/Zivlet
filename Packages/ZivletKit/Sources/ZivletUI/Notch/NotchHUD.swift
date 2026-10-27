@@ -59,8 +59,9 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     private var pending: [(point: CGPoint?, interval: OSSignpostIntervalState)] = []
     private(set) var anchors: [BatchID: CGPoint] = [:]
     var undos: [NotchHUDItemID: Task<Void, Never>] = [:]
-    /// The item showing a long action's working line, until its result arrives.
+    /// The item showing a long action's working line, until its result arrives, and what its Cancel runs.
     private var workingItem: NotchHUDItemID?
+    private var workingCancel: (() -> Void)?
     private var expiry: (deadline: Duration, task: Task<Void, Never>)?
     private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
 
@@ -116,32 +117,61 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     /// The batch leaves the island; the other items stay.
     public func close(_ batch: BatchID) { close(.batch(batch)) }
 
+    /// An action's result. When a working line is up, the result takes its place in one board change (a cancel
+    /// just removes it), so the island never hides between the two.
     public func show(_ result: ActionResult, near point: CGPoint?) {
-        if let working = workingItem {
-            workingItem = nil
-            close(working)
+        if let working = endWorking(), board.item(working) != nil {
+            if case .cancelled = result { return close(working) }
+            forget(working)
+            addModel(for: result)
+            return apply(board.replacing(working, with: result, now: clock.now()))
         }
         if case .cancelled = result { return }
         guard let display = display(for: point) else {
             return Self.logger.error("Notch HUD has no display for an action result; it is not shown")
         }
-        let actionModel = ActionHUDModel()
-        actionModel.present(result)
-        model.actions[board.nextAction] = actionModel
+        addModel(for: result)
         apply(board.updating(result, display: display, now: clock.now()))
     }
 
-    /// One working item per long action: the first line adds it, later lines change its text, the result closes it.
-    public func showWorking(_ line: String, near point: CGPoint?) {
-        let result = ActionResult.done(toast: line, undo: nil, linger: ActionHUD.workingLinger)
-        if let working = workingItem, case .action(let index) = working, let model = model.actions[index] {
-            model.present(result)
-            if let display = board.display(of: working) { hosts?.contentChanged(on: display) }
-            return
+    /// One working item per long action: the first line adds it, later lines change it in place, the result takes
+    /// its place. Its Cancel (stop.circle) runs `cancel` and removes it.
+    public func showWorking(_ status: WorkingStatus, near point: CGPoint?, cancel: @escaping () -> Void) {
+        let result = ActionResult.working(status)
+        workingCancel = cancel
+        if let working = workingItem, case .action(let index) = working, board.item(working) != nil {
+            model.actions[index]?.present(result)
+            return apply(board.replacing(working, with: result, now: clock.now()))
         }
-        let id = NotchHUDItemID.action(board.nextAction)
-        show(result, near: point)
-        if model.actions[board.nextAction - 1] != nil { workingItem = id }
+        guard let display = display(for: point) else {
+            return Self.logger.error("Notch HUD has no display for a working line; it is not shown")
+        }
+        workingItem = .action(board.nextAction)
+        addModel(for: result)
+        apply(board.updating(result, display: display, now: clock.now()))
+    }
+
+    /// Cancel on the working item: the job stops and the item goes at once.
+    func cancelWorking(_ id: NotchHUDItemID) {
+        guard id == workingItem else { return }
+        let cancel = workingCancel
+        if let working = endWorking() { close(working) }
+        cancel?()
+    }
+
+    /// Forgets the working item and its Cancel; returns the item that was working.
+    private func endWorking() -> NotchHUDItemID? {
+        defer {
+            workingItem = nil
+            workingCancel = nil
+        }
+        return workingItem
+    }
+
+    private func addModel(for result: ActionResult) {
+        let actionModel = ActionHUDModel()
+        actionModel.present(result)
+        model.actions[board.nextAction] = actionModel
     }
 
     func close(_ id: NotchHUDItemID) {

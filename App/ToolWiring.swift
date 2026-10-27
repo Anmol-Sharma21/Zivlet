@@ -58,15 +58,17 @@ final class ToolWiring {
     func run(_ tool: ToolID, urls: [URL], optionHeld: Bool, near point: CGPoint?) -> Task<ActionResult, Never>? {
         guard tool == .copyText else { return nil }
         let presenter = actions.currentPresenter
-        return Task { @MainActor in
-            let job = WorkingLine(presenter: presenter, point: point)
-            let result = await self.copyText(urls, optionHeld: optionHeld, line: job)
-            job.finish()
+        let line = WorkingLine(presenter: presenter, point: point)
+        let task = Task { @MainActor in
+            let result = await self.copyText(urls, optionHeld: optionHeld, line: line)
+            line.finish()
             presenter.show(result, near: point)
             self.log(result, files: urls.count)
             self.startWarmUpIfNeeded()
             return result
         }
+        line.attach(task)
+        return task
     }
 
     /// After onboarding (at once), and at each launch until it is done (after `delay`, so launch stays quick); never
@@ -94,9 +96,9 @@ final class ToolWiring {
     private func copyText(_ urls: [URL], optionHeld: Bool, line: WorkingLine) async -> ActionResult {
         do {
             let (languages, warmed) = try await languages()
-            line.show(ToolWiringModel.workingLine(warmupDone: warmed, fraction: nil))
+            line.show(ToolWiringModel.working(warmupDone: warmed, fraction: nil))
             let recognized = try await text.copyText(urls, languages: languages) { fraction in
-                Task { @MainActor in line.show(ToolWiringModel.workingLine(warmupDone: warmed, fraction: fraction)) }
+                Task { @MainActor in line.show(ToolWiringModel.working(warmupDone: warmed, fraction: fraction)) }
             }
             return finish(recognized, sources: urls, optionHeld: optionHeld)
         } catch {
@@ -218,22 +220,36 @@ final class ToolWiring {
     }
 }
 
-/// The working line of one job: progress that arrives after the result is dropped, so a late event never brings
-/// the line back over the card.
+/// The working line of one job and its Cancel. Progress that arrives after the result (or a cancel) is dropped, so
+/// a late event never brings the line back over the card; progress only moves forward (each event hops to the main
+/// actor on its own, so an older percent can arrive late), and the line is drawn only when its words change (at
+/// most once per percent).
 @MainActor
 final class WorkingLine {
     private let presenter: any ActionPresenter
     private let point: CGPoint?
     private var finished = false
+    private var shown: WorkingStatus?
+    private var task: Task<ActionResult, Never>?
 
     init(presenter: any ActionPresenter, point: CGPoint?) {
         self.presenter = presenter
         self.point = point
     }
 
-    func show(_ line: String) {
-        guard !finished else { return }
-        presenter.showWorking(line, near: point)
+    /// The job's task, which Cancel stops (TextService forwards it to the worker).
+    func attach(_ task: Task<ActionResult, Never>) { self.task = task }
+
+    func show(_ status: WorkingStatus) {
+        guard !finished, status.line != shown?.line else { return }
+        if let old = shown?.fraction, let new = status.fraction, new < old { return }
+        shown = status
+        presenter.showWorking(status, near: point) { [weak self] in self?.cancel() }
+    }
+
+    func cancel() {
+        finished = true
+        task?.cancel()
     }
 
     func finish() { finished = true }

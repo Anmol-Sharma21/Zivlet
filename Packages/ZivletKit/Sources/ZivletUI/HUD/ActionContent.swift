@@ -1,8 +1,8 @@
 import SwiftUI
 import ZivletActions
 
-/// An action result without a surface: the toast, the card with up to five lines, the undo reply and the buttons.
-/// `ActionHUDView` puts it on the glass panel; the notch island on its black card.
+/// An action result without a surface: the toast, the card with up to five lines, the undo reply and the buttons; or
+/// a long action's working line with its bar and Cancel. `ActionHUDView` puts it on the glass panel.
 struct ActionContent: View {
     static let maxLines = 5
 
@@ -13,10 +13,13 @@ struct ActionContent: View {
     var details: () -> Void = {}
     var close: () -> Void = {}
     var text: (TextResultButton) -> Void = { _ in }
+    var cancel: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let result = model.result, let outcome = result.text {
+            if let status = model.result?.working {
+                working(status)
+            } else if let result = model.result, let outcome = result.text {
                 TextResultContent(toast: result.toast ?? "", model: TextResultModel(outcome), press: text)
             } else if let result = model.result {
                 if let toast = result.toast { Text(toast).font(.headline).lineLimit(1) }
@@ -28,6 +31,24 @@ struct ActionContent: View {
             }
         }
         .frame(width: width, alignment: .topLeading)
+    }
+
+    /// The line, a bar (moving while the length is unknown) and Cancel, which answers Escape once the panel is key,
+    /// as a working conversion's card does.
+    private func working(_ status: WorkingStatus) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(status.line).font(.headline).lineLimit(1)
+            if let fraction = status.fraction {
+                ProgressView(value: min(max(fraction, 0), 1))
+            } else {
+                ProgressView().progressViewStyle(.linear)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel", action: cancel).keyboardShortcut(.cancelAction)
+            }
+            .controlSize(.small)
+        }
     }
 
     private func cardView(_ card: ActionCard, isAlone: Bool) -> some View {

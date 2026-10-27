@@ -91,6 +91,22 @@ public struct NotchHUDBoard: Sendable, Equatable {
         transition(now) { $0.apply(action, display: display) }
     }
 
+    /// A working action's next line changes it in place; its result (or a cancel) takes its place in the same change,
+    /// on its display, so the island goes from one toast to the next without hiding in between (19b §3.4).
+    public func replacing(_ id: NotchHUDItemID, with action: ActionResult, now: Duration) -> NotchHUDBoard {
+        transition(now) { board in
+            guard let found = board.locate(id) else { return }
+            if let status = action.working {
+                var item = found.item
+                item.kind = .action(action)
+                item.indeterminateSince = status.fraction == nil ? (item.indeterminateSince ?? board.now) : nil
+                return board.replace(found, with: item)
+            }
+            board.items[found.display]?.remove(at: found.index)
+            board.apply(action, display: found.display)
+        }
+    }
+
     /// The island's hold changed (pointer, accessibility focus, a drag from it): lingers pause, and restart in full
     /// when it ends.
     public func holding(_ isHeld: Bool, display: UInt32, now: Duration) -> NotchHUDBoard {
@@ -226,7 +242,8 @@ extension NotchHUDBoard {
 
     private mutating func apply(_ action: ActionResult, display: UInt32) {
         if case .cancelled = action { return }
-        let item = NotchHUDItem(id: .action(nextAction), kind: .action(action))
+        var item = NotchHUDItem(id: .action(nextAction), kind: .action(action))
+        if let status = action.working, status.fraction == nil { item.indeterminateSince = now }
         nextAction += 1
         announcements.append(Announcement(text: NotchHUDCopy.action(action), highPriority: action.card != nil))
         items[display, default: []].append(startingLinger(item, on: display))
@@ -249,7 +266,9 @@ extension NotchHUDBoard {
             guard snapshot.isFinished else { return nil }
             base = item.isFailure ? Self.failureToast : ResultCardModel.successLinger
         case .action(let result):
-            if result.card != nil {
+            if result.working != nil {
+                return nil  // a working line stays until its result replaces it
+            } else if result.card != nil {
                 base = Self.failureToast
             } else {
                 base = ActionHUD.linger(for: result)

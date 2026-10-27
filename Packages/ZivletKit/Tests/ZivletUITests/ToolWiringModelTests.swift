@@ -17,8 +17,7 @@ struct ToolWiringModelTests {
     @Test func theWorkingLineSaysWhetherTheOneTimePreparationRuns() {
         #expect(
             ToolWiringModel.workingLine(warmupDone: false, fraction: nil) == "Preparing text recognition (one time)…")
-        #expect(
-            ToolWiringModel.workingLine(warmupDone: false, fraction: 0.5) == "Preparing text recognition (one time)…")
+        #expect(ToolWiringModel.workingLine(warmupDone: false, fraction: 0.5) == "Recognising text… 50%")
         #expect(ToolWiringModel.workingLine(warmupDone: true, fraction: nil) == "Recognising text…")
         #expect(ToolWiringModel.workingLine(warmupDone: true, fraction: 0.42) == "Recognising text… 42%")
         #expect(ToolWiringModel.workingLine(warmupDone: true, fraction: 1) == "Recognising text… 100%")

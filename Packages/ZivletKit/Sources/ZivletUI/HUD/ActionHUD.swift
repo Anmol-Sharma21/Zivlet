@@ -40,8 +40,6 @@ public final class ActionHUD: ActionPresenter {
     public static let width: CGFloat = 340
     static let toastLinger = Duration.milliseconds(1_500)
     static let undoLinger = Duration.seconds(4)
-    /// A working line stays until its result replaces it.
-    static let workingLinger = Duration.seconds(3_600)
 
     /// Undoes a Move and returns the sentence to show in its place.
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
@@ -53,13 +51,15 @@ public final class ActionHUD: ActionPresenter {
     private var hideTask: Task<Void, Never>?
     private(set) var hovering = false
     private(set) var pendingUndo: Task<Void, Never>?
+    /// What the working line's Cancel runs, while it is up.
+    private var workingCancel: (() -> Void)?
 
     public init() {
         hosting = NSHostingView(rootView: ActionHUDView(model: model))
         hosting.rootView = ActionHUDView(
             model: model, undo: { [weak self] in self?.undo() }, details: { [weak self] in self?.showDetails() },
             close: { [weak self] in self?.hide() }, hover: { [weak self] in self?.hover($0) },
-            text: { [weak self] in self?.pressText($0) })
+            text: { [weak self] in self?.pressText($0) }, cancel: { [weak self] in self?.cancelWorking() })
         panel.contentView = hosting
     }
 
@@ -68,9 +68,14 @@ public final class ActionHUD: ActionPresenter {
     public var panelFrame: CGRect { panel.frame }
     var canBecomeKey: Bool { panel.canBecomeKey }
 
-    /// Shows `result` near `point`; a cancel shows nothing and leaves the current result alone.
+    /// Shows `result` near `point`. A cancel shows nothing: it leaves a finished result alone and removes a working
+    /// line, which would otherwise stay.
     public func show(_ result: ActionResult, near point: CGPoint?) {
-        if case .cancelled = result { return }
+        workingCancel = nil
+        if case .cancelled = result {
+            if model.result?.working != nil { hide() }
+            return
+        }
         model.present(result)
         hovering = false  // a new result starts unhovered; the next pointer move says otherwise
         resize(near: point)
@@ -78,20 +83,29 @@ public final class ActionHUD: ActionPresenter {
         scheduleHide()
     }
 
-    /// The working line as a toast that stays until the result replaces it; its height follows the line.
-    public func showWorking(_ line: String, near point: CGPoint?) {
-        let replacing = model.result?.linger == Self.workingLinger
-        model.present(.done(toast: line, undo: nil, linger: Self.workingLinger))
+    /// The working line, its bar and Cancel; it stays until the result replaces it, and its height follows the line.
+    public func showWorking(_ status: WorkingStatus, near point: CGPoint?, cancel: @escaping () -> Void) {
+        let replacing = model.result?.working != nil
+        model.present(.working(status))
+        workingCancel = cancel
+        cancelHide()
         if replacing { return refit() }
         hovering = false
         resize(near: point)
         panel.orderFrontRegardless()
-        scheduleHide()
+    }
+
+    /// Cancel (or Escape once the panel is key) on the working line: the job stops and the line goes at once.
+    func cancelWorking() {
+        guard model.result?.working != nil, let cancel = workingCancel else { return }
+        hide()
+        cancel()
     }
 
     /// Ordered out, the panel gets no exit event, so the hover flag is cleared here.
     public func hide() {
         cancelHide()
+        workingCancel = nil
         hovering = false
         model.present(nil)
         panel.orderOut(nil)
@@ -149,7 +163,8 @@ public final class ActionHUD: ActionPresenter {
     /// Toasts leave on their own; cards, and toasts while hovered, stay.
     private func scheduleHide() {
         cancelHide()
-        guard let result = model.result, result.card == nil, !hovering, !model.undoInFlight else { return }
+        guard let result = model.result, result.card == nil, result.working == nil, !hovering, !model.undoInFlight
+        else { return }
         let linger = Self.linger(for: result)
         hideTask = Task { [weak self] in
             do {

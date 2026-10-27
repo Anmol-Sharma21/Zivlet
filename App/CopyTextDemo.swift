@@ -67,6 +67,7 @@
             case .partial: "partial"
             case .failed: "failed"
             case .cancelled: "cancelled"
+            case .working: "working"
             }
         }
     }

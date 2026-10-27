@@ -43,9 +43,11 @@ extension NotchHUD: IslandClient {
         apply(board.showing(surface, on: display, now: clock.now()))
     }
 
-    /// Escape on a closable card: everything on that display goes.
+    /// Escape on a closable card: everything on that display goes (a working action is never closable, but if it
+    /// were here, it stops).
     public func closeRequested(display: UInt32) {
         for item in board.items[display] ?? [] {
+            if item.isWorking, case .action = item.id { cancelWorking(item.id) }
             undos.removeValue(forKey: item.id)?.cancel()
             forget(item.id)
         }
@@ -97,7 +99,8 @@ extension NotchHUD {
             model.actions[index]?.showsDetail = true
             contentChanged(id)
         case .close: close(id)
-        case .cancel, .reveal, .open, .copy, .retry: break
+        case .cancel: cancelWorking(id)
+        case .reveal, .open, .copy, .retry: break
         }
     }
 

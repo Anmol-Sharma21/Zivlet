@@ -8,12 +8,21 @@ public enum ToolWiringModel {
     public static let preparing = "Preparing text recognition (one time)…"
     public static let recognising = "Recognising text…"
     public static let noText = "No text found"
+    /// What the island's tab shows while Copy Text works.
+    public static let workingSymbol = "text.viewfinder"
 
-    /// The one-time preparation has no measurable progress, so it shows no percent; a job never times out.
+    /// Until the first page or file is read, a job that waits for the one-time preparation says so; the preparation
+    /// happens inside Vision's first request and reports no progress, so the line has no percent until then (D-M6-20).
+    /// From the first progress on, the percent. A job never times out.
     public static func workingLine(warmupDone: Bool, fraction: Double?) -> String {
-        guard warmupDone else { return preparing }
-        guard let fraction else { return recognising }
+        guard let fraction else { return warmupDone ? recognising : preparing }
         return "\(recognising) \(Int((min(max(fraction, 0), 1) * 100).rounded(.down)))%"
+    }
+
+    /// The working line with its fraction and symbol, for the presenters.
+    public static func working(warmupDone: Bool, fraction: Double?) -> WorkingStatus {
+        WorkingStatus(
+            line: workingLine(warmupDone: warmupDone, fraction: fraction), fraction: fraction, symbol: workingSymbol)
     }
 
     /// ⌥ writes one `.txt` per input beside it.

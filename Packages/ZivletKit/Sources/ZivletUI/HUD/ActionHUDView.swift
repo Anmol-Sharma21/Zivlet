@@ -9,11 +9,12 @@ struct ActionHUDView: View {
     var close: () -> Void = {}
     var hover: (Bool) -> Void = { _ in }
     var text: (TextResultButton) -> Void = { _ in }
+    var cancel: () -> Void = {}
 
     var body: some View {
         ActionContent(
             model: model, width: ActionHUD.width - 2 * HUDLayout.padding, undo: undo, details: details, close: close,
-            text: text
+            text: text, cancel: cancel
         )
         .padding(HUDLayout.padding)
         .frame(width: ActionHUD.width, alignment: .topLeading)

@@ -119,9 +119,9 @@ struct TextWorkingTests {
         let hud = ActionHUD()
         defer { hud.hide() }
         let point = CGPoint(x: -5_000, y: -5_000)
-        hud.showWorking("Recognising text…", near: point)
+        hud.showWorking(WorkingStatus(line: "Recognising text…", symbol: "text.viewfinder"), near: point) {}
         #expect(hud.model.result?.toast == "Recognising text…")
-        hud.showWorking("Recognising text… 50%", near: point)
+        hud.showWorking(WorkingStatus(line: "Recognising text… 50%", symbol: "text.viewfinder"), near: point) {}
         #expect(hud.model.result?.toast == "Recognising text… 50%")
         hud.show(.text(TextFx.outcome()), near: point)
         #expect(hud.model.result?.text != nil)
@@ -130,8 +130,14 @@ struct TextWorkingTests {
     @Test func theIslandKeepsOneWorkingItemAndTheResultReplacesIt() throws {
         let rig = try NotchRig.notch()
         defer { rig.hosts.close() }
-        rig.hud.showWorking("Preparing text recognition (one time)…", near: NotchRig.onNotch)
-        rig.hud.showWorking("Recognising text… 50%", near: NotchRig.onNotch)
+        rig.hud.showWorking(
+            WorkingStatus(line: "Preparing text recognition (one time)…", symbol: "text.viewfinder"),
+            near: NotchRig.onNotch
+        ) {}
+        rig.hud.showWorking(
+            WorkingStatus(line: "Recognising text… 50%", fraction: 0.5, symbol: "text.viewfinder"),
+            near: NotchRig.onNotch
+        ) {}
         #expect(rig.hud.board.ordered(on: 1).count == 1)
         #expect(rig.hud.actionModel(.action(0))?.result?.toast == "Recognising text… 50%")
         rig.hud.show(.text(TextFx.outcome()), near: NotchRig.onNotch)

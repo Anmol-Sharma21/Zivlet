@@ -50,6 +50,7 @@ extension NotchHUDBoard {
 
     public func toastGlyph(on display: UInt32) -> ToastGlyph? {
         guard request(on: display)?.resting == .toast, let item = items[display]?.first else { return nil }
+        if item.isWorking { return .working }
         if item.isFailure { return .failed }
         if item.isCancelled { return .cancelled }
         return item.snapshot == nil ? .action : .saved
@@ -115,17 +116,22 @@ extension NotchHUDBoard {
         if since.count == working.count, let first = since.min() {
             return .step(steps(since: first) % Self.stepCount)
         }
-        let fractions = working.compactMap { $0.snapshot?.fraction }
+        let fractions = working.compactMap(\.fraction)
+        guard !fractions.isEmpty else { return .step(0) }
         return .fraction(fractions.reduce(0, +) / Double(fractions.count))
     }
 
+    /// A working batch rests in the tab with its ring; a working action rests as its toast line with the ring in
+    /// front, since its line says what it waits for ("Preparing text recognition (one time)…").
     private static func resting(_ item: NotchHUDItem) -> IslandSurface {
-        item.isWorking || item.waits ? .collapsed : .toast
+        (item.isWorking && item.snapshot != nil) || item.waits ? .collapsed : .toast
     }
 
     private static func icon(_ item: NotchHUDItem) -> TabContent.Icon {
-        guard let snapshot = item.snapshot else { return .action }
-        return .family(FormatRegistry.standard.format(snapshot.target).family)
+        switch item.kind {
+        case .batch(let snapshot): .family(FormatRegistry.standard.format(snapshot.target).family)
+        case .action(let result): result.working.map { .symbol($0.symbol) } ?? .action
+        }
     }
 
     /// The one-line form of an item: "Saved photo.jpg · 2.1 MB → 640 KB", the failure's title and reason, the
@@ -156,6 +162,10 @@ extension NotchHUDBoard {
                 id: item.id, title: shown.title, detail: ResultCardModel.sizeLine(snapshot) ?? shown.subtitle,
                 status: Self.finishedStatus(item), line: Self.rowLine(styled, failed: item.isFailure),
                 summary: item.isFailure ? NotchHUDCopy.failedStatus : styled.secondary ?? "")
+        case .action(let result) where result.working != nil:
+            // The line already carries its percent ("Recognising text… 40%"), so no short status beside it.
+            return NotchHUDRow(
+                id: item.id, title: NotchHUDCopy.action(result), detail: "", status: .working(result.working?.fraction))
         case .action(let result):
             let detail = result.card?.lines.joined(separator: " · ") ?? ""
             let failed = result.card != nil

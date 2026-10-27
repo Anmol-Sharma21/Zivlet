@@ -65,7 +65,8 @@ struct NotchFailureCard: View {
 }
 
 /// The island's card for an action that partly or wholly failed: its glyph, title, up to five caption lines and
-/// "and 2 more", the detail when shown, and Undo, Show Details and Close as icon buttons.
+/// "and 2 more", the detail when shown, and Undo, Show Details and Close as icon buttons. A working action shows its
+/// ring, its line and Cancel.
 struct NotchActionCard: View {
     let model: ActionHUDModel
     let width: CGFloat
@@ -85,7 +86,11 @@ struct NotchActionCard: View {
 
     private func text(_ result: ActionResult) -> some View {
         HStack(alignment: .top, spacing: NotchLook.Spacing.s) {
-            NotchSymbol(name: result.card == nil ? NotchSymbol.saved : NotchSymbol.failed)
+            if let status = result.working {
+                if let fraction = status.fraction { NotchRing(fraction: fraction) } else { NotchSteps(step: 0) }
+            } else {
+                NotchSymbol(name: result.card == nil ? NotchSymbol.saved : NotchSymbol.failed)
+            }
             VStack(alignment: .leading, spacing: NotchLook.Spacing.xs) {
                 Text(Self.title(result)).font(NotchLook.TypeStyle.primary).foregroundStyle(NotchInk.primary)
                     .lineLimit(3).fixedSize(horizontal: false, vertical: true)
@@ -113,6 +118,7 @@ struct NotchActionCard: View {
 
     static func presses(_ model: ActionHUDModel) -> [NotchHUD.Press] {
         guard let result = model.result else { return [] }
+        if result.working != nil { return [.cancel] }
         var presses: [NotchHUD.Press] = []
         if model.offersUndo { presses.append(.undo) }
         if result.card?.detail != nil, !model.showsDetail { presses.append(.showDetails) }

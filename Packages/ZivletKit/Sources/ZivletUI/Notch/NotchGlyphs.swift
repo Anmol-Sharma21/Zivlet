@@ -2,14 +2,29 @@ import SwiftUI
 import ZivletCore
 import ZivletNotch
 
-/// The tab's left end (19b D-NL10): the target's family symbol, or the check mark of a done action.
+/// The tab's left end (19b D-NL10): the target's family symbol, a working action's own symbol, or the check mark of
+/// a done action.
 struct NotchTabIcon: View {
     let icon: TabContent.Icon
 
     var body: some View {
         switch icon {
         case .family(let family): NotchFamilySymbol(family: family)
+        case .symbol(let name): NotchSymbol(name: name)
         case .action: NotchSymbol(name: NotchSymbol.saved)
+        }
+    }
+}
+
+/// The ring of the tab drawn on its own: a fraction, the stepped glyph, or a check mark when nothing works.
+struct NotchRingGlyph: View {
+    let ring: TabContent.Ring
+
+    var body: some View {
+        switch ring {
+        case .fraction(let value): NotchRing(fraction: value)
+        case .step(let step): NotchSteps(step: step)
+        case .done: NotchSymbol(name: NotchSymbol.saved)
         }
     }
 }
@@ -65,11 +80,7 @@ struct NotchStatusGlyph: View {
         if tab.failed {
             NotchSymbol(name: NotchSymbol.failed)
         } else {
-            switch tab.ring {
-            case .fraction(let value): NotchRing(fraction: value)
-            case .step(let step): NotchSteps(step: step)
-            case .done: NotchSymbol(name: NotchSymbol.saved)
-            }
+            NotchRingGlyph(ring: tab.ring)
         }
     }
 }
@@ -91,12 +102,14 @@ struct NotchSymbol: View {
             .accessibilityHidden(true)
     }
 
-    /// A done action shows the check mark: the result does not say which action ran (19b D-NL10).
+    /// A done action shows the check mark: the result does not say which action ran (19b D-NL10). A working toast
+    /// draws the tab's ring instead (`NotchToast`); its name here is only the stepped glyph's still form.
     static func name(for glyph: ToastGlyph) -> String {
         switch glyph {
         case .saved, .action: saved
         case .failed: failed
         case .cancelled: cancelled
+        case .working: "circle.dotted"
         }
     }
 
