@@ -5,8 +5,9 @@
 # on the blank image, using a private pasteboard (the person's clipboard is left alone), writes one JSON file per
 # step and quits. The check: the copied text within 1 % CER of the expected combined text (Scripts/cer.swift), each
 # "<name> Text.txt" UTF-8 without a BOM and with LF only and within 1 % CER, and "No text found" for the blank image.
-# With the screen locked it runs nothing and says "skipped: screen locked". It deletes only a folder it made itself
-# (marked by .zivlet-copy-text-demo): a folder with other files is refused. It quits only the app it launched.
+# With the screen locked it runs nothing and says "skipped: screen locked". It deletes only its default folder or a
+# folder it made itself (marked by .zivlet-copy-text-demo): another folder with files is refused. It quits only the
+# app it launched.
 # Usage: Scripts/demo-copy-text.sh [folder]        (default build/copy-text-demo; needs `make app`)
 #        Scripts/demo-copy-text.sh --check folder  only the check, on a finished folder (script tests)
 set -euo pipefail
@@ -88,7 +89,9 @@ if [[ "${1:-}" == --check ]]; then
     check "${2:?--check needs a folder}"
     exit $?
 fi
-OUT=${1:-$REPO_ROOT/build/copy-text-demo}
+DEFAULT_OUT=$REPO_ROOT/build/copy-text-demo
+OUT=${1:-$DEFAULT_OUT}
+[[ "$OUT" == "$DEFAULT_OUT" && -d "$OUT" ]] && touch "$OUT/$MARKER"  # the script's own folder, from any earlier run
 if [[ -d "$OUT" && -n "$(ls -A "$OUT")" && ! -e "$OUT/$MARKER" ]]; then
     echo "error: $OUT holds files this script did not make; give it an empty or new folder" >&2
     exit 1
