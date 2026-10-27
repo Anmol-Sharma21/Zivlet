@@ -26,8 +26,9 @@ extension OCRFixtures {
 
     /// The text drawn with CoreText into an opaque sRGB bitmap, with the margin; fails when the font is missing or
     /// any run of the text was drawn with another font. The geometry is the one the plan's measurements used (the
-    /// suggested frame plus one point, the bitmap rounded up): Vision's result on fixtures 02 and 06 changed when the
-    /// frame grew by one pixel, so it is fixed here and never tuned.
+    /// suggested frame plus one point, the bitmap rounded up). It was pinned after Vision's result on fixtures 02 and
+    /// 06 was seen to change when the frame grew by one pixel, so the 12/12 holds for this geometry; it is not tuned
+    /// further.
     public static func draw(_ entry: Entry) throws(OCRFixtureError) -> CGImage {
         let font = CTFontCreateWithName(entry.font as CFString, CGFloat(entry.size), nil)
         guard CTFontCopyPostScriptName(font) as String == entry.font else { throw .fontMissing(entry.font) }

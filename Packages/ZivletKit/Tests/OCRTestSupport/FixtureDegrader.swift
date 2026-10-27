@@ -1,9 +1,12 @@
 import CoreGraphics
 import Foundation
 
-/// The fixed degradation of fixture 07 (plan 18d, D-M6-11), chosen before the recognizer existed and never tuned:
-/// rotate about the centre on white, a 5-tap separable Gaussian blur, seeded uniform noise added equally to R, G and
-/// B, then a JPEG. Every step is a pixel operation with a fixed seed, so two renders are byte-identical.
+/// The fixed degradation of fixture 07 (plan 18d, D-M6-11): rotate about the centre on white, a 5-tap separable
+/// Gaussian blur, seeded uniform noise added equally to R, G and B, then a JPEG. The parameters were set before the
+/// recognizer existed; the first implementation of these steps scored CER 0.167 and was replaced by this one (plan 18
+/// §3.2), with the parameters unchanged. Every step is a pixel operation with a fixed seed, so two renders are
+/// byte-identical. One mild fixture says little about phone photos or scans: the unscored stress set is printed
+/// beside the 12 results.
 public struct Degradation: Sendable, Equatable {
     public let rotationDegrees: Double
     public let blurSigma: Double

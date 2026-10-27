@@ -33,7 +33,7 @@ command_of() {
         Z3) echo "Scripts/m5a-exit.sh --only X2,X3,X4,X5 and Scripts/m5b-exit.sh --only Y4,Y5,Y7 (earlier rows still pass)" ;;
         Z4) echo "the Release worker: in the bundle, hardened runtime, identifier $WORKER_ID, no entitlements" ;;
         Z5) echo "make worker-smoke (convert, cancel, crash retry, crash twice, idle exit, no crash report)" ;;
-        Z6) echo "make ocr-check (12 fixtures within 1 % CER with the production configuration)" ;;
+        Z6) echo "make ocr-check (12 fixtures within 1 % CER with the production configuration, 5 PDFs, warmed first recognition ≤ 3 s)" ;;
         Z7) echo "make copy-text-demo (Copy Text through the drop path)" ;;
         Z8) echo "make box-busy-demo (a cancelled Move of 50 files, the busy overlay, Undo)" ;;
         Z9) echo "make text-states and make box-states (every new state, contrast over white)" ;;
@@ -132,10 +132,32 @@ no_tcc_prompts() {
     echo "no tccd request with preflight=no for Zivlet or its worker since $DEMO_START"
 }
 
+# Z6: the OCR check passes and printed what it measured. `swift test --filter` exits 0 when nothing matched (a
+# renamed suite, the env gate off), so the row also needs the 12 fixture lines, the five PDF lines and the warmed
+# first recognition.
+ocr_check() {
+    local out fixtures pdfs
+    out=$(make ocr-check 2>&1) || { echo "$out"; return 1; }
+    echo "$out"
+    fixtures=$(grep -cE '^ocr-check: [0-9]{2}_[a-z_]+ cer=' <<<"$out" || true)
+    pdfs=$(grep -cE '^ocr-check: pdf [a-z]+ cer=' <<<"$out" || true)
+    ((fixtures == 12)) || { echo "the check printed $fixtures of 12 fixture lines"; return 1; }
+    ((pdfs >= 5)) || { echo "the check printed $pdfs of 5 PDF lines"; return 1; }
+    grep -q '^ocr-check: warmed first recognition ms=' <<<"$out" || { echo "no warmed first recognition line"; return 1; }
+    echo "12 fixture lines, $pdfs PDF lines and the warmed first recognition measured"
+}
+
+# Z11 checks nothing against a base it cannot find (a shallow clone, a typo in ZIVLET_M6_BASE), so that fails.
+base_known() {
+    git rev-parse --verify --quiet "$BASE^{commit}" >/dev/null || { echo "unknown base $BASE"; return 1; }
+    [[ -n "$(git rev-list "$BASE..HEAD")" ]] || { echo "no commits since $BASE: nothing to check"; return 1; }
+}
+
 # Z11, part 1: every commit since BASE signed off and without Co-Authored-By.
 commits_clean() {
-    local commit status=0
-    for commit in $(git rev-list "$BASE..HEAD"); do
+    local commit commits status=0
+    commits=$(git rev-list "$BASE..HEAD") || return 1
+    for commit in $commits; do
         git log -1 --format=%B "$commit" | grep -q '^Signed-off-by: ' || { echo "not signed off: $commit"; status=1; }
         if git log -1 --format=%B "$commit" | grep -qi '^Co-Authored-By:'; then
             echo "Co-Authored-By: $commit"
@@ -147,19 +169,23 @@ commits_clean() {
 
 # Z11, part 2: no changed source file at or over the limit, no personal or scratch path and no new NSAlert added.
 changes_clean() {
-    local file lines scratch status=0
+    local file files lines scratch diff swift_diff status=0
+    files=$(git diff --name-only "$BASE..HEAD") || return 1
+    diff=$(git diff "$BASE..HEAD") || return 1
+    swift_diff=$(git diff "$BASE..HEAD" -- '*.swift') || return 1
+    [[ -n "$files" ]] || { echo "no files changed since $BASE: nothing to check"; return 1; }
     while IFS= read -r file; do
         [[ -f "$file" && "$file" =~ \.(swift|sh)$ ]] || continue
         lines=$(wc -l <"$file")
         ((lines < MAX_LINES)) || { echo "$file has $((lines)) lines"; status=1; }
-    done < <(git diff --name-only "$BASE..HEAD")
+    done <<<"$files"
     # Split so this line does not match itself.
     scratch="/private/tmp/""claude"
-    if git diff "$BASE..HEAD" | grep -E '^\+' | grep -E "/Users/$(whoami)([^a-z]|$)|$scratch"; then
+    if grep -E '^\+' <<<"$diff" | grep -E "/Users/$(whoami)([^a-z]|$)|$scratch"; then
         echo "a personal path was added"
         status=1
     fi
-    if git diff "$BASE..HEAD" -- '*.swift' | grep -E '^\+' | grep 'NSAlert'; then
+    if grep -E '^\+' <<<"$swift_diff" | grep 'NSAlert'; then
         echo "new code uses NSAlert (results go to toasts and cards, never modal alerts)"
         status=1
     fi
@@ -206,6 +232,7 @@ cap_counts() {
 
 hygiene() {
     local status=0
+    base_known || return 1
     commits_clean || status=1
     changes_clean || status=1
     sources_clean || status=1
@@ -225,7 +252,7 @@ run_row() {
             ;;
         Z4) release_worker ;;
         Z5) make worker-smoke ;;
-        Z6) make ocr-check ;;
+        Z6) ocr_check ;;
         Z7) make copy-text-demo ;;
         Z8) make box-busy-demo ;;
         Z9)

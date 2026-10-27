@@ -51,6 +51,11 @@ touch "$T/srgb.heic"
 signpost="2026-10-27 10:00:01 Zivlet: [app.zivlet.Zivlet:hud] drop→island end"
 coverage=$(printf '%s\n' "ZivletIPC        900/1000  lines   90%" "ZivletWorkerCore  850/1000  lines   85%" \
     "EngineVision      820/1000  lines   82%" "Result card: <private> · 57 KB → 297 KB")
+# Z6's measurements: one line per fixture, the five PDF lines and the warmed first recognition.
+ocr=$(for n in 01 02 03 04 05 06 07 08 09 10 11 12; do echo "ocr-check: ${n}_fixture cer=0.000 ms=300 text=x"; done
+    for pdf in english hindi mixed scan webkit; do echo "ocr-check: pdf $pdf cer=0.000 ms=500 text=x"; done
+    echo "ocr-check: warmed first recognition ms=400")
+coverage=$(printf '%s\n%s' "$coverage" "$ocr")
 # Z3 runs the real m5a-exit.sh and m5b-exit.sh, which read the same stand-ins through their own overrides.
 run() {
     PATH=$T/bin:$PATH ZIVLET_M6_EXIT_LOGS=$T/logs ZIVLET_M6_LOG=$T/bin/fake-log \
@@ -84,6 +89,13 @@ out=$(MAKE_OUTPUT="skipped: screen locked" run "$signpost" --only Z9) || status=
 assert_contains "$out" "Z9 SKIP"
 assert_contains "$out" "skipped: screen locked"
 assert_eq "$status" "1" "a skipped row exits 1"
+
+# Z6 needs its measurements: a run that measured nothing (a renamed suite, the env gate off) is not a pass.
+out=$(MAKE_OUTPUT="Test run with 0 tests passed" run "$signpost" --only Z6 || true)
+assert_contains "$out" "Z6 FAIL"
+assert_contains "$(cat "$T/logs/Z6.log")" "12 fixture lines"
+out=$(MAKE_OUTPUT="$(grep -v '^ocr-check: 12_' <<<"$coverage")" run "$signpost" --only Z6 || true)
+assert_contains "$out" "Z6 FAIL"
 
 # Z4: the Release worker must exist, carry the hardened runtime and its identifier, and have no entitlements.
 out=$(FAKE_FLAGS="0x2(adhoc)" run "$signpost" --only Z4 || true)
@@ -170,4 +182,16 @@ out=$(FAKE_ENTITLEMENTS='<dict><key>com.apple.security.app-sandbox</key><true/><
     hygiene entitled Notes.md "a note" -s -m "docs: a note")
 assert_contains "$out" "Z11 FAIL"
 assert_contains "$(cat "$T/repo-entitled/logs/Z11.log")" "entitlements"
+# An unknown base checks nothing, so it fails instead of passing vacuously.
+make_repo "$T/repo-nobase"
+out=$(PATH=$T/bin:$PATH ZIVLET_M6_EXIT_LOGS=$T/repo-nobase/logs ZIVLET_M6_BASE=0123abc \
+    ZIVLET_M6_RELEASE_APP=$T/Release/Zivlet.app "$T/repo-nobase/Scripts/m6-exit.sh" --only Z11 || true)
+assert_contains "$out" "Z11 FAIL"
+assert_contains "$(cat "$T/repo-nobase/logs/Z11.log")" "unknown base 0123abc"
+# A base at HEAD examines no commit: also not a pass.
+base=$("${GIT[@]}" -C "$T/repo-nobase" rev-parse HEAD)
+out=$(PATH=$T/bin:$PATH ZIVLET_M6_EXIT_LOGS=$T/repo-nobase/logs ZIVLET_M6_BASE=$base \
+    ZIVLET_M6_RELEASE_APP=$T/Release/Zivlet.app "$T/repo-nobase/Scripts/m6-exit.sh" --only Z11 || true)
+assert_contains "$out" "Z11 FAIL"
+assert_contains "$(cat "$T/repo-nobase/logs/Z11.log")" "no commits since"
 echo "PASS test-m6-exit"

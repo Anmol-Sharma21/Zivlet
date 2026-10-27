@@ -25,6 +25,19 @@ struct OCRFixtureTests {
         }
     }
 
+    /// Plan Z6: after the warm-up, the first recognition takes at most 3 s (the warm-up compiles the models).
+    @Test func theFirstRecognitionAfterTheWarmUpTakesAtMostThreeSeconds() async throws {
+        let recognizer = VisionTextRecognizer()
+        try await VisionWarmup.run(recognizer: recognizer, languages: Self.production)
+        let entry = try #require(OCRFixtures.entries.first)
+        let image = try OCRFixtures.image(for: entry)
+        let start = ContinuousClock.now
+        _ = try await recognizer.recognize(image, languages: Self.production)
+        let elapsed = ContinuousClock.now - start
+        OCRFixtures.log("warmed first recognition ms=\(elapsed.milliseconds)")
+        #expect(elapsed <= .seconds(3))
+    }
+
     /// The language-order trap (17c §1.4): English alone loses the Devanagari. Printed, not scored.
     @Test func englishAloneIsPrintedForTheRecord() async throws {
         var lost: [String] = []
