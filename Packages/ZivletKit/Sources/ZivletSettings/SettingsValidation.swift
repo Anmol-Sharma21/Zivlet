@@ -1,4 +1,5 @@
 import Foundation
+import ZivletCore
 import ZivletTrigger
 
 /// The boundary checks for stored and edited settings (03b §8.1). Each returns true for a value the app may use.
@@ -35,6 +36,12 @@ enum SettingsValidation {
     static func isValid(_ group: HUDGroup) -> Bool { HUDPlacement.allCases.contains(group.placement) }
     /// Every combination is valid; an unknown stored name does not decode and the group falls back to its default.
     static func isValid(_ group: BoxGroup) -> Bool { true }
+    /// A warm-up record names a non-empty OS build and at least one language.
+    static func isValid(_ group: TextGroup) -> Bool {
+        guard let warmed = group.warmed else { return true }
+        return !warmed.osBuild.isEmpty && !warmed.languages.isEmpty
+            && warmed.osBuild.utf8.count <= maxIdentifierLength
+    }
 
     static func isValid(_ group: OnboardingGroup) -> Bool {
         (0..<OnboardingGroup.pageCount).contains(group.page)

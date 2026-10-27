@@ -67,7 +67,7 @@ let package = Package(
                 "ZivletTrigger",
             ], swiftSettings: shell),
         // Versioned, validated settings values and their UserDefaults store (03b §8.1); no AppKit.
-        .target(name: "ZivletSettings", dependencies: ["ZivletTrigger"], swiftSettings: strict),
+        .target(name: "ZivletSettings", dependencies: ["ZivletTrigger", "ZivletCore"], swiftSettings: strict),
         // The app shell's windows and panels: Settings, the status menu model, onboarding, the HUD (14 §3).
         .target(
             name: "ZivletUI",
@@ -151,7 +151,7 @@ let package = Package(
             ], swiftSettings: strict),
         .testTarget(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
-        .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings"], swiftSettings: strict),
+        .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings", "ZivletCore"], swiftSettings: strict),
         .testTarget(
             name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport", "NotchTestSupport"], swiftSettings: shell),
         .testTarget(

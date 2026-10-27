@@ -75,6 +75,7 @@ public struct Settings: Sendable, Equatable {
     public var onboarding = OnboardingGroup()
     public var hud = HUDGroup()
     public var box = BoxGroup()
+    public var text = TextGroup()
 
     public init() {}
 

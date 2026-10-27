@@ -56,6 +56,7 @@ public final class SettingsStore {
             candidate.onboarding, old: current.onboarding, name: "onboarding", valid: SettingsValidation.isValid)
         next.hud = accept(candidate.hud, old: current.hud, name: "hud", valid: SettingsValidation.isValid)
         next.box = accept(candidate.box, old: current.box, name: "box", valid: SettingsValidation.isValid)
+        next.text = accept(candidate.text, old: current.text, name: "text", valid: SettingsValidation.isValid)
         guard next != current else { return }
         current = next
         for continuation in subscribers.values { continuation.yield(next) }
@@ -92,6 +93,7 @@ public final class SettingsStore {
             load("onboarding", from: defaults, valid: SettingsValidation.isValid) ?? OnboardingGroup()
         settings.hud = load("hud", from: defaults, valid: SettingsValidation.isValid) ?? HUDGroup()
         settings.box = load("box", from: defaults, valid: SettingsValidation.isValid) ?? BoxGroup()
+        settings.text = load("text", from: defaults, valid: SettingsValidation.isValid) ?? TextGroup()
         return settings
     }
 
