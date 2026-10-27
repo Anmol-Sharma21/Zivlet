@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states m6-exit cap-lint box-busy-demo
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states m6-exit cap-lint box-busy-demo
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -65,8 +65,13 @@ copy-text-demo:
 text-states:
 	$(ENV) Scripts/demo-text-states.sh
 
+# D-M7-3: the real-time budgets (ZivletTimingTests), judged only below the load limit; exit 3 = not judged.
+timing:
+	$(ENV) $(NATIVE) Scripts/timing.sh
+
+# X2's 50 ms drop budget alone, through the same load guard.
 notch-timing:
-	$(ENV) $(NATIVE) cd "$$KIT" && swift test --filter NotchHUDTimingTests
+	$(ENV) $(NATIVE) Scripts/timing.sh NotchHUDTiming
 
 # X6 idle CPU per island state: CONFIG=debug (make app's build) or CONFIG=release (an optimised measurement build).
 notch-idle:

@@ -179,6 +179,14 @@ let package = Package(
                 "ZivletNotch", "ZivletNotchCore", "ZivletTrigger", "TestSupport", "NotchTestSupport",
             ],
             swiftSettings: shell),
+        // Real-time budgets (D-M7-3): judged only by Scripts/timing.sh below the load limit, with ZIVLET_TIMING=1.
+        .testTarget(
+            name: "ZivletTimingTests",
+            dependencies: [
+                "ZivletUI", "ZivletNotch", "ZivletNotchCore", "ZivletCore", "ZivletEngineKit", "EngineMedia",
+                "NotchTestSupport", "EngineTestSupport", "TestSupport",
+            ],
+            swiftSettings: strict),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.
         .testTarget(
             name: "ZivletMatrixTests",
