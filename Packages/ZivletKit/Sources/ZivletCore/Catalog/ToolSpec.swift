@@ -1,4 +1,4 @@
-/// The 27 tools, grouped by domain. Zivlet's own identifiers; the wheel order is data (`ToolCatalog.specTable`).
+/// The 28 tools, grouped by domain. Zivlet's own identifiers; the wheel order is data (`ToolCatalog.specTable`).
 public enum ToolID: String, CaseIterable, Codable, Sendable {
     case shrink, stripMetadata
     case imageAdjust, imageMarkup, imageBackdrop, imageCrop, imageCollage, imageRedact
@@ -6,7 +6,7 @@ public enum ToolID: String, CaseIterable, Codable, Sendable {
     case archiveUnpack
     case audioNormalize, audioWaveform, audioTrim, audioChannelMix, audioBleep
     case videoMute, videoTrim, videoCrop, videoSpeed, videoJoin, videoFrameGrab, videoClips, videoRedact
-    case qrScan
+    case qrScan, copyText
 }
 
 /// Whether a tool takes a wheel slot by default or waits in the extras for custom wheels, intents and the CLI

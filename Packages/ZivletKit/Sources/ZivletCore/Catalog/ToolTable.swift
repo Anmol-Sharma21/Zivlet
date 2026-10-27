@@ -23,13 +23,14 @@ extension ToolCatalog {
         .init(
             formats: [.jpg, .png, .webp, .heic, .tiff],
             single: .visible(
-                .shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop, .imageRedact),
-            multi: .visible(.shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage)),
+                .copyText, .shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop,
+                .imageRedact),
+            multi: .visible(.copyText, .shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage)),
         .init(formats: [.svg], single: .visible(.qrScan), multi: .visible(.pdfFromImages, .imageCollage, .qrScan)),
-        .init(formats: [.avif, .bmp], single: .visible(.qrScan), multi: .visible(.qrScan)),
+        .init(formats: [.avif, .bmp], single: .visible(.qrScan, .copyText), multi: .visible(.qrScan, .copyText)),
         .init(
-            formats: [.pdf], single: .visible(.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .qrScan),
-            multi: .visible(.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .qrScan)),
+            formats: [.pdf], single: .visible(.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan),
+            multi: .visible(.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .copyText, .qrScan)),
         .init(
             formats: [.mp3, .m4a, .wav, .flac],
             single: .visible(
@@ -41,7 +42,9 @@ extension ToolCatalog {
                 .shrink, .stripMetadata, .videoMute, .videoTrim, .videoCrop, .videoSpeed, .videoFrameGrab,
                 .videoClips, .videoRedact),
             multi: .visible(.shrink, .stripMetadata, .videoMute, .videoJoin)),
-        .init(formats: [.gif], single: .visible(.stripMetadata, .qrScan), multi: .visible(.stripMetadata, .qrScan)),
+        .init(
+            formats: [.gif], single: .visible(.stripMetadata, .qrScan, .copyText),
+            multi: .visible(.stripMetadata, .qrScan, .copyText)),
         .init(formats: [.zip, .tar, .gz, .rar], single: .visible(.archiveUnpack), multi: .visible(.archiveUnpack)),
     ]
 
@@ -73,6 +76,7 @@ extension ToolCatalog {
         spec(.videoRedact, "REDACT", "eye.slash", .editor, .single, "Redacted"),
         spec(.audioBleep, "BLEEP", "waveform.badge.minus", .editor, .single, "Bleeped"),
         spec(.qrScan, "READ QR", "qrcode.viewfinder", .instant, .multiAllowed, nil, accepts: qrScanAccepts),
+        spec(.copyText, "COPY TEXT", "text.viewfinder", .instant, .multiAllowed, "Text", accepts: copyTextAccepts),
     ]
 
     private static func spec(
@@ -86,6 +90,9 @@ extension ToolCatalog {
 
     /// READ QR combines every image format, GIF and PDF.
     private static let qrScanAccepts: Set<FormatID> = [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .svg, .gif, .pdf]
+
+    /// COPY TEXT (P2-104) reads raster images, GIF and PDF pages; SVG gets none (17 §8.1).
+    private static let copyTextAccepts: Set<FormatID> = [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .gif, .pdf]
 }
 
 extension [ToolCatalog.ApplicabilityRow.Entry] {

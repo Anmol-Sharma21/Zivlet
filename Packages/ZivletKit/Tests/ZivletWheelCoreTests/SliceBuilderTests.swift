@@ -97,11 +97,11 @@ struct SliceBuilderTests {
         #expect(CapabilitySnapshot.full.unavailableActions.isEmpty)
     }
 
-    /// P2-100: a combining tool never brings a folder into Tools; READ QR would accept the files.
+    /// P2-100: a combining tool never brings a folder into Tools; READ QR and COPY TEXT would accept the files.
     @Test func aFolderInAMixKeepsToolsEmpty() {
         let items = [SelectionItem(.png), SelectionItem(.pdf), SelectionItem(nil, kind: .folder)]
         #expect(builder.content(for: .tools, items: items) == .empty(.noTools(nil)))
-        #expect(targets(builder.content(for: .tools, items: files(.png, .pdf))) == [.tool(.qrScan)])
+        #expect(targets(builder.content(for: .tools, items: files(.png, .pdf))) == [.tool(.qrScan), .tool(.copyText)])
     }
 
     @Test func emptyStateCopy() {

@@ -44,7 +44,7 @@ struct WheelModelTests {
         let tools = hot.switching(to: .tools, content: builder.content(for: .tools, items: [SelectionItem(.png)]))
         #expect(tools.mode == .tools && tools.highlighted == nil)
         #expect(tools.idleHubLabel == "photo.png\n2.2 MB")
-        #expect(tools.slices.first?.target == .tool(.shrink))
+        #expect(tools.slices.first?.target == .tool(.copyText))
     }
 
     @Test func hubCompactStyleSurvivesHighlightAndModeSwitch() {

@@ -69,6 +69,8 @@ struct OutputNamerTests {
         let folder = try #require(namer.tool(.videoFrameGrab, source: "v.mp4", format: .mp4, naming: naming))
         #expect(folder.rendered() == "v Snapshots" && folder.isFolder)
         #expect(namer.tool(.qrScan, source: "a.png", format: .png) == nil)
+        #expect(namer.tool(.copyText, source: "photo.png", format: .png)?.rendered() == "photo Text.txt")
+        #expect(namer.tool(.copyText, source: "scan.pdf", format: .pdf)?.rendered(counter: 2) == "scan Text 2.txt")
     }
 
     @Test func collisionsAppendSpaceAndCounter() throws {

@@ -34,7 +34,7 @@ struct CatalogCapLintTests {
 
     @Test func theCountLinesNameEachListAndItsShare() {
         let lines = CatalogLists.standard.report.split(separator: "\n")
-        #expect(lines.contains("png single tools 7/12"))
+        #expect(lines.contains("png single tools 8/12"))
         #expect(lines.contains("mov single tools 10/12 (1 reserved)"))
         #expect(lines.contains("actions 6/12"))
         #expect(lines.count == CatalogLists.standard.all.count)

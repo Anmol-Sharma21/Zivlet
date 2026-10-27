@@ -58,6 +58,8 @@ extension OutputNamer {
             return "pdf"
         case .videoJoin, .audioWaveform:
             return "mp4"
+        case .copyText:
+            return "txt"
         default:
             return sameExtension
         }

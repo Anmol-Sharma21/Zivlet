@@ -12,16 +12,17 @@ struct CombiningRuleTests {
         var testDescription: String { formats.map(\.rawValue).joined(separator: "+") }
     }
 
-    static let imageMulti: [ToolID] = [.shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage]
+    static let imageMulti: [ToolID] = [.copyText, .shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage]
 
-    /// Thirty mixed sets, two to five items, with duplicates. Today only READ QR crosses families.
+    /// Thirty mixed sets, two to five items, with duplicates. READ QR and COPY TEXT cross families; SVG has no text
+    /// to recognise, so a mix with SVG keeps READ QR only. A same-family mix keeps its shared tools first.
     static let thirty: [Row] = [
-        Row(formats: [.jpg, .pdf], expected: [.qrScan]),
-        Row(formats: [.png, .pdf, .pdf], expected: [.qrScan]),
+        Row(formats: [.jpg, .pdf], expected: [.qrScan, .copyText]),
+        Row(formats: [.png, .pdf, .pdf], expected: [.qrScan, .copyText]),
         Row(formats: [.jpg, .svg], expected: [.pdfFromImages, .imageCollage]),
         Row(formats: [.svg, .pdf], expected: [.qrScan]),
-        Row(formats: [.gif, .pdf], expected: [.qrScan]),
-        Row(formats: [.gif, .png], expected: [.qrScan]),
+        Row(formats: [.gif, .pdf], expected: [.qrScan, .copyText]),
+        Row(formats: [.gif, .png], expected: [.qrScan, .copyText]),
         Row(formats: [.mp3, .mp4], expected: []),
         Row(formats: [.mp4, .png], expected: []),
         Row(formats: [.mov, .jpg, .jpg], expected: []),
@@ -29,11 +30,11 @@ struct CombiningRuleTests {
         Row(formats: [.pdf, .docx], expected: []),
         Row(formats: [.zip, .png], expected: []),
         Row(formats: [.rar, .pdf], expected: []),
-        Row(formats: [.heic, .webp, .avif], expected: [.qrScan]),
-        Row(formats: [.bmp, .tiff], expected: [.qrScan]),
-        Row(formats: [.avif, .bmp], expected: [.qrScan]),
+        Row(formats: [.heic, .webp, .avif], expected: [.copyText]),
+        Row(formats: [.bmp, .tiff], expected: [.copyText]),
+        Row(formats: [.avif, .bmp], expected: [.qrScan, .copyText]),
         Row(formats: [.jpg, .png, .webp, .heic, .tiff], expected: imageMulti),
-        Row(formats: [.jpg, .jpg, .pdf, .pdf], expected: [.qrScan]),
+        Row(formats: [.jpg, .jpg, .pdf, .pdf], expected: [.qrScan, .copyText]),
         Row(formats: [.gif, .mov], expected: [.stripMetadata]),
         Row(formats: [.gif, .mp4, .pdf], expected: []),
         Row(formats: [.gif, .gif, .svg, .pdf, .jpg], expected: [.qrScan]),
@@ -62,26 +63,27 @@ struct CombiningRuleTests {
     @Test func readQRAcceptsEveryImageFormatGIFAndPDF() {
         let images = FormatID.allCases.filter { FormatRegistry.standard.format($0).family == .image }
         #expect(ToolCatalog.standard.spec(.qrScan).accepts == Set(images + [.gif, .pdf]))
-        let others = ToolCatalog.standard.specs.filter { $0.id != .qrScan }
+        #expect(ToolCatalog.standard.spec(.copyText).accepts == Set(images + [.gif, .pdf]).subtracting([.svg]))
+        let others = ToolCatalog.standard.specs.filter { $0.id != .qrScan && $0.id != .copyText }
         #expect(others.allSatisfy { $0.accepts == nil })
     }
 
     @Test func aCombiningToolShowsForImagesWithPDFButNotWithAudio() {
         let catalog = Self.catalog(combining: .defaultVisible)
-        #expect(catalog.tools(for: [.png, .pdf]) == [.pdfCombine, .qrScan])
+        #expect(catalog.tools(for: [.png, .pdf]) == [.pdfCombine, .qrScan, .copyText])
         #expect(catalog.tools(for: [.svg, .pdf, .jpg]) == [.pdfCombine, .qrScan])
         #expect(catalog.tools(for: [.png, .mp3]).isEmpty)
     }
 
     @Test func aCombiningToolMarkedExtraWaitsInTheExtras() {
         let catalog = Self.catalog(combining: .extra)
-        #expect(catalog.tools(for: [.png, .pdf]) == [.qrScan])
+        #expect(catalog.tools(for: [.png, .pdf]) == [.qrScan, .copyText])
         #expect(catalog.extras(for: [.png, .pdf]) == [.pdfCombine])
     }
 
     @Test func aSingleItemToolNeverCombines() {
         let catalog = Self.catalog(combining: .defaultVisible, cardinality: .single)
-        #expect(catalog.tools(for: [.png, .pdf]) == [.qrScan])
+        #expect(catalog.tools(for: [.png, .pdf]) == [.qrScan, .copyText])
     }
 
     /// The standard tables with MERGE PDF made a combining tool that takes images, SVG and PDF; `mark` is how the

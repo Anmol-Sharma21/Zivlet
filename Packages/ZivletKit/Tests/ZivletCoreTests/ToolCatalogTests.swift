@@ -6,22 +6,30 @@ import Testing
 struct ToolCatalogTests {
     let tools = ToolCatalog.standard
 
-    @Test func has27ToolsInCanonicalOrderEndingWithReadQR() {
+    @Test func has28ToolsInCanonicalOrderEndingWithReadQRAndCopyText() {
         let wheelOrder: [ToolID] = [
             .shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop, .audioNormalize,
             .videoMute, .videoTrim, .pdfSplit, .pdfArrange, .archiveUnpack, .pdfFromImages, .pdfCombine,
             .videoCrop, .videoSpeed, .videoJoin, .videoFrameGrab, .videoClips, .audioWaveform,
-            .audioTrim, .audioChannelMix, .imageCollage, .imageRedact, .videoRedact, .audioBleep, .qrScan,
+            .audioTrim, .audioChannelMix, .imageCollage, .imageRedact, .videoRedact, .audioBleep, .qrScan, .copyText,
         ]
-        #expect(ToolID.allCases.count == 27)
+        #expect(ToolID.allCases.count == 28)
         #expect(tools.specs.map(\.id) == wheelOrder)
         #expect(Set(wheelOrder) == Set(ToolID.allCases))
-        #expect(tools.specs.last?.wheelLabel == "READ QR")
+        #expect(tools.specs.suffix(2).map(\.wheelLabel) == ["READ QR", "COPY TEXT"])
     }
 
-    @Test func instantToolsAreTheFiveWindowlessOnes() {
+    /// P2-104: an instant slice for one or many images and PDFs, writing `<name> Text.txt` with ⌥.
+    @Test func copyTextIsAnInstantMultiFileToolForImagesAndPDFs() {
+        let spec = tools.spec(.copyText)
+        #expect(spec.wheelLabel == "COPY TEXT" && spec.symbolName == "text.viewfinder")
+        #expect(spec.presentation == .instant && spec.cardinality == .multiAllowed && spec.outputSuffix == "Text")
+        #expect(spec.accepts == [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .gif, .pdf])
+    }
+
+    @Test func instantToolsAreTheSixWindowlessOnes() {
         let instant = Set(tools.specs.filter { $0.presentation == .instant }.map(\.id))
-        #expect(instant == [.videoMute, .pdfSplit, .archiveUnpack, .pdfFromImages, .qrScan])
+        #expect(instant == [.videoMute, .pdfSplit, .archiveUnpack, .pdfFromImages, .qrScan, .copyText])
     }
 
     @Test func multiOnlyToolsAreTheFourCombiningOnes() {
@@ -40,16 +48,17 @@ struct ToolCatalogTests {
         (
             [FormatID.jpg],
             [
-                ToolID.shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop,
+                ToolID.copyText, .shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop,
                 .imageRedact,
             ]
         ),
-        ([.jpg, .jpg], [.shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage]),
+        ([.jpg, .jpg], [.copyText, .shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage]),
         ([.svg], [.qrScan]),
         ([.svg, .svg], [.pdfFromImages, .imageCollage, .qrScan]),
-        ([.avif], [.qrScan]),
-        ([.pdf], [.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .qrScan]),
-        ([.pdf, .pdf], [.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .qrScan]),
+        ([.avif], [.qrScan, .copyText]),
+        ([.bmp, .bmp], [.qrScan, .copyText]),
+        ([.pdf], [.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan]),
+        ([.pdf, .pdf], [.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .copyText, .qrScan]),
         (
             [.wav],
             [
@@ -66,7 +75,8 @@ struct ToolCatalogTests {
             ]
         ),
         ([.mp4, .mp4], [.shrink, .stripMetadata, .videoMute, .videoJoin]),
-        ([.gif], [.stripMetadata, .qrScan]),
+        ([.gif], [.stripMetadata, .qrScan, .copyText]),
+        ([.gif, .gif], [.stripMetadata, .qrScan, .copyText]),
         ([.rar], [.archiveUnpack]),
         ([.ogg], []), ([.webm], []), ([.docx], []), ([.xlsx], []), ([.srt], []),
     ])
@@ -75,10 +85,10 @@ struct ToolCatalogTests {
     }
 
     @Test(arguments: [
-        ([FormatID.jpg, .png], [ToolID.shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage]),
-        ([.jpg, .avif], [.qrScan]),
-        ([.jpg, .pdf], [.qrScan]),
-        ([.gif, .png], [.qrScan]),
+        ([FormatID.jpg, .png], [ToolID.copyText, .shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage]),
+        ([.jpg, .avif], [.copyText]),
+        ([.jpg, .pdf], [.qrScan, .copyText]),
+        ([.gif, .png], [.qrScan, .copyText]),
         ([.jpg, .mp4], []),
         ([.mp4, .webm], []),
         ([.gif, .mov], [.stripMetadata]),
