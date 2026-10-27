@@ -91,6 +91,10 @@ let package = Package(
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
             swiftSettings: strict),
+        // The CER tool and the 12 Hindi + English OCR fixtures rendered at test time (plan 18d, D-M6-11, D-M6-12).
+        .target(
+            name: "OCRTestSupport", path: "Tests/OCRTestSupport", resources: [.copy("Resources/ocr-fixtures.json")],
+            swiftSettings: strict),
 
         // Seeded synthetic drags and the recorded-trace reader for the shake and proximity tests (D-M5b-15, P2-197).
         .target(
@@ -135,6 +139,8 @@ let package = Package(
         .testTarget(
             name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG"],
             resources: [.copy("Goldens")], swiftSettings: strict),
+        .testTarget(
+            name: "EngineVisionTests", dependencies: ["OCRTestSupport", "TestSupport"], swiftSettings: strict),
         .testTarget(
             name: "ZivletRuntimeTests",
             dependencies: [

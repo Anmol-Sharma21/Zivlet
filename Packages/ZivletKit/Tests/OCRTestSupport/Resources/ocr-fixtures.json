@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "entries": [
+    {"name": "01_english", "font": "HelveticaNeue", "size": 36, "style": "plain",
+     "lines": ["The quarterly report is due on Friday.", "Please send your notes by 5 pm."]},
+    {"name": "02_roman_hinglish", "font": "HelveticaNeue", "size": 36, "style": "plain",
+     "lines": ["Aaj shaam ko market chalenge, tum bhi aa jao.", "Bus 6 baje nikalti hai."]},
+    {"name": "03_hindi_kohinoor", "font": "KohinoorDevanagari-Regular", "size": 36, "style": "plain",
+     "lines": ["आज मौसम बहुत अच्छा है।", "हम शाम को पार्क में टहलने जाएँगे।"]},
+    {"name": "04_hindi_sangam", "font": "DevanagariSangamMN", "size": 36, "style": "plain",
+     "lines": ["किताबें मेज़ पर रखी हैं।", "कृपया उन्हें अलमारी में रख दीजिए।"]},
+    {"name": "05_mixed", "font": "KohinoorDevanagari-Regular", "size": 36, "style": "plain",
+     "lines": ["Train का टिकट book कर दिया है,", "platform नंबर 4 पर मिलना।"]},
+    {"name": "06_mixed_dark_small", "font": "KohinoorDevanagari-Regular", "size": 17, "style": "dark",
+     "lines": ["Office की WiFi आज बंद है, hotspot use करें।"]},
+    {"name": "07_mixed_degraded", "font": "ITFDevanagari-Book", "fallback": "TimesNewRomanPSMT", "size": 30, "style": "degraded",
+     "lines": ["Doctor ने कहा है कि रोज़ 30 मिनट walk करो।"]},
+    {"name": "08_short_mixed", "font": "KohinoorDevanagari-Regular", "size": 36, "style": "plain",
+     "lines": ["शाम 7 बजे call"]},
+    {"name": "09_one_hindi_word", "font": "KohinoorDevanagari-Regular", "size": 36, "style": "plain",
+     "lines": ["Please carry your पहचान card to the office."]},
+    {"name": "10_mostly_english", "font": "KohinoorDevanagari-Regular", "size": 32, "style": "plain",
+     "lines": ["Lunch is at noon.", "The meeting moved to room B.", "बैठक के बाद चाय मिलेगी।",
+               "Bring your laptop charger."]},
+    {"name": "11_hindi_numbers", "font": "KohinoorDevanagari-Regular", "size": 36, "style": "plain",
+     "lines": ["कुल बिल: ₹2,340.50 (कर सहित)"]},
+    {"name": "12_devanagari_digits", "font": "KohinoorDevanagari-Regular", "size": 36, "style": "plain",
+     "lines": ["दिनांक: १५ मार्च २०२६, राशि ₹४५०"]}
+  ]
+}
