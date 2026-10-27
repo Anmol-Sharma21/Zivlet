@@ -40,6 +40,8 @@ public final class ActionHUD: ActionPresenter {
     public static let width: CGFloat = 340
     static let toastLinger = Duration.milliseconds(1_500)
     static let undoLinger = Duration.seconds(4)
+    /// A working line stays until its result replaces it.
+    static let workingLinger = Duration.seconds(3_600)
 
     /// Undoes a Move and returns the sentence to show in its place.
     public var onUndo: (BatchID) async -> UndoReply = { _ in UndoReply(message: "", canRetry: false) }
@@ -69,6 +71,17 @@ public final class ActionHUD: ActionPresenter {
         if case .cancelled = result { return }
         model.present(result)
         hovering = false  // a new result starts unhovered; the next pointer move says otherwise
+        resize(near: point)
+        panel.orderFrontRegardless()
+        scheduleHide()
+    }
+
+    /// The working line as a toast that stays until the result replaces it; its height follows the line.
+    public func showWorking(_ line: String, near point: CGPoint?) {
+        let replacing = model.result?.linger == Self.workingLinger
+        model.present(.done(toast: line, undo: nil, linger: Self.workingLinger))
+        if replacing { return refit() }
+        hovering = false
         resize(near: point)
         panel.orderFrontRegardless()
         scheduleHide()

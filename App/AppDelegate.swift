@@ -20,9 +20,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// default, 03a §1.8). Its permission behaviour is unknown, so Release never reads the default.
     static let flagsMonitorKey = "ZivletFlagsMonitor"
     static let quitLimit = Duration.seconds(2)
+    /// At launch the text warm-up waits, so it never competes with starting up.
+    static let warmUpDelay = Duration.seconds(20)
 
     let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "app")
-    let conversions = ConversionService.standard()
+    /// One worker for conversions and Copy Text: one session, one process identity for Vision (P2-103).
+    let worker = WorkerSelection.standard()
+    lazy var conversions = ConversionService.standard(worker: worker)
     private let undoHistory = UndoHistory()
     let island = IslandWiring()
     lazy var conversion = ConversionWiring(
@@ -50,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ) { [weak self] batch in
         await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
     }
+    lazy var tools = ToolWiring(text: TextService(selection: worker), actions: actions, store: settings.store)
     private var trigger: TriggerHost?
     var wheel: WheelController?
     private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory, island: island)
@@ -97,6 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         conversion.start()
         startBox(trigger)
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
+        onboarding.onFinished = { [weak self] in self?.tools.startWarmUpIfNeeded() }
         Task {
             wheel.capabilities = CapabilitySnapshot(
                 unavailableTargets: await conversions.unavailableTargets(),
@@ -104,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await wheel.prewarm()
             launchDemoIfRequested()
             onboarding.showIfNeeded()
+            tools.startWarmUpIfNeeded(after: Self.warmUpDelay)
         }
     }
 
@@ -214,6 +221,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if onboarding.receive(selection) { return nil }
         if case .action(let action) = selection.target {
             actions.run(action, urls: selection.urls, optionHeld: selection.optionHeld, near: point)
+            return nil
+        }
+        if case .tool(let tool) = selection.target,
+            tools.run(tool, urls: selection.urls, optionHeld: selection.optionHeld, near: point) != nil
+        {
             return nil
         }
         guard case .convert(let format) = selection.target else {

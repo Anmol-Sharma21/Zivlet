@@ -37,6 +37,17 @@ final class ActionWiring {
 
     private var presenter: any ActionPresenter { presenter(route()) }
 
+    /// Where a result shown now would go (Copy Text keeps its working line and card on one presenter).
+    var currentPresenter: any ActionPresenter { presenter }
+
+    /// Copy Text's card buttons, on both presenters.
+    var onTextButton: (TextResultButton, TextOutcome) -> Void = { _, _ in } {
+        didSet {
+            hud.onTextButton = onTextButton
+            notch.onTextButton = onTextButton
+        }
+    }
+
     /// Runs the action and shows its result near `point`, where the placement at the drop says; the task's value is
     /// the result (for the DEBUG demo).
     @discardableResult

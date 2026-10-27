@@ -14,6 +14,8 @@ final class OnboardingWiring {
     private let store: SettingsStore
     private var controller: OnboardingWindowController?
     private(set) var model: OnboardingModel?
+    /// Onboarding was finished (text recognition warms up then, P2-103).
+    var onFinished: () -> Void = {}
 
     init(store: SettingsStore) {
         self.store = store
@@ -84,6 +86,7 @@ final class OnboardingWiring {
         controller?.close()
         controller = nil
         model = nil
+        onFinished()
     }
 
     /// Copies to /Applications off the main actor, opens the copy as a new process and quits this one only once

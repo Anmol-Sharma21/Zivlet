@@ -59,6 +59,8 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     private var pending: [(point: CGPoint?, interval: OSSignpostIntervalState)] = []
     private(set) var anchors: [BatchID: CGPoint] = [:]
     var undos: [NotchHUDItemID: Task<Void, Never>] = [:]
+    /// The item showing a long action's working line, until its result arrives.
+    private var workingItem: NotchHUDItemID?
     private var expiry: (deadline: Duration, task: Task<Void, Never>)?
     private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
 
@@ -115,6 +117,10 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     public func close(_ batch: BatchID) { close(.batch(batch)) }
 
     public func show(_ result: ActionResult, near point: CGPoint?) {
+        if let working = workingItem {
+            workingItem = nil
+            close(working)
+        }
         if case .cancelled = result { return }
         guard let display = display(for: point) else {
             return Self.logger.error("Notch HUD has no display for an action result; it is not shown")
@@ -123,6 +129,19 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
         actionModel.present(result)
         model.actions[board.nextAction] = actionModel
         apply(board.updating(result, display: display, now: clock.now()))
+    }
+
+    /// One working item per long action: the first line adds it, later lines change its text, the result closes it.
+    public func showWorking(_ line: String, near point: CGPoint?) {
+        let result = ActionResult.done(toast: line, undo: nil, linger: ActionHUD.workingLinger)
+        if let working = workingItem, case .action(let index) = working, let model = model.actions[index] {
+            model.present(result)
+            if let display = board.display(of: working) { hosts?.contentChanged(on: display) }
+            return
+        }
+        let id = NotchHUDItemID.action(board.nextAction)
+        show(result, near: point)
+        if model.actions[board.nextAction - 1] != nil { workingItem = id }
     }
 
     func close(_ id: NotchHUDItemID) {

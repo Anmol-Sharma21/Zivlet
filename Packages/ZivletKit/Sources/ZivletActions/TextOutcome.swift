@@ -1,11 +1,27 @@
 import Foundation
 
+/// One input's own text, for Save as Text (one `.txt` per input).
+public struct TextFile: Sendable, Equatable {
+    public let source: URL
+    public let text: String
+
+    public init(source: URL, text: String) {
+        self.source = source
+        self.text = text
+    }
+}
+
 /// The recognised text of one Copy Text drop, held by reference so the card is its only owner: when the card goes,
 /// the text goes (P2-104, plan 18d D14). Immutable.
 public final class TextHolder: Sendable {
     public let text: String
+    /// Every input with text, in drop order.
+    public let files: [TextFile]
 
-    public init(_ text: String) { self.text = text }
+    public init(_ text: String, files: [TextFile] = []) {
+        self.text = text
+        self.files = files
+    }
 }
 
 /// What the text card shows (P2-104): the first lines, the character count and scripts, any `.txt` files written

@@ -74,7 +74,7 @@ let package = Package(
             name: "ZivletUI",
             dependencies: [
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "ZivletRuntime", "ZivletActions",
-                "ZivletSettings", "ZivletNotchCore", "ZivletNotch",
+                "ZivletSettings", "ZivletNotchCore", "ZivletNotch", "EngineVision",
             ], swiftSettings: shell),
         // Writes the image fixtures for Fixtures/generate.sh (P1-60, D-M4-15); a dev tool, not shipped or gated.
         .executableTarget(name: "zivlet-fixtures", dependencies: ["CWebP"], swiftSettings: strict),
@@ -160,7 +160,8 @@ let package = Package(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
         .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings", "ZivletCore"], swiftSettings: strict),
         .testTarget(
-            name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport", "NotchTestSupport"], swiftSettings: shell),
+            name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport", "NotchTestSupport", "EngineVision"],
+            swiftSettings: shell),
         .testTarget(
             name: "ZivletNotchCoreTests", dependencies: ["ZivletNotchCore", "ZivletCore", "NotchTestSupport"],
             swiftSettings: strict),

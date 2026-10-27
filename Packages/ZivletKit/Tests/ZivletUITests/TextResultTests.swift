@@ -111,3 +111,31 @@ struct TextResultTests {
         #expect(pressed == [.saveText])
     }
 }
+
+@Suite("Copy Text's working line (plan 18d D12): one line that the result replaces")
+@MainActor
+struct TextWorkingTests {
+    @Test func theHUDShowsTheLineThenTheResultInItsPlace() {
+        let hud = ActionHUD()
+        defer { hud.hide() }
+        let point = CGPoint(x: -5_000, y: -5_000)
+        hud.showWorking("Recognising text…", near: point)
+        #expect(hud.model.result?.toast == "Recognising text…")
+        hud.showWorking("Recognising text… 50%", near: point)
+        #expect(hud.model.result?.toast == "Recognising text… 50%")
+        hud.show(.text(TextFx.outcome()), near: point)
+        #expect(hud.model.result?.text != nil)
+    }
+
+    @Test func theIslandKeepsOneWorkingItemAndTheResultReplacesIt() throws {
+        let rig = try NotchRig.notch()
+        defer { rig.hosts.close() }
+        rig.hud.showWorking("Preparing text recognition (one time)…", near: NotchRig.onNotch)
+        rig.hud.showWorking("Recognising text… 50%", near: NotchRig.onNotch)
+        #expect(rig.hud.board.ordered(on: 1).count == 1)
+        #expect(rig.hud.actionModel(.action(0))?.result?.toast == "Recognising text… 50%")
+        rig.hud.show(.text(TextFx.outcome()), near: NotchRig.onNotch)
+        let items = rig.hud.board.ordered(on: 1)
+        #expect(items.map(\.id) == [.action(1)])
+    }
+}

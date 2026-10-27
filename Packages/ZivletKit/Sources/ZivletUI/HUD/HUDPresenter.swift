@@ -28,4 +28,6 @@ public protocol ActionPresenter: AnyObject {
     /// A button of Copy Text's card was pressed (P2-104).
     var onTextButton: (TextResultButton, TextOutcome) -> Void { get set }
     func show(_ result: ActionResult, near point: CGPoint?)
+    /// A long action's one working line ("Recognising text… 40%"); the next result takes its place.
+    func showWorking(_ line: String, near point: CGPoint?)
 }
