@@ -74,9 +74,10 @@ if ! BEFORE=$(wait_for_quiet); then echo "$BEFORE"; exit "$NOT_JUDGED"; fi
 # The build loads the Mac too: wait again before anything is measured.
 if ! BEFORE=$(wait_for_quiet); then echo "$BEFORE"; exit "$NOT_JUDGED"; fi
 status=0
-(cd "$KIT" && ZIVLET_TIMING=1 "$SWIFT" test --skip-build --filter "$FILTER" >"$LOG" 2>&1) || status=$?
+# One suite at a time: an encode or 80 children beside the drop test would measure each other.
+(cd "$KIT" && ZIVLET_TIMING=1 "$SWIFT" test --skip-build --no-parallel --filter "$FILTER" >"$LOG" 2>&1) || status=$?
 AFTER=$(load_1m)
-grep -E '^timing: |✘' "$LOG" || true
+grep -E '^timing: |✘|━' "$LOG" || true
 echo "timing: load before $BEFORE, after $AFTER, limit $LIMIT (log: $LOG)"
 if ((status != 0)) && above "$AFTER" "$LIMIT"; then
     echo "timing: not judged (load rose to $AFTER > $LIMIT during the run)"

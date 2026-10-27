@@ -5,7 +5,8 @@ import ZivletCore
 import ZivletEngineKit
 
 /// Records what the runner did to a child's group, with the time of each step, and still sends every signal
-/// (D-M7-6): SIGINT and SIGKILL in the order sent, and how the leader ended.
+/// (D-M7-6): SIGINT and SIGKILL in the order sent, and how each leader ended (capability probes included, so
+/// filter by group).
 public final class RecordingSignals: ChildSignalling {
     public struct Step: Sendable, Equatable {
         public enum Kind: Sendable, Equatable {
@@ -14,6 +15,7 @@ public final class RecordingSignals: ChildSignalling {
             case leaderExited(signal: Int32?)
         }
 
+        public let group: pid_t
         public let kind: Kind
         public let at: ContinuousClock.Instant
     }
@@ -23,12 +25,12 @@ public final class RecordingSignals: ChildSignalling {
     public init() {}
 
     public func signalGroup(_ group: pid_t, _ signal: Int32) {
-        recorded.withLock { $0.append(Step(kind: .signal(signal), at: .now)) }
+        recorded.withLock { $0.append(Step(group: group, kind: .signal(signal), at: .now)) }
         killpg(group, signal)
     }
 
     public func leaderExited(_ group: pid_t, signal: Int32?) {
-        recorded.withLock { $0.append(Step(kind: .leaderExited(signal: signal), at: .now)) }
+        recorded.withLock { $0.append(Step(group: group, kind: .leaderExited(signal: signal), at: .now)) }
     }
 
     public var steps: [Step] { recorded.withLock { $0 } }

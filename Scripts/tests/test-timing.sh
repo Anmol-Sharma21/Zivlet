@@ -38,7 +38,7 @@ measured="timing: drop→island p95 18.2 ms of 50 ms"
 out=$(FAKE_SWIFT_LOG=$measured run 1.00) || fail "a quiet run that passes exits 0: $out"
 assert_contains "$out" "$measured"
 assert_contains "$out" "timing: load before 1.00, after 1.00, limit 3.0"
-assert_contains "$(cat "$T/swift-calls")" "--filter ZivletTimingTests ZIVLET_TIMING=1"
+assert_contains "$(cat "$T/swift-calls")" "--no-parallel --filter ZivletTimingTests ZIVLET_TIMING=1"
 assert_file "$T/logs/timing.log"
 
 # A suite name narrows the filter.
