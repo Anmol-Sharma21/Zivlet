@@ -1,3 +1,4 @@
+import EngineVision
 import Foundation
 import ZivletCore
 import ZivletEngineKit
@@ -45,7 +46,8 @@ enum IPCFixtures {
         var all: [WorkerRequest] = [
             .ping, .capabilities, .prepare(request(), JobWorkspace(job: job, stagedFile: staged)),
             .execute(job, plan(), outputByteLimit: 9_000), .execute(job, plan(), outputByteLimit: nil),
-            .verify(output, plan()), .cancel(job),
+            .verify(output, plan()), .cancel(job), .recognizeText(textJob), .textCapabilities,
+            .warmUpText([.hindi, .english]),
         ]
         #if DEBUG
             all += [.selfKillForTesting(afterMilliseconds: 25), .setIdleForTesting(seconds: 5)]
@@ -55,8 +57,16 @@ enum IPCFixtures {
 
     static let replies: [WorkerReply] = [
         .pong(pid: 321, osBuild: "26A428"), .capabilities(capabilities), .planned(plan()), .staged(output), .verified,
-        .failed(.unsupportedInput(.notAFile)), .failed(.cancelled), .accepted,
+        .failed(.unsupportedInput(.notAFile)), .failed(.cancelled), .accepted, .text(recognized),
+        .textFailed(.copyingNotAllowed), .textCapabilities(VisionCapabilities(languages: [.hindi], osBuild: "26A1")),
     ]
+
+    static let textJob = TextJob(
+        id: job, inputs: [URL(fileURLWithPath: "/private/tmp/in/photo.png")], languages: [.hindi, .english])
+
+    static let recognized = TextAssembly.combine([
+        FileText(name: "photo.png", pages: [RecognizedPage(text: "आज मौसम अच्छा है")])
+    ])
 
     static let events: [WorkerEvent] = [
         .progress(job, JobProgress(fraction: 0.5, stage: 0, stageCount: 1)), .progress(job, JobProgress(fraction: nil)),

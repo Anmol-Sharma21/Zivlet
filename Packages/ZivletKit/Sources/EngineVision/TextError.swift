@@ -11,4 +11,10 @@ public enum TextError: Error, Sendable, Equatable, Codable {
     case pdfLocked
     /// More pages than the limit (`PDFTextSource.pageLimit`).
     case tooManyPages(Int)
+    /// An image header above the decode limit (`ImageTextSource.maximumHeaderPixels`).
+    case tooLarge
+    /// No worker, or one without text recognition: Vision never runs in the app (D-M6-8).
+    case unavailable
+    /// The worker ended twice while reading this drop (P2-01's rule).
+    case engineCrashedOnInput
 }

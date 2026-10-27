@@ -1,4 +1,5 @@
 import Darwin
+import EngineVision
 import Foundation
 import ZivletCore
 import ZivletEngineKit
@@ -28,9 +29,36 @@ public struct WorkerRequestValidator: Sendable {
         case .verify(let output, let plan):
             try check(plan)
             try Self.checkStaged(output.url)
+        case .recognizeText(let job):
+            try checkVision()
+            try Self.check(job)
+        case .textCapabilities:
+            try checkVision()
+        case .warmUpText(let languages):
+            try checkVision()
+            try Self.check(languages)
         #if DEBUG
             case .selfKillForTesting, .setIdleForTesting: return
         #endif
+        }
+    }
+
+    private func checkVision() throws(JobError) {
+        guard hostedEngines.contains(.vision) else { throw .engineMissing(.vision) }
+    }
+
+    /// 1…200 inputs, each a regular file at a safe absolute path; 1…4 languages.
+    static func check(_ job: TextJob) throws(JobError) {
+        guard (1...TextJob.maximumInputs).contains(job.inputs.count) else {
+            throw .internalInvariant("A text job needs 1 to \(TextJob.maximumInputs) files.")
+        }
+        try check(job.languages)
+        for input in job.inputs { try checkInput(input) }
+    }
+
+    static func check(_ languages: [LanguageTag]) throws(JobError) {
+        guard (1...TextJob.maximumLanguages).contains(languages.count) else {
+            throw .internalInvariant("Text recognition needs 1 to \(TextJob.maximumLanguages) languages.")
         }
     }
 

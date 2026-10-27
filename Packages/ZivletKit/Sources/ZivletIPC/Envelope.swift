@@ -4,7 +4,8 @@ import ZivletCore
 /// The worker protocol's version (02 §7.5). Bump it whenever a message changes shape; app and worker ship together,
 /// so a mismatch means a damaged or mixed install.
 public enum WorkerProtocol {
-    public static let version = 1
+    /// 2: the text requests and replies of Copy Text (plan 18d D8).
+    public static let version = 2
 }
 
 public enum WorkerProtocolError: Error, Equatable, Sendable {

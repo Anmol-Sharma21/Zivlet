@@ -1,3 +1,4 @@
+import EngineVision
 import Foundation
 import Synchronization
 import ZivletCore
@@ -65,6 +66,37 @@ public final class WorkerConnection: Sendable {
 
     public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
         guard case .verified = try await send(.verify(output, plan)) else { throw Self.unexpected("verify") }
+    }
+
+    /// A Copy Text job (P2-104). Transport failures throw (`.workerCrashed` among them, for the caller's retry);
+    /// the worker's own outcome is the result. Progress arrives unthrottled, in order, before the reply.
+    public func recognizeText(_ job: TextJob, progress: @escaping @Sendable (Double) -> Void) async throws(JobError)
+        -> Result<RecognizedText, TextError>
+    {
+        let sink = ProgressSink(interval: .zero) { progress($0.fraction ?? 0) }
+        state.withLock { $0.routes[job.id] = ExecutionContext(progress: sink) }
+        defer { _ = state.withLock { $0.routes.removeValue(forKey: job.id) } }
+        switch try await cancellable(.recognizeText(job), job: job.id) {
+        case .text(let text): return .success(text)
+        case .textFailed(let error): return .failure(error)
+        default: throw Self.unexpected("recognizeText")
+        }
+    }
+
+    public func textCapabilities() async throws(JobError) -> Result<VisionCapabilities, TextError> {
+        switch try await send(.textCapabilities) {
+        case .textCapabilities(let capabilities): return .success(capabilities)
+        case .textFailed(let error): return .failure(error)
+        default: throw Self.unexpected("textCapabilities")
+        }
+    }
+
+    public func warmUpText(_ languages: [LanguageTag]) async throws(JobError) -> Result<Void, TextError> {
+        switch try await send(.warmUpText(languages)) {
+        case .accepted: return .success(())
+        case .textFailed(let error): return .failure(error)
+        default: throw Self.unexpected("warmUpText")
+        }
     }
 
     /// One request; a `.failed` reply is thrown.

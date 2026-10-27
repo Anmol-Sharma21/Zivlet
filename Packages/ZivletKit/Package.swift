@@ -43,10 +43,10 @@ let package = Package(
         .target(name: "ZivletEngineKit", dependencies: ["ZivletCore"], swiftSettings: strict),
         .target(name: "EngineMedia", dependencies: ["ZivletEngineKit"], swiftSettings: strict),
         // The worker's messages, their protocol version, request validation and the peer rule (P2-01, plan 18c).
-        .target(name: "ZivletIPC", dependencies: ["ZivletCore", "ZivletEngineKit"], swiftSettings: strict),
+        .target(name: "ZivletIPC", dependencies: ["ZivletCore", "ZivletEngineKit", "EngineVision"], swiftSettings: strict),
         // The worker's service without XPC: validation, engines, cancel and the idle exit (P2-01, plan 18c C3).
         .target(
-            name: "ZivletWorkerCore", dependencies: ["ZivletIPC", "ZivletCore", "ZivletEngineKit"],
+            name: "ZivletWorkerCore", dependencies: ["ZivletIPC", "ZivletCore", "ZivletEngineKit", "EngineVision"],
             swiftSettings: strict),
         // Built by Vendor/ensure-native.sh before every make target that reads this manifest (D-M4-9).
         .binaryTarget(name: "CWebP", path: "../../Vendor/out/CWebP.xcframework"),
@@ -55,7 +55,8 @@ let package = Package(
         // Vision text recognition and PDF text for Copy Text (P2-51 base, P2-103); its calls run only in the worker.
         .target(name: "EngineVision", dependencies: ["ZivletCore", "ZivletEngineKit"], swiftSettings: strict),
         .target(
-            name: "ZivletRuntime", dependencies: ["ZivletEngineKit", "EngineMedia", "EngineImage", "ZivletIPC"],
+            name: "ZivletRuntime",
+            dependencies: ["ZivletEngineKit", "EngineMedia", "EngineImage", "ZivletIPC", "EngineVision"],
             swiftSettings: strict),
         // Copy, Copy Path, AirDrop, Move, Terminal (02 §6): AppKit side effects behind small ports.
         .target(name: "ZivletActions", dependencies: ["ZivletCore", "ZivletRuntime"], swiftSettings: shell),
@@ -88,7 +89,8 @@ let package = Package(
         .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: strict),
         // A loopback worker transport (JSON both ways, crashes on demand) for the connection and retry tests.
         .target(
-            name: "WorkerTestSupport", dependencies: ["ZivletRuntime", "ZivletWorkerCore", "ZivletIPC", "ZivletEngineKit"],
+            name: "WorkerTestSupport",
+            dependencies: ["ZivletRuntime", "ZivletWorkerCore", "ZivletIPC", "ZivletEngineKit", "EngineVision", "TestSupport"],
             path: "Tests/WorkerTestSupport", swiftSettings: strict),
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
@@ -111,11 +113,15 @@ let package = Package(
 
         .testTarget(name: "ZivletCoreTests", dependencies: ["ZivletCore"], swiftSettings: strict),
         .testTarget(
-            name: "ZivletIPCTests", dependencies: ["ZivletIPC", "ZivletCore", "ZivletEngineKit", "TestSupport"],
+            name: "ZivletIPCTests",
+            dependencies: ["ZivletIPC", "ZivletCore", "ZivletEngineKit", "EngineVision", "TestSupport"],
             swiftSettings: strict),
         .testTarget(
             name: "ZivletWorkerCoreTests",
-            dependencies: ["ZivletWorkerCore", "ZivletIPC", "ZivletCore", "ZivletEngineKit", "EngineTestSupport", "TestSupport"],
+            dependencies: [
+                "ZivletWorkerCore", "ZivletIPC", "ZivletCore", "ZivletEngineKit", "EngineVision", "EngineTestSupport",
+                "TestSupport", "OCRTestSupport", "WorkerTestSupport",
+            ],
             swiftSettings: strict),
         .testTarget(
             name: "ZivletTriggerTests",
@@ -148,6 +154,7 @@ let package = Package(
             name: "ZivletRuntimeTests",
             dependencies: [
                 "ZivletRuntime", "EngineTestSupport", "TestSupport", "WorkerTestSupport", "ZivletIPC", "ZivletWorkerCore",
+                "EngineVision",
             ], swiftSettings: strict),
         .testTarget(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),

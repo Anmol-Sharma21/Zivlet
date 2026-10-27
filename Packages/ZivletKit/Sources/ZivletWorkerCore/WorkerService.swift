@@ -1,4 +1,5 @@
 import Darwin
+import EngineVision
 import Foundation
 import ZivletCore
 import ZivletEngineKit
@@ -16,20 +17,24 @@ public actor WorkerService {
     public static let osBuild = CapabilityProbe.currentOSBuild()
 
     private let engines: [any Engine]
+    private let text: TextReader?
     private let validator: WorkerRequestValidator
     private let idle: IdleTimer
     private let onSelfKill: @Sendable (Int) -> Void
     private var jobs: [JobID: Task<WorkerReply, Never>] = [:]
     private var handling = 0
 
-    /// `onSelfKill` serves the DEBUG smoke request only; the worker's main passes a SIGKILL of its own process.
+    /// `text` hosts Copy Text (nil: text requests are refused as `.engineMissing(.vision)`). `onSelfKill` serves the
+    /// DEBUG smoke request only; the worker's main passes a SIGKILL of its own process.
     public init(
-        engines: [any Engine], idleAfter: Duration = .seconds(60),
+        engines: [any Engine], text: TextReader? = nil, idleAfter: Duration = .seconds(60),
         sleep: @escaping IdleTimer.Sleeper = IdleTimer.realSleep,
         onIdle: @escaping @Sendable () -> Void, onSelfKill: @escaping @Sendable (Int) -> Void = { _ in }
     ) {
         self.engines = engines
-        validator = WorkerRequestValidator(hostedEngines: Set(engines.map(\.id)))
+        self.text = text
+        let hosted = Set(engines.map(\.id)).union(text == nil ? [] : [.vision])
+        validator = WorkerRequestValidator(hostedEngines: hosted)
         idle = IdleTimer(after: idleAfter, sleep: sleep, onIdle: onIdle)
         self.onSelfKill = onSelfKill
         idle.arm()
@@ -73,6 +78,9 @@ public actor WorkerService {
         case .cancel(let job):
             jobs[job]?.cancel()
             return .accepted
+        case .recognizeText, .textCapabilities, .warmUpText:
+            guard let text else { return .failed(.engineMissing(.vision)) }
+            return await answerText(request, reader: text, events: events)
         #if DEBUG
             case .selfKillForTesting(let milliseconds):
                 onSelfKill(milliseconds)
@@ -85,6 +93,40 @@ public actor WorkerService {
     }
 
     private func engine(_ id: EngineID) -> (any Engine)? { engines.first { $0.id == id } }
+
+    /// Text jobs run as tracked steps (so cancel reaches them); the warm-up at `.utility` (D-M6-16).
+    private func answerText(_ request: WorkerRequest, reader: TextReader, events: @escaping EventSink) async
+        -> WorkerReply
+    {
+        switch request {
+        case .recognizeText(let job):
+            return await track(job.id) { await Self.recognize(job, reader: reader, events: events) }
+        case .warmUpText(let languages):
+            return await Task(priority: .utility) { await Self.warmUp(languages, reader: reader) }.value
+        default:
+            return .textCapabilities(reader.currentCapabilities)
+        }
+    }
+
+    @concurrent private static func warmUp(_ languages: [LanguageTag], reader: TextReader) async -> WorkerReply {
+        do {
+            try await reader.warmUp(languages)
+            return .accepted
+        } catch {
+            return .textFailed(error)
+        }
+    }
+
+    @concurrent private static func recognize(_ job: TextJob, reader: TextReader, events: @escaping EventSink) async
+        -> WorkerReply
+    {
+        do {
+            let text = try await reader.read(job) { events(.progress(job.id, JobProgress(fraction: $0))) }
+            return .text(text)
+        } catch {
+            return .textFailed(error)
+        }
+    }
 
     /// Runs one step in a child task kept under `job`, so a cancel request can reach it.
     private func track(_ job: JobID, _ step: @escaping @Sendable () async -> WorkerReply) async -> WorkerReply {

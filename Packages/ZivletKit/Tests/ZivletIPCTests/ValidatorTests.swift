@@ -1,3 +1,4 @@
+import EngineVision
 import Foundation
 import TestSupport
 import Testing
@@ -11,7 +12,7 @@ struct ValidatorRig {
     let job = JobID()
     let input: URL
     let staged: URL
-    let validator = WorkerRequestValidator(hostedEngines: [.image])
+    let validator = WorkerRequestValidator(hostedEngines: [.image, .vision])
 
     init() throws {
         dir = try TempDir(prefix: "zivlet-validator")
@@ -106,6 +107,44 @@ struct ValidatorTests {
         )
         let output = StagedOutput(format: .jpg, url: rig.staged, byteCount: 0)
         #expect(rig.refusal(.verify(output, try rig.plan(engine: .media))) == .engineMissing(.media))
+    }
+
+    @Test func aTextJobNeedsSafeRegularFilesAndLanguages() throws {
+        let rig = try ValidatorRig()
+        let job = { (inputs: [URL], languages: [LanguageTag]) in
+            WorkerRequest.recognizeText(TextJob(id: rig.job, inputs: inputs, languages: languages))
+        }
+        #expect(rig.refusal(job([rig.input], [.hindi, .english])) == nil)
+        #expect(rig.refusal(.textCapabilities) == nil)
+        #expect(rig.refusal(.warmUpText([.english])) == nil)
+        for name in ["hosts.png", "folder.png"] {
+            #expect(rig.refusal(job([rig.dir.url.appending(path: name)], [.english])) == .unsupportedInput(.notAFile))
+        }
+        guard case .internalInvariant = rig.refusal(job([], [.english])) else {
+            Issue.record("an empty job passed")
+            return
+        }
+        guard case .internalInvariant = rig.refusal(job([rig.input], [])) else {
+            Issue.record("a job without languages passed")
+            return
+        }
+        let many = Array(repeating: rig.input, count: TextJob.maximumInputs + 1)
+        guard case .internalInvariant = rig.refusal(job(many, [.english])) else {
+            Issue.record("too many inputs passed")
+            return
+        }
+        guard case .internalInvariant = rig.refusal(.warmUpText([])) else {
+            Issue.record("a warm-up without languages passed")
+            return
+        }
+    }
+
+    @Test func aWorkerWithoutVisionRefusesTextJobs() throws {
+        let rig = try ValidatorRig()
+        let imageOnly = WorkerRequestValidator(hostedEngines: [.image])
+        let request = WorkerRequest.recognizeText(TextJob(id: rig.job, inputs: [rig.input], languages: [.english]))
+        #expect(throws: JobError.engineMissing(.vision)) { try imageOnly.validate(request) }
+        #expect(throws: JobError.engineMissing(.vision)) { try imageOnly.validate(.textCapabilities) }
     }
 
     @Test func aByteLimitMustBePositive() throws {

@@ -1,3 +1,4 @@
+import EngineVision
 import Foundation
 import ZivletCore
 import ZivletEngineKit
@@ -12,6 +13,12 @@ public enum WorkerRequest: Codable, Sendable, Equatable {
     case execute(JobID, ExecutionPlan, outputByteLimit: Int64?)
     case verify(StagedOutput, ExecutionPlan)
     case cancel(JobID)
+    /// Copy Text (P2-104): every Vision call runs here, never in the app (D-M6-8).
+    case recognizeText(TextJob)
+    /// The languages this Mac's Vision reads (OWN-OCR-1).
+    case textCapabilities
+    /// The one-time warm-up in the production configuration (D-M6-16).
+    case warmUpText([LanguageTag])
     #if DEBUG
         /// The smoke run's real crash (D-M6-18): the worker SIGKILLs itself, so no crash report is written.
         case selfKillForTesting(afterMilliseconds: Int)
@@ -28,8 +35,11 @@ public enum WorkerReply: Codable, Sendable, Equatable {
     case staged(StagedOutput)
     case verified
     case failed(JobError)
-    /// Cancel and the DEBUG requests: received, nothing to return.
+    /// Cancel, the warm-up and the DEBUG requests: received or done, nothing to return.
     case accepted
+    case text(RecognizedText)
+    case textFailed(TextError)
+    case textCapabilities(VisionCapabilities)
 }
 
 /// What the worker reports while a step runs.

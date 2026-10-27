@@ -15,9 +15,9 @@ public final class LoopbackTransport: WorkerTransport {
         case never
         /// The n-th request over the transport's lifetime (1-based) crashes the worker on arrival.
         case onCall(Int)
-        /// Every prepare of an input with this file name crashes the worker.
+        /// Every prepare (or text job whose first file has this name) crashes the worker.
         case whenInputIs(String)
-        /// Only the first prepare of an input with this file name crashes the worker.
+        /// Only the first such request crashes the worker.
         case onceWhenInputIs(String)
     }
 
@@ -45,7 +45,7 @@ public final class LoopbackTransport: WorkerTransport {
     /// The most second attempts that were between prepare and verify at the same time.
     public var maxConcurrentRetries: Int { state.withLock(\.maxRetrying) }
 
-    /// How many prepares arrived for an input with this file name.
+    /// How many prepares (or text jobs led by this file) arrived for an input with this file name.
     public func attempts(for name: String) -> Int { state.withLock { $0.attempts[name] ?? 0 } }
 
     public func open(onEvent: @escaping @Sendable (WorkerEvent) -> Void, onClosed: @escaping @Sendable () -> Void)
@@ -88,6 +88,10 @@ public final class LoopbackTransport: WorkerTransport {
                 state.retrying.insert(job.id.description)
                 state.maxRetrying = max(state.maxRetrying, state.retrying.count)
             }
+            return name
+        case .recognizeText(let job):
+            let name = job.inputs.first?.lastPathComponent ?? ""
+            state.attempts[name, default: 0] += 1
             return name
         case .verify(let output, _):
             let folder = output.url.deletingLastPathComponent().lastPathComponent
@@ -185,6 +189,7 @@ final class LoopbackChannel: WorkerChannel {
         switch request {
         case .prepare(let job, _): job.id
         case .execute(let job, _, _): job
+        case .recognizeText(let job): job.id
         default: nil
         }
     }
