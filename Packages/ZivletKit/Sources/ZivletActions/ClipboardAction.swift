@@ -1,9 +1,11 @@
 import AppKit
 
-/// The one pasteboard call the clipboard actions need, so a refusing pasteboard can be tested.
+/// The pasteboard calls the clipboard actions need, so a refusing pasteboard can be tested.
 public protocol PasteboardWriting {
     /// Clears the pasteboard and writes `objects`; false when the pasteboard refused them.
     func replaceContents(with objects: [any NSPasteboardWriting]) -> Bool
+    /// The same, kept on this Mac: not offered to Universal Clipboard (P2-104).
+    func replaceContentsForThisMac(with objects: [any NSPasteboardWriting]) -> Bool
 }
 
 extension NSPasteboard: PasteboardWriting {
@@ -11,9 +13,14 @@ extension NSPasteboard: PasteboardWriting {
         clearContents()
         return writeObjects(objects)
     }
+
+    public func replaceContentsForThisMac(with objects: [any NSPasteboardWriting]) -> Bool {
+        prepareForNewContents(with: .currentHostOnly)
+        return writeObjects(objects)
+    }
 }
 
-/// Copy and Copy Path (P1-44, 03b §7 rows 3 and 5).
+/// Copy, Copy Path (P1-44, 03b §7 rows 3 and 5) and the text of Copy Text (P2-104).
 public struct ClipboardAction {
     private let pasteboard: any PasteboardWriting
 
@@ -30,6 +37,12 @@ public struct ClipboardAction {
     public func copyPaths(_ urls: [URL], shellQuoted: Bool) -> ActionOutcome {
         let text = shellQuoted ? PathFormatter.shell(urls) : PathFormatter.lines(urls)
         return write([text as NSString], toast: "Copied " + counted(urls.count, "path"))
+    }
+
+    /// Recognised text as a plain string, for this Mac only (P2-104).
+    public func copyText(_ text: String) -> ActionOutcome {
+        pasteboard.replaceContentsForThisMac(with: [text as NSString])
+            ? .done(toast: "Text copied") : .failed(.clipboardRefused)
     }
 
     private func write(_ objects: [any NSPasteboardWriting], toast: String) -> ActionOutcome {

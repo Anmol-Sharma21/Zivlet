@@ -37,12 +37,19 @@ public struct Publisher: Sendable {
 
     /// The staged path is checked first (`StagedFile`), and the quarantine is set without following a symlink.
     public func publish(_ output: StagedOutput, for request: JobRequest) throws(JobError) -> PublishedOutput {
-        try StagedFile.check(output.url)
-        if let quarantine = request.input.quarantine { try copyQuarantine(quarantine, to: output.url) }
         let name = namer.conversion(source: request.input.fileName, target: request.target)
+        return try publish(output, as: name, in: request.destination, quarantine: request.input.quarantine)
+    }
+
+    /// Publishes a staged file under `name` in `folder` with the exclusive rename and the counter rule; Copy Text's
+    /// `.txt` files use it directly (P2-104).
+    public func publish(_ output: StagedOutput, as name: OutputName, in folder: URL, quarantine: Data?)
+        throws(JobError) -> PublishedOutput
+    {
+        try StagedFile.check(output.url)
+        if let quarantine { try copyQuarantine(quarantine, to: output.url) }
         for counter in [nil] + (2...OutputNamer.maxCandidates).map(Optional.some) {
-            let destination = request.destination.appending(
-                path: name.rendered(counter: counter), directoryHint: .notDirectory)
+            let destination = folder.appending(path: name.rendered(counter: counter), directoryHint: .notDirectory)
             if renamex_np(output.url.path, destination.path, UInt32(RENAME_EXCL)) == 0 {
                 removeStagingFolder(of: output.url)
                 return try published(destination, format: output.format)

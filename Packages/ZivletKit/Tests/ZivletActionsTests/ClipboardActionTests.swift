@@ -6,6 +6,23 @@ import Testing
 /// A pasteboard that refuses every write.
 final class RefusingPasteboard: PasteboardWriting {
     func replaceContents(with objects: [any NSPasteboardWriting]) -> Bool { false }
+    func replaceContentsForThisMac(with objects: [any NSPasteboardWriting]) -> Bool { false }
+}
+
+/// Records which write was used and what it carried.
+final class RecordingPasteboard: PasteboardWriting {
+    private(set) var calls: [(thisMacOnly: Bool, strings: [String])] = []
+
+    func replaceContents(with objects: [any NSPasteboardWriting]) -> Bool { record(objects, thisMacOnly: false) }
+
+    func replaceContentsForThisMac(with objects: [any NSPasteboardWriting]) -> Bool {
+        record(objects, thisMacOnly: true)
+    }
+
+    private func record(_ objects: [any NSPasteboardWriting], thisMacOnly: Bool) -> Bool {
+        calls.append((thisMacOnly, objects.compactMap { ($0 as? NSString).map(String.init) }))
+        return true
+    }
 }
 
 @Suite("Copy and Copy Path write the pasteboard (P1-44)")
@@ -39,6 +56,24 @@ struct ClipboardActionTests {
         let two = [URL(fileURLWithPath: "/x"), URL(fileURLWithPath: "/y z")]
         #expect(action.copyPaths(two, shellQuoted: false) == .done(toast: "Copied 2 paths"))
         #expect(board.string(forType: .string) == "/x\n/y z")
+    }
+
+    /// P2-104: recognised text stays on this Mac (no Universal Clipboard).
+    @Test func copyTextWritesTheStringForThisMacOnly() {
+        let recorder = RecordingPasteboard()
+        let outcome = ClipboardAction(pasteboard: recorder).copyText("आज मौसम\nGood")
+        #expect(outcome == .done(toast: "Text copied"))
+        #expect(recorder.calls.count == 1)
+        #expect(recorder.calls.first?.thisMacOnly == true)
+        #expect(recorder.calls.first?.strings == ["आज मौसम\nGood"])
+    }
+
+    @Test func copyTextReadsBackFromARealPasteboard() {
+        let board = NSPasteboard(name: .init("zivlet-test-\(UUID())"))
+        defer { board.releaseGlobally() }
+        _ = ClipboardAction(pasteboard: board).copyText("कुल बिल: ₹2,340.50")
+        #expect(board.string(forType: .string) == "कुल बिल: ₹2,340.50")
+        #expect(ClipboardAction(pasteboard: RefusingPasteboard()).copyText("x") == .failed(.clipboardRefused))
     }
 
     @Test func aRefusedWriteIsAFailureWithUserCopy() {

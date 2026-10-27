@@ -85,7 +85,7 @@ public struct JobRequestFactory: Sendable {
         return Self.isWritableFolder(fallbackFolder) ? fallbackFolder : downloads
     }
 
-    private static func isWritableFolder(_ url: URL) -> Bool {
+    static func isWritableFolder(_ url: URL) -> Bool {
         var info = stat()
         return stat(url.path, &info) == 0 && (info.st_mode & S_IFMT) == S_IFDIR && access(url.path, W_OK) == 0
     }
