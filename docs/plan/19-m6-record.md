@@ -1,6 +1,7 @@
 # 19 — M6 record: box follow-ups, the cap rule, the worker and Copy Text
 
-Date: 2026-10-27. Status: **code complete on the local branch `m6`; not reviewed, not merged, not pushed**. Every
+Date: 2026-10-27. Status: **code complete on the local branch `m6`; reviewed, with the review's findings handled in
+§10; not merged, not pushed**. Every
 task of streams A–E in [18](18-implementation-plan-m6.md) is committed. In a clean clone the exit rows Z1–Z11 all pass
 (§2), Z3 only in its second run (the 50 ms notch HUD timing test under load, as in M5a and M5b), and Z1 only after
 a box test hang found by the first run was fixed (`96fe438`, G-M6-10). The OCR acceptance of P2-104 (12/12 Hindi
@@ -176,7 +177,7 @@ build of `9cc6c69` was made for a same-day comparison.
 | G-M6-10 | The box bundle hung in the first exit run: `NSCache` dropped a test image under memory pressure, so a gated request was never finished. Fixed with a store port (`96fe438`); the hang was diagnosed from the log and a sample of the hung process, and the fix was **not** seen to stop a reproduced hang (four box-bundle runs after it passed; none before it hung on demand). A hung helper from an earlier session (10 hours old, same bundle) was also found and stopped | Watch the box bundle in later runs; `flaky-watch.sh` if it recurs |
 | G-M6-11 | PNG → JPEG time in-process vs in the worker was not measured | Add a worker mode to `make bench` |
 | G-M6-12 | `size-gate.sh` does not print `Contents/XPCServices` as its own line (the worker's 5.8 MB is only in the total) | Add the line |
-| G-M6-13 | No branch review (the six-lens review M5b had) was run on `m6` | Run it before merging |
+| G-M6-13 | No branch review (the six-lens review M5b had) was run on `m6` | **Closed**: run after `857dfab`; findings in §10 |
 | G-M6-14 | Copy Text has no fallback in the app when the worker is unavailable (D-M6-8): it says "Text recognition isn't available right now." | By design; revisit if the worker is ever absent in practice |
 | G-M5a-1 | The fast-progress CPU item from M5a | Unchanged and untouched |
 
@@ -194,6 +195,7 @@ build of `9cc6c69` was made for a same-day comparison.
 | OS-M6-8 | VoiceOver on the text card and Show All (QA CT10) | open |
 | OS-M6-9 | App size: keep the image engines linked into both the app and the worker, or plan a shared framework (§6) | open |
 | OS-M6-10 | Merge and push `m6` | open |
+| OS-M6-11 to -13 | Added by the review round | see §10.7 |
 
 ## 9. Not measured, not seen, not tested first
 
@@ -214,3 +216,163 @@ build of `9cc6c69` was made for a same-day comparison.
   `Co-Authored-By`; no personal or scratch path (the only home-folder strings are a `/Users/me/…` test value and the
   hygiene check's own patterns; temporary paths are generic test values such as `/private/tmp/out`); no research
   notes referenced; no other app named; no binary file.
+
+---
+
+## 10. Review round (after `857dfab`)
+
+A branch review of `m6` (six lenses: Swift, spec, look, failure, security, performance) gave 19 actionable findings
+(one HIGH, 18 MEDIUM) and 28 LOW ones. Each was checked against the code first; where behaviour changed, a test was
+written first and run against the old code to see it fail, except where §10.6 says otherwise. This closes G-M6-13.
+
+### 10.1 Commits
+
+16 commits from `857dfab` to `ff7450c` (plus this update), about 1,850 lines added and 350 removed:
+
+| Commit | What |
+|---|---|
+| `aeae7b7` | worker: a cancel that comes before its job is remembered (64 at most) and the job is answered cancelled without starting; the text warm-up runs as a tracked step under its own job id (protocol version 3); failed text jobs and warm-ups log their kind |
+| `fe72477` | runtime: the cancel goes on the session its request used, never a new one; `close()` latches (later calls throw `.cancelled`); a channel dropped for a crash is closed; the warm-up is cancellable; events are documented and tested as best-effort |
+| `6a59d3d` | a line wrap in a test (typed `style:`, which is not one of the owner's commit types; left as is, since history is not rewritten) |
+| `16c41c0` | ui: `ActionResult.working(WorkingStatus)`; the island draws a working action with the ring and stop.circle, counts it as running, never closes it with Escape, updates it in place and swaps it for its result in one board change; near the drop: line, bar, Cancel and Escape; a cancelled result removes the line; the app's `WorkingLine` keeps the task and its Cancel stops it |
+| `9cf89ec` | tools: per-file skipping (`RecognizedText.skipped`), notes on the text card for files not read, a refused clipboard ("Text found") and `.txt` files not saved; saving goes on past a failure and runs off the main thread; `tooManyFiles`; "No text found. Hindi isn't available on this Mac."; failure and cancel logging; one warm-up at a time |
+| `e06359b` | vision: an empty documents result falls back to the accurate request; a photo's decoded area is capped at 25 MP |
+| `d6ed971`, `cac3079` | ui: Show All answers ⌘C and ⌘A, follows Reduce Transparency and Increase Contrast live (solid with a 1 pt outline); the near-drop text card's buttons get the 28 pt round hit area and a Close with Escape |
+| `5799187` | runtime: the worker choice logs its cause; an unreachable worker is tried again after 60 s on a new session |
+| `2ed0d27` | box: a refused Move to Trash says why (no permission, read-only disk, gone) and logs the kind |
+| `3ad008b` | scripts: Z6 needs its 12 fixture lines, 5 PDF lines and a warmed first recognition (new test, at most 3 s); Z11 fails on an unknown base or no commits; honest fixture comments |
+| `aa47ecc` | ci: `make ocr-check` in the nightly workflow |
+| `a7cd961`, `ff7450c` | scripts: the M6 demos quit only the app they launched (`Scripts/app-process.sh`) and delete only their own folder; the busy demo reports the bar it drew; the text states demo captures the working line |
+| `4eae944` | lint: the new loggers use allowed categories |
+| `a0764e2` | QA rows CT14–CT16 and a wider CT11 |
+
+### 10.2 Decisions
+
+| ID | Decision |
+|---|---|
+| D-M6-20 | P2-103's "determinate 'Preparing text recognition (one time)…'" is **not** determinate: during a job the one-time compile happens inside Vision's first request, which reports no progress, so the line has no percent until the first page or file is read and then shows "Recognising text… N%". The background warm-up's three images are measurable, but they are not what a waiting job shows. A deviation from the task list's wording, recorded here |
+| D-M6-21 | Show All keeps `NSGlassEffectView` (an AppKit window around an `NSTextView` in the system appearance); recorded as 19b D-NL14, the one exception to D-NL2 |
+| D-M6-22 | Worker events are best-effort: XPC sends a reply on the request's own reply port, so an event may arrive after its step's reply and is then dropped; the reply carries the outcome. A late `.spawned` can only name a process whose step already ended |
+| D-M6-23 | Cancels are sticky in the worker: one that arrives before its job is kept (64 at most, oldest dropped) and the job, when it comes, is answered cancelled without starting |
+| D-M6-24 | A Copy Text drop is no longer all-or-nothing: a file-level error (unreadable, locked, copying not allowed, too large, too many pages, recognition failed) skips that file and names it; a cancel, a missing engine or a crashing worker still stop the job |
+| D-M6-25 | An unreachable worker is not final for the launch: the first job 60 s later tries again on a new session. Missing and damaged stay final |
+
+### 10.3 Gates
+
+In the clone, fast-forwarded to `a0764e2` (`Vendor/out`, `src` and `downloads` as before, nothing rebuilt from
+source), under `nice -n 10`, load average 2.5–5:
+
+| Row | Result | What the log shows |
+|---|---|---|
+| Z1 | pass, 227 s | 21 bundles, **2081 tests**, all passed; lint clean; coverage of all 19 modules over 80 % (below); app built; release-check clean, 54.1 MB installed (MacOS 14.4, libav* 29.8, Sparkle 2.8, Helpers 0.6, Resources 0.6 MB); "Licences OK: 13 components, 58 crates in zivlet-svg's tree" |
+| Z2 | pass, 229 s | every script test PASS |
+| Z3 | **fail**, then pass | first run: `NotchHUDTimingTests.aDropShowsTheIslandWithin50ms` over its 50 ms bound at load about 5 (G-M5b-5); rerun by name at `ff7450c`: X2–X5 and Y4, Y5, Y7 pass (324 s) |
+| Z4 | pass | the Release worker: identifier, hardened runtime, no entitlements |
+| Z5 | pass, 39 s | worker pid 53727 (first message 28 ms); PNG → JPEG 34 ms; cancel visible in 0 ms, the single-frame encode ran on to 1893 ms; crash retry, relaunch 51 ms; crash twice: "This file made the engine crash." and the next job saved (9.2 s); idle exit 5.1 s; no crash report |
+| Z6 | pass, 17 s | 12/12 fixtures CER 0.000 (53–322 ms); warmed first recognition 85 ms; English only loses Devanagari in 10 fixtures; PDFs english, hindi, mixed, scan and webkit CER 0.000. Stress set, printed and never scored: **8 of 12 cells above 1 %** (16 px: 0.024, 0.071, 0.381, 1.000 at 10, 20, 30, 45 % noise; 22 px: 0.024, 0.000, 0.048, 0.429; 30 px: 0, 0, 0, 0.071). So 12/12 says the clean fixtures read exactly, not how phone photos or scans read. The models were already compiled: no cold compile was timed |
+| Z7 | **fail**, then pass | first run: the new folder guard refused the clone's `build/copy-text-demo`, left by a run from before the marker; fixed (`ff7450c`: the default folder is the script's own) and rerun: pass, 10 s |
+| Z8 | pass, 2 s | "held at 20 of 50, the bar drawn at 19 of 50"; "Moved 20 items", "Stopped. 30 items weren't moved."; after Undo 50 back, 0 left |
+| Z9 | pass, 313 s | 70 captures, the two new working states among them; island text card 10.88:1; over white 6.82, 4.99, 5.55 and 5.13:1 |
+| Z10 | pass | 6,804 TCC lines since Z5; no request with `preflight=no` |
+| Z11 | pass, again at `ff7450c` | hygiene since `9cc6c69`, now with a checked base |
+| X6 | **fail**, 1194 s | G-M5a-1, untouched: over a 0.025 % baseline, hidden −0.008, collapsed −0.017, card-still −0.017, progress +0.842, pill-progress +0.850, pill-progress-solid +0.867 pass; indeterminate +1.117 and fast-progress +1.708 fail the 1 % limit (M5b: +1.225 and +1.784; the review: +1.108 and +1.717) |
+| X7 | pass | hygiene since the M5a baseline |
+| Y3–Y6 | pass | Y6 first failed because Y4 and Y5 were not in the same run (the row needs them); rerun as `--only Y3,Y4,Y5,Y6`: all pass |
+| Y8 | pass, 531 s | baseline 0.017 %; panel, tray sensor and armed box each +0.008 % (limit 0.1 %); no run of another session quit the app this time |
+| Y9 | pass | hygiene since the M5b baseline |
+
+The working repository's `make test` at `4eae944` also passed (2081 tests in 21 bundles, 56 s incremental).
+
+Coverage (gate 80 %): ZivletCore 98, ZivletTrigger 99, ZivletWheelCore 99, ZivletEngineKit 98, EngineMedia 97,
+EngineImage 95, ZivletRuntime 94 (2379/2512), ZivletTriggerHost 93, ZivletWheel 96, ZivletActions 91, ZivletSettings
+97, ZivletUI 94 (4892/5161), ZivletNotchCore 98, ZivletNotch 96, ZivletShelfCore 98, ZivletBox 93, ZivletIPC 100,
+ZivletWorkerCore 94 (351/371), EngineVision 86 (377/435, with a fake recognizer).
+
+Screenshots of the changed states, looked at by the agent with the screen awake: `text-notchWorking` (the ring,
+"Recognising text… 40%", stop.circle), `text-hudWorking` (the line, the bar at 40 %, Cancel), `text-hudCard` (the
+round buttons and the new Close), `text-showAll`, `text-notchCard`, `text-notchToast` and `box-busy`. Copies stay
+outside the repository, as before. No clipping or unreadable text seen. Not seen: the working line during a real job,
+a press of Cancel on screen, Show All under the real Increase Contrast setting, the notes on a real card.
+
+### 10.4 Findings
+
+| # | Finding | Outcome |
+|---|---|---|
+| F1 | Cancel not sticky; it can overtake its request | **fixed** (`aeae7b7`, `fe72477`, D-M6-23) |
+| F2 | A cancel reopens a dead worker; `close()` does not latch | **fixed** (`fe72477`) |
+| F3 | ActionHUD keeps the working line on `.cancelled` | **fixed** (`16c41c0`) |
+| F4 | P2-104 "CI fixture fails if Devanagari is lost" runs only in Z6 | **fixed** in the workflow (`aa47ecc`); the nightly job has **not run** (no runner here) |
+| F5 | P2-103's "determinate" preparing line | **partly**: recorded as deviation D-M6-20, not made determinate |
+| F6 | Events and replies are not ordered; two flaky tests | **fixed** as best-effort (D-M6-22), tests relaxed; no event count was added |
+| F7 (HIGH) | Copy Text cannot be cancelled from the UI | **fixed** (`16c41c0`): stop.circle on the island, Cancel and Escape near the drop |
+| F8 | The working line draws as done | **fixed** (`16c41c0`) |
+| F9 | The island hides between the line and the result | **fixed** (`16c41c0`). Also found while fixing it: the island's toast kept the *first* line; later percents never reached it |
+| F10 | "Preparing…" for the whole first job | **fixed** (`16c41c0`): the percent from the first progress event |
+| F11 | Show All: no ⌘C or ⌘A | **fixed** (`d6ed971`); confirmed by a test against the old code (both keys did nothing) |
+| F12 | The warm-up cannot be cancelled | **fixed** (`aeae7b7`, `fe72477`); cancelling a cold compile was not timed |
+| F13 | A failed Copy Text never logs why | **fixed** (`9cf89ec`, `aeae7b7`) |
+| F14 | = F3 (failure lens) | **fixed** |
+| F15 | ⌥ saving stops at the first failure and loses the card | **fixed** (`9cf89ec`) |
+| F16 | A refused clipboard drops the result | **fixed** (`9cf89ec`) |
+| F17 | A multi-file job is all-or-nothing and the file is not named | **fixed** (`9cf89ec`, D-M6-24) |
+| F18 | An empty documents result skips the fallback; the first error is lost | **fixed** (`e06359b`): the fallback runs and the first error's type is logged |
+| F19 | Z11 passes on a missing base | **fixed** (`3ad008b`) |
+| L1 | A channel dropped for a crash is never closed | **fixed** (`fe72477`); the strong capture in the session's cancellation closure was left |
+| L2 | = F12 | **fixed** |
+| L3 | One unstructured task per progress event | **partly**: progress only moves forward and is drawn once per percent (`16c41c0`); no AsyncStream |
+| L4 | `reachWorker` never cancels the loser; the decision is cached for the launch | **partly** (`5799187`): the timer is cancelled, causes are logged, unreachable is retried after 60 s; the ping itself cannot be cancelled, and `choice()` still ignores its caller's cancellation |
+| L5 | Unbounded polls, a 100 ms wall-clock bound, no cancel-before-register test | **fixed** for the M6 tests; older polls (`OrphanReaperTests`, `DecodeBudgetTests`) left as they were |
+| L6 | Z6 passes with no measurements; no 3 s check | **fixed** (`3ad008b`) |
+| L7 | The fixture comments overstate; 12/12 quoted without the stress set | **fixed** (comments in `3ad008b`; stress numbers in §10.3) |
+| L8 | P2-100 reserved slots, and `accepts` for actions | **skipped**: no Combine PDF, Reel, archive or lock action, or TRANSCRIBE exists yet; to be added with them (G-M6-15) |
+| L9 | P2-01, P2-51 and P2-104 clauses partly met | **recorded**: the task list has no status column, so status stays here: P2-01 partly (MediaEngine in-process, G-M6-1), P2-51 partly (the base only, G-M6-2), P2-104 partly (History, G-M6-3) |
+| L10 | Demos quit any Zivlet | **fixed** for the M6 demos (`a7cd961`); `box-idle.sh` and `notch-idle.sh` (pre-M6) still quit every Zivlet (G-M6-16) |
+| L11 | X6 fails (G-M5a-1) | **skipped**: not M6 work |
+| L12 | = F1 | **fixed** |
+| L13 | No aggregate bound per text job; header limit 200 MP | **partly**: Cancel now stops a huge job and a photo decodes to 25 MP at most; no total page or byte budget, header limit unchanged (G-M6-17) |
+| L14, L22 | The Copy Text demo deletes any folder it is given | **fixed** (`a7cd961`, `ff7450c`) |
+| L15 | Show All reads Reduce Transparency once, ignores Increase Contrast, uses NSGlassEffectView | **fixed** (`d6ed971`, D-M6-21) |
+| L16 | The text card's buttons are small; no Close or Escape | **fixed** (`d6ed971`) |
+| L17 | The busy demo's picture is one item behind its claim | **fixed** (`a7cd961`): hold.json and the row report the drawn bar (19) |
+| L18 | The worker is launched at every app launch for the warm-up check | **skipped**: measured cheap by the review (30–51 ms, 12 MB, exits after 60 s idle); avoiding it needs the capabilities stored beside `text.warmed` (G-M6-18) |
+| L19 | No area cap for photos | **fixed** (`e06359b`, 25 MP); accuracy on small text in large photos not measured |
+| L20 | `.txt` files written on the main actor | **fixed** (`9cf89ec`, `@concurrent`) |
+| L21 | The warm-up is partly silent and not serialised | **fixed** (`9cf89ec`) |
+| L23 | Over 200 files reported as "damaged"; the type not checked in the app | **partly**: `tooManyFiles` with its own sentence; the type check stays in the worker (an unsupported file is now named as not read) |
+| L24 | Hindi dropped silently | **fixed** for "No text found" (`9cf89ec`); a result *with* text gets no note |
+| L25 | The worker choice drops its causes and never retries | **fixed** (`5799187`) |
+| L26 | A failed cancel send is ignored | **fixed** (`fe72477`): logged; the worker remembers early cancels |
+| L27 | The Trash error is dropped | **fixed** (`2ed0d27`) |
+
+### 10.5 Gaps added
+
+| ID | Gap | Next step |
+|---|---|---|
+| G-M6-15 | P2-100: actions carry no `accepts` data and the slice builder does not hold reserved slots back (no list is over 10/12 today) | With Combine PDF, Reel, archive or lock, or TRANSCRIBE, plus a builder test |
+| G-M6-16 | `box-idle.sh` and `notch-idle.sh` still quit every Zivlet | Move them to `Scripts/app-process.sh` |
+| G-M6-17 | No total page or byte budget per Copy Text job; a large image under the 200 MP header limit is decoded in full before it is scaled | A job budget in the validator and `TextReader`, measured on large photos |
+| G-M6-18 | The app contacts the worker at each launch to check the warm-up record | Store the capabilities beside `text.warmed` |
+| G-M6-19 | A blank page now costs two Vision requests (documents, then accurate) | Measure on long scans with blank pages |
+| G-M6-20 | Escape on the near-drop working line works only once the panel is key (the panel never takes the keyboard on its own, D-M4-16) | As for every HUD card |
+
+### 10.6 Tested first, or not
+
+Seen to fail against the old code before the fix: the cancel-before-register worker test, the warm-up `cancelAll`
+test, four of the five connection tests (the fifth, a cancel right after the call starts, passed already), the first
+five working-line tests (the HUD after a cancel, the island's ring, closable, toast line, one board change), the
+skipped-file reader test, the empty-documents fallback test, the area cap test, ⌘A and ⌘C in Show All, the Z6 and
+Z11 runner cases, and the nightly workflow check. Written against the new API, so they could only fail to compile
+against the old code: Cancel on both presenters, the list row, the delivery and note tests, the decode-side
+function, Show All's live display options, the selection retry, the Trash refusal and `tooManyFiles`. Not run against
+the old code on purpose: the Copy Text demo's folder guard (the old script would have deleted the test's folder). The
+new 3 s test ran only in Z6, with warm models.
+
+### 10.7 Owner steps added
+
+| ID | Step | State |
+|---|---|---|
+| OS-M6-11 | Press Cancel on a long Copy Text at the island and near the drop, and check the worker's CPU falls (QA CT14) | open |
+| OS-M6-12 | Confirm the nightly OCR job runs on the self-hosted runner (macOS with Hindi) | open |
+| OS-M6-13 | Look at the working line pictures and the text card's Close | open |
+
+Merge and push stay with the owner (OS-M6-10): `m6` is local, ahead of `main` (`9cc6c69`), and not pushed.
