@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states m6-exit cap-lint
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -97,6 +97,16 @@ m5a-exit:
 # The automated M5b exit rows Y1-Y9 (plan 16 §7); the owner rows are in docs/plan/qa/drop-box.md.
 m5b-exit:
 	Scripts/m5b-exit.sh
+
+# The automated M6 exit rows Z1-Z11 (plan 18 §7); the owner rows are in docs/plan/qa/copy-text.md, worker.md and
+# drop-box.md.
+m6-exit:
+	Scripts/m6-exit.sh
+
+# P2-100: every default wheel list within 12 slots; with COUNTS=<file>, one count line per list is written there (Z11).
+cap-lint:
+	$(ENV) $(NATIVE) cd "$$KIT" && $(if $(COUNTS),ZIVLET_CAP_COUNTS="$(abspath $(COUNTS))",) \
+	  swift test --filter CatalogCapLintTests
 
 release-check:
 	$(ENV) $(NATIVE) Vendor/ensure-media.sh && Scripts/check-release-paths.sh
