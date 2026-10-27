@@ -114,21 +114,7 @@ struct SubprocessRunnerTests {
         await ready.wait()
         task.cancel()
         await #expect(throws: SubprocessError.cancelled) { try await task.value }
-        #expect(await Self.groupIsGone(spawned.withLock { $0 }))
-    }
-
-    /// A SIGKILLed background member stays a zombie until launchd reaps it, and signalling a group of zombies fails
-    /// with EPERM rather than ESRCH, so the group counts as gone once ESRCH arrives within `limit`. The limit only
-    /// bounds a poll that ends at the first ESRCH; it is not a budget (D-M7-5).
-    static func groupIsGone(_ group: Int32, within limit: Duration = .seconds(5)) async -> Bool {
-        let deadline = ContinuousClock.now + limit
-        while ContinuousClock.now < deadline {
-            let result = killpg(group, 0)
-            let code = errno
-            if result == -1, code == ESRCH { return true }
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-        return false
+        #expect(await ProcessGroup.isGone(spawned.withLock { $0 }))
     }
 
     /// The child prints `ready` only after its trap is set, so the cancel never lands before the trap (G-M6-9: a
@@ -151,7 +137,7 @@ struct SubprocessRunnerTests {
         task.cancel()
         await #expect(throws: SubprocessError.cancelled) { try await task.value }
         #expect(ContinuousClock.now - start >= grace)
-        #expect(await Self.groupIsGone(spawned.withLock { $0 }))
+        #expect(await ProcessGroup.isGone(spawned.withLock { $0 }))
     }
 
     /// Each child blocks threads while it runs (pipe reads, the exit wait). With many children at once, those must not

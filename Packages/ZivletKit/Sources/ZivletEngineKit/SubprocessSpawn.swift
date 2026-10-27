@@ -14,7 +14,9 @@ struct LaunchedChild: Sendable {
 enum Spawner {
     static let resetSignals = [SIGINT, SIGTERM, SIGPIPE, SIGHUP, SIGQUIT, SIGCHLD]
 
-    static func launch(_ request: SubprocessRequest) throws(SubprocessError) -> LaunchedChild {
+    static func launch(
+        _ request: SubprocessRequest, signalling: any ChildSignalling = GroupSignals()
+    ) throws(SubprocessError) -> LaunchedChild {
         let out = try makePipe()
         let err = try makePipe()
         let launched = spawn(request, stdout: out.write, stderr: err.write)
@@ -22,7 +24,8 @@ enum Spawner {
         close(err.write)
         switch launched {
         case .success(let pid):
-            return LaunchedChild(child: ChildProcess(pid: pid), stdout: out.read, stderr: err.read)
+            let child = ChildProcess(pid: pid, signalling: signalling)
+            return LaunchedChild(child: child, stdout: out.read, stderr: err.read)
         case .failure(let error):
             close(out.read)
             close(err.read)
@@ -102,6 +105,25 @@ enum BlockingThread {
     }
 }
 
+/// How a child's process group is signalled on cancel, and when its leader exits: a seam so tests can see the order
+/// of a teardown and time its steps (D-M7-6). The default sends the signals with `killpg` and observes nothing.
+public protocol ChildSignalling: Sendable {
+    func signalGroup(_ group: pid_t, _ signal: Int32)
+    /// The leader exited (not yet reaped); `signal` is the one that ended it, nil when it exited by itself.
+    func leaderExited(_ group: pid_t, signal: Int32?)
+}
+
+extension ChildSignalling {
+    public func leaderExited(_ group: pid_t, signal: Int32?) {}
+}
+
+/// The production signalling: `killpg`.
+public struct GroupSignals: ChildSignalling {
+    public init() {}
+
+    public func signalGroup(_ group: pid_t, _ signal: Int32) { killpg(group, signal) }
+}
+
 /// The child's lifetime. `reaped` is set, under the lock, before the zombie is collected, so a delayed SIGKILL can
 /// never hit a recycled PID.
 final class ChildProcess: Sendable {
@@ -110,9 +132,13 @@ final class ChildProcess: Sendable {
     static let teardownQueue = DispatchQueue(label: "app.zivlet.subprocess.teardown", qos: .userInitiated)
 
     let pid: pid_t
+    private let signalling: any ChildSignalling
     private let reaped = Mutex(false)
 
-    init(pid: pid_t) { self.pid = pid }
+    init(pid: pid_t, signalling: any ChildSignalling = GroupSignals()) {
+        self.pid = pid
+        self.signalling = signalling
+    }
 
     /// SIGINT to the group now, SIGKILL after `grace` unless the child is gone.
     func terminate(grace: Duration) {
@@ -125,7 +151,7 @@ final class ChildProcess: Sendable {
 
     private func signalGroup(_ signal: Int32) {
         reaped.withLock { isReaped in
-            if !isReaped { killpg(pid, signal) }
+            if !isReaped { signalling.signalGroup(pid, signal) }
         }
     }
 
@@ -142,8 +168,9 @@ final class ChildProcess: Sendable {
             reaped.withLock { $0 = true }
             return .failure(.waitFailed(errno: code))
         }
+        signalling.leaderExited(pid, signal: info.si_code == CLD_EXITED ? nil : info.si_status)
         reaped.withLock { isReaped in
-            killpg(pid, SIGKILL)
+            killpg(pid, SIGKILL)  // members left behind; not part of the cancel's order
             isReaped = true
         }
         var status: Int32 = 0

@@ -1,4 +1,5 @@
 import AVFoundation
+import EngineTestSupport
 import Foundation
 import Testing
 import ZivletCore
@@ -126,33 +127,27 @@ struct MediaIntegrationTests {
         #expect(try await AVURLAsset(url: named).load(.isPlayable), "\(type) output not playable")
     }
 
-    @Test func cancellingARunningEncodeStopsFFmpegQuickly() async throws {
+    /// What a cancel does, not how long it takes (D-M7-6): the job throws `cancelled`, ffmpeg's group is gone, and
+    /// the runner sent SIGINT first and SIGKILL only after it. The staging folder is the scheduler's to remove
+    /// (JobSchedulerTests). The wall time, split against NFR-9, is measured by ZivletTimingTests.MediaCancelTiming.
+    @Test func cancellingARunningEncodeStopsFFmpeg() async throws {
         let tools = try #require(MediaIntegration.tools)
         let dir = FileManager.default.temporaryDirectory.appending(path: "zivlet-cancel-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
         let staged = dir.appending(path: ".zivlet-cancel.webm")
-        let argv = [
-            "-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats", "-f", "lavfi",
-            "-i", "testsrc2=d=600:s=1280x720:r=30", "-c:v", "libvpx-vp9", "-f", "webm", "file:" + staged.path,
-        ]
-        let plan = try ExecutionPlan(
-            engine: .media, stages: [.ffmpeg(FFmpegStage(argv: argv, expectedDurationMicros: 600_000_000))],
-            stageWeights: [1], lanes: [.swVideo], outputFormat: .webm, stagedFile: staged)
-        // Resolve the tools first and cancel only once ffmpeg runs, so the timing covers the helper teardown and not
-        // a capability probe that is still starting under load.
-        let engine = MediaEngine()
+        let signals = RecordingSignals()
+        let engine = MediaEngine(runner: SubprocessRunner(signalling: signals))
+        // Resolve the tools first, so the cancel lands on the encode and not on a capability probe.
         _ = await engine.availability(of: ConversionPair(source: .mp4, target: .webm))
-        let spawned = AsyncStream.makeStream(of: Int32.self)
-        let context = ExecutionContext(spawned: { spawned.continuation.yield($0) })
-        let task = Task { try await engine.execute(plan, context: context) }
-        var pids = spawned.stream.makeAsyncIterator()
-        _ = await pids.next()
-        try await Task.sleep(for: .milliseconds(300))
-        let start = ContinuousClock.now
-        task.cancel()
-        await #expect(throws: JobError.cancelled) { try await task.value }
-        #expect(ContinuousClock.now - start < .milliseconds(1_500))
+        let run = try MediaCancelRun(engine: engine, staged: staged)
+        await run.encoding.wait()  // ffmpeg reported progress: it is mid-encode, not starting
+        run.task.cancel()
+        await #expect(throws: JobError.cancelled) { try await run.task.value }
+        #expect(await ProcessGroup.isGone(run.pid))
+        #expect(signals.sent.first == SIGINT)
+        #expect(signals.sent.filter { $0 == SIGINT }.count == 1)
+        #expect(signals.sent.allSatisfy { $0 == SIGINT || $0 == SIGKILL })
         _ = tools
     }
 }

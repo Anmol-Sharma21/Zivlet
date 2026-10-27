@@ -101,15 +101,20 @@ public protocol ProcessRunning: Sendable {
 /// SIGINT to the group, then SIGKILL after `teardownGrace`; after the leader exits, any member left is SIGKILLed.
 public struct SubprocessRunner: ProcessRunning {
     public let teardownGrace: Duration
+    /// Sends the teardown's signals; tests record them (D-M7-6).
+    let signalling: any ChildSignalling
 
-    public init(teardownGrace: Duration = .seconds(1)) { self.teardownGrace = teardownGrace }
+    public init(teardownGrace: Duration = .seconds(1), signalling: any ChildSignalling = GroupSignals()) {
+        self.teardownGrace = teardownGrace
+        self.signalling = signalling
+    }
 
     public func run(
         _ request: SubprocessRequest, onSpawn: @escaping @Sendable (Int32) -> Void = { _ in },
         onLine: @escaping @Sendable (String) -> Void = { _ in }
     ) async throws(SubprocessError) -> SubprocessResult {
         if Task.isCancelled { throw .cancelled }  // a cancelled job never starts a helper
-        let launched = try Spawner.launch(request)
+        let launched = try Spawner.launch(request, signalling: signalling)
         onSpawn(launched.child.pid)
         let grace = teardownGrace
         let result = await withTaskCancellationHandler {
