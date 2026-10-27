@@ -125,7 +125,9 @@ final class ProbeTransport: WorkerTransport {
     }
 
     func waitUntilWaiting(_ job: JobID) async throws {
-        for _ in 0..<500 where state.withLock({ $0.waiting[job] == nil }) { try await Task.sleep(for: .milliseconds(2)) }
+        for _ in 0..<500 where state.withLock({ $0.waiting[job] == nil }) {
+            try await Task.sleep(for: .milliseconds(2))
+        }
         try #require(state.withLock { $0.waiting[job] != nil })
     }
 
