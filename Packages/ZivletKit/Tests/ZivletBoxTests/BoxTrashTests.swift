@@ -85,6 +85,19 @@ struct BoxTrashTests {
         box.hidePanel()
     }
 
+    @Test func aRefusedItemSaysWhyWhenTheSystemSaid() async throws {
+        let rig = try BoxRig()
+        let (box, _) = try await Self.box(rig, items: 2)
+        rig.trash.refusing = ["f0.txt"]
+        rig.trash.refusal = .trashRefused(.noPermission)
+        box.press(.trash)
+        box.press(.confirm(true))
+        await box.running?.value
+        let result = try #require(rig.results.results.last)
+        #expect(result.card?.lines == ["f0.txt couldn't be moved to the Trash: no permission."])
+        box.hidePanel()
+    }
+
     @Test func anItemRemovedWhileTrashingIsNotBroughtBack() async throws {
         let rig = try BoxRig()
         let (box, _) = try await Self.box(rig, items: 3)

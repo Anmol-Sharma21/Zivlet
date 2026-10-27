@@ -23,6 +23,8 @@ public enum ShelfError: Error, Equatable, Sendable {
     case bookmarkFailed
     /// An owned copy could not be moved to the Trash.
     case trashFailed
+    /// The system refused to move an item to the Trash and said why.
+    case trashRefused(TrashRefusal)
     /// The box's own folder could not be made.
     case storageFailed
     /// The app that offered a file promise did not deliver the file.
@@ -43,6 +45,7 @@ public enum ShelfError: Error, Equatable, Sendable {
         case .notAFileURL: "Only files and folders can go in a box."
         case .bookmarkFailed: "Zivlet couldn't keep track of this file."
         case .trashFailed: "Zivlet couldn't move this kept copy to the Trash."
+        case .trashRefused(let refusal): "Zivlet couldn't move this to the Trash: \(refusal.words)."
         case .storageFailed: "Zivlet couldn't make room to keep this copy."
         case .promiseFailed: "The app it came from didn't hand over the file."
         case .clippingTooLarge: "This clipping is too large to keep in the box."

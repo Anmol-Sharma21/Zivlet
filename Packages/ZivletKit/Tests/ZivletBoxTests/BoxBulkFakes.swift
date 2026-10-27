@@ -71,6 +71,8 @@ final class FakeBoxTrash: Trashing, @unchecked Sendable {
     private var held = false
     private var released = false
     var refusing: Set<String> = []
+    /// What a refused path throws.
+    var refusal = ShelfError.trashFailed
     var removes = false
     var folder: URL?
     var pauseAt = 0
@@ -80,7 +82,7 @@ final class FakeBoxTrash: Trashing, @unchecked Sendable {
 
     func trash(_ url: URL) throws(ShelfError) -> URL? {
         hold()
-        guard !refusing.contains(url.lastPathComponent) else { throw .trashFailed }
+        guard !refusing.contains(url.lastPathComponent) else { throw refusal }
         lock.withLock { received.append(url) }
         if removes {
             try? FileManager.default.removeItem(at: url)

@@ -116,7 +116,10 @@ struct OwnedStorageTests {
 
     @Test func trashingSomethingThatIsGoneFailsWithZivletsWords() {
         let gone = URL(filePath: "/nonexistent-\(UUID().uuidString)/a.txt")
-        #expect(throws: ShelfError.trashFailed) { try SystemTrash().trash(gone) }
+        #expect(throws: ShelfError.trashRefused(.missing)) { try SystemTrash().trash(gone) }
         #expect(!ShelfError.trashFailed.userMessage.isEmpty)
+        #expect(ShelfError.trashRefused(.readOnlyVolume).userMessage.hasSuffix("the disk is read-only."))
+        #expect(TrashRefusal(CocoaError(.fileWriteNoPermission)) == .noPermission)
+        #expect(TrashRefusal(CocoaError(.fileWriteOutOfSpace)) == nil)
     }
 }

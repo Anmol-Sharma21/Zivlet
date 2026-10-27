@@ -56,6 +56,11 @@ nonisolated enum BoxCopy {
 
     static func trashed(_ count: Int) -> String { "Moved \(count) to the Trash" }
     static func notTrashed(_ name: String) -> String { "\(name) couldn't be moved to the Trash." }
+    /// The card line for a refused item, with the system's reason when it gave one.
+    static func notTrashed(_ failure: TrashFailure) -> String {
+        guard let refusal = failure.refusal else { return notTrashed(failure.name) }
+        return "\(failure.name) couldn't be moved to the Trash: \(refusal.words)."
+    }
     static func copyStayed(_ name: String) -> String { "\(name) stayed: its kept copy couldn't be moved to the Trash." }
     static func locateMessage(_ name: String) -> String { "Find “\(name)”." }
 
