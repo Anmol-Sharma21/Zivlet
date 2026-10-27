@@ -8,12 +8,13 @@
 # Box's debug flags (-ZivletBoxPreview, -ZivletBoxDemo, -ZivletTrayPreview) and the drag-trace recorder's flag (-ZivletRecordDragTraces,
 # D-M5b-10) are refused the same way; no build compiles them in Release. Plan 18c: so are the worker's DEBUG smoke
 # requests (selfKillForTesting, setIdleForTesting) and the smoke run's flags (-ZivletWorkerSmoke, -ZivletWorkerIdleSeconds).
-# Plan 18d D15: so are the Copy Text demo's and the text states' flags (-ZivletCopyTextDemo, -ZivletTextStates).
+# Plan 18d D15: so are the Copy Text demo's and the text states' flags (-ZivletCopyTextDemo, -ZivletTextStates), and
+# plan 18e E2's cancelled box move (-ZivletBoxBusyDemo).
 # Usage: Scripts/check-release-paths.sh              build and check the Release app
 #        Scripts/check-release-paths.sh --scan-only FILE   only the scans, on one file (script tests)
 source "$(dirname "$0")/env.sh"
 PREVIEW_FLAG="-ZivletIslandPreview"
-BOX_FLAGS=("-ZivletBoxPreview" "-ZivletBoxDemo" "-ZivletTrayPreview")
+BOX_FLAGS=("-ZivletBoxPreview" "-ZivletBoxDemo" "-ZivletTrayPreview" "-ZivletBoxBusyDemo")
 TRACE_FLAG="-ZivletRecordDragTraces"
 # Plan 18c (D-M6-18): the worker's DEBUG smoke requests; their Codable case names are the markers.
 WORKER_MARKERS=("selfKillForTesting" "setIdleForTesting" "-ZivletWorkerSmoke" "-ZivletWorkerIdleSeconds")

@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     lazy var box = BoxWiring(
         settings: { [weak self] in self?.settings.settings.box ?? BoxGroup() }, ports: boxPorts,
-        actions: BoxActions(service: ActionService(undoHistory: undoHistory)))
+        actions: BoxActions(service: boxService))
     lazy var actions = ActionWiring(
         undoHistory: undoHistory, notch: island.hud, route: { [weak self] in self?.defaultRoute ?? .nearDrop },
         box: box.adding, terminalID: { [weak self] in self?.settings.terminalID ?? "" }
@@ -66,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         private let boxFlags = BoxShots.flags()
         private var boxPreview: BoxPreviewPanel?
         private var dragTraces: DragTraceRecorder?
+        private let boxBusyDemo = BoxBusyDemo.parse()
     #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -133,6 +134,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
             boxPreview = BoxShots.run(
                 boxFlags, controller: box.controller, finish: BoxFinish.resolve(island.finishSettingsNow))
+            if let demo = boxBusyDemo {
+                let present = box.present
+                box.present = { result, point in
+                    present(result, point)
+                    demo.received(result)
+                }
+                Task { [weak self] in
+                    guard let self else { return }
+                    await demo.run(box: self.box) { [weak self] batch in
+                        await self?.undo(batch) ?? UndoReply(message: "This can no longer be undone.", canRetry: false)
+                    }
+                }
+            }
         #endif
     }
 
@@ -140,10 +154,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// recorded in the same undo history as every other action.
     private var boxPorts: BoxPorts {
         #if DEBUG
-            BoxShots.ports(boxFlags).with(undoHistory: undoHistory)
+            (boxBusyDemo?.ports() ?? BoxShots.ports(boxFlags)).with(undoHistory: undoHistory)
         #else
             BoxPorts.standard().with(undoHistory: undoHistory)
         #endif
+    }
+
+    /// Move to… and Copy to… from the box; the DEBUG busy demo answers the folder question itself and paces the run.
+    private var boxService: ActionService {
+        #if DEBUG
+            if let boxBusyDemo { return boxBusyDemo.service(undoHistory: undoHistory) }
+        #endif
+        return ActionService(undoHistory: undoHistory)
     }
 
     /// Opening Zivlet again while it runs (Finder, Spotlight) opens Settings (03b §8.3).
@@ -211,7 +233,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Undo for conversions, Moves, copies and the Drop Box's Clear and Move to Trash alike (a box trash gets its
     /// items back once the files are back); the reply is the sentence the HUD shows.
-    private func undo(_ batch: BatchID) async -> UndoReply {
+    func undo(_ batch: BatchID) async -> UndoReply {
         if box.controller.undoClear(batch) { return UndoReply(message: BoxWiring.restoredMessage, canRetry: false) }
         guard let result = await undoHistory.undo(batch) else {
             return UndoReply(message: "This can no longer be undone.", canRetry: false)

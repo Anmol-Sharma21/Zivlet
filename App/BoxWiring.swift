@@ -24,6 +24,8 @@ final class BoxWiring {
     var tray: TrayClient?
     var driver: TrayDriver?
     var zoneWatch: Task<Void, Never>?
+    /// The panel's last reported frame; nil while it is off screen (the DEBUG busy demo captures it).
+    private(set) var lastFrame: CGRect?
     private var displayOptions: (any NSObjectProtocol)?
     #if DEBUG
         let previewFlags: BoxShotFlags
@@ -38,7 +40,10 @@ final class BoxWiring {
         controller = BoxController(ports: ports, actions: actions)
         controller.onAdded = { [weak self] outcome in self?.present(outcome.actionResult, nil) }
         controller.onError = { [weak self] message in self?.present(.failed(ActionCard(title: message)), nil) }
-        controller.onPresented = { base, frame in Self.log(base, frame: frame) }
+        controller.onPresented = { [weak self] base, frame in
+            self?.lastFrame = frame
+            Self.log(base, frame: frame)
+        }
         controller.onResult = { [weak self] result, frame in self?.present(result, frame.map(Self.anchor)) }
         controller.autoClear = { [settings] in AutoClear(rawValue: settings().autoClear.rawValue) ?? .off }
         displayOptions = NSWorkspace.shared.notificationCenter.addObserver(

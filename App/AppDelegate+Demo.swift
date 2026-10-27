@@ -9,7 +9,8 @@ extension AppDelegate {
     /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
     /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, `-ZivletWorkerSmoke <folder>` runs the worker smoke
     /// (`WorkerSmoke`), `-ZivletCopyTextDemo <folder>` runs Copy Text (`CopyTextDemo`), `-ZivletTextStates <state>`
-    /// shows one Copy Text state (`TextShots`), and `-ZivletIslandPreview <state>` puts a made-up
+    /// shows one Copy Text state (`TextShots`), `-ZivletBoxBusyDemo <folder>` cancels a box Move and undoes it
+    /// (`BoxBusyDemo`, started with the box), and `-ZivletIslandPreview <state>` puts a made-up
     /// job on the notch island, so end-to-end checks need no drag. The island preview alone also exists in the CPU
     /// measurement build (`ZIVLET_ISLAND_PREVIEW`, D-ND3); a shipped Release build has none of these.
     func launchDemoIfRequested() {

@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states m6-exit cap-lint
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states m6-exit cap-lint box-busy-demo
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -78,6 +78,10 @@ notch-states:
 # Every Drop Box and notch tray state from the Debug app into build/box-states/ (19c §4, plan 16 Y5).
 box-states:
 	$(ENV) Scripts/demo-box-states.sh
+
+# Z8: the Debug app moves 50 files of a demo box, Cancel after 20, the busy overlay into build/box-busy-demo/, Undo.
+box-busy-demo:
+	$(ENV) Scripts/demo-box-busy.sh
 
 # Y4: the Debug app adds four fixtures to a demo box, shows it, relaunches and restores it (never boxes.json).
 box-demo:
