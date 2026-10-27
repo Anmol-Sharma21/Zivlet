@@ -75,6 +75,20 @@ struct TextRecognizerTests {
         #expect(ocr.kinds == ["documents", "accurate"])
     }
 
+    /// An empty documents result is not trusted as "no text": the accurate request gets its chance.
+    @Test func anEmptyDocumentsResultFallsBackToTheAccurateRequest() async throws {
+        let ocr = FakeOCR(documents: .text(" \n\t"), accurate: .text("found"))
+        let page = try await VisionTextRecognizer(ocr: ocr).recognize(try blankImage(), languages: [.english])
+        #expect(page.text == "found")
+        #expect(ocr.kinds == ["documents", "accurate"])
+    }
+
+    @Test func anEmptyResultFromBothIsNoTextNotAnError() async throws {
+        let ocr = FakeOCR(documents: .text(""), accurate: .fail("nothing"))
+        let page = try await VisionTextRecognizer(ocr: ocr).recognize(try blankImage(), languages: [.english])
+        #expect(page.isEmpty)
+    }
+
     @Test func whenBothFailTheFallbacksErrorIsReturned() async throws {
         let ocr = FakeOCR(documents: .fail("first"), accurate: .fail("second"))
         await #expect(throws: TextError.recognitionFailed("second")) {

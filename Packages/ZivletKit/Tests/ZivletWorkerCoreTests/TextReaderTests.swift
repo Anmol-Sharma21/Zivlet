@@ -107,6 +107,24 @@ struct TextReaderTests {
         await #expect(throws: TextError.cancelled) { try await task.value }
     }
 
+    /// A photo is decoded within an area cap as well as the side cap, as a rendered PDF page is, so one large photo
+    /// does not hold hundreds of MB in the worker.
+    @Test func aLargePhotoIsDecodedWithinTheAreaCap() async throws {
+        let recognizer = ScriptedRecognizer(["x"])
+        let photo = try TextFiles.png("photo.png", in: dir, width: 5_200, height: 5_000)
+        _ = try await TextReader(recognizer: recognizer).read(TextJob(inputs: [photo], languages: [.english])) { _ in }
+        let size = try #require(recognizer.sizes.withLock { $0.first })
+        #expect(Int(size.width * size.height) <= 25_000_000)
+        #expect(size.width > 4_000)  // scaled to the cap, not far below it
+    }
+
+    @Test func theDecodeSideKeepsSmallImagesAndCapsLargeOnes() {
+        #expect(ImageTextSource.decodeSide(width: 640, height: 480) == 640)
+        #expect(ImageTextSource.decodeSide(width: 9_000, height: 10) == 8_192)
+        let side = ImageTextSource.decodeSide(width: 8_000, height: 8_000)
+        #expect(side * side <= ImageTextSource.maximumDecodePixels && side >= 4_990)
+    }
+
     @Test func theWarmUpReadsThreeImages() async throws {
         let recognizer = ScriptedRecognizer(["x"])
         try await TextReader(recognizer: recognizer).warmUp([.hindi, .english])
