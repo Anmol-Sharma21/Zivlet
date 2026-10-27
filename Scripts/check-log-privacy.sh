@@ -14,6 +14,12 @@ if grep -rnE "$pattern" "${SOURCES[@]}"; then
     echo "error: an error description or path is logged with privacy: .public (NFR-6)" >&2
     exit 1
 fi
+# Plan 18d D14: recognised text (Copy Text) is never logged at any privacy level; counts and scripts only.
+text_pattern='(Logger|logger|log)\.[a-z]+\(.*\\\([^)]*(fullText|[Rr]ecognized|RecognizedText|[A-Za-z]+\.text\b)'
+if grep -rnE "$text_pattern" "${SOURCES[@]}"; then
+    echo "error: recognised text is logged (plan 18d D14); log counts and scripts only" >&2
+    exit 1
+fi
 CATEGORIES="app trigger wheel scheduler media image actions settings hud updates"
 status=0
 while IFS= read -r line; do

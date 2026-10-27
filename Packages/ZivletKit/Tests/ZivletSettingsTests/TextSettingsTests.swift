@@ -58,6 +58,14 @@ struct TextSettingsTests {
         #expect(SettingsStore(defaults: defaults).current.text.language == .matchMine)
     }
 
+    /// D14: the stored group holds the choice and the warm-up record, nothing else.
+    @Test func theStoredGroupHoldsOnlyTheChoiceAndTheRecord() throws {
+        var group = TextGroup()
+        group.warmed = TextWarmupRecord(osBuild: "26A1", languages: ["hi-Deva"])
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(group)) as? [String: Any]
+        #expect(Set(json?.keys.map { $0 } ?? []) == ["language", "warmed"])
+    }
+
     @Test func diagnosticsListTheGroupWithoutAnyText() {
         #expect(Settings.defaults.diagnosticsJSON.contains("\"text\""))
     }
