@@ -50,6 +50,9 @@ public final class SettingsModel {
     public var loginItem: LoginItemModel?
     /// The latch of design/19 §3.2: this Mac has shown a built-in display with a notch (D-M5a-11).
     public var hasBuiltInNotch = false
+    /// This Mac's Vision reads Hindi (OWN-OCR-1); the app sets it once the worker has said, and until then every
+    /// choice is offered (the languages drop Hindi anyway where it is missing).
+    public var hindiAvailable = true
     /// The Drop Box's owned copies, counted when the window opens; nil hides the row.
     public private(set) var boxStorageBytes: Int64?
     @ObservationIgnored let commands: SettingsCommands

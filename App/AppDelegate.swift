@@ -103,6 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startBox(trigger)
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
         onboarding.onFinished = { [weak self] in self?.tools.startWarmUpIfNeeded() }
+        settingsWindow.hindiAvailable = { [weak self] in self?.tools.hindiAvailable }
         Task {
             wheel.capabilities = CapabilitySnapshot(
                 unavailableTargets: await conversions.unavailableTargets(),

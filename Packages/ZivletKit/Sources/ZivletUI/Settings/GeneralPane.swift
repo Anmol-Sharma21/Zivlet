@@ -39,6 +39,7 @@ struct GeneralPane: View {
             }
             PlacementSection(model: model)
             DropBoxSection(model: model)
+            TextRecognitionSection(model: model)
             Section("Actions") {
                 Picker("Open folders in", selection: model.binding(\.actions.terminal)) {
                     ForEach(model.terminalChoices) { Text($0.name).tag($0.id) }
@@ -121,6 +122,48 @@ struct DropBoxSection: View {
                 ForEach(BoxDropsChoice.allCases, id: \.self) { Text(Self.label($0)).tag($0) }
             }
             if let bytes = model.boxStorageBytes { BoxStorageRow(bytes: bytes, empty: model.emptyBoxStorage) }
+        }
+    }
+}
+
+/// Text recognition (D-M6-14): one picker; the Hindi choice is disabled, with a line saying why, where this Mac's
+/// Vision has no Hindi (OWN-OCR-1).
+struct TextRecognitionSection: View {
+    static let title = "Text recognition"
+    static let pickerLabel = "Read text in"
+    static let noHindi = "Hindi isn't available on this version of macOS."
+
+    struct Row: Equatable {
+        let choice: TextLanguageChoice
+        let enabled: Bool
+    }
+
+    let model: SettingsModel
+
+    static func label(_ choice: TextLanguageChoice) -> String {
+        switch choice {
+        case .matchMine: "Match my languages"
+        case .hindiAndEnglish: "Hindi and English"
+        case .english: "English"
+        }
+    }
+
+    static func rows(hindiAvailable: Bool) -> [Row] {
+        TextLanguageChoice.allCases.map { Row(choice: $0, enabled: hindiAvailable || $0 != .hindiAndEnglish) }
+    }
+
+    static func help(hindiAvailable: Bool) -> String? { hindiAvailable ? nil : noHindi }
+
+    var body: some View {
+        Section(Self.title) {
+            Picker(Self.pickerLabel, selection: model.binding(\.text.language)) {
+                ForEach(Self.rows(hindiAvailable: model.hindiAvailable), id: \.choice) { row in
+                    Text(Self.label(row.choice)).tag(row.choice).selectionDisabled(!row.enabled)
+                }
+            }
+            if let help = Self.help(hindiAvailable: model.hindiAvailable) {
+                Text(help).foregroundStyle(.secondary)
+            }
         }
     }
 }

@@ -23,6 +23,8 @@ final class SettingsWindowWiring {
     private var controller: SettingsWindowController?
     private var model: SettingsModel?
     private var observer: Task<Void, Never>?
+    /// Whether this Mac's Vision reads Hindi, when known (OWN-OCR-1).
+    var hindiAvailable: () -> Bool? = { nil }
 
     init(
         store: SettingsStore, conversions: ConversionService, displays: any DisplayGeometryProvider,
@@ -43,6 +45,7 @@ final class SettingsWindowWiring {
         guard let controller, let model else { return }
         model.loginItem = LoginItemModel()  // the status can change in System Settings while the window is closed
         model.refreshBoxStorage()
+        model.hindiAvailable = hindiAvailable() ?? true
         Task { [conversions] in model.helperVersions = await conversions.helperVersions() }
         controller.show(pane)
         let window = controller.window?.windowNumber ?? 0

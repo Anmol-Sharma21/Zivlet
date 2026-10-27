@@ -22,12 +22,29 @@ final class ToolWiring {
     private let preview = TextPreviewWindow()
     private var capabilities: VisionCapabilities?
     private var warmup: WarmupState?
+    private var languageWatch: Task<Void, Never>?
 
     init(text: TextService, actions: ActionWiring, store: SettingsStore) {
         self.text = text
         self.actions = actions
         self.store = store
         actions.onTextButton = { [weak self] button, outcome in self?.pressed(button, outcome) }
+        watchLanguageChoice()
+    }
+
+    /// Whether this Mac's Vision reads Hindi, once the worker has said; nil before (Settings offers every choice).
+    var hindiAvailable: Bool? { capabilities?.hasHindi }
+
+    /// A new language choice needs its own warm-up (D7): it starts at once.
+    private func watchLanguageChoice() {
+        let changes = store.changes
+        var last = store.current.text.language
+        languageWatch = Task { @MainActor [weak self] in
+            for await settings in changes where settings.text.language != last {
+                last = settings.text.language
+                self?.startWarmUpIfNeeded()
+            }
+        }
     }
 
     /// Runs `tool` when it is wired; nil leaves it to the DEBUG note (the other tools wait for their windows).
@@ -129,7 +146,7 @@ final class ToolWiring {
         let capabilities = try await currentCapabilities()
         let languages = RecognitionLanguages.defaults(
             preferred: Locale.preferredLanguages, inputSources: Self.enabledInputSources(),
-            choice: .matchMine, capabilities: capabilities)
+            choice: store.current.text.language, capabilities: capabilities)
         let record = TextWarmupRecord(osBuild: capabilities.osBuild, languages: languages)
         return (languages, store.current.text.warmed == record)
     }

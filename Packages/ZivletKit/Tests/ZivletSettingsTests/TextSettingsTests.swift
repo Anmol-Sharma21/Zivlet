@@ -33,6 +33,31 @@ struct TextSettingsTests {
         #expect(SettingsStore(defaults: defaults).current.text == TextGroup())
     }
 
+    @Test func theLanguageChoiceDefaultsToMatchMyLanguages() throws {
+        #expect(SettingsStore(defaults: try freshDefaults()).current.text.language == .matchMine)
+    }
+
+    @Test func theLanguageChoiceRoundTrips() throws {
+        let defaults = try freshDefaults()
+        SettingsStore(defaults: defaults).update { $0.with(\.text.language, .hindiAndEnglish) }
+        #expect(SettingsStore(defaults: defaults).current.text.language == .hindiAndEnglish)
+    }
+
+    @Test func anUnknownLanguageFallsBackToTheDefaultAndKeepsTheWarmUp() throws {
+        let defaults = try freshDefaults()
+        let json = #"{"language":"klingon","warmed":{"osBuild":"26A1","languages":["en-Latn"]}}"#
+        defaults.set(Data(json.utf8), forKey: "settings.text.v1")
+        let text = SettingsStore(defaults: defaults).current.text
+        #expect(text.language == .matchMine)
+        #expect(text.warmed == TextWarmupRecord(osBuild: "26A1", languages: ["en-Latn"]))
+    }
+
+    @Test func aStoreWithoutTheLanguageReadsTheDefault() throws {
+        let defaults = try freshDefaults()
+        defaults.set(Data(#"{"warmed":{"osBuild":"26A1","languages":["en-Latn"]}}"#.utf8), forKey: "settings.text.v1")
+        #expect(SettingsStore(defaults: defaults).current.text.language == .matchMine)
+    }
+
     @Test func diagnosticsListTheGroupWithoutAnyText() {
         #expect(Settings.defaults.diagnosticsJSON.contains("\"text\""))
     }
