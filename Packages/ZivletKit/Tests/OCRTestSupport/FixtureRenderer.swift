@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 extension OCRFixtures {
     /// The margin around the text, in pixels.
     static let margin = 40
+    /// The widest and tallest text frame CoreText may suggest.
+    static let frameLimit = CGSize(width: 1400, height: 2000)
     /// The dark fixture's background, `#1F2129`.
     static let darkBackground = CGColor(srgbRed: 0x1F / 255, green: 0x21 / 255, blue: 0x29 / 255, alpha: 1)
 
@@ -22,8 +24,10 @@ extension OCRFixtures {
         try FixtureImage.decode(encoded(entry, degradation: degradation))
     }
 
-    /// The text drawn with CoreText into an sRGB bitmap, with the margin; fails when the font is missing or any
-    /// run of the text was drawn with another font.
+    /// The text drawn with CoreText into an opaque sRGB bitmap, with the margin; fails when the font is missing or
+    /// any run of the text was drawn with another font. The geometry is the one the plan's measurements used (the
+    /// suggested frame plus one point, the bitmap rounded up): Vision's result on fixtures 02 and 06 changed when the
+    /// frame grew by one pixel, so it is fixed here and never tuned.
     public static func draw(_ entry: Entry) throws(OCRFixtureError) -> CGImage {
         let font = CTFontCreateWithName(entry.font as CFString, CGFloat(entry.size), nil)
         guard CTFontCopyPostScriptName(font) as String == entry.font else { throw .fontMissing(entry.font) }
@@ -33,14 +37,14 @@ extension OCRFixtures {
         let text = CFAttributedStringCreate(nil, entry.text as CFString, attributes as CFDictionary)
         guard let text else { throw .renderFailed(entry.name) }
         let setter = CTFramesetterCreateWithAttributedString(text)
-        let limit = CGSize(width: 4000, height: CGFloat.greatestFiniteMagnitude)
-        let fit = CTFramesetterSuggestFrameSizeWithConstraints(setter, CFRange(), nil, limit, nil)
-        let box = CGSize(width: fit.width.rounded(.up) + 2, height: fit.height.rounded(.up) + 2)
-        let frame = CTFramesetterCreateFrame(
-            setter, CFRange(), CGPath(rect: CGRect(origin: CGPoint(x: margin, y: margin), size: box), transform: nil),
-            nil)
+        let fit = CTFramesetterSuggestFrameSizeWithConstraints(setter, CFRange(), nil, frameLimit, nil)
+        let area = CGRect(x: CGFloat(margin), y: CGFloat(margin), width: fit.width + 1, height: fit.height + 1)
+        let frame = CTFramesetterCreateFrame(setter, CFRange(), CGPath(rect: area, transform: nil), nil)
         try checkFonts(frame, entry: entry)
-        let size = (width: Int(box.width) + 2 * margin, height: Int(box.height) + 2 * margin)
+        let size = (
+            width: Int((fit.width + CGFloat(2 * margin)).rounded(.up)),
+            height: Int((fit.height + CGFloat(2 * margin)).rounded(.up))
+        )
         guard let context = FixtureImage.context(width: size.width, height: size.height) else {
             throw .renderFailed(entry.name)
         }
@@ -74,7 +78,7 @@ enum FixtureImage {
         guard let space = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
         return CGContext(
             data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: space,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
     }
 
     static func png(_ image: CGImage) throws(OCRFixtureError) -> Data {
