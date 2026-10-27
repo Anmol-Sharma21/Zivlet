@@ -54,4 +54,13 @@ extension RecognitionLanguages {
         defaults(
             preferred: preferred, inputSources: inputSources, choice: choice, hindiAvailable: capabilities.hasHindi)
     }
+
+    /// The choice would read Hindi, but this Mac's Vision has none, so the job reads English only.
+    public static func skipsHindi(
+        preferred: [String], inputSources: [String], choice: TextLanguageChoice, capabilities: VisionCapabilities
+    ) -> Bool {
+        !capabilities.hasHindi
+            && defaults(preferred: preferred, inputSources: inputSources, choice: choice, hindiAvailable: true)
+                .contains(.hindi)
+    }
 }

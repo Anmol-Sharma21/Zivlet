@@ -25,7 +25,7 @@
 
         static var sample: ActionResult {
             let text = TextAssembly.combine([FileText(name: "ticket.png", pages: [RecognizedPage(text: sampleText)])])
-            return ToolWiringModel.result(text, sources: [URL(fileURLWithPath: "/tmp/ticket.png")], saved: [])
+            return ToolWiringModel.result(text, sources: [URL(fileURLWithPath: "/tmp/ticket.png")])
         }
 
         @MainActor static func run(_ state: State, island: IslandWiring, actions: ActionWiring, tools: ToolWiring) {

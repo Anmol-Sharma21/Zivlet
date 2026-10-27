@@ -135,6 +135,9 @@ public actor WorkerService {
     {
         do {
             let text = try await reader.read(job) { events(.progress(job.id, JobProgress(fraction: $0))) }
+            for file in text.skipped {
+                logger.error("Text job skipped a file: \(file.error.logDescription, privacy: .public)")
+            }
             return .text(text)
         } catch {
             logger.error("Text job failed: \(error.logDescription, privacy: .public)")

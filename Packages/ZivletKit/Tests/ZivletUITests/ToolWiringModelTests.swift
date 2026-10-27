@@ -30,7 +30,7 @@ struct ToolWiringModelTests {
 
     @Test func textBecomesTheTextCard() throws {
         let recognized = Self.text([("photo.png", "आज मौसम अच्छा है\nGood day")])
-        let result = ToolWiringModel.result(recognized, sources: [Self.photo], saved: [])
+        let result = ToolWiringModel.result(recognized, sources: [Self.photo])
         let outcome = try #require(result.text)
         #expect(outcome.preview == ["आज मौसम अच्छा है", "Good day"])
         #expect(outcome.scriptLine == "Hindi and English")
@@ -43,13 +43,13 @@ struct ToolWiringModelTests {
     @Test func severalFilesNameTheirCountAndKeepEachText() throws {
         let recognized = Self.text([("photo.png", "One"), ("scan.pdf", "Two")])
         let outcome = try #require(
-            ToolWiringModel.result(recognized, sources: [Self.photo, Self.scan], saved: []).text)
+            ToolWiringModel.result(recognized, sources: [Self.photo, Self.scan]).text)
         #expect(outcome.windowTitle == "Text from 2 files")
         #expect(outcome.text.files.map(\.text) == ["One\n", "Two\n"])
     }
 
     @Test func noTextIsAToastNotAnError() {
-        let result = ToolWiringModel.result(Self.text([("blank.png", "  ")]), sources: [Self.photo], saved: [])
+        let result = ToolWiringModel.result(Self.text([("blank.png", "  ")]), sources: [Self.photo])
         #expect(result == .done(toast: "No text found", undo: nil))
     }
 

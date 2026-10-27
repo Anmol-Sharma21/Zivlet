@@ -30,17 +30,19 @@ public enum TextResultButton: Sendable, Hashable, CaseIterable {
     }
 }
 
-/// What both presenters draw for a text result: up to three preview lines, the count line, and the buttons; when ⌥
-/// already wrote the `.txt` files, a line says so and Save as Text is not offered again.
+/// What both presenters draw for a text result: up to three preview lines, the count line, any notes, and the
+/// buttons; when ⌥ already wrote the `.txt` files, a line says so and Save as Text is not offered again.
 struct TextResultModel: Equatable {
     let lines: [String]
     let countLine: String
     let savedLine: String?
+    let notes: [String]
     let buttons: [TextResultButton]
 
     init(_ outcome: TextOutcome) {
         lines = outcome.preview
         countLine = outcome.countLine
+        notes = outcome.notes
         switch outcome.savedFiles.count {
         case 0: savedLine = nil
         case 1: savedLine = "Saved " + (outcome.savedFiles.first?.lastPathComponent ?? "")
@@ -71,6 +73,10 @@ struct TextResultContent: View {
                     Text(model.countLine).font(.caption).foregroundStyle(HUDInk.secondary).lineLimit(1)
                     if let saved = model.savedLine {
                         Text(saved).font(.caption).foregroundStyle(HUDInk.secondary).lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    ForEach(Array(model.notes.enumerated()), id: \.offset) { _, note in
+                        Text(note).font(.caption).foregroundStyle(HUDInk.secondary).lineLimit(1)
                             .truncationMode(.middle)
                     }
                 }

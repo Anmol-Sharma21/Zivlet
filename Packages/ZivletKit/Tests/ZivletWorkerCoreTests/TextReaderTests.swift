@@ -51,28 +51,27 @@ struct TextReaderTests {
         let recognizer = ScriptedRecognizer(["x"])
         let reader = TextReader(recognizer: recognizer, maximumPixels: 500)
         let image = try TextFiles.png("big.png", in: dir, width: 32, height: 24)
-        await #expect(throws: TextError.tooLarge) {
-            try await reader.read(TextJob(inputs: [image], languages: [.english])) { _ in }
-        }
+        let text = try await reader.read(TextJob(inputs: [image], languages: [.english])) { _ in }
+        #expect(text.skipped == [SkippedFile(name: "big.png", error: .tooLarge)])
         #expect(recognizer.calls == 0)
     }
 
     @Test func aFortyThousandPixelSquareHeaderNeverReachesVision() async throws {
         let recognizer = ScriptedRecognizer(["x"])
         let huge = try TextFiles.pngHeader("huge.png", in: dir, width: 40_000, height: 40_000)
-        await #expect(throws: TextError.self) {
-            try await TextReader(recognizer: recognizer).read(TextJob(inputs: [huge], languages: [.english])) { _ in }
+        let text = try await TextReader(recognizer: recognizer).read(TextJob(inputs: [huge], languages: [.english])) {
+            _ in
         }
+        #expect(text.skipped.count == 1 && text.isEmpty)
         #expect(recognizer.calls == 0)
     }
 
     @Test func aFileThatIsNeitherImageNorPDFIsUnreadable() async throws {
         let junk = try dir.file("notes.png", "not an image")
-        await #expect(throws: TextError.unreadable) {
-            try await TextReader(recognizer: ScriptedRecognizer(["x"])).read(
-                TextJob(inputs: [junk], languages: [.english])
-            ) { _ in }
-        }
+        let text = try await TextReader(recognizer: ScriptedRecognizer(["x"])).read(
+            TextJob(inputs: [junk], languages: [.english])
+        ) { _ in }
+        #expect(text.skipped == [SkippedFile(name: "notes.png", error: .unreadable)])
     }
 
     @Test func aLargeImageIsDecodedNoBiggerThanTheCap() async throws {
@@ -80,6 +79,32 @@ struct TextReaderTests {
         let wide = try TextFiles.png("wide.png", in: dir, width: 9000, height: 10)
         _ = try await TextReader(recognizer: recognizer).read(TextJob(inputs: [wide], languages: [.english])) { _ in }
         #expect(recognizer.sizes.withLock { $0.first?.width } == 8192)
+    }
+
+    /// One unreadable file of a drop does not throw away the text of the others (minutes of OCR, perhaps).
+    @Test func aFileThatCannotBeReadIsSkippedAndTheOthersAreKept() async throws {
+        let reader = TextReader(recognizer: ScriptedRecognizer(["First text", "Third text"]))
+        let inputs = [
+            try TextFiles.png("a.png", in: dir), try dir.file("bad.png", "junk"), try TextFiles.png("c.png", in: dir),
+        ]
+        let seen = Mutex<[Double]>([])
+        let text = try await reader.read(TextJob(inputs: inputs, languages: [.english])) { value in
+            seen.withLock { $0.append(value) }
+        }
+        #expect(text.text == "— a.png —\nFirst text\n\n— c.png —\nThird text\n")
+        #expect(text.skipped == [SkippedFile(name: "bad.png", error: .unreadable)])
+        #expect(text.perFile.map(\.name) == ["a.png", "bad.png", "c.png"])  // still one entry per input, in order
+        #expect(seen.withLock { $0.last } == 1)
+    }
+
+    @Test func aCancelStillStopsTheWholeJob() async throws {
+        let recognizer = ScriptedRecognizer(["x"], delay: .seconds(5))
+        let inputs = [try TextFiles.png("a.png", in: dir), try TextFiles.png("b.png", in: dir)]
+        let reader = TextReader(recognizer: recognizer)
+        let task = Task { try await reader.read(TextJob(inputs: inputs, languages: [.english])) { _ in } }
+        for _ in 0..<500 where recognizer.calls == 0 { try await Task.sleep(for: .milliseconds(2)) }
+        task.cancel()
+        await #expect(throws: TextError.cancelled) { try await task.value }
     }
 
     @Test func theWarmUpReadsThreeImages() async throws {

@@ -99,6 +99,10 @@ struct TextServiceTests {
         await #expect(throws: TextError.unreadable) {
             try await rig.service.copyText([], languages: [.english])
         }
+        let many = Array(repeating: folder, count: TextJob.maximumInputs + 1)
+        await #expect(throws: TextError.tooManyFiles(limit: TextJob.maximumInputs)) {
+            try await rig.service.copyText(many, languages: [.english])
+        }
         #expect(rig.recognizer.calls == 0)
     }
 

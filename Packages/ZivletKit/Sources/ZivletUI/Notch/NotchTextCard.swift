@@ -25,6 +25,7 @@ struct NotchTextCard: View {
                     VStack(alignment: .leading, spacing: NotchLook.Spacing.xs) {
                         NotchCaption(text: model.countLine)
                         if let saved = model.savedLine { NotchCaption(text: saved) }
+                        ForEach(Array(model.notes.enumerated()), id: \.offset) { _, note in NotchCaption(text: note) }
                     }
                     .layoutPriority(1)
                     HStack(spacing: NotchLook.Spacing.xs) {

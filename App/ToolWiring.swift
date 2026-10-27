@@ -9,10 +9,11 @@ import ZivletUI
 import os
 
 /// Copy Text from the wheel (P2-104, plan 18d D12): the languages from the setting, the person's languages and
-/// keyboards and this Mac's Vision; the working line where the placement says; the job in the worker (`TextService`);
-/// the clipboard; with ⌥ one `.txt` per input; then the text card, "No text found" or the error's sentence. The card's
-/// buttons copy again, save the files, or open Show All. After onboarding it warms text recognition up once per OS
-/// build and language set (D-M6-16). The text itself is never logged or stored (D14).
+/// keyboards and this Mac's Vision; the working line with Cancel where the placement says; the job in the worker
+/// (`TextService`); the clipboard; with ⌥ one `.txt` per input, written off the main thread; then the text card (with
+/// notes for files not read, a refused clipboard or files not saved), "No text found" or the error's sentence. The
+/// card's buttons copy again, save the files, or open Show All. After onboarding it warms text recognition up once
+/// per OS build and language set (D-M6-16), one warm-up at a time. The text itself is never logged or stored (D14).
 final class ToolWiring {
     private let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "actions")
     private let text: TextService
@@ -23,6 +24,8 @@ final class ToolWiring {
     let preview = TextPreviewWindow()
     private var capabilities: VisionCapabilities?
     private var warmup: WarmupState?
+    /// A warm-up is running; another is not started beside it.
+    private var warmingUp = false
     private var languageWatch: Task<Void, Never>?
     /// The DEBUG Copy Text demo's choice, in memory only (the person's settings are never written by a demo).
     var choiceOverride: TextLanguageChoice?
@@ -95,31 +98,43 @@ final class ToolWiring {
 
     private func copyText(_ urls: [URL], optionHeld: Bool, line: WorkingLine) async -> ActionResult {
         do {
-            let (languages, warmed) = try await languages()
-            line.show(ToolWiringModel.working(warmupDone: warmed, fraction: nil))
-            let recognized = try await text.copyText(urls, languages: languages) { fraction in
-                Task { @MainActor in line.show(ToolWiringModel.working(warmupDone: warmed, fraction: fraction)) }
+            let plan = try await languages()
+            line.show(ToolWiringModel.working(warmupDone: plan.warmed, fraction: nil))
+            let recognized = try await text.copyText(urls, languages: plan.languages) { fraction in
+                Task { @MainActor in line.show(ToolWiringModel.working(warmupDone: plan.warmed, fraction: fraction)) }
             }
-            return finish(recognized, sources: urls, optionHeld: optionHeld)
+            return await finish(recognized, sources: urls, optionHeld: optionHeld, skipsHindi: plan.skipsHindi)
         } catch {
+            if error == .cancelled {
+                logger.notice("Copy Text cancelled")
+            } else {
+                logger.error("Copy Text failed: \(error.logDescription, privacy: .public)")
+            }
             return ToolWiringModel.failure(error)
         }
     }
 
-    /// The clipboard first; with ⌥ the files; then the card.
-    private func finish(_ recognized: RecognizedText, sources: [URL], optionHeld: Bool) -> ActionResult {
-        guard !recognized.isEmpty else { return ToolWiringModel.result(recognized, sources: sources, saved: []) }
-        if case .failed(let error) = clipboard.copyText(recognized.text) { return ActionResult(.failed(error)) }
-        guard ToolWiringModel.writesFiles(optionHeld: optionHeld) else {
-            return ToolWiringModel.result(recognized, sources: sources, saved: [])
+    /// The clipboard first; with ⌥ the files; then the card. A refused clipboard or a file not saved becomes a note
+    /// on the card, so minutes of recognition are never thrown away.
+    private func finish(_ recognized: RecognizedText, sources: [URL], optionHeld: Bool, skipsHindi: Bool) async
+        -> ActionResult
+    {
+        guard !recognized.isEmpty else {
+            return ToolWiringModel.result(recognized, sources: sources, skipsHindi: skipsHindi)
         }
-        let files = zip(sources, recognized.perFile).filter { !$0.1.isEmpty }.map {
-            TextFile(source: $0.0, text: $0.1.text)
+        var copied = true
+        if case .failed = clipboard.copyText(recognized.text) {
+            copied = false
+            logger.error("Copy Text: the clipboard refused the text")
         }
-        switch save(files) {
-        case .saved(let saved): return ToolWiringModel.result(recognized, sources: sources, saved: saved)
-        case .failed(let card): return .failed(card)
+        var delivery = TextDelivery(copied: copied)
+        if ToolWiringModel.writesFiles(optionHeld: optionHeld) {
+            let files = zip(sources, recognized.perFile).filter { !$0.1.isEmpty }.map {
+                TextFile(source: $0.0, text: $0.1.text)
+            }
+            delivery = await TextSaver.save(files, fallbackFolder: fallbackFolder, copied: copied)
         }
+        return ToolWiringModel.result(recognized, sources: sources, delivery: delivery)
     }
 
     private func pressed(_ button: TextResultButton, _ outcome: TextOutcome) {
@@ -129,45 +144,35 @@ final class ToolWiring {
                 actions.present(ActionResult(.failed(error)), near: nil)
             }
         case .saveText:
-            switch save(outcome.text.files) {
-            case .saved(let saved):
-                actions.present(.done(toast: ToolWiringModel.savedToast(saved), undo: nil), near: nil)
-            case .failed(let card):
-                actions.present(.failed(card), near: nil)
+            Task { @MainActor in
+                let delivery = await TextSaver.save(outcome.text.files, fallbackFolder: fallbackFolder, copied: true)
+                actions.present(ToolWiringModel.saved(delivery), near: nil)
             }
         case .showAll:
             preview.show(TextPreviewModel(title: outcome.windowTitle, text: outcome.fullText))
         }
     }
 
-    /// One `.txt` per input beside it (or in the fallback folder); the first failure stops and is named.
-    private enum Saved {
-        case saved([URL])
-        case failed(ActionCard)
+    private var fallbackFolder: URL { URL(fileURLWithPath: store.current.output.fallbackFolder) }
+
+    /// What one job reads with: the ordered languages, whether the warm-up is done for them on this OS build, and
+    /// whether Hindi was wanted but this Mac's Vision has none.
+    private struct LanguagePlan {
+        let languages: [LanguageTag]
+        let warmed: Bool
+        let skipsHindi: Bool
     }
 
-    private func save(_ files: [TextFile]) -> Saved {
-        let writer = TextFileWriter(fallbackFolder: URL(fileURLWithPath: store.current.output.fallbackFolder))
-        var saved: [URL] = []
-        for file in files {
-            do {
-                saved.append(try writer.write(file.text, beside: file.source))
-            } catch {
-                let lines = [file.source.lastPathComponent, JobErrorCopy.copy(for: error).message]
-                return .failed(ActionCard(title: "A text file wasn't saved.", lines: lines))
-            }
-        }
-        return .saved(saved)
-    }
-
-    /// The ordered languages and whether the warm-up is done for them on this OS build.
-    private func languages() async throws(TextError) -> ([LanguageTag], Bool) {
+    private func languages() async throws(TextError) -> LanguagePlan {
         let capabilities = try await currentCapabilities()
+        let (preferred, sources) = (Locale.preferredLanguages, Self.enabledInputSources())
+        let choice = choiceOverride ?? store.current.text.language
         let languages = RecognitionLanguages.defaults(
-            preferred: Locale.preferredLanguages, inputSources: Self.enabledInputSources(),
-            choice: choiceOverride ?? store.current.text.language, capabilities: capabilities)
+            preferred: preferred, inputSources: sources, choice: choice, capabilities: capabilities)
         let record = TextWarmupRecord(osBuild: capabilities.osBuild, languages: languages)
-        return (languages, store.current.text.warmed == record)
+        let skipsHindi = RecognitionLanguages.skipsHindi(
+            preferred: preferred, inputSources: sources, choice: choice, capabilities: capabilities)
+        return LanguagePlan(languages: languages, warmed: store.current.text.warmed == record, skipsHindi: skipsHindi)
     }
 
     private func currentCapabilities() async throws(TextError) -> VisionCapabilities {
@@ -177,12 +182,20 @@ final class ToolWiring {
         return fetched
     }
 
-    /// Runs the warm-up when the state says so; a failure stays needed until the next launch (no loop).
+    /// Runs the warm-up when the state says so; a failure stays needed until the next launch (no loop). One runs at
+    /// a time: a change of languages while one runs is picked up when it ends (the next job or launch), and a
+    /// finished warm-up stores its record only if it is still the current one.
     private func warmUpIfNeeded() async {
-        guard store.current.onboarding.completed, let capabilities = try? await currentCapabilities(),
-            let (languages, _) = try? await languages()
-        else { return }
-        let record = TextWarmupRecord(osBuild: capabilities.osBuild, languages: languages)
+        guard store.current.onboarding.completed, !warmingUp else { return }
+        let plan: LanguagePlan
+        let capabilities: VisionCapabilities
+        do {
+            capabilities = try await currentCapabilities()
+            plan = try await languages()
+        } catch {
+            return logger.error("Text recognition warm-up not started: \(error.logDescription, privacy: .public)")
+        }
+        let record = TextWarmupRecord(osBuild: capabilities.osBuild, languages: plan.languages)
         let stored = store.current.text.warmed
         let state = warmup?.changed(to: record) ?? WarmupState.initial(stored: stored, current: record)
         guard state.shouldStart else {
@@ -190,11 +203,15 @@ final class ToolWiring {
             return
         }
         warmup = state.started()
+        warmingUp = true
+        defer { warmingUp = false }
         logger.notice("Text recognition warm-up started")
         do {
-            try await text.warmUp(languages)
+            try await text.warmUp(plan.languages)
             warmup = warmup?.finished()
-            store.update { $0.with(\.text.warmed, record) }
+            if (try? await languages().languages) == plan.languages {
+                store.update { $0.with(\.text.warmed, record) }
+            }
             logger.notice("Text recognition warm-up done")
         } catch {
             warmup = warmup?.interrupted()
@@ -202,10 +219,21 @@ final class ToolWiring {
         }
     }
 
-    /// Counts only: never the text, never a file name (D14).
+    /// Counts only: never the text, never a file name (D14). The error's kind is logged where it is caught.
     private func log(_ result: ActionResult, files: Int) {
-        let kind = result.text.map { "text, \($0.characterCount) characters" } ?? (result.toast ?? "failed")
-        logger.notice("Copy Text finished: \(files) files, \(kind, privacy: .public)")
+        logger.notice("Copy Text finished: \(files) files, \(Self.logKind(result), privacy: .public)")
+    }
+
+    static func logKind(_ result: ActionResult) -> String {
+        switch result {
+        case .text(let outcome):
+            "text, \(outcome.characterCount) characters, \(outcome.notes.isEmpty ? "no" : "with") notes"
+        case .cancelled: "cancelled"
+        case .failed: "failed"
+        case .partial: "no text, some files not read"
+        case .done(let toast, _, _): toast == ToolWiringModel.noText ? "no text" : "no text, Hindi missing"
+        case .working: "working"
+        }
     }
 
     /// The enabled keyboard layouts and input methods, by identifier (no permission needed).

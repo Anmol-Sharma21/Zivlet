@@ -17,6 +17,8 @@ public enum TextError: Error, Sendable, Equatable, Codable {
     case unavailable
     /// The worker ended twice while reading this drop (P2-01's rule).
     case engineCrashedOnInput
+    /// More files in one drop than the limit (`TextJob.maximumInputs`), which it carries.
+    case tooManyFiles(limit: Int)
 }
 
 extension TextError {
@@ -32,6 +34,16 @@ extension TextError {
         case .tooLarge: "tooLarge"
         case .unavailable: "unavailable"
         case .engineCrashedOnInput: "engineCrashedOnInput"
+        case .tooManyFiles(let limit): "tooManyFiles(\(limit))"
+        }
+    }
+
+    /// Whether the error belongs to one file, so the rest of a drop goes on without it; a cancel, a missing engine
+    /// and a crashing worker stop the whole job.
+    public var isPerFile: Bool {
+        switch self {
+        case .cancelled, .unavailable, .engineCrashedOnInput, .tooManyFiles: false
+        case .recognitionFailed, .unreadable, .copyingNotAllowed, .pdfLocked, .tooManyPages, .tooLarge: true
         }
     }
 }

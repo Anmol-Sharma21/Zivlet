@@ -1,3 +1,4 @@
+import CoreGraphics
 import EngineVision
 import Foundation
 import Synchronization
@@ -34,10 +35,17 @@ struct WorkerServiceTextTests {
         #expect(log.all == [.progress(job.id, JobProgress(fraction: 1))])
     }
 
-    @Test func aFailureComesBackAsATextError() async throws {
+    @Test func anUnreadableFileComesBackNamedAndAJobErrorAsATextError() async throws {
         let job = TextJob(inputs: [try dir.file("bad.png", "junk")], languages: [.english])
         let reply = await service(ScriptedRecognizer(["x"])).handle(.recognizeText(job), events: { _ in })
-        #expect(reply == .textFailed(.unreadable))
+        guard case .text(let text) = reply else {
+            Issue.record("no text: \(reply)")
+            return
+        }
+        #expect(text.skipped == [SkippedFile(name: "bad.png", error: .unreadable)])
+        let failing = WorkerService(engines: [], text: TextReader(recognizer: FailingRecognizer()), onIdle: {})
+        let crash = TextJob(inputs: [try TextFiles.png("a.png", in: dir)], languages: [.english])
+        #expect(await failing.handle(.recognizeText(crash), events: { _ in }) == .textFailed(.unavailable))
     }
 
     @Test func cancelStopsARunningTextJob() async throws {
@@ -91,5 +99,12 @@ struct WorkerServiceTextTests {
         let service = WorkerService(engines: [], onIdle: {})
         let job = TextJob(inputs: [try TextFiles.png("a.png", in: dir)], languages: [.english])
         #expect(await service.handle(.recognizeText(job), events: { _ in }) == .failed(.engineMissing(.vision)))
+    }
+}
+
+/// A recognizer whose engine is gone: an error that stops the whole job.
+struct FailingRecognizer: TextRecognizing {
+    func recognize(_ image: CGImage, languages: [LanguageTag]) async throws(TextError) -> RecognizedPage {
+        throw .unavailable
     }
 }

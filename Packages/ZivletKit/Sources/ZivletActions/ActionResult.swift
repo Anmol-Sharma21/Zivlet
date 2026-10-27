@@ -41,7 +41,7 @@ public enum ActionResult: Sendable, Equatable {
     case partial(toast: String, card: ActionCard, undo: BatchID?)
     case failed(ActionCard)
     case cancelled
-    /// Copy Text's result (P2-104): "Text copied" with the text card below; no undo.
+    /// Copy Text's result (P2-104): "Text copied" (or "Text found") with the text card below; no undo.
     case text(TextOutcome)
     /// A long action still running: its line and Cancel; no linger (its result replaces it).
     case working(WorkingStatus)
@@ -57,7 +57,7 @@ public enum ActionResult: Sendable, Equatable {
     public var toast: String? {
         switch self {
         case .done(let toast, _, _), .partial(let toast, _, _): toast
-        case .text: "Text copied"
+        case .text(let outcome): outcome.headline
         case .working(let status): status.line
         case .failed, .cancelled: nil
         }

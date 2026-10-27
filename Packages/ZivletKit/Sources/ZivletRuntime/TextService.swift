@@ -56,9 +56,10 @@ public actor TextService {
         try result.get()
     }
 
-    /// Local regular files only, at most `TextJob.maximumInputs` of them; the worker checks again (C2).
+    /// Local regular files only, at least one and at most `TextJob.maximumInputs`; the worker checks again (C2).
     static func validate(_ urls: [URL]) throws(TextError) {
-        guard (1...TextJob.maximumInputs).contains(urls.count) else { throw .unreadable }
+        guard urls.count <= TextJob.maximumInputs else { throw .tooManyFiles(limit: TextJob.maximumInputs) }
+        guard !urls.isEmpty else { throw .unreadable }
         for url in urls {
             let regular = (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile ?? false
             guard url.isFileURL, regular else { throw .unreadable }

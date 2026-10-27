@@ -24,6 +24,17 @@ public struct FileTextResult: Codable, Sendable, Equatable {
     public var isEmpty: Bool { text.isEmpty }
 }
 
+/// An input whose text could not be read, by its display name and why (P2-104): the rest of the drop is kept.
+public struct SkippedFile: Codable, Sendable, Equatable {
+    public let name: String
+    public let error: TextError
+
+    public init(name: String, error: TextError) {
+        self.name = name
+        self.error = error
+    }
+}
+
 /// The result of one Copy Text job (P2-104). It lives in memory only and is never logged or stored (D14).
 public struct RecognizedText: Codable, Sendable, Equatable {
     public let text: String
@@ -32,8 +43,10 @@ public struct RecognizedText: Codable, Sendable, Equatable {
     public let scripts: Set<Script>
     /// The first three non-empty lines, each at most 80 characters.
     public let preview: [String]
-    /// Every input in order, with its own text.
+    /// Every input in order, with its own text (empty for a skipped one).
     public let perFile: [FileTextResult]
+    /// The inputs that could not be read, in drop order.
+    public let skipped: [SkippedFile]
 
     public var isEmpty: Bool { text.isEmpty }
 }
@@ -44,7 +57,8 @@ public enum TextAssembly {
     public static let previewLines = 3
     public static let previewWidth = 80
 
-    public static func combine(_ files: [FileText]) -> RecognizedText {
+    /// `files` holds every input in drop order (a skipped one with no pages), so `perFile` lines up with the inputs.
+    public static func combine(_ files: [FileText], skipped: [SkippedFile] = []) -> RecognizedText {
         let perFile = files.map { FileTextResult(name: $0.name, text: body(of: $0.pages)) }
         let found = perFile.filter { !$0.isEmpty }
         let text: String
@@ -57,7 +71,7 @@ public enum TextAssembly {
         return RecognizedText(
             text: text, characterCount: ownText.filter { $0 != "\n" }.count,
             scripts: RecognizedPage(text: ownText).scripts, preview: preview(found.map(\.text).joined(separator: "\n")),
-            perFile: perFile)
+            perFile: perFile, skipped: skipped)
     }
 
     /// The non-empty pages, cleaned and joined by a blank line, with one final newline; empty when none has text.
