@@ -31,21 +31,22 @@ public enum WorkerXPCHost {
         -> XPCListener.IncomingSessionRequest.Decision
     {
         let session = SessionBox()
+        let id = WorkerSessionID()
         let (decision, accepted) = request.accept(
             incomingMessageHandler: { (message: XPCReceivedMessage) -> (any Encodable)? in
-                answer(message, service: service, session: session)
+                answer(message, service: service, session: session, id: id)
             },
             cancellationHandler: { _ in
                 logger.notice("The app ended its worker session")
-                Task { await service.cancelAll() }
+                Task { await service.endSession(id) }
             })
         session.set(accepted)
         return decision
     }
 
-    private static func answer(_ message: XPCReceivedMessage, service: WorkerService, session: SessionBox)
-        -> (any Encodable)?
-    {
+    private static func answer(
+        _ message: XPCReceivedMessage, service: WorkerService, session: SessionBox, id: WorkerSessionID
+    ) -> (any Encodable)? {
         let request: WorkerRequest
         do {
             request = try message.decode(as: Envelope<WorkerRequest>.self).body
@@ -57,19 +58,22 @@ public enum WorkerXPCHost {
         }
         let pending = PendingReply(message)
         return message.handoffReply(to: replies) {
-            let reply = blockingHandle(request, service: service) { event in session.send(Envelope(event)) }
+            let reply = blockingHandle(request, service: service, session: id) { event in
+                session.send(Envelope(event))
+            }
             pending.message.reply(Envelope(reply))
         }
     }
 
     /// Runs the async handler and waits for it on this (GCD) thread, never on the cooperative pool.
     private static func blockingHandle(
-        _ request: WorkerRequest, service: WorkerService, events: @escaping WorkerService.EventSink
+        _ request: WorkerRequest, service: WorkerService, session: WorkerSessionID,
+        events: @escaping WorkerService.EventSink
     ) -> WorkerReply {
         let done = DispatchSemaphore(value: 0)
         let result = Mutex(WorkerReply.failed(.internalInvariant("The worker gave no reply.")))
         Task {
-            let reply = await service.handle(request, events: events)
+            let reply = await service.handle(request, session: session, events: events)
             result.withLock { $0 = reply }
             done.signal()
         }

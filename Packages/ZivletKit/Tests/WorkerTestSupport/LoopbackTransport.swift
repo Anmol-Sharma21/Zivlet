@@ -8,8 +8,8 @@ import ZivletWorkerCore
 
 /// A worker transport inside the test process: every request, reply and event is JSON-encoded and decoded through
 /// an `Envelope`, so a Codable mistake fails a unit test. It "crashes" as told: the channel closes, every call in
-/// flight fails with `.workerCrashed`, and the jobs it was running are cancelled in the service (a dead worker
-/// stops its work too).
+/// flight fails with `.workerCrashed`, and the steps its session was running are cancelled in the service (a dead
+/// worker stops its work too). Each channel is its own session, as each relaunch is in the app.
 public final class LoopbackTransport: WorkerTransport {
     public enum CrashRule: Sendable {
         case never
@@ -109,13 +109,13 @@ final class LoopbackChannel: WorkerChannel {
     struct State {
         var closed = false
         var waiting: [UUID: Waiter] = [:]
-        var jobs: Set<JobID> = []
     }
 
     let transport: LoopbackTransport
     let onEvent: @Sendable (WorkerEvent) -> Void
     let onClosed: @Sendable () -> Void
     let state = Mutex(State())
+    let session = WorkerSessionID()
 
     init(
         transport: LoopbackTransport, onEvent: @escaping @Sendable (WorkerEvent) -> Void,
@@ -138,7 +138,6 @@ final class LoopbackChannel: WorkerChannel {
             let accepted = state.withLock { state in
                 guard !state.closed else { return false }
                 state.waiting[call] = waiter
-                if let job = Self.job(of: wire) { state.jobs.insert(job) }
                 return true
             }
             guard accepted else { return waiter.resume(returning: .failure(.workerCrashed)) }
@@ -152,9 +151,17 @@ final class LoopbackChannel: WorkerChannel {
         state.withLock { $0.closed = true }
     }
 
+    /// A request that reaches a closed session is never started; its call fails as a dead session's calls do.
     private func serve(_ request: WorkerRequest, call: UUID) async {
+        let (closed, unserved) = state.withLock { state in
+            (state.closed, state.closed ? state.waiting.removeValue(forKey: call) : nil)
+        }
+        if closed {
+            unserved?.resume(returning: .failure(.workerCrashed))
+            return
+        }
         let onEvent = self.onEvent
-        let reply = await transport.service.handle(request) { event in
+        let reply = await transport.service.handle(request, session: session) { event in
             guard let wire = try? Envelope<WorkerEvent>.decode(Envelope(event).encoded()).body else { return }
             onEvent(wire)
         }
@@ -171,31 +178,14 @@ final class LoopbackChannel: WorkerChannel {
 
     /// The worker died (or exited idle): every waiting call fails, the jobs stop, the app hears the close.
     func closeFromWorker() {
-        let (waiting, jobs) = state.withLock { state in
+        let waiting = state.withLock { state in
             state.closed = true
-            defer {
-                state.waiting = [:]
-                state.jobs = []
-            }
-            return (Array(state.waiting.values), state.jobs)
+            defer { state.waiting = [:] }
+            return Array(state.waiting.values)
         }
         waiting.forEach { $0.resume(returning: .failure(.workerCrashed)) }
-        let service = transport.service
-        // Only the steps that run stop: a dead worker forgets everything, so no cancel may be left behind for a retry
-        // of the same job (the service remembers a cancel that comes before its job).
-        Task {
-            let running = await service.runningJobs
-            for job in jobs where running.contains(job) { _ = await service.handle(.cancel(job), events: { _ in }) }
-        }
+        let (service, session) = (transport.service, session)
+        Task { await service.endSession(session) }
         onClosed()
-    }
-
-    private static func job(of request: WorkerRequest) -> JobID? {
-        switch request {
-        case .prepare(let job, _): job.id
-        case .execute(let job, _, _): job
-        case .recognizeText(let job): job.id
-        default: nil
-        }
     }
 }

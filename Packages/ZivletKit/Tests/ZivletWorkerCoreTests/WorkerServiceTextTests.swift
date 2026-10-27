@@ -78,7 +78,7 @@ struct WorkerServiceTextTests {
         for _ in 0..<500 where recognizer.calls == 0 { try await Task.sleep(for: .milliseconds(2)) }
         await sleeper.waitForRequests(1)
         let armed = sleeper.requested.count
-        await service.cancelAll()
+        await service.endSession(.single)
         #expect(await reply.value == .textFailed(.cancelled))
         #expect(recognizer.calls == 1)
         await sleeper.waitForRequests(armed + 1)
