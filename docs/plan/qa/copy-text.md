@@ -27,12 +27,15 @@ check what only a person, real files or another macOS can show.
 | CT7 | The first run | On a fresh install (or after an OS update), finish onboarding and Copy Text at once | "Preparing text recognition (one time)…", then the text; write down how long it took | |
 | CT8 | Real Hindi photos and scans (OS-M6-4) | Receipts, signs, forms; private | Text read and judged by the owner; a CER only where a ground truth was typed | |
 | CT9 | Protected folders (OS-M6-5) | Copy Text on files in Desktop, Documents and Downloads with the worker on | No permission prompt, or one that names Zivlet (not the worker) | |
+| CT14 | Cancel | Drop a long scanned PDF (100 pages or more) on COPY TEXT; while the line shows, press stop.circle on the island; repeat with the HUD near the drop and press Cancel, then once more pressing Escape after clicking into the panel | The line goes at once with no result; the clipboard is unchanged; Activity Monitor shows ZivletWorker's CPU falling within a few seconds | |
+| CT15 | One bad file in a drop | Drop two images and a password-locked PDF together | The text of the two images is copied; the card notes "1 file couldn't be read." and "<name> — locked" | |
+| CT16 | Show All with the keyboard | Open Show All, press ⌘A, then ⌘C, and paste into TextEdit | The whole text is pasted | |
 
 ## A. Look and access
 
 | # | Check | Steps | Expected | Result |
 |---|---|---|---|---|
 | CT10 | VoiceOver (OS-M6-8) | With VoiceOver on, run CT1; move through the card; open Show All | The card's buttons are announced as "Copy again", "Save as text" and "Show all text"; Show All's text reads line by line | |
-| CT11 | Reduce Transparency, Increase Contrast | Turn each on in System Settings › Accessibility › Display; run CT1 and open Show All | The card and Show All use a solid finish; text stays at 4.5:1 or more | |
+| CT11 | Reduce Transparency, Increase Contrast | Turn each on in System Settings › Accessibility › Display; run CT1 and open Show All; with Show All open, turn each off and on again | The card and Show All use a solid finish (Show All with a thin outline under Increase Contrast) and Show All changes at once; text stays at 4.5:1 or more | |
 | CT12 | The setting | Settings › General › Text recognition › Read text in: try each choice, Copy Text after each | Each choice changes the next result's languages; on a Mac without Hindi the Hindi choice is disabled and "Hindi isn't available on this version of macOS." shows below | |
 | CT13 | macOS 26.x (OS-M6-2) | On a Mac or VM with macOS 26.x, run `make ocr-check` | Hindi is listed; 12/12 fixtures within 1 % CER; write down the cold compile time | |
