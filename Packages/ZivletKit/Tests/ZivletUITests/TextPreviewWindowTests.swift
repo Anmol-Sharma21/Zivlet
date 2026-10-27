@@ -51,7 +51,8 @@ struct TextPreviewWindowTests {
         defer { window.close() }
         window.load(TextPreviewModel(title: "t", text: "पहली पंक्ति\nSecond line\n"))
         #expect(window.performKeyEquivalent(with: try Self.command("a", code: 0)))
-        #expect(window.textView.selectedRange() == NSRange(location: 0, length: (window.textView.string as NSString).length))
+        let all = NSRange(location: 0, length: (window.textView.string as NSString).length)
+        #expect(window.textView.selectedRange() == all)
         #expect(window.performKeyEquivalent(with: try Self.command("c", code: 8)))
     }
 
