@@ -1,4 +1,5 @@
 import AppKit
+import NotchTestSupport
 import SwiftUI
 import Testing
 import ZivletCore
@@ -84,7 +85,7 @@ struct HUDCopyTests {
 @MainActor
 struct HUDTimingTests {
     @Test func firstFrameWithin50ms() throws {
-        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] }, clock: ManualClock())
         let snapshot = try HUDFx.snapshot(submitted: 1)
         let start = ContinuousClock.now
         hud.prepare(near: CGPoint(x: -4000, y: -4000))
@@ -96,7 +97,7 @@ struct HUDTimingTests {
     }
 
     @Test func eachConcurrentBatchHasItsOwnCascadedPanel() throws {
-        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] }, clock: ManualClock())
         let (a, b) = (try HUDFx.snapshot(submitted: 1), try HUDFx.snapshot(submitted: 2))
         hud.prepare(near: CGPoint(x: -4000, y: -4400))
         hud.show(a)
@@ -111,7 +112,7 @@ struct HUDTimingTests {
 
     /// A(0) and B(1) open, A closes: the next batch goes where A was, not on top of B.
     @Test func aNewBatchTakesTheSlotAClosedOneLeft() throws {
-        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] }, clock: ManualClock())
         let (a, b, c) = (
             try HUDFx.snapshot(submitted: 1), try HUDFx.snapshot(submitted: 1), try HUDFx.snapshot(submitted: 1)
         )
@@ -130,7 +131,7 @@ struct HUDTimingTests {
 
     /// Every drop, not only the first, finds a panel already built (P1-40: only place and fill on the drop path).
     @Test func theSparePanelIsRebuiltAfterADrop() async throws {
-        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] }, clock: ManualClock())
         #expect(hud.hasSpare)
         let snapshot = try HUDFx.snapshot(submitted: 1)
         hud.show(snapshot)

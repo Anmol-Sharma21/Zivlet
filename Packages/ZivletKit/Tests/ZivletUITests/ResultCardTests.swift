@@ -1,4 +1,5 @@
 import AppKit
+import NotchTestSupport
 import SwiftUI
 import TestSupport
 import Testing
@@ -101,7 +102,7 @@ struct ResultCardSnapshotTests {
     }
 
     @Test func retryClosesTheFailedCardAndAsksForANewBatch() throws {
-        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] }, clock: ManualClock())
         var retried: [BatchID] = []
         hud.onRetry = { batch, _ in retried.append(batch) }
         let snapshot = try HUDFx.failed(error: .stalled)
@@ -111,7 +112,7 @@ struct ResultCardSnapshotTests {
     }
 
     @Test func theHUDRendersAFinishedBatchAsACard() throws {
-        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        let hud = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] }, clock: ManualClock())
         let snapshot = try HUDFx.finished(outputs: [("photo.png", before: 2_100_000, after: 640_000)])
         hud.show(snapshot)
         #expect(hud.isVisible)
@@ -147,7 +148,7 @@ struct ResultCardUndoTests {
     }
 
     @Test func undoIsAskedOnceWhileItsReplyIsPending() async throws {
-        let hud = ResultHUD(screens: Self.screens)
+        let hud = ResultHUD(screens: Self.screens, clock: ManualClock())
         let snapshot = try HUDFx.finished(outputs: [("photo.png", before: 2_000, after: 1_000)])
         var asked = 0
         hud.onUndo = { _ in
@@ -166,7 +167,7 @@ struct ResultCardUndoTests {
 
     /// The outputs are in the Trash: nothing on the card may act on them, and the card leaves on its own again.
     @Test func afterAnUndoTheTrashedOutputsAreNotOfferedAndTheCardLeaves() async throws {
-        let hud = ResultHUD(screens: Self.screens)
+        let hud = ResultHUD(screens: Self.screens, clock: ManualClock())
         let snapshot = try HUDFx.finished(outputs: [("photo.png", before: 2_000, after: 1_000)])
         hud.onUndo = { _ in Self.trashed(snapshot) }
         hud.show(snapshot)
@@ -179,7 +180,7 @@ struct ResultCardUndoTests {
     }
 
     @Test func copyAfterAPartialUndoOffersOnlyWhatIsLeft() async throws {
-        let hud = ResultHUD(screens: Self.screens)
+        let hud = ResultHUD(screens: Self.screens, clock: ManualClock())
         let snapshot = try HUDFx.finished(outputs: [("a.png", before: 2, after: 1), ("b.png", before: 2, after: 1)])
         let (first, second) = (snapshot.outputs[0].url, snapshot.outputs[1].url)
         hud.onUndo = { _ in
@@ -196,8 +197,23 @@ struct ResultCardUndoTests {
         hud.close(snapshot.batch)
     }
 
+    /// The linger restarted after the reply is what closes the card; the test moves the clock past it (D-M7-7).
+    @Test func theCardLeavesWhenTheLingerAfterAnUndoEnds() async throws {
+        let clock = ManualClock()
+        let hud = ResultHUD(screens: Self.screens, clock: clock)
+        let snapshot = try HUDFx.finished(outputs: [("photo.png", before: 2_000, after: 1_000)])
+        hud.onUndo = { _ in UndoReply(message: "This can no longer be undone.", canRetry: false) }
+        hud.show(snapshot)
+        hud.press(.undo, on: snapshot.batch)
+        await hud.pendingUndo(snapshot.batch)?.value
+        #expect(hud.isVisible && hud.isLingering(snapshot.batch))
+        let linger = try #require(ResultCardModel(snapshot).lingers)
+        await clock.advance(by: linger + .seconds(1))
+        #expect(!hud.isVisible && !hud.isLingering(snapshot.batch))
+    }
+
     @Test func anUndoThatChangedNothingKeepsTheButtons() async throws {
-        let hud = ResultHUD(screens: Self.screens)
+        let hud = ResultHUD(screens: Self.screens, clock: ManualClock())
         let snapshot = try HUDFx.finished(outputs: [("photo.png", before: 2_000, after: 1_000)])
         hud.onUndo = { _ in UndoReply(message: "This can no longer be undone.", canRetry: false) }
         hud.show(snapshot)

@@ -100,7 +100,7 @@ struct NotchHUDClientTests {
 
     @Test func resultHUDRetryNoLongerQueuesItsOwnAnchor() throws {
         let screen = CGRect(x: -5000, y: -5000, width: 1440, height: 900)
-        let hud = ResultHUD(screens: { [screen] })
+        let hud = ResultHUD(screens: { [screen] }, clock: ManualClock())
         var retried: [(BatchID, CGPoint?)] = []
         hud.onRetry = { retried.append(($0, $1)) }
         let failed = try HUDFx.failed(error: .stalled)
@@ -115,7 +115,8 @@ struct NotchHUDClientTests {
     }
 
     @Test func resultHUDAndActionHUDStillWorkThroughTheProtocols() throws {
-        let presenter: any HUDPresenter = ResultHUD(screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] })
+        let presenter: any HUDPresenter = ResultHUD(
+            screens: { [CGRect(x: -5000, y: -5000, width: 1440, height: 900)] }, clock: ManualClock())
         presenter.prepare(near: nil)
         let snapshot = try HUDFx.snapshot(submitted: 1)
         presenter.show(snapshot)

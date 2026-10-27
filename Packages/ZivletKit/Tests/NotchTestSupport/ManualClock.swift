@@ -30,12 +30,20 @@ public final class ManualClock: MonotonicClock {
         }
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-                let ready = state.withLock { s in
-                    guard s.now < deadline else { return true }
+                // A task cancelled before it got here already ran onCancel with nothing to remove, so it must not
+                // register: it would sleep on and wake at a later advance, as no real clock lets it.
+                enum Outcome { case due, cancelled, sleeping }
+                let outcome = state.withLock { s -> Outcome in
+                    guard s.now < deadline else { return .due }
+                    guard !Task.isCancelled else { return .cancelled }
                     s.sleepers[id] = Sleeper(deadline: deadline, continuation: continuation)
-                    return false
+                    return .sleeping
                 }
-                if ready { continuation.resume() }
+                switch outcome {
+                case .due: continuation.resume()
+                case .cancelled: continuation.resume(throwing: CancellationError())
+                case .sleeping: break
+                }
             }
         } onCancel: {
             state.withLock { $0.sleepers.removeValue(forKey: id) }?.continuation.resume(throwing: CancellationError())
