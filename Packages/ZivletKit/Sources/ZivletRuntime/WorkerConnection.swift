@@ -92,7 +92,7 @@ public final class WorkerConnection: Sendable {
     }
 
     public func warmUpText(_ languages: [LanguageTag]) async throws(JobError) -> Result<Void, TextError> {
-        switch try await send(.warmUpText(languages)) {
+        switch try await send(.warmUpText(JobID(), languages)) {
         case .accepted: return .success(())
         case .textFailed(let error): return .failure(error)
         default: throw Self.unexpected("warmUpText")

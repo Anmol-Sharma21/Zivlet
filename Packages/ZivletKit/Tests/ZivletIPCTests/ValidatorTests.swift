@@ -116,7 +116,7 @@ struct ValidatorTests {
         }
         #expect(rig.refusal(job([rig.input], [.hindi, .english])) == nil)
         #expect(rig.refusal(.textCapabilities) == nil)
-        #expect(rig.refusal(.warmUpText([.english])) == nil)
+        #expect(rig.refusal(.warmUpText(rig.job, [.english])) == nil)
         for name in ["hosts.png", "folder.png"] {
             #expect(rig.refusal(job([rig.dir.url.appending(path: name)], [.english])) == .unsupportedInput(.notAFile))
         }
@@ -133,7 +133,7 @@ struct ValidatorTests {
             Issue.record("too many inputs passed")
             return
         }
-        guard case .internalInvariant = rig.refusal(.warmUpText([])) else {
+        guard case .internalInvariant = rig.refusal(.warmUpText(rig.job, [])) else {
             Issue.record("a warm-up without languages passed")
             return
         }

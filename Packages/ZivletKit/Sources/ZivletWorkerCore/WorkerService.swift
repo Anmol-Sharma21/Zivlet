@@ -7,10 +7,12 @@ import ZivletIPC
 import os
 
 /// The worker's logic, free of XPC (P2-01, plan 18c C3): every request is validated (`WorkerRequestValidator`),
-/// then answered by a hosted engine. `execute` and `prepare` run in a child task kept by job id, so `cancel(job)`
-/// stops them; progress and spawned PIDs go out as events while the step runs, always before its reply. Every
-/// engine error comes back as `.failed(JobError)`. The idle timer is disarmed while any request is being handled
-/// and armed again when the last one ends (D-M6-10).
+/// then answered by a hosted engine. `execute`, `prepare`, text jobs and the text warm-up run in a child task kept by
+/// job id, so `cancel(job)` and the end of the session stop them. A cancel can be handled before its request (they
+/// are separate messages), so a cancel for a job that is not running is remembered and the job, when it comes, is
+/// answered as cancelled without starting. Progress and spawned PIDs go out as events while the step runs; they are
+/// best-effort and may reach the app after the reply. Every engine error comes back as `.failed(JobError)`. The idle
+/// timer is disarmed while any request is being handled and armed again when the last one ends (D-M6-10).
 public actor WorkerService {
     public typealias EventSink = @Sendable (WorkerEvent) -> Void
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
@@ -22,6 +24,9 @@ public actor WorkerService {
     private let idle: IdleTimer
     private let onSelfKill: @Sendable (Int) -> Void
     private var jobs: [JobID: Task<WorkerReply, Never>] = [:]
+    /// Cancels that came before their job, oldest first; bounded, since a cancel can also come after its job ended.
+    private var cancelledEarly: [JobID] = []
+    static let rememberedCancels = 64
     private var handling = 0
 
     /// `text` hosts Copy Text (nil: text requests are refused as `.engineMissing(.vision)`). `onSelfKill` serves the
@@ -68,15 +73,17 @@ public actor WorkerService {
             guard let engine = engines.first(where: { $0.handles(job.pair) }) else {
                 return .failed(.pairNotSupported(job.input.format, job.target))
             }
-            return await track(job.id) { await Self.prepare(engine, job, workspace) }
+            return await track(job.id, cancelled: .failed(.cancelled)) { await Self.prepare(engine, job, workspace) }
         case .execute(let job, let plan, let limit):
             guard let engine = engine(plan.engine) else { return .failed(.engineMissing(plan.engine)) }
-            return await track(job) { await Self.execute(engine, plan, job: job, limit: limit, events: events) }
+            return await track(job, cancelled: .failed(.cancelled)) {
+                await Self.execute(engine, plan, job: job, limit: limit, events: events)
+            }
         case .verify(let output, let plan):
             guard let engine = engine(plan.engine) else { return .failed(.engineMissing(plan.engine)) }
             return await Self.verify(engine, output, plan)
         case .cancel(let job):
-            jobs[job]?.cancel()
+            cancel(job)
             return .accepted
         case .recognizeText, .textCapabilities, .warmUpText:
             guard let text else { return .failed(.engineMissing(.vision)) }
@@ -94,15 +101,20 @@ public actor WorkerService {
 
     private func engine(_ id: EngineID) -> (any Engine)? { engines.first { $0.id == id } }
 
-    /// Text jobs run as tracked steps (so cancel reaches them); the warm-up at `.utility` (D-M6-16).
+    /// Text jobs and the warm-up run as tracked steps (so cancel and the session's end reach them); the warm-up at
+    /// `.utility` (D-M6-16).
     private func answerText(_ request: WorkerRequest, reader: TextReader, events: @escaping EventSink) async
         -> WorkerReply
     {
         switch request {
         case .recognizeText(let job):
-            return await track(job.id) { await Self.recognize(job, reader: reader, events: events) }
-        case .warmUpText(let languages):
-            return await Task(priority: .utility) { await Self.warmUp(languages, reader: reader) }.value
+            return await track(job.id, cancelled: .textFailed(.cancelled)) {
+                await Self.recognize(job, reader: reader, events: events)
+            }
+        case .warmUpText(let id, let languages):
+            return await track(id, cancelled: .textFailed(.cancelled), priority: .utility) {
+                await Self.warmUp(languages, reader: reader)
+            }
         default:
             return .textCapabilities(reader.currentCapabilities)
         }
@@ -113,6 +125,7 @@ public actor WorkerService {
             try await reader.warmUp(languages)
             return .accepted
         } catch {
+            logger.error("Text warm-up stopped: \(error.logDescription, privacy: .public)")
             return .textFailed(error)
         }
     }
@@ -124,17 +137,32 @@ public actor WorkerService {
             let text = try await reader.read(job) { events(.progress(job.id, JobProgress(fraction: $0))) }
             return .text(text)
         } catch {
+            logger.error("Text job failed: \(error.logDescription, privacy: .public)")
             return .textFailed(error)
         }
     }
 
-    /// Runs one step in a child task kept under `job`, so a cancel request can reach it.
-    private func track(_ job: JobID, _ step: @escaping @Sendable () async -> WorkerReply) async -> WorkerReply {
-        let task = Task { await step() }
+    /// Runs one step in a child task kept under `job`, so a cancel request can reach it; a job cancelled before it
+    /// came never starts and gets `cancelled` back.
+    private func track(
+        _ job: JobID, cancelled: WorkerReply, priority: TaskPriority? = nil,
+        _ step: @escaping @Sendable () async -> WorkerReply
+    ) async -> WorkerReply {
+        if let early = cancelledEarly.firstIndex(of: job) {
+            cancelledEarly.remove(at: early)
+            return cancelled
+        }
+        let task = Task(priority: priority) { await step() }
         jobs[job] = task
         let reply = await task.value
         jobs[job] = nil
         return reply
+    }
+
+    /// Stops `job` when it runs, else remembers the cancel for when it comes.
+    private func cancel(_ job: JobID) {
+        if let task = jobs[job] { return task.cancel() }
+        cancelledEarly = Array((cancelledEarly + [job]).suffix(Self.rememberedCancels))
     }
 
     private func begin() {

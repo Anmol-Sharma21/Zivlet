@@ -17,8 +17,9 @@ public enum WorkerRequest: Codable, Sendable, Equatable {
     case recognizeText(TextJob)
     /// The languages this Mac's Vision reads (OWN-OCR-1).
     case textCapabilities
-    /// The one-time warm-up in the production configuration (D-M6-16).
-    case warmUpText([LanguageTag])
+    /// The one-time warm-up in the production configuration (D-M6-16), under its own job id so a cancel or the end
+    /// of the session stops it.
+    case warmUpText(JobID, [LanguageTag])
     #if DEBUG
         /// The smoke run's real crash (D-M6-18): the worker SIGKILLs itself, so no crash report is written.
         case selfKillForTesting(afterMilliseconds: Int)

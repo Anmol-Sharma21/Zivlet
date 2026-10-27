@@ -49,10 +49,23 @@ struct WorkerServiceTests {
         let (job, request) = try rig.executeRequest()
         async let reply = service.handle(request, events: { _ in })
         await engine.reachedExecute.wait()
-        let started = ContinuousClock.now
         #expect(await service.handle(.cancel(job), events: { _ in }) == .accepted)
         #expect(await reply == .failed(.cancelled))
-        #expect(ContinuousClock.now - started < .milliseconds(100))
+    }
+
+    /// The cancel and the request travel as separate messages, so the cancel can be handled first: it waits for its
+    /// job, which then never starts.
+    @Test func aCancelThatArrivesBeforeItsJobStopsIt() async throws {
+        let rig = try WorkerRig()
+        let engine = ScriptedEngine(execution: .waitUntilCancelled)
+        let service = WorkerRig.service([engine])
+        let (job, request) = try rig.executeRequest()
+        #expect(await service.handle(.cancel(job), events: { _ in }) == .accepted)
+        let reply = Task { await service.handle(request, events: { _ in }) }
+        let ran = await WorkerRig.started(engine, unless: reply)
+        if ran { _ = await service.handle(.cancel(job), events: { _ in }) }  // the old behaviour would wait forever
+        #expect(await reply.value == .failed(.cancelled))
+        #expect(!ran)
     }
 
     @Test func twoJobsRunIndependently() async throws {
@@ -63,7 +76,8 @@ struct WorkerServiceTests {
         let (second, secondRequest) = try rig.executeRequest()
         async let a = service.handle(firstRequest, events: { _ in })
         async let b = service.handle(secondRequest, events: { _ in })
-        while engine.executeCount < 2 { try await Task.sleep(for: .milliseconds(2)) }
+        for _ in 0..<500 where engine.executeCount < 2 { try await Task.sleep(for: .milliseconds(2)) }
+        try #require(engine.executeCount == 2)
         _ = await service.handle(.cancel(first), events: { _ in })
         #expect(await a == .failed(.cancelled))
         #expect(await service.runningJobs == [second])

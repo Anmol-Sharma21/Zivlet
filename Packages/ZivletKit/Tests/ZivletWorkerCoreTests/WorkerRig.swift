@@ -79,6 +79,19 @@ struct WorkerRig {
         return (request.id, .execute(request.id, plan, outputByteLimit: nil))
     }
 
+    /// Whether the engine started a step before `reply` came back, polling for at most a second.
+    static func started(_ engine: ScriptedEngine, unless reply: Task<WorkerReply, Never>) async -> Bool {
+        let done = Signal()
+        Task {
+            _ = await reply.value
+            done.fire()
+        }
+        for _ in 0..<500 where engine.executeCount == 0 && !done.hasFired {
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        return engine.executeCount > 0
+    }
+
     static func service(
         _ engines: [any Engine], sleeper: ManualSleeper = ManualSleeper(), idle: IdleCounter = IdleCounter()
     ) -> WorkerService {

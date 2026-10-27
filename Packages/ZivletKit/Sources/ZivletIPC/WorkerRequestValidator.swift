@@ -34,7 +34,7 @@ public struct WorkerRequestValidator: Sendable {
             try Self.check(job)
         case .textCapabilities:
             try checkVision()
-        case .warmUpText(let languages):
+        case .warmUpText(_, let languages):
             try checkVision()
             try Self.check(languages)
         #if DEBUG

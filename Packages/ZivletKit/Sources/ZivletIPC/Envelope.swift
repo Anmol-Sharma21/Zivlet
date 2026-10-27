@@ -5,7 +5,7 @@ import ZivletCore
 /// so a mismatch means a damaged or mixed install.
 public enum WorkerProtocol {
     /// 2: the text requests and replies of Copy Text (plan 18d D8).
-    public static let version = 2
+    public static let version = 3
 }
 
 public enum WorkerProtocolError: Error, Equatable, Sendable {

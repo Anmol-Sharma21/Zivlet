@@ -47,7 +47,7 @@ enum IPCFixtures {
             .ping, .capabilities, .prepare(request(), JobWorkspace(job: job, stagedFile: staged)),
             .execute(job, plan(), outputByteLimit: 9_000), .execute(job, plan(), outputByteLimit: nil),
             .verify(output, plan()), .cancel(job), .recognizeText(textJob), .textCapabilities,
-            .warmUpText([.hindi, .english]),
+            .warmUpText(job, [.hindi, .english]),
         ]
         #if DEBUG
             all += [.selfKillForTesting(afterMilliseconds: 25), .setIdleForTesting(seconds: 5)]

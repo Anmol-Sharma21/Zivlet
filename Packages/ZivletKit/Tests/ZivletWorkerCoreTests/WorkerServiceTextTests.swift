@@ -54,8 +54,37 @@ struct WorkerServiceTextTests {
         let recognizer = ScriptedRecognizer(["x"])
         let service = service(recognizer)
         #expect(await service.handle(.textCapabilities, events: { _ in }) == .textCapabilities(Self.capabilities))
-        #expect(await service.handle(.warmUpText([.english]), events: { _ in }) == .accepted)
+        #expect(await service.handle(.warmUpText(JobID(), [.english]), events: { _ in }) == .accepted)
         #expect(recognizer.calls == 3)
+    }
+
+    /// The app quit or its session ended mid warm-up: the warm-up stops at its next image and the idle timer runs again,
+    /// so the worker does not keep compiling for nobody.
+    @Test func endingTheSessionStopsARunningWarmUpAndArmsTheIdleTimer() async throws {
+        let recognizer = ScriptedRecognizer(["x"], delay: .seconds(2))
+        let sleeper = ManualSleeper()
+        let service = WorkerService(
+            engines: [], text: TextReader(recognizer: recognizer, capabilities: { Self.capabilities }),
+            sleep: sleeper.sleep, onIdle: {})
+        let reply = Task { await service.handle(.warmUpText(JobID(), [.english]), events: { _ in }) }
+        for _ in 0..<500 where recognizer.calls == 0 { try await Task.sleep(for: .milliseconds(2)) }
+        await sleeper.waitForRequests(1)
+        let armed = sleeper.requested.count
+        await service.cancelAll()
+        #expect(await reply.value == .textFailed(.cancelled))
+        #expect(recognizer.calls == 1)
+        await sleeper.waitForRequests(armed + 1)
+        #expect(sleeper.requested.count == armed + 1)
+    }
+
+    @Test func aCancelStopsTheWarmUp() async throws {
+        let recognizer = ScriptedRecognizer(["x"], delay: .seconds(2))
+        let service = service(recognizer)
+        let id = JobID()
+        let reply = Task { await service.handle(.warmUpText(id, [.english]), events: { _ in }) }
+        for _ in 0..<500 where recognizer.calls == 0 { try await Task.sleep(for: .milliseconds(2)) }
+        #expect(await service.handle(.cancel(id), events: { _ in }) == .accepted)
+        #expect(await reply.value == .textFailed(.cancelled))
     }
 
     @Test func aWorkerWithoutTextRefusesTextRequests() async throws {
