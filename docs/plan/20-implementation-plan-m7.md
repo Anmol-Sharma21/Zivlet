@@ -378,3 +378,4 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 | G-M7-6 | P2-12 and P2-57 not built | OS-M7-8 |
 | G-M7-7 | S-PDF-LOCK interop matrix (P2-192) | OS-M7-5 |
 | G-M7-8 | `SecCreateSharedWebCredentialPassword` not exercised by automation | OS-M7-4 |
+| G-M7-9 | Unit tests outside stream R's four still assert wall time (near-drop HUD 50 ms, scheduler 100 ms / 1 s, shared load 300 ms, stall watch, text service, tray, OCR); found in R5 | Same treatment as R4–R7 in a later task (20a, execution notes) |

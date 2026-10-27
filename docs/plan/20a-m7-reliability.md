@@ -223,3 +223,65 @@ No commit (record only).
 | D-M7-7 | HUD tests run on `ManualClock` unless they test real sleeping |
 | D-M7-8 | `coverage.sh` keeps the test log, prints failing tests and issues, and reports no coverage from a failed run |
 | D-M7-9 | Every exit row and demo makes the fixtures it uses; a script test runs each such row alone |
+
+---
+
+## Execution notes (stream R, done on `m7`)
+
+Facts for the record (F4). Commits: R1 `af8f8f3`, R2 `625cb21`, R3 `6ef9ffe`, R4 `29e21e8` and `90b4f87`, R5 `a738638`,
+R6 `8bf0930` and `5d2c092`, R7 `4954de5`. R0 and R8 have no commits.
+
+**R0 baseline.** `make test` on `77e181c`: 2084 tests in 21 bundles, all passing. The load was 4.9 before and 15.0
+after.
+
+**Deviations from the tasks above:**
+
+- **R2.** The audit found one more script that used a fixture it did not make: the drop step of `bench.sh` (m4-exit
+  X6). It now makes the small set. X3 runs `make fixtures` before the demo, and the demo also makes its own fixture.
+- **R3.** `timing.sh` waits a second time after building, because the build raises the load too. A failure while the
+  load rose above the limit during the run is reported as `not judged`. `--guard` runs only the wait, for X2. Suites
+  run one at a time (`--no-parallel`): run beside the encode and the 80 children, the drop test measured 59.6 ms;
+  alone it measured 18.9 ms.
+- **R4.** The timing suite judges *every* one of the 20 drops against 50 ms, not only the p95 (stricter than
+  D-M7-4). Measured with the gate off: p50 2.1–2.5 ms, p95 2.9–6.0 ms, slowest (the first drop) 16–26 ms. A skip
+  inside m5a X2 now carries through `exit-lib.sh`, so m5b Y3 and m6 Z3 show SKIP instead of FAIL.
+- **R5.** The race was reproduced *without* load: the old design, given a child that sets its trap after 0.5 s,
+  failed 3 of 3 runs. With the plain child it passed 0 of 20 times at load 2.5–3. The slow-starting child is now a
+  case of the fixed test. The teardown-beside-80-children test checks an order instead of a time: the cancelled child
+  ends while every other child still runs. It was seen to fail, after 30 s, when the reap was moved onto the shared
+  pool. `aTaskCancelledBeforeLaunchSpawnsNothing` lost its 500 ms bound; not spawning is the behaviour it checks. The
+  1.5 s bounds of the group test and the teardown test moved to `SubprocessTiming`.
+- **R6.** The check that the staged file is removed was **dropped** from the engine test. The engine leaves the file
+  by design, and the scheduler removes the staging folder (`JobSchedulerTests`). `ChildSignalling` also reports how
+  the leader exited, which the split needs. The cancel now waits for ffmpeg's first progress past zero instead of a
+  fixed 300 ms.
+- **R6 finding (G-M7-3).** Measured with the gate off at load 3–4.6, five runs: SIGINT is sent at once. libvpx-vp9
+  ffmpeg does not stop on it and is SIGKILLed at the grace. The group is gone after **1066–1074 ms**, and the job
+  returns 0.3 ms later. **NFR-9 (≤ 1 s) is missed by about 70 ms.** The budget is unchanged. The comparison runs
+  inside `withKnownIssue` (intermittent) until the owner decides (OS-M7-7). The old test's 1.46–1.49 s waited only a
+  fixed 300 ms after the spawn; why it took about 0.4 s longer than the split was not investigated.
+- **R7.** `ManualClock` let a task that was cancelled before its sleep registered keep sleeping. The stale linger
+  then closed the card at the next advance, so the new expiry test passed even with the restarted linger's expiry
+  removed. `ManualClock` now refuses to register a cancelled sleeper, and that mutation fails the test. `ActionHUD`
+  has no clock to inject (noted in the commit).
+
+**R8 proof under load.** Each fixed test ran 20 times by name with `Scripts/flaky-watch.sh`. Beside it ran a full
+debug build and a release build of the package in a separate build folder, plus `nice -n 10 make test` three times.
+The watched test ran through the toolchain's `swiftpm-testing-helper` on the built bundle, because two `swift test`
+processes queue on the `.build` lock.
+
+| Batch | Test | Result | Load 1m before → after |
+|---|---|---|---|
+| R4 | `NotchHUDDropPathTests` (3 tests) | 20/20 | 11.8 → 13.0 |
+| R5 | `aChildIgnoringSIGINTIsKilledAfterTheGrace` (2 cases) | 20/20 | 13.0 → 24.1 |
+| R5 | `teardownIsPromptWhileManyOtherChildrenRun` | 20/20 | 24.1 → 36.8 |
+| R6 | `cancellingARunningEncodeStopsFFmpeg` | 20/20 | 36.8 → 36.4 |
+| R7 | `anUndoThatChangedNothingKeepsTheButtons` | 20/20 | 36.4 → 33.8 |
+
+The three `make test` runs that served as load also passed, with no issues.
+
+**Not done in stream R (G-M7-9).** Unit tests that still judge wall time, outside the four named tests: the near-drop
+`HUDTimingTests.firstFrameWithin50ms` (50 ms), `JobSchedulerTests` (100 ms and 1 s), `SharedLoadTests` (300 ms),
+`StallWatchTests` (2 s), `TextServiceTests` (2 s), `TrayTimingTests` and the opt-in `OCRFixtureTests` (3 s). None of
+them was seen to fail in this stream's runs. D-M7-3's "no wall-clock assertion outside `ZivletTimingTests`" is
+therefore not yet true; they are the next candidates for the same treatment.
