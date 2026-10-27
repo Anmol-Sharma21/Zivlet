@@ -434,3 +434,28 @@ plan 18 (41 KB).
 
 Result: every gate passes in a clean clone except the `WorkerRetryTests` failure (G-M6-21), the 50 ms timing test that
 passes when run again (G-M5b-5) and X6's idle CPU (G-M5a-1). Merge and push stay with the owner.
+
+## 12. G-M6-21 fixed (after `68d179e`)
+
+Commit `28d9014` `fix(worker): keep each step under the session that sent it`. G-M6-21 is **closed**.
+
+Cause, read from the code. §11's guess was close but not exact.
+- The rig's simulated crash failed every waiting call, so the scheduler could start its retries at once. Only then did a separate task send `.cancel(job)` for each job it had seen running. A retry that keeps its `JobID` could already be running by then, and it was cancelled with the lost steps. A cancel that landed just after a step ended was remembered instead, and the retry's next step was answered as cancelled.
+- The real worker had a related gap. When a session ended, the worker called `cancelAll()` on its one `WorkerService`, which stops every running step in the process. If a session broke while the process lived (for example, an unreadable reply), the old session's end could stop a retry already started on the new session. This path was not seen to happen; it was found by reading the code.
+
+Fix.
+- A new `WorkerSessionID` keys each step and each remembered cancel by session as well as job.
+- `cancelAll()` became `endSession(_:)`, which stops only that session's steps and forgets its early cancels.
+- `WorkerXPCHost` gives each incoming session its own ID.
+- In the loopback, each channel is a session, and a crash ends that session. A request that reaches a closed channel now fails with `.workerCrashed` instead of starting, as a dead session's calls do.
+- Callers that pass no session use `.single`, so other `handle` calls are unchanged.
+
+Tests.
+- New `WorkerSessionTests` (3 tests): ending a session stops only its own steps; a cancel reaches only its own session's job; an ended session forgets its early cancels.
+- These three were seen to fail only by not compiling, since the API is new. The behaviour they guard was seen failing through the existing retry test.
+- `WorkerRetryTests.aCrashIsRetriedOnceAndEveryJobOfTheBatchSucceeds` run alone: 20 of 20 pass (16 of 20 failed before).
+
+Gates in the working repository, under `nice -n 10`.
+- `make test`, `make coverage` and `make app` passed (ZivletWorkerCore 94 %, 367/387).
+- `make lint` first failed on one long line. After that fix it passed, and the 44 ZivletWorkerCore tests were run again and passed.
+- **Not rerun** after this fix: the clean clone, `make release-check`, `make licence-gate`, `make script-test` and the three exit scripts (Z5's real-worker crash retry among them).
