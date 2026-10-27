@@ -25,6 +25,9 @@ public final class IslandHosts {
     public var onSurface: (UInt32, IslandSurface, CGRect) -> Void = { _, _, _ in }
     /// The current displays, the menu-bar display first.
     public private(set) var displayIDs: [UInt32] = []
+    /// How many island panels these hosts have built (one per display as it arrives). A drop never builds one: the
+    /// HUD's drop-path test checks this count (D-N9, D-M7-4).
+    public private(set) var panelsBuilt = 0
 
     public init(
         provider: any DisplayGeometryProvider, clock: any MonotonicClock = SystemClock(),
@@ -168,6 +171,7 @@ public final class IslandHosts {
         let router = IslandClientRouter()
         router.current = clients[.hud]
         let host = IslandHost(display: display, client: router, motion: animation, clock: clock, pointer: pointer)
+        panelsBuilt += 1
         host.finishSettings = finishSettings
         host.dragsBlocked = wheelShowing
         host.tracking.dropHandler = { [weak router] in router?.dropHandler }

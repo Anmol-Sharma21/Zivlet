@@ -55,8 +55,8 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     private(set) weak var hosts: IslandHosts?
     private let provider: any DisplayGeometryProvider
     let clock: any MonotonicClock
-    private let signposter = OSSignposter(subsystem: "app.zivlet.Zivlet", category: "hud")
-    private var pending: [(point: CGPoint?, interval: OSSignpostIntervalState)] = []
+    private let signposts: any HUDSignposting
+    private var pending: [(point: CGPoint?, interval: HUDSignpostInterval)] = []
     private(set) var anchors: [BatchID: CGPoint] = [:]
     var undos: [NotchHUDItemID: Task<Void, Never>] = [:]
     /// The item showing a long action's working line, until its result arrives, and what its Cancel runs.
@@ -65,10 +65,21 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     private var expiry: (deadline: Duration, task: Task<Void, Never>)?
     private static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "hud")
 
-    public init(hosts: IslandHosts, provider: any DisplayGeometryProvider, clock: any MonotonicClock = SystemClock()) {
+    public convenience init(
+        hosts: IslandHosts, provider: any DisplayGeometryProvider, clock: any MonotonicClock = SystemClock()
+    ) {
+        self.init(hosts: hosts, provider: provider, clock: clock, signposts: OSHUDSignposts())
+    }
+
+    /// `signposts` records the `drop→island` intervals; a test seam (D-M7-4).
+    init(
+        hosts: IslandHosts, provider: any DisplayGeometryProvider, clock: any MonotonicClock = SystemClock(),
+        signposts: any HUDSignposting
+    ) {
         self.hosts = hosts
         self.provider = provider
         self.clock = clock
+        self.signposts = signposts
         announce = { [weak hosts] in hosts?.announce($0.text, highPriority: $0.highPriority) }
         hosts.register(self, as: .hud)
     }
@@ -86,7 +97,7 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
     public func assistiveTechChanged(_ on: Bool) { board = board.assisted(on) }
 
     public func prepare(near point: CGPoint?) {
-        pending.append((point, signposter.beginInterval("drop→island")))
+        pending.append((point, signposts.begin("drop→island")))
     }
 
     public func show(_ snapshot: BatchSnapshot) {
@@ -96,10 +107,10 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
         // The island already draws and speaks what this snapshot would (G-M5a-1, 19b §6.2): the latest applied board
         // has its key. A change that board holds back for the 250 ms floor is drawn at the board's deadline.
         if let known, !snapshot.isFinished, known.visible == key { return }
-        let drop: (point: CGPoint?, interval: OSSignpostIntervalState)? =
+        let drop: (point: CGPoint?, interval: HUDSignpostInterval)? =
             known == nil && !pending.isEmpty ? pending.removeFirst() : nil
         guard let display = board.display(of: id) ?? display(for: drop?.point ?? nil) else {
-            if let interval = drop?.interval { signposter.endInterval("drop→island", interval) }
+            if let interval = drop?.interval { signposts.end(interval) }
             return Self.logger.error("Notch HUD has no display for a batch; it is not shown")
         }
         if known == nil {
@@ -107,7 +118,7 @@ public final class NotchHUD: HUDPresenter, ActionPresenter {
             if model.cards[snapshot.batch] == nil { model.cards[snapshot.batch] = CardState() }
         }
         apply(board.updating(snapshot, visible: key, display: display, now: clock.now()))
-        if let interval = drop?.interval { signposter.endInterval("drop→island", interval) }
+        if let interval = drop?.interval { signposts.end(interval) }
         let wasFinished = known?.snapshot?.isFinished ?? false
         if snapshot.isFinished, !wasFinished, let first = snapshot.outputs.first {
             loadThumbnail(first.url, for: snapshot.batch)
