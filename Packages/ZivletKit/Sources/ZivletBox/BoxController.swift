@@ -74,7 +74,7 @@ public final class BoxController {
         self.ports = ports
         self.actions = actions
         intake = BoxIntake(maker: ports.maker, storage: ports.storage, promises: ports.promises, now: ports.now)
-        thumbnails = ThumbnailCache(maker: ports.thumbnails)
+        thumbnails = ThumbnailCache(maker: ports.thumbnails, store: ports.thumbnailStore())
         wirePanel()
         actions.sharePicker.onFailure = { [weak self] in self?.report(.failed(ActionCard(title: BoxCopy.sharingFailed)))
         }

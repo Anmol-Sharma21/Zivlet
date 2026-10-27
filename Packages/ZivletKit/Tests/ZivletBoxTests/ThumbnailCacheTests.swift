@@ -54,6 +54,14 @@ final class FailingThumbnailMaker: ThumbnailMaking {
     }
 }
 
+/// Keeps every image it is given: the system store may drop images under memory pressure, so a test that a second
+/// request hits the cache would otherwise wait for a request nobody finishes.
+final class KeptThumbnailStore: ThumbnailStoring {
+    private var images: [NSString: NSImage] = [:]
+    func object(forKey key: NSString) -> NSImage? { images[key] }
+    func setObject(_ image: NSImage, forKey key: NSString) { images[key] = image }
+}
+
 @MainActor
 /// Lets the tasks the test started run: yields, then a short sleep, since parallel suites share the main actor.
 func settle() async {
@@ -117,7 +125,7 @@ struct ThumbnailCacheTests {
 
     @Test func aSecondRequestHitsTheCache() async {
         let maker = GatedThumbnailMaker()
-        let cache = ThumbnailCache(maker: maker)
+        let cache = ThumbnailCache(maker: maker, store: KeptThumbnailStore())
         let id = UUID()
         cache.setVisible([id])
         let first = Task { await cache.thumbnail(for: id, url: url(1), size: .cell) }
@@ -135,6 +143,15 @@ struct ThumbnailCacheTests {
         #expect(image.size.width > 0)
         #expect(cache.placeholder(forName: "photo.heic") === image)
         #expect(cache.placeholder(forName: "no-extension").size.width > 0)
+    }
+
+    /// The app's store is an NSCache bounded by the count limit, so the system can take images back under pressure.
+    @Test func theSystemStoreIsBoundedByTheCountLimit() {
+        let store = SystemThumbnailStore()
+        #expect(store.countLimit == ThumbnailCache.countLimit)
+        let image = NSImage(size: NSSize(width: 4, height: 4))
+        store.setObject(image, forKey: "a")
+        #expect(store.object(forKey: "a") === image)
     }
 
     @Test func sizesFollowTheTokens() {

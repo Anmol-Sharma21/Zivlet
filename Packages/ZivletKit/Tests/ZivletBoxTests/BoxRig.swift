@@ -113,7 +113,8 @@ final class BoxRig {
                 uptime: { [weak self] in self?.clock ?? 0 }, trash: trash,
                 locator: locator, sleep: { [weak self] duration in await self?.wait(duration) },
                 recordUndo: { [undo] batch, moves in await undo.record(batch, moves: moves) },
-                fader: fader ?? InstantFader(), reduceMotion: { [weak self] in self?.reduceMotion ?? false }),
+                fader: fader ?? InstantFader(), reduceMotion: { [weak self] in self?.reduceMotion ?? false },
+                thumbnailStore: { KeptThumbnailStore() }),
             actions: actions)
         box.onResult = { [results] result, anchor in results.record(result, anchor) }
         return box

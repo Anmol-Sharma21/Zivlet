@@ -33,6 +33,8 @@ public struct BoxPorts {
     public let fader: any PanelFading
     /// Reduce Motion is on: the panel's entrance and exit only fade, briefly.
     public let reduceMotion: () -> Bool
+    /// Where the thumbnails are kept: the system cache, which may drop them under memory pressure; tests keep them.
+    public let thumbnailStore: () -> any ThumbnailStoring
 
     public init(
         store: BoxStore, storage: OwnedStorage, maker: any BookmarkMaking, resolver: any BookmarkResolving,
@@ -45,7 +47,8 @@ public struct BoxPorts {
         sleep: @escaping (Duration) async -> Void = { try? await Task.sleep(for: $0) },
         recordUndo: @escaping (BatchID, [UndoMove]) async -> Void = { _, _ in },
         fader: any PanelFading = SystemPanelFader(),
-        reduceMotion: @escaping () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+        reduceMotion: @escaping () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion },
+        thumbnailStore: @escaping () -> any ThumbnailStoring = { SystemThumbnailStore() }
     ) {
         self.store = store
         self.storage = storage
@@ -65,6 +68,7 @@ public struct BoxPorts {
         self.recordUndo = recordUndo
         self.fader = fader
         self.reduceMotion = reduceMotion
+        self.thumbnailStore = thumbnailStore
     }
 
     /// The same ports over another store and storage (the debug demo keeps its box away from `boxes.json`).
@@ -84,7 +88,7 @@ public struct BoxPorts {
             store: store, storage: storage, maker: maker, resolver: resolver, isMounted: isMounted, promises: promises,
             thumbnails: thumbnails, quickLook: quickLook, visibleFrames: visibleFrames, finish: finish, now: now,
             uptime: uptime, trash: trash, locator: locator, sleep: sleep, recordUndo: recordUndo, fader: fader,
-            reduceMotion: reduceMotion)
+            reduceMotion: reduceMotion, thumbnailStore: thumbnailStore)
     }
 
     /// The real stores and system ports: `boxes.json` and `Box/` in Application Support, Foundation bookmarks

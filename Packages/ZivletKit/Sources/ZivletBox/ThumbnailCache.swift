@@ -19,7 +19,7 @@ public final class ThumbnailCache {
     private let maker: any ThumbnailMaking
     private let limit: Int
     private let scale: Double
-    private let images = NSCache<NSString, NSImage>()
+    private let images: any ThumbnailStoring
     private var icons: [String: NSImage] = [:]
     private var visible: [ThumbnailSize: Set<UUID>] = [:]
     private var running = 0
@@ -28,12 +28,13 @@ public final class ThumbnailCache {
 
     public init(
         maker: any ThumbnailMaking, maxConcurrent: Int = ThumbnailCache.maxConcurrent,
-        scale: Double = Double(NSScreen.main?.backingScaleFactor ?? 2)
+        scale: Double = Double(NSScreen.main?.backingScaleFactor ?? 2),
+        store: any ThumbnailStoring = SystemThumbnailStore()
     ) {
         self.maker = maker
         limit = max(1, maxConcurrent)
         self.scale = scale
-        images.countLimit = Self.countLimit
+        images = store
     }
 
     /// The system icon for the type the name's extension stands for; no file is read.

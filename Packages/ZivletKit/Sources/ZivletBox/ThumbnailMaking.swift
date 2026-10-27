@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import QuickLookThumbnailing
@@ -42,4 +43,26 @@ public enum ThumbnailSize: String, Sendable, CaseIterable {
         case .tray: Double(BoxLook.Tray.thumb)
         }
     }
+}
+
+/// Where the box keeps its thumbnails (one image per item and size).
+public protocol ThumbnailStoring: AnyObject {
+    func object(forKey key: NSString) -> NSImage?
+    func setObject(_ image: NSImage, forKey key: NSString)
+}
+
+/// An `NSCache` bounded by a count: the system may take images back under memory pressure, and the box then asks
+/// Quick Look again when the cell is next on screen.
+public final class SystemThumbnailStore: ThumbnailStoring {
+    private let images = NSCache<NSString, NSImage>()
+
+    public init(countLimit: Int = ThumbnailCache.countLimit) {
+        images.countLimit = countLimit
+    }
+
+    public var countLimit: Int { images.countLimit }
+
+    public func object(forKey key: NSString) -> NSImage? { images.object(forKey: key) }
+
+    public func setObject(_ image: NSImage, forKey key: NSString) { images.setObject(image, forKey: key) }
 }
