@@ -32,7 +32,7 @@ public protocol VisionOCR: Sendable {
 /// is no text, not an error. Vision calls cannot be interrupted, so cancellation is checked before each request and
 /// after it returns.
 public struct VisionTextRecognizer: TextRecognizing {
-    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "engine")
+    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
     let ocr: any VisionOCR
 
     public init(ocr: any VisionOCR = VisionFrameworkOCR()) {

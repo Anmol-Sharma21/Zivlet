@@ -31,7 +31,7 @@ nonisolated struct TrashReport: Sendable, Equatable {
 /// Moves the box's items to the Trash off the main thread (G-M5b-8), one at a time, checking for cancellation before
 /// each (G-M5b-9): an item that started finishes, the rest stay where they are.
 nonisolated struct BoxTrasher: Sendable {
-    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "box")
+    static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "actions")
     let trash: any Trashing
 
     @concurrent func run(ids: [UUID], urls: [URL], progress: MoveExecutor.Progress) async -> TrashReport {
