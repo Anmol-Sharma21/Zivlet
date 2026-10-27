@@ -19,7 +19,8 @@ public struct BatchID: Hashable, Codable, Sendable, CustomStringConvertible {
 }
 
 /// The engine that runs a plan (02 §7.3). M3 ships the ffmpeg media engine and the ImageIO image engine; `worker`
-/// names the out-of-process worker that hosts engines (P2-01), for damage and crash reports.
+/// names the out-of-process worker that hosts engines (P2-01), for damage and crash reports; `vision` is text
+/// recognition (P2-103), which runs only in the worker.
 public enum EngineID: String, CaseIterable, Codable, Sendable {
-    case media, image, worker
+    case media, image, worker, vision
 }

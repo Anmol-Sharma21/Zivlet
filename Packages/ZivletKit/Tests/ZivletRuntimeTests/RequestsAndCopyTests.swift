@@ -98,6 +98,7 @@ struct RequestsAndCopyTests {
         .verificationFailed("short"), .publishFailed(errno: EACCES), .internalInvariant("bug"),
         .helperFailed(errno: EMFILE), .writeFailed("encoder"), .engineDamaged(.media), .engineDamaged(.image),
         .engineDamaged(.worker), .engineMissing(.worker), .workerCrashed, .engineCrashedOnInput,
+        .engineMissing(.vision), .engineDamaged(.vision),
     ]
 
     @Test(arguments: everyError)
@@ -124,6 +125,11 @@ struct RequestsAndCopyTests {
         #expect(
             JobErrorCopy.copy(for: .engineDamaged(.worker)).message
                 == "Zivlet's converter is damaged. Reinstall Zivlet.")
+    }
+
+    @Test func missingTextRecognitionSaysItIsUnavailable() {
+        #expect(
+            JobErrorCopy.copy(for: .engineMissing(.vision)).message == "Text recognition isn't available right now.")
     }
 
     @Test func aHelperThatCannotStartSaysWhy() {

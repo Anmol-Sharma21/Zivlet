@@ -22,12 +22,12 @@ let package = Package(
                 "ZivletCore", "ZivletTrigger", "ZivletWheelCore", "ZivletEngineKit", "EngineMedia", "EngineImage",
                 "ZivletRuntime", "ZivletTriggerHost", "ZivletWheel", "ZivletActions", "ZivletSettings", "ZivletUI",
                 "ZivletNotchCore", "ZivletNotch", "ZivletShelfCore", "ZivletBox", "ZivletIPC",
-                "ZivletWorkerCore",
+                "ZivletWorkerCore", "EngineVision",
             ]),
         // What ZivletWorker.xpc links (P2-01): the image engine and the worker's service, nothing of the app shell.
         .library(
             name: "ZivletWorkerKit",
-            targets: ["ZivletCore", "ZivletEngineKit", "EngineImage", "ZivletIPC", "ZivletWorkerCore"]),
+            targets: ["ZivletCore", "ZivletEngineKit", "EngineImage", "EngineVision", "ZivletIPC", "ZivletWorkerCore"]),
     ],
     targets: [
         .target(name: "ZivletCore", swiftSettings: strict),
@@ -52,6 +52,8 @@ let package = Package(
         .binaryTarget(name: "CWebP", path: "../../Vendor/out/CWebP.xcframework"),
         .binaryTarget(name: "CZivletSVG", path: "../../Vendor/out/CZivletSVG.xcframework"),
         .target(name: "EngineImage", dependencies: ["ZivletEngineKit", "CWebP", "CZivletSVG"], swiftSettings: strict),
+        // Vision text recognition and PDF text for Copy Text (P2-51 base, P2-103); its calls run only in the worker.
+        .target(name: "EngineVision", dependencies: ["ZivletCore", "ZivletEngineKit"], swiftSettings: strict),
         .target(
             name: "ZivletRuntime", dependencies: ["ZivletEngineKit", "EngineMedia", "EngineImage", "ZivletIPC"],
             swiftSettings: strict),
@@ -140,7 +142,8 @@ let package = Package(
             name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG"],
             resources: [.copy("Goldens")], swiftSettings: strict),
         .testTarget(
-            name: "EngineVisionTests", dependencies: ["OCRTestSupport", "TestSupport"], swiftSettings: strict),
+            name: "EngineVisionTests", dependencies: ["EngineVision", "ZivletCore", "OCRTestSupport", "TestSupport"],
+            swiftSettings: strict),
         .testTarget(
             name: "ZivletRuntimeTests",
             dependencies: [
