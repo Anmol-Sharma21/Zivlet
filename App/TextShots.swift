@@ -7,12 +7,15 @@
 
     /// DEBUG `-ZivletTextStates <state>` (plan 18d D15, exit row Z9): one Copy Text state on screen for
     /// `Scripts/demo-text-states.sh`, with made-up text in Zivlet's own words: the island's toast or card, the card
-    /// near the drop, or Show All. The island logs its own frame; the others log `Text shot: <state>` and
+    /// near the drop, Show All, or the working line with Cancel at the island or near the drop. The island logs its own frame; the others log `Text shot: <state>` and
     /// `Text shot: frame x y w h` in screen-capture points (top left of the menu-bar display, y down).
     enum TextShots {
         enum State: String, CaseIterable {
-            case notchToast, notchCard, hudCard, showAll
+            case notchToast, notchCard, hudCard, showAll, notchWorking, hudWorking
         }
+
+        /// A job a little under halfway.
+        static let working = ToolWiringModel.working(warmupDone: true, fraction: 0.4)
 
         static let flag = "-ZivletTextStates"
         static let sampleText = "Train का टिकट book कर दिया है,\nplatform नंबर 4 पर मिलना।\nGate 2 से entry है।"
@@ -46,6 +49,12 @@
                 let outcome = sample.text
                 tools.preview.show(TextPreviewModel(title: outcome?.windowTitle ?? "", text: outcome?.fullText ?? ""))
                 logFrame(state) { tools.preview.frame }
+            case .notchWorking:
+                island.hud.showWorking(working, near: nil) {}
+            case .hudWorking:
+                let center = NSScreen.screens.first.map { CGPoint(x: $0.frame.midX, y: $0.frame.midY) } ?? .zero
+                actions.showWorkingNearDrop(working, near: center)
+                logFrame(state) { actions.nearDropFrame }
             }
         }
 

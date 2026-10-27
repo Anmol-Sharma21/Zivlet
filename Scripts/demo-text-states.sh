@@ -9,6 +9,7 @@
 #        ZIVLET_STATES_DRY_RUN=1 prints one line per capture and launches nothing.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
+source "$(dirname "$0")/app-process.sh"
 OUT=${1:-$REPO_ROOT/build/text-states}
 APP="$REPO_ROOT/build/DerivedData/Build/Products/Debug/Zivlet.app"
 DRY_RUN=${ZIVLET_STATES_DRY_RUN:-0}
@@ -22,6 +23,8 @@ CAPTURES=(
     "text-notchCard|Island|expanded|-ZivletHUDPlacement notch -ZivletTextStates notchCard|20 -14 30 6"
     "text-hudCard|Text shot|hudCard|-ZivletHUDPlacement nearDrop -ZivletTextStates hudCard|"
     "text-showAll|Text shot|showAll|-ZivletTextStates showAll|"
+    "text-notchWorking|Island|toast|-ZivletHUDPlacement notch -ZivletTextStates notchWorking|"
+    "text-hudWorking|Text shot|hudWorking|-ZivletHUDPlacement nearDrop -ZivletTextStates hudWorking|"
 )
 
 if [[ "$DRY_RUN" == 1 ]]; then
@@ -42,8 +45,9 @@ if [[ "$locked" == 1 ]]; then
 fi
 [[ -d "$APP" ]] || { echo "error: $APP not found; run make app" >&2; exit 1; }
 mkdir -p "$OUT"
+# Only the instance this script launched is quit, never one the owner has open.
 quit_app() {
-    osascript -e 'quit app "Zivlet"' >/dev/null 2>&1 || true
+    quit_launched
     sleep 1
 }
 trap quit_app EXIT
@@ -65,7 +69,7 @@ capture() {
     quit_app
     start=$(date '+%Y-%m-%d %H:%M:%S')
     # shellcheck disable=SC2086 # the arguments are words on purpose
-    open -n "$APP" --args -ZivletRevealResults NO $arguments
+    launch_app "$APP" -ZivletRevealResults NO $arguments
     for _ in $(seq 1 "$POLLS"); do
         found=$(lines "$start" "$source")
         grep -q "^$source: $state\$" <<<"$found" && break
@@ -96,7 +100,7 @@ capture_setting() {
     local start window
     quit_app
     start=$(date '+%Y-%m-%d %H:%M:%S')
-    open -n "$APP" --args -ZivletDemoSettings general
+    launch_app "$APP" -ZivletDemoSettings general
     for _ in $(seq 1 "$POLLS"); do
         window=$(lines "$start" "Settings shown" | grep -o 'general window [0-9]*' | tail -1 | awk '{print $NF}')
         [[ -n "$window" && "$window" != 0 ]] && break

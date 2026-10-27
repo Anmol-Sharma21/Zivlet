@@ -103,8 +103,9 @@
         }
 
         /// After the 20th file: the panel's frame (points from the top left of the menu-bar display) for the capture.
+        /// The hold is inside that file's rename, before the executor reports it, so the bar shows one item less.
         private func hold(_ done: Int) {
-            var report: [String: Any] = ["done": done, "total": Self.fileCount]
+            var report: [String: Any] = ["done": done, "shown": done - 1, "total": Self.fileCount]
             if let frame = box?.lastFrame, let top = NSScreen.screens.first?.frame.maxY {
                 let values = [frame.minX, top - frame.maxY, frame.width, frame.height].map { Int($0.rounded()) }
                 report["frame"] = values.map(String.init).joined(separator: " ")

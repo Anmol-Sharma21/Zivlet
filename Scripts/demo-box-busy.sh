@@ -12,6 +12,7 @@
 #        ZIVLET_BOX_BUSY_APP, _OUT, _TIMEOUT and ZIVLET_SCREEN_LOCKED are for the script test.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
+source "$(dirname "$0")/app-process.sh"
 APP=${ZIVLET_BOX_BUSY_APP:-$REPO_ROOT/build/DerivedData/Build/Products/Debug/Zivlet.app}
 OUT=${ZIVLET_BOX_BUSY_OUT:-$REPO_ROOT/build/box-busy-demo}
 TIMEOUT=${ZIVLET_BOX_BUSY_TIMEOUT:-120}  # seconds for each wait
@@ -23,7 +24,6 @@ STOPPED_CARD="Stopped. $((FILES - STOP_AFTER)) items weren't moved."
 
 value() { plutil -extract "$2" raw -o - "$1" 2>/dev/null || true; }
 count_files() { find "$1" -maxdepth 1 -type f ! -name '.*' 2>/dev/null | wc -l | tr -d ' '; }
-quit_app() { osascript -e 'quit app "Zivlet"' >/dev/null 2>&1 || true; }
 
 # Removes the scratch folder this script made, and nothing else.
 drop_demo_dir() {
@@ -47,15 +47,17 @@ wait_for() {
     done
 }
 
-# The held overlay: its count, then the picture from the frame in hold.json (x y w h, points from the top left).
+# The held overlay: its count, then the picture from the frame in hold.json (x y w h, points from the top left). The
+# hold comes inside the 20th rename, before the executor reports it, so the bar the picture shows is at 19 ("shown").
 capture_overlay() {
-    local hold=$1/hold.json done total frame x y w h
+    local hold=$1/hold.json done shown total frame x y w h
     done=$(value "$hold" done)
+    shown=$(value "$hold" shown)
     total=$(value "$hold" total)
-    if [[ "$done" == "$STOP_AFTER" && "$total" == "$FILES" ]]; then
-        echo "PASS overlay: held at $done of $total"
+    if [[ "$done" == "$STOP_AFTER" && "$shown" == "$((STOP_AFTER - 1))" && "$total" == "$FILES" ]]; then
+        echo "PASS overlay: held at $done of $total, the bar drawn at $shown of $total"
     else
-        echo "FAIL overlay: held at '$done' of '$total' (expected $STOP_AFTER of $FILES)"
+        echo "FAIL overlay: held at '$done' (bar '$shown') of '$total' (expected $STOP_AFTER, bar $((STOP_AFTER - 1)), of $FILES)"
         return 1
     fi
     if screen_locked; then
@@ -103,12 +105,11 @@ check_undo() {
 [[ -d "$APP" ]] || { echo "error: $APP not found; run make app" >&2; exit 1; }
 DEMO=$(mktemp -d "${TMPDIR:-/tmp}/zivlet-m6-busy.XXXXXX")
 cleanup() {
-    quit_app
+    quit_launched
     drop_demo_dir "$DEMO"
 }
 trap cleanup EXIT
-quit_app
-open -n "$APP" --args -ZivletRevealResults NO -ZivletBoxBusyDemo "$DEMO"
+launch_app "$APP" -ZivletRevealResults NO -ZivletBoxBusyDemo "$DEMO"
 wait_for "$DEMO/hold.json"
 status=0
 capture_overlay "$DEMO" || status=1

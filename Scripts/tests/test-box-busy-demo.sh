@@ -21,7 +21,7 @@ while (($#)); do [[ "$1" == -ZivletBoxBusyDemo ]] && folder=$2; shift; done
 (
     mkdir -p "$folder/source" "$folder/moved"
     for i in $(seq 1 "${FAKE_SOURCE:-50}"); do echo "item $i" >"$folder/source/item-$i.txt"; done
-    printf '{"done":20,"total":50,"frame":"100 200 384 300"}' >"$folder/hold.json"
+    printf '{"done":20,"shown":19,"total":50,"frame":"100 200 384 300"}' >"$folder/hold.json"
     for _ in $(seq 1 40); do [[ -e "$folder/captured" ]] && break; sleep 0.1; done
     [[ -n "${FAKE_NO_DONE:-}" ]] && exit 0
     printf '%s' "$FAKE_RESULT" >"$folder/result.json"
@@ -33,14 +33,14 @@ printf '#!/usr/bin/env bash\nexit 0\n' >"$T/bin/osascript"
 chmod +x "$T/bin/"*
 good='{"kind":"partial","toast":"Moved 20 items","card":"Stopped. 30 items weren'"'"'t moved.","movedBeforeUndo":20,"leftBeforeUndo":30,"undo":"Moved back","sourceAfterUndo":50,"movedAfterUndo":0,"captured":true}'
 run() {
-    PATH=$T/bin:$PATH TMPDIR=$T/tmp FAKE_OPENED=$T/opened ZIVLET_BOX_BUSY_APP=$T/Zivlet.app \
+    PATH=$T/bin:$PATH TMPDIR=$T/tmp FAKE_OPENED=$T/opened ZIVLET_BOX_BUSY_APP=$T/Zivlet.app ZIVLET_APP_PID_POLLS=1 \
         ZIVLET_BOX_BUSY_OUT=$T/out ZIVLET_BOX_BUSY_TIMEOUT=10 ZIVLET_SCREEN_LOCKED=${LOCKED:-0} \
         FAKE_RESULT=${RESULT:-$good} "$SCRIPT"
 }
 leftover() { find "$T/tmp" -maxdepth 1 -name 'zivlet-m6-busy.*' | wc -l | tr -d ' '; }
 
 out=$(run) || fail "a cancelled move with a full Undo passes: $out"
-assert_contains "$out" "PASS overlay: held at 20 of 50"
+assert_contains "$out" "PASS overlay: held at 20 of 50, the bar drawn at 19 of 50"
 assert_contains "$out" "PASS stopped: Moved 20 items; Stopped. 30 items weren't moved."
 assert_contains "$out" "PASS undo: 50 back in source, 0 left in moved"
 assert_file "$T/out/box-busy.png"

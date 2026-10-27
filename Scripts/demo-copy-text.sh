@@ -5,11 +5,14 @@
 # on the blank image, using a private pasteboard (the person's clipboard is left alone), writes one JSON file per
 # step and quits. The check: the copied text within 1 % CER of the expected combined text (Scripts/cer.swift), each
 # "<name> Text.txt" UTF-8 without a BOM and with LF only and within 1 % CER, and "No text found" for the blank image.
-# With the screen locked it runs nothing and says "skipped: screen locked".
+# With the screen locked it runs nothing and says "skipped: screen locked". It deletes only a folder it made itself
+# (marked by .zivlet-copy-text-demo): a folder with other files is refused. It quits only the app it launched.
 # Usage: Scripts/demo-copy-text.sh [folder]        (default build/copy-text-demo; needs `make app`)
 #        Scripts/demo-copy-text.sh --check folder  only the check, on a finished folder (script tests)
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
+source "$(dirname "$0")/app-process.sh"
+MARKER=.zivlet-copy-text-demo
 APP="$REPO_ROOT/build/DerivedData/Build/Products/Debug/Zivlet.app"
 MAX_CER=0.01
 TIMEOUT=${ZIVLET_TEXT_TIMEOUT:-900}  # seconds: a first recognition in a fresh worker may compile the model
@@ -86,6 +89,10 @@ if [[ "${1:-}" == --check ]]; then
     exit $?
 fi
 OUT=${1:-$REPO_ROOT/build/copy-text-demo}
+if [[ -d "$OUT" && -n "$(ls -A "$OUT")" && ! -e "$OUT/$MARKER" ]]; then
+    echo "error: $OUT holds files this script did not make; give it an empty or new folder" >&2
+    exit 1
+fi
 locked=${ZIVLET_SCREEN_LOCKED:-}
 if [[ -z "$locked" ]] && ioreg -n Root -d1 -a | grep -A1 -i 'CGSSessionScreenIsLocked' | grep -q '<true/>'; then
     locked=1
@@ -95,16 +102,15 @@ if [[ "$locked" == 1 ]]; then
     exit 0
 fi
 [[ -d "$APP" ]] || { echo "error: $APP not found; run make app" >&2; exit 1; }
-rm -rf "$OUT"
+if [[ -e "$OUT/$MARKER" ]]; then rm -r -f "$OUT"; fi  # a folder an earlier run made
 mkdir -p "$OUT"
+touch "$OUT/$MARKER"
 echo "rendering the inputs into $OUT"
 (cd "$KIT" && ZIVLET_OCR_DUMP="$OUT" swift test --filter OCRDemoInputTests >"$OUT/inputs.log" 2>&1) ||
     { echo "error: the inputs were not rendered (see $OUT/inputs.log)" >&2; exit 1; }
-quit_app() { osascript -e 'quit app "Zivlet"' >/dev/null 2>&1 || true; }
-trap quit_app EXIT
-quit_app
+trap quit_launched EXIT
 started=$SECONDS
-open -n "$APP" --args -ZivletRevealResults NO -ZivletCopyTextDemo "$OUT"
+launch_app "$APP" -ZivletRevealResults NO -ZivletCopyTextDemo "$OUT"
 until [[ -e "$OUT/done" ]] || ((SECONDS - started > TIMEOUT)); do sleep 1; done
 [[ -e "$OUT/done" ]] || { echo "error: the demo did not finish within $TIMEOUT s" >&2; exit 1; }
 echo "demo finished in $((SECONDS - started)) s"

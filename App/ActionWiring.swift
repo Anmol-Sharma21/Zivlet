@@ -74,6 +74,11 @@ final class ActionWiring {
             hud.show(result, near: point)
         }
 
+        /// The DEBUG text states: a working line with Cancel on the panel near `point`.
+        func showWorkingNearDrop(_ status: WorkingStatus, near point: CGPoint) {
+            hud.showWorking(status, near: point) {}
+        }
+
         /// The panel near the drop, for the DEBUG screenshots.
         var nearDropFrame: CGRect { hud.panelFrame }
     #endif

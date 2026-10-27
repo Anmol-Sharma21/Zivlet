@@ -52,6 +52,13 @@ canned "$T/missing" "$combined" "$good_text" "No text found"
 rm "$T/missing/mixed Text.txt"
 assert_fails "$SCRIPT" --check "$T/missing"
 
+# A folder with files the script did not make is refused and left as it was (the script deletes only its own).
+mkdir -p "$T/foreign"
+echo "keep me" >"$T/foreign/notes.txt"
+assert_fails "$SCRIPT" "$T/foreign"
+assert_eq "$(cat "$T/foreign/notes.txt")" "keep me" "a foreign folder is left alone"
+grep -q 'osascript' "$SCRIPT" && fail "the demo must not quit every Zivlet by name"
+
 out=$(ZIVLET_SCREEN_LOCKED=1 "$SCRIPT" "$T/locked" 2>&1) || fail "a locked screen is skipped, not failed"
 assert_contains "$out" "skipped: screen locked"
 assert_no_file "$T/locked/plain.json"

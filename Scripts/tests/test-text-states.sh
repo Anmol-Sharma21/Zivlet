@@ -8,7 +8,7 @@ T=$(tmpdir); trap 'rm -rf "$T"' EXIT
 grep -q '^text-states:' "$ROOT/Makefile" || fail "Makefile has no text-states target"
 
 out=$(ZIVLET_STATES_DRY_RUN=1 "$SCRIPT" "$T/out")
-for state in notchToast notchCard hudCard showAll; do
+for state in notchToast notchCard hudCard showAll notchWorking hudWorking; do
     assert_contains "$out" "capture text-$state.png: -ZivletTextStates $state"
 done
 assert_contains "$out" "capture text-setting.png: -ZivletDemoSettings general"
