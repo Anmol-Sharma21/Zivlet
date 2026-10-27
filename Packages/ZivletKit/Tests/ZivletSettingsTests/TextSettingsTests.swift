@@ -33,14 +33,15 @@ struct TextSettingsTests {
         #expect(SettingsStore(defaults: defaults).current.text == TextGroup())
     }
 
-    @Test func theLanguageChoiceDefaultsToMatchMyLanguages() throws {
-        #expect(SettingsStore(defaults: try freshDefaults()).current.text.language == .matchMine)
+    /// OWN-TEXT-1: Hindi then English for everyone, so Devanagari is read on a Mac with no Hindi set up.
+    @Test func theLanguageChoiceDefaultsToHindiAndEnglish() throws {
+        #expect(SettingsStore(defaults: try freshDefaults()).current.text.language == .hindiAndEnglish)
     }
 
     @Test func theLanguageChoiceRoundTrips() throws {
         let defaults = try freshDefaults()
-        SettingsStore(defaults: defaults).update { $0.with(\.text.language, .hindiAndEnglish) }
-        #expect(SettingsStore(defaults: defaults).current.text.language == .hindiAndEnglish)
+        SettingsStore(defaults: defaults).update { $0.with(\.text.language, .matchMine) }
+        #expect(SettingsStore(defaults: defaults).current.text.language == .matchMine)
     }
 
     @Test func anUnknownLanguageFallsBackToTheDefaultAndKeepsTheWarmUp() throws {
@@ -48,14 +49,14 @@ struct TextSettingsTests {
         let json = #"{"language":"klingon","warmed":{"osBuild":"26A1","languages":["en-Latn"]}}"#
         defaults.set(Data(json.utf8), forKey: "settings.text.v1")
         let text = SettingsStore(defaults: defaults).current.text
-        #expect(text.language == .matchMine)
+        #expect(text.language == .hindiAndEnglish)
         #expect(text.warmed == TextWarmupRecord(osBuild: "26A1", languages: ["en-Latn"]))
     }
 
     @Test func aStoreWithoutTheLanguageReadsTheDefault() throws {
         let defaults = try freshDefaults()
         defaults.set(Data(#"{"warmed":{"osBuild":"26A1","languages":["en-Latn"]}}"#.utf8), forKey: "settings.text.v1")
-        #expect(SettingsStore(defaults: defaults).current.text.language == .matchMine)
+        #expect(SettingsStore(defaults: defaults).current.text.language == .hindiAndEnglish)
     }
 
     /// D14: the stored group holds the choice and the warm-up record, nothing else.
