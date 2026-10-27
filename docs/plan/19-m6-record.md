@@ -459,3 +459,10 @@ Gates in the working repository, under `nice -n 10`.
 - `make test`, `make coverage` and `make app` passed (ZivletWorkerCore 94 %, 367/387).
 - `make lint` first failed on one long line. After that fix it passed, and the 44 ZivletWorkerCore tests were run again and passed.
 - **Not rerun** after this fix: the clean clone, `make release-check`, `make licence-gate`, `make script-test` and the three exit scripts (Z5's real-worker crash retry among them).
+
+## 13. Owner sign-off (2026-10-27)
+
+- Copy Text defaults to Hindi and English (OWN-TEXT-1, `a388443`). The default-language tests were changed first and seen to fail (3 of 10), then passed. The demo still pins Hindi and English for its own run.
+- The Drop Box keeps its 0.18 s fade under Reduce Motion (OWN-BOX-6, OS-M6-6 closed).
+- App size stays as built (OWN-SIZE-2, OS-M6-9 closed).
+- The owner approved merging and pushing `m6` after a clean-clone re-verify (OWN-PLAN-7, OS-M6-10). The hardware, look and VoiceOver rows (OS-M6-1 to -5, -7, -8, -11 to -13) stay with the owner and are not claimed.

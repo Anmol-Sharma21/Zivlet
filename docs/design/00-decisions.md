@@ -195,3 +195,15 @@ point, given in chat.
 | OWN-BOX-5 | **Text files keep their type icon** in the box; Quick Look's white page is not used | G-M5b-14 closed |
 | OWN-PLAN-6 | **Merge and push M5b** before the hardware QA | The hardware rows stay open in the record and QA list |
 
+
+## Owner decisions, 2026-10-27: M6 sign-off
+
+Date: 2026-10-27, after M6 was built and verified (see [19-m6-record.md](../plan/19-m6-record.md)). The owner chose
+the recommended option for each point, given in chat.
+
+| ID | Decision | Consequences |
+|---|---|---|
+| OWN-TEXT-1 | **Copy Text reads Hindi then English by default**, for everyone; "Match my languages" and "English" stay as choices | `TextGroup.language` defaults to `.hindiAndEnglish` (`a388443`); where Vision has no Hindi it still reads English |
+| OWN-BOX-6 | **The Drop Box keeps its 0.18 s fade under Reduce Motion** (no movement, opacity only), as D-BL12 says | OS-M6-6 closed; D-M6-3 stands |
+| OWN-SIZE-2 | **The image engines stay linked into both the app and the worker** for now (about +6 MB, 53 MB of 85 MB); revisit a shared framework when the PDF and archive engines land | OS-M6-9 closed |
+| OWN-PLAN-7 | **Merge and push M6 after a clean-clone re-verify** of the fixed branch; then start M7 (P2-30, P2-101/102, P2-13, P2-105…107) | OS-M6-10; the hardware and look rows stay open |
