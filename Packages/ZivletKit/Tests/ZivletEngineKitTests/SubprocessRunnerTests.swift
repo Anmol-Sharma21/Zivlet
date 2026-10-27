@@ -1,4 +1,5 @@
 import Darwin
+import EngineTestSupport
 import Foundation
 import Synchronization
 import Testing
@@ -102,22 +103,24 @@ struct SubprocessRunnerTests {
         #expect(fields.map(String.init) == ["\(pid)", "\(pid)"])
     }
 
-    @Test func cancellingKillsTheWholeGroupWithinOneSecond() async throws {
+    @Test func cancellingKillsTheWholeGroup() async throws {
         let spawned = Mutex<Int32>(0)
+        let ready = Signal()
         let task = Task {
-            try await runner.run(shell("sleep 100 & sleep 100"), onSpawn: { pid in spawned.withLock { $0 = pid } })
+            try await runner.run(
+                shell("sleep 100 & echo ready; sleep 100"), onSpawn: { pid in spawned.withLock { $0 = pid } },
+                onLine: ready.firing(on: "ready"))
         }
-        try await Task.sleep(for: .milliseconds(300))
-        let start = ContinuousClock.now
+        await ready.wait()
         task.cancel()
         await #expect(throws: SubprocessError.cancelled) { try await task.value }
-        #expect(ContinuousClock.now - start < .milliseconds(1_500))
         #expect(await Self.groupIsGone(spawned.withLock { $0 }))
     }
 
     /// A SIGKILLed background member stays a zombie until launchd reaps it, and signalling a group of zombies fails
-    /// with EPERM rather than ESRCH, so the group counts as gone once ESRCH arrives within `limit`.
-    static func groupIsGone(_ group: Int32, within limit: Duration = .milliseconds(500)) async -> Bool {
+    /// with EPERM rather than ESRCH, so the group counts as gone once ESRCH arrives within `limit`. The limit only
+    /// bounds a poll that ends at the first ESRCH; it is not a budget (D-M7-5).
+    static func groupIsGone(_ group: Int32, within limit: Duration = .seconds(5)) async -> Bool {
         let deadline = ContinuousClock.now + limit
         while ContinuousClock.now < deadline {
             let result = killpg(group, 0)
@@ -128,28 +131,51 @@ struct SubprocessRunnerTests {
         return false
     }
 
-    @Test func aChildIgnoringSIGINTIsKilledAfterTheGrace() async throws {
-        let task = Task { try await runner.run(shell("trap '' INT; sleep 100")) }
-        try await Task.sleep(for: .milliseconds(300))
+    /// The child prints `ready` only after its trap is set, so the cancel never lands before the trap (G-M6-9: a
+    /// fixed 300 ms wait let SIGINT end a child still starting under load, and the test saw 0.41 s). The SIGKILL
+    /// timer cannot fire before the grace, so the lower bound holds on any scheduler; the upper bound is judged by
+    /// ZivletTimingTests.SubprocessTiming (D-M7-5).
+    @Test(arguments: ["", "sleep 0.5; "])
+    func aChildIgnoringSIGINTIsKilledAfterTheGrace(slowStart: String) async throws {
+        let grace = Duration.milliseconds(300)
+        let runner = SubprocessRunner(teardownGrace: grace)
+        let spawned = Mutex<Int32>(0)
+        let ready = Signal()
+        let task = Task {
+            try await runner.run(
+                shell("\(slowStart)trap '' INT; echo ready; sleep 100"),
+                onSpawn: { pid in spawned.withLock { $0 = pid } }, onLine: ready.firing(on: "ready"))
+        }
+        await ready.wait()
         let start = ContinuousClock.now
         task.cancel()
         await #expect(throws: SubprocessError.cancelled) { try await task.value }
-        let elapsed = ContinuousClock.now - start
-        #expect(elapsed >= .milliseconds(900) && elapsed < .milliseconds(2_000))
+        #expect(ContinuousClock.now - start >= grace)
+        #expect(await Self.groupIsGone(spawned.withLock { $0 }))
     }
 
     /// Each child blocks threads while it runs (pipe reads, the exit wait). With many children at once, those must not
     /// exhaust the shared dispatch pool, or a cancelled child's SIGKILL and reap wait for unrelated children to end.
+    /// Checked as an order, not a time: the cancelled child is torn down while every other child still runs.
     @Test func teardownIsPromptWhileManyOtherChildrenRun() async throws {
-        let sleepers = (0..<80).map { _ in Task { try await runner.run(shell("sleep 3")) } }
-        try await Task.sleep(for: .milliseconds(300))
-        let task = Task { try await runner.run(shell("trap '' INT; sleep 100")) }
-        try await Task.sleep(for: .milliseconds(200))
-        let start = ContinuousClock.now
+        let runner = SubprocessRunner(teardownGrace: .milliseconds(300))
+        let finished = Mutex(0)
+        let sleepers = (0..<80).map { _ in
+            Task {
+                defer { finished.withLock { $0 += 1 } }
+                return try await runner.run(shell("sleep 30"))
+            }
+        }
+        let ready = Signal()
+        let task = Task {
+            try await runner.run(shell("trap '' INT; echo ready; sleep 100"), onLine: ready.firing(on: "ready"))
+        }
+        await ready.wait()
         task.cancel()
         await #expect(throws: SubprocessError.cancelled) { try await task.value }
-        #expect(ContinuousClock.now - start < .milliseconds(1_500))
-        for sleeper in sleepers { #expect(try await sleeper.value.termination == .exited(0)) }
+        #expect(finished.withLock { $0 } == 0)
+        for sleeper in sleepers { sleeper.cancel() }
+        for sleeper in sleepers { await #expect(throws: SubprocessError.cancelled) { try await sleeper.value } }
     }
 
     @Test func aTaskCancelledBeforeLaunchSpawnsNothing() async throws {
@@ -159,9 +185,7 @@ struct SubprocessRunnerTests {
             return try await runner.run(
                 shell("trap '' INT; sleep 100"), onSpawn: { _ in spawned.withLock { $0 = true } })
         }
-        let start = ContinuousClock.now
         await #expect(throws: SubprocessError.cancelled) { try await task.value }
         #expect(!spawned.withLock { $0 })
-        #expect(ContinuousClock.now - start < .milliseconds(500))
     }
 }

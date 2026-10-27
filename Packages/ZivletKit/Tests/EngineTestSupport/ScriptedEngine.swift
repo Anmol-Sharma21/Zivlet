@@ -31,6 +31,14 @@ public final class Signal: Sendable {
     }
 }
 
+extension Signal {
+    /// An `onLine` handler for a child process that fires once the child prints `line` (a readiness line, so a test
+    /// waits for the child instead of sleeping a fixed time; D-M7-5).
+    public func firing(on line: String) -> @Sendable (String) -> Void {
+        { [self] printed in if printed == line { fire() } }
+    }
+}
+
 /// A thread-safe count.
 public final class Counter: Sendable {
     private let count = Mutex(0)
