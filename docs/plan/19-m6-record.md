@@ -376,3 +376,61 @@ new 3 s test ran only in Z6, with warm models.
 | OS-M6-13 | Look at the working line pictures and the text card's Close | open |
 
 Merge and push stay with the owner (OS-M6-10): `m6` is local, ahead of `main` (`9cc6c69`), and not pushed.
+
+## 11. Verification (after `2b2522c`)
+
+A fresh `git clone` of the local repository with `m6` at `2b2522c` checked out, and `Vendor/out`, `src` and
+`downloads` copied in, so nothing was rebuilt from source. Everything ran under `nice -n 10` with the owner's other
+work going (load average 1.2–3.6). The gates ran in this order, each once:
+
+| Gate | Exit | What the log shows |
+|---|---|---|
+| `make test` | 0, 107 s | 21 bundles, **2081 tests**, all passed |
+| `make lint` | 0, 4 s | clean (swift format strict, log privacy) |
+| `make coverage` | 0, 116 s | all 19 modules over 80 %, the numbers below |
+| `make release-check` | 0, 73 s | no Homebrew path, island preview, Drop Box debug flag, drag recorder or worker debug request; 52.6 MB installed (limit 85) |
+| `make app` | 0, 30 s | Debug build succeeded |
+| `make licence-gate` | 0, 5 s | "Licences OK: 13 components, 58 crates in zivlet-svg's tree" |
+| `make script-test` | 0, 238 s | 33 of 33 script tests PASS |
+| `Scripts/m5a-exit.sh` | **1**, 1345 s | X1 **fail**: `WorkerRetryTests.aCrashIsRetriedOnceAndEveryJobOfTheBatchSucceeds` (below). X2–X5 and X7 pass. X6 **fail**: G-M5a-1, untouched; over the baseline, indeterminate +1.100 and fast-progress +1.709 fail the 1 % limit; hidden, collapsed, card-still, progress (+0.842), pill-progress (+0.850) and pill-progress-solid (+0.809) pass |
+| `Scripts/m5b-exit.sh` | **1**, 1373 s | Y1 (2081 tests, all passed), Y2 and Y4–Y9 pass (Y8: panel, tray sensor and armed box within 0.1 %). Y3 **fail**: X2's 50 ms notch HUD timing test (G-M5b-5) |
+| `Scripts/m6-exit.sh` | **1**, 931 s | Z1 pass (2081 tests, all passed), Z2 pass, Z3 **fail** (X2's 50 ms timing test again), Z4–Z11 pass. Z5: crash retry relaunched in 52 ms, crash twice named the file, idle exit 5.1 s, no crash report. Z6: 12/12 fixtures CER 0.000, 5 PDFs CER 0.000, warmed first recognition 85 ms. Z7: clipboard and both text files CER 0.000, "No text found" for the blank image. Z8: held at 20 of 50, 20 moved and 30 left, 50 back after Undo. Z9: 70 captures, island text card 10.88:1, over white 6.82, 4.99, 5.55 and 5.13:1 |
+
+Each failure was run again once by name. `Scripts/m6-exit.sh --only Z3` then passed (X2–X5 and Y4, Y5, Y7, 344 s),
+so Z3 failed on timing only, as in M5a and M5b. **The retry test did not pass again.** Run alone it failed 16 times in
+20 runs (and in 2 of 2 separate runs before that). Inside a full `make test` it passed 3 times out of 4. When it fails, files that were not the
+crashing one (`a.png`, `b.png`, `e.png`) end as `[queued, preparing, retrying, cancelled]` instead of being saved, and
+`maxConcurrentRetries` is 2 to 4. The loopback counts a retried prepare until its verify, so the cancelled retries
+inflate that count. At `857dfab` it passed 10 of 10. At `aeae7b7` ("remember a cancel that comes before its job") it
+failed 8 of 8, so that commit brought the failure in. The test's loopback keeps one `WorkerService` across its
+simulated crashes. A cancel sent for a job lost in the crash is remembered, and that job's retry, which keeps its
+`JobID`, is answered as cancelled. In the real app the crash ends the worker process and its list of remembered
+cancels, and Z5's crash retry passed. So this may only happen in the test rig, but nobody has shown that. Not fixed
+here: **G-M6-21** (open). Fix the rig, or the remembered-cancel path, so a retry is never matched to a cancel from
+before the crash. Then make the test pass alone 20 runs in a row.
+
+Coverage (gate 80 %): ZivletCore 98 (743/753), ZivletTrigger 99, ZivletWheelCore 99, ZivletEngineKit 98, EngineMedia
+97, EngineImage 95, ZivletRuntime 94 (2380/2512), ZivletTriggerHost 93, ZivletWheel 96, ZivletActions 91 (794/872),
+ZivletSettings 97, ZivletUI 94 (4892/5161), ZivletNotchCore 98, ZivletNotch 96, ZivletShelfCore 98 (971/988),
+ZivletBox 93 (3528/3785), ZivletIPC 100 (159/159), ZivletWorkerCore 94 (351/371), EngineVision 86 (377/435, with a
+fake recognizer).
+
+Pictures: in the working repository at `2b2522c`, with the screen awake, `make app`, then `demo-text-states.sh`,
+`demo-box-busy.sh`, `make copy-text-demo` (PASS: clipboard CER 0.000, two text files, "No text found") and
+`demo-box-states.sh`, all exit 0. That made 71 images: 7 text states, `box-busy`, and 63 box and tray states. The
+agent looked at every one; the 63 box and tray states were checked on labelled contact sheets. No clipping,
+overlapping or unreadable text, and no blank surface. Things to know, none of them a defect in the app: some island
+and tray crops are wider than the island, so a few pixels of the desktop behind show at the edges. The glass and Show
+All are blurred over whatever windows were behind them. Settings › General cuts off at "Progress and results", which
+is reached by scrolling. Only the near-drop text card has Close; the island's card has none, as `d6ed971` intends.
+**Not reviewed by the owner** (OS-M6-7, OS-M6-13).
+
+Leak scan of `main..m6` (68 commits, 238 files: 135 added, 103 changed). Every commit is signed off. None has
+`Co-Authored-By`; the string only appears in hygiene scripts, their tests and the plan. There are no personal, home or
+scratch paths: the only `/Users/` strings are the `/Users/me/…` test value and the hygiene pattern itself. No
+`docs/research`, no secrets, and no names of other apps in the patches or the messages. No binary files at all: the
+OCR fixtures are drawn at test time and only `ocr-fixtures.json` (2.6 KB) is committed. The biggest added file is
+plan 18 (41 KB).
+
+Result: every gate passes in a clean clone except the `WorkerRetryTests` failure (G-M6-21), the 50 ms timing test that
+passes when run again (G-M5b-5) and X6's idle CPU (G-M5a-1). Merge and push stay with the owner.
