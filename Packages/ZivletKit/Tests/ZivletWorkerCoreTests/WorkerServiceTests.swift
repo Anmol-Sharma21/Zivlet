@@ -154,8 +154,10 @@ struct WorkerServiceTests {
             #expect(await service.handle(.selfKillForTesting(afterMilliseconds: 0), events: { _ in }) == .accepted)
             #expect(killed.fired == 1)
             #expect(await service.handle(.setIdleForTesting(seconds: 5), events: { _ in }) == .accepted)
+            // Three arms (launch, after each request); each starts its sleep in its own task, so the sleeps are
+            // recorded in any order. Only the arm after setIdle asks for 5 s.
             await sleeper.waitForRequests(3)
-            #expect(sleeper.requested.last == .seconds(5))
+            #expect(sleeper.requested.sorted() == [.seconds(5), .seconds(60), .seconds(60)])
         }
     #endif
 }
