@@ -247,7 +247,7 @@ scratch folder only; F3 takes the real screenshots.
 | D-M7-9 | Every exit row and demo makes its own fixtures | 20a |
 | D-M7-10 | The tool window: borderless non-activating `NSPanel`, key without activating Zivlet, the Drop Box's finish and fallbacks, centred on the wheel and clamped; a deviation from PRD §5.7's "app activated" (OS-M7-2) | 20b |
 | D-M7-11 | Bipolar slider and timecode built now (P2-30 names them); first users in 2B | 20b |
-| D-M7-12 | `-UITestFixture <dir> -UITestMode tools`; the XCUITest stays owner-run | 20b |
+| D-M7-12 | `-UITestFixture <dir> -UITestMode tools -UITestTool <toolID>` runs the named tool on fixture files (no wheel keyboard mode exists; changed in execution); the XCUITest stays owner-run | 20b |
 | D-M7-13 | Read QR stays instant; results in the window's results variant; Open only for http(s) with a host, shown in full, never automatic | 20b |
 | D-M7-14 | Passwords are `JobSecret`s: own buffer, wiped, redacted, not `Codable` (only `ZivletIPC`'s `WireSecret` puts them on the worker wire), carried only by their job's requests, held by the batch for the job's life (incl. one retry), then wiped; the `String` and XPC's buffer remain best effort | 20c |
 | D-M7-15 | Password entry is the tool window's content (no window to attach a sheet to); during a batch it opens at the HUD's or island's place | 20b |
@@ -382,3 +382,6 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 | G-M7-10 | P1-40: the first drop in a process measured 23–94 ms in the timing suite (two judged runs at load 2.9: 90.8 and 93.6 ms); warm drops 3–5 ms. The app's own first drop (m5a X2 signpost) measured 12.7 ms, judged at load 2.3, so the cold cost seen in the test process was not seen in the app | OS-M7-12; a known issue in `NotchHUDTiming` until then |
 | G-M7-11 | `make app` failed twice inside exit runners (an `rm` racing on Sparkle's `XPCServices`, then a signing failure on the half-trimmed framework); it passed on its own and in m6 Z1. Cause not found | Watch in F4; look at the embed and trim phases if it recurs |
 | G-M7-9 | Unit tests outside stream R's four still assert wall time (near-drop HUD 50 ms, scheduler 100 ms / 1 s, shared load 300 ms, stall watch, text service, tray, OCR); found in R5 | Same treatment as R4–R7 in a later task (20a, execution notes) |
+| G-M7-12 | READ QR accepts SVG, but ImageIO does not decode SVG: an SVG is reported as not read (seen by a probe, not in the app) | Rasterize SVG in the worker through EngineImage's renderer, or drop SVG from the slice's formats |
+| G-M7-13 | The tool window's disabled-reason state, the bipolar slider and the timecode field were not seen on screen; no tool uses them yet | Capture with E9's Lock window (F3) and the first 2B tool |
+| G-M7-14 | `BoxPanelTests.aRealClickOnItsContentMakesItKey` is skipped while the screen is locked (no window can become key then); it last ran and passed with the screen awake in stream A's first `make test` | Runs whenever the gates run with the screen awake; F4 should say whether it ran |

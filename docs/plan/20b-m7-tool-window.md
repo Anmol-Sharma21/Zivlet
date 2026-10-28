@@ -191,6 +191,77 @@ from the wheel`.
 | D-M7-2 | Read QR is built in M7: it waited only for the tool window and EngineVision (D-M6-6), and EngineVision exists |
 | D-M7-10 | The tool window is a borderless non-activating `NSPanel` that becomes key without activating Zivlet (prototype §3.3), in the Drop Box's finish (glass, radius 24, scrim 0.5, dark forced; solid and outline fallbacks); it opens centred on the wheel and clamped to the screen. This differs from PRD §5.7's "app activated" (OS-M7-2): activation on macOS 14+ is cooperative and would leave the drop source frontmost anyway |
 | D-M7-11 | The bipolar slider and timecode field are built now as models plus minimal views because P2-30's acceptance names them; their first users are 2B tools |
-| D-M7-12 | `-UITestFixture <dir> -UITestMode tools` opens the Tools wheel in keyboard mode on fixture files; the XCUITest stays owner-run |
+| D-M7-12 | `-UITestFixture <dir> -UITestMode tools -UITestTool <toolID>` runs the named tool on fixture files through the drop path (planned as the Tools wheel in keyboard mode, which does not exist; see the execution notes); the XCUITest stays owner-run |
 | D-M7-13 | Read QR stays an instant slice; its results open the tool window's results variant; Open only for http(s) URLs with a host, shown in full, never automatic; no codes → a toast |
 | D-M7-15 | Password entry is the tool window's content, not an AppKit sheet attached to another window: a drop has no window to attach to. During a running batch (P2-107) the prompt opens as a tool window at the HUD's or the island's place |
+
+---
+
+## Execution notes (stream A, done on `m7`)
+
+Facts for the record (F4). Commits: A1 `0ae81bd`, A2 `d528e99`, A3 `05468d1`, A4 `7a09962`, A5 `ee101d3`, A6
+`74b5dbf`, A7 `d47da18`, A8 `fc53159`, A9 `d82bf8a`, A10 `7178823`. Every task's test was run and seen to fail first
+(a missing type), except `ToolWindowTests.aForcedFinishWinsOverTheSystemsUntilItIsCleared`, written with the DEBUG
+finish override it checks (A10).
+
+**Baseline.** `make test` on `3483d2b`: 2096 tests, all passing, load about 7.
+
+**Deviations from the tasks above:**
+
+- **A2.** The window keeps the HUD's real margin, 12 pt (`HUDLayout.margin`); the task said 8. Apply has no accent
+  fill: a glass button with a semibold label, because white on the system blue falls under 4.5:1 and the island's
+  ink has no accent (19b D-NL11).
+- **A3.** A lone seconds field may be 60 or more ("90" is 90 s); after a minutes field, seconds stay below 60.
+- **A5.** The refusal for a single-file tool reached with several files says "This tool works on one file at a
+  time" (*new*). No tool has window content yet, so in the app every editor tool still reaches the DEBUG note; the
+  coordinator is exercised by its tests and by Read QR's results.
+- **A6 (D-M7-12 changed).** The wheel has no keyboard selection to drive, so `-UITestMode tools` takes
+  `-UITestTool <toolID>` and runs that tool on the folder's files through the drop path. The new cases live in a new
+  `UITestFixtureTests.swift` (the old suite sits in `ResultCardTests.swift`). `UITests/ToolWindowUITests.swift` drives
+  Read QR (there is no Lock window before E9) and landed with A10, which it needs. It compiles
+  (`xcodebuild build-for-testing`) and was **not run** (owner-run, OS-M7-10).
+- **A7.** The real-Vision cases use M6's flag (`ZIVLET_OCR_FIXTURES=1`, `make ocr-check`), not a new one; run once
+  here, 3 of 3 passed (QR and Code 128 payloads, a two-page PDF, a blank image). A PDF that refuses copying is not
+  refused for codes: OWN-PDF-5 is about its text. **ImageIO does not decode SVG**, which the READ QR slice accepts, so an
+  SVG comes back as "This file couldn't be read" (G-M7-12).
+- **A8.** Protocol version 4. `FileCodes` moved to `EngineVision` beside `FoundCode` in A9, so the UI needs no IPC
+  import.
+- **A9.** The shell's model gained `cancelLabel` ("Close" for results). Copy All copies and closes the window. Open
+  sits before Copy, so Copy keeps one column on every row. The notes are the count line with the info symbol, then one
+  line per file.
+- **A10.** `App/CodeWiring.swift` holds the side effects, `CodeToolModel` (in `ToolWiringModel.swift`) the pure part.
+  New results replace earlier results but never another tool's open window; the codes are then announced as a toast
+  ("2 codes found. Close the tool window to see them", *new*). DEBUG: `-ZivletQRDemo <dir>` copies to a private
+  pasteboard; `-ZivletIslandFinish glass|solid|contrast` also forces the tool window's finish; the app logs
+  `Tool window shown: <tool or results> window <number>` (category `actions`) for captures.
+
+**Seen in the Debug app** (screen awake, load 4–10): READ QR on our own Core Image codes through the drop path with
+`-ZivletQRDemo`: two files (a QR link with Open and Copy, a Code 128 with its caption, grouped by file), one code,
+a QR beside a locked PDF (note "Locked.pdf: Needs a password"), glass, solid and Increase Contrast finishes, and a
+blank image (no window; the log line counted 1 file, 0 codes). The frontmost app was the same before and after the
+window opened (`lsappinfo front`). Captures stayed in the session's scratch folder (not tracked). The first captures
+of the one-code window (glass, solid, contrast, at load about 20) showed the payload's line above the centre of its
+Copy button; three recaptures at load about 7 showed them centred, and the same view drawn off screen was centred, so
+this was a capture taken mid-layout, not counted as a defect (the capture waits a fixed 1.5 s after the log line).
+
+**Gates after stream A (`nice -n 10`; load 1m).** `make test` on `7178823`: 2187 tests in 22 bundles (2096 at the
+baseline), all passing, load 5–10. `make lint`, `make coverage` (every gated module ≥ 80 %; ZivletUI 93 %, EngineVision
+86 %, the lowest), `make app`, `make release-check` (size OK), `make licence-gate` (13 components) and
+`make script-test` (35 scripts) passed on `7178823` at load 4–10, and again inside the exit runners.
+
+| Runner | Result |
+|---|---|
+| `Scripts/m5a-exit.sh` (load 11 → 4) | X1–X5 and X7 pass (X2: warm drops p95 4.2 ms, the app's drop 19.0 ms of 50, judged at load 2.73). X6 fails on idle CPU (`indeterminate` 1.3 %, `fast-progress` 1.9 % over a 1 % limit): G-M5a-1, not worked on |
+| `Scripts/m5b-exit.sh` (load 4 → 197) | Y2–Y9 pass (Y8 ran for about three hours while the session was away, then passed). Y1 failed twice: first `WorkerServiceTests.theSmokeRequestsReachTheirHooks` (a task-order race, fixed in `d27555b`), then `BoxPanelTests.aRealClickOnItsContentMakesItKey` with the screen locked (skipped while locked since `f092c3b`). Y1 rerun on `f092c3b`: pass (load 11–19) |
+| `Scripts/m6-exit.sh` (load 197 → 4) | Z2, Z4–Z6, Z10, Z11 pass. Z1 failed on the locked-screen click test, rerun on `f092c3b`: pass. Z3 not judged (load above 3); its rows had passed earlier in this run (m5a X2–X5 at load 2.73, m5b Y3–Y5, Y7). Z7–Z9 skipped: the screen was locked from the end of Y8 to the end of this stream |
+| `Scripts/m7-exit.sh` | not yet written (stream F, F2) |
+
+The two test fixes are outside stream A's tasks (both tests are from M5b and M6) but blocked its gates.
+`theSmokeRequestsReachTheirHooks` expected the last recorded idle sleep to be the 5 s one; each idle arm starts its
+sleep in its own task, so the order is not fixed, and the test now checks the set of sleeps. The click test needs the
+window server to give key focus, which it gives no window while the screen is locked; it is skipped then, with that
+reason, and runs unchanged with the screen awake (G-M7-14).
+
+**Not seen or not measured:** VoiceOver, real typing and focus order in the window (OS-M7-6, G-M7-4); the "No codes
+found" toast on screen; the shell's disabled-reason state, the bipolar slider and the timecode field on screen (no
+tool uses them before E9 and the 2B tools, G-M7-13); the XCUITest run (OS-M7-10).
