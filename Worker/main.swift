@@ -25,7 +25,7 @@ setlocale(LC_CTYPE, "UTF-8")
 }
 
 let service = WorkerService(
-    engines: [ImageEngine()], text: TextReader(),
+    engines: [ImageEngine()], text: TextReader(), codes: CodeReading(),
     onIdle: {
         logger.notice("Worker idle; exiting")
         exit(0)

@@ -20,6 +20,8 @@ public enum WorkerRequest: Codable, Sendable, Equatable {
     /// The one-time warm-up in the production configuration (D-M6-16), under its own job id so a cancel or the end
     /// of the session stops it.
     case warmUpText(JobID, [LanguageTag])
+    /// Read QR (P2-51): barcode detection runs here too, never in the app.
+    case readCodes(CodeJob)
     #if DEBUG
         /// The smoke run's real crash (D-M6-18): the worker SIGKILLs itself, so no crash report is written.
         case selfKillForTesting(afterMilliseconds: Int)
@@ -41,6 +43,9 @@ public enum WorkerReply: Codable, Sendable, Equatable {
     case text(RecognizedText)
     case textFailed(TextError)
     case textCapabilities(VisionCapabilities)
+    /// Each file's codes, or why it was not read.
+    case codes([FileCodes])
+    case codesFailed(CodeError)
 }
 
 /// What the worker reports while a step runs.

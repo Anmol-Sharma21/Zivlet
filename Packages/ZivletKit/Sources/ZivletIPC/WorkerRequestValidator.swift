@@ -37,6 +37,9 @@ public struct WorkerRequestValidator: Sendable {
         case .warmUpText(_, let languages):
             try checkVision()
             try Self.check(languages)
+        case .readCodes(let job):
+            try checkVision()
+            try Self.check(job)
         #if DEBUG
             case .selfKillForTesting, .setIdleForTesting: return
         #endif
@@ -53,6 +56,17 @@ public struct WorkerRequestValidator: Sendable {
             throw .internalInvariant("A text job needs 1 to \(TextJob.maximumInputs) files.")
         }
         try check(job.languages)
+        for input in job.inputs { try checkInput(input) }
+    }
+
+    /// 1…500 inputs, each a regular file at a safe absolute path; a page limit of 1…500.
+    static func check(_ job: CodeJob) throws(JobError) {
+        guard (1...CodeJob.maximumInputs).contains(job.inputs.count) else {
+            throw .internalInvariant("A code job needs 1 to \(CodeJob.maximumInputs) files.")
+        }
+        guard (1...PDFTextSource.pageLimit).contains(job.pageLimit) else {
+            throw .internalInvariant("A code job's page limit must be 1 to \(PDFTextSource.pageLimit).")
+        }
         for input in job.inputs { try checkInput(input) }
     }
 

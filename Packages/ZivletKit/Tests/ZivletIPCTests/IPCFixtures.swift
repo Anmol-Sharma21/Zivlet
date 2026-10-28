@@ -47,7 +47,7 @@ enum IPCFixtures {
             .ping, .capabilities, .prepare(request(), JobWorkspace(job: job, stagedFile: staged)),
             .execute(job, plan(), outputByteLimit: 9_000), .execute(job, plan(), outputByteLimit: nil),
             .verify(output, plan()), .cancel(job), .recognizeText(textJob), .textCapabilities,
-            .warmUpText(job, [.hindi, .english]),
+            .warmUpText(job, [.hindi, .english]), .readCodes(codeJob),
         ]
         #if DEBUG
             all += [.selfKillForTesting(afterMilliseconds: 25), .setIdleForTesting(seconds: 5)]
@@ -59,6 +59,20 @@ enum IPCFixtures {
         .pong(pid: 321, osBuild: "26A428"), .capabilities(capabilities), .planned(plan()), .staged(output), .verified,
         .failed(.unsupportedInput(.notAFile)), .failed(.cancelled), .accepted, .text(recognized),
         .textFailed(.copyingNotAllowed), .textCapabilities(VisionCapabilities(languages: [.hindi], osBuild: "26A1")),
+        .codes(fileCodes), .codesFailed(.tooManyFiles(limit: 500)),
+    ]
+
+    static let codeJob = CodeJob(
+        id: job, inputs: [URL(fileURLWithPath: "/private/tmp/in/menu.pdf")], pageLimit: 500)
+
+    static let fileCodes = [
+        FileCodes(
+            name: "menu.pdf",
+            codes: [
+                FoundCode(payload: "https://zivlet.app/test", symbology: "qr", page: 1),
+                FoundCode(payload: "ZIVLET-0042", symbology: "code128", page: 2),
+            ]),
+        FileCodes(name: "locked.pdf", error: .pdfLocked),
     ]
 
     static let textJob = TextJob(

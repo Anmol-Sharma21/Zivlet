@@ -87,6 +87,20 @@ public final class WorkerConnection: Sendable {
         }
     }
 
+    /// Read QR's job; its progress is the share of files done.
+    public func readCodes(_ job: CodeJob, progress: @escaping @Sendable (Double) -> Void) async throws(JobError)
+        -> Result<[FileCodes], CodeError>
+    {
+        let sink = ProgressSink(interval: .zero) { progress($0.fraction ?? 0) }
+        state.withLock { $0.routes[job.id] = ExecutionContext(progress: sink) }
+        defer { _ = state.withLock { $0.routes.removeValue(forKey: job.id) } }
+        switch try await cancellable(.readCodes(job), job: job.id) {
+        case .codes(let files): return .success(files)
+        case .codesFailed(let error): return .failure(error)
+        default: throw Self.unexpected("readCodes")
+        }
+    }
+
     public func textCapabilities() async throws(JobError) -> Result<VisionCapabilities, TextError> {
         switch try await send(.textCapabilities) {
         case .textCapabilities(let capabilities): return .success(capabilities)

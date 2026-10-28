@@ -139,6 +139,32 @@ struct ValidatorTests {
         }
     }
 
+    @Test func aCodeJobNeedsOneTo500SafeRegularFilesAndAPageLimit() throws {
+        let rig = try ValidatorRig()
+        let job = { (inputs: [URL], pages: Int) in
+            WorkerRequest.readCodes(CodeJob(id: rig.job, inputs: inputs, pageLimit: pages))
+        }
+        #expect(rig.refusal(job([rig.input], 500)) == nil)
+        #expect(rig.refusal(job(Array(repeating: rig.input, count: CodeJob.maximumInputs), 1)) == nil)
+        for name in ["hosts.png", "folder.png"] {
+            #expect(rig.refusal(job([rig.dir.url.appending(path: name)], 500)) == .unsupportedInput(.notAFile))
+        }
+        let relative = try #require(URL(string: "relative.png"))
+        #expect(rig.refusal(job([relative], 500)) == .unsupportedInput(.notAFile))
+        let refused = [
+            job([], 500), job(Array(repeating: rig.input, count: CodeJob.maximumInputs + 1), 500),
+            job([rig.input], 0), job([rig.input], 501),
+        ]
+        for request in refused {
+            guard case .internalInvariant = rig.refusal(request) else {
+                Issue.record("passed: \(request)")
+                continue
+            }
+        }
+        let imageOnly = WorkerRequestValidator(hostedEngines: [.image])
+        #expect(throws: JobError.engineMissing(.vision)) { try imageOnly.validate(job([rig.input], 500)) }
+    }
+
     @Test func aWorkerWithoutVisionRefusesTextJobs() throws {
         let rig = try ValidatorRig()
         let imageOnly = WorkerRequestValidator(hostedEngines: [.image])

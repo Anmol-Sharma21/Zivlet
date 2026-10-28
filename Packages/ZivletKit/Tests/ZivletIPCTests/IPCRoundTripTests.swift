@@ -28,6 +28,11 @@ struct IPCRoundTripTests {
         #expect(Envelope(WorkerRequest.ping).protocolVersion == WorkerProtocol.version)
     }
 
+    /// Read QR's request and replies changed the shape (plan 20b A8): version 3 was Copy Text's.
+    @Test func readingCodesBumpedTheProtocolVersion() {
+        #expect(WorkerProtocol.version > 3)
+    }
+
     @Test func anotherProtocolVersionIsRefused() throws {
         let found = WorkerProtocol.version + 1
         let data = try JSONEncoder().encode(Envelope(protocolVersion: found, body: WorkerRequest.ping))

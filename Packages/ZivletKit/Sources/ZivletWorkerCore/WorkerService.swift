@@ -21,6 +21,7 @@ public actor WorkerService {
 
     private let engines: [any Engine]
     private let text: TextReader?
+    private let codes: CodeReading?
     private let validator: WorkerRequestValidator
     private let idle: IdleTimer
     private let onSelfKill: @Sendable (Int) -> Void
@@ -35,16 +36,17 @@ public actor WorkerService {
     static let rememberedCancels = 64
     private var handling = 0
 
-    /// `text` hosts Copy Text (nil: text requests are refused as `.engineMissing(.vision)`). `onSelfKill` serves the
-    /// DEBUG smoke request only; the worker's main passes a SIGKILL of its own process.
+    /// `text` hosts Copy Text and `codes` Read QR (nil: their requests are refused as `.engineMissing(.vision)`).
+    /// `onSelfKill` serves the DEBUG smoke request only; the worker's main passes a SIGKILL of its own process.
     public init(
-        engines: [any Engine], text: TextReader? = nil, idleAfter: Duration = .seconds(60),
+        engines: [any Engine], text: TextReader? = nil, codes: CodeReading? = nil, idleAfter: Duration = .seconds(60),
         sleep: @escaping IdleTimer.Sleeper = IdleTimer.realSleep,
         onIdle: @escaping @Sendable () -> Void, onSelfKill: @escaping @Sendable (Int) -> Void = { _ in }
     ) {
         self.engines = engines
         self.text = text
-        let hosted = Set(engines.map(\.id)).union(text == nil ? [] : [.vision])
+        self.codes = codes
+        let hosted = Set(engines.map(\.id)).union(text == nil && codes == nil ? [] : [.vision])
         validator = WorkerRequestValidator(hostedEngines: hosted)
         idle = IdleTimer(after: idleAfter, sleep: sleep, onIdle: onIdle)
         self.onSelfKill = onSelfKill
@@ -101,6 +103,11 @@ public actor WorkerService {
         case .recognizeText, .textCapabilities, .warmUpText:
             guard let text else { return .failed(.engineMissing(.vision)) }
             return await answerText(request, session: session, reader: text, events: events)
+        case .readCodes(let job):
+            guard let codes else { return .failed(.engineMissing(.vision)) }
+            return await track(Step(session: session, job: job.id), cancelled: .codesFailed(.cancelled)) {
+                await Self.readCodes(job, reading: codes, events: events)
+            }
         #if DEBUG
             case .selfKillForTesting(let milliseconds):
                 onSelfKill(milliseconds)
@@ -156,6 +163,21 @@ public actor WorkerService {
         } catch {
             logger.error("Text job failed: \(error.logDescription, privacy: .public)")
             return .textFailed(error)
+        }
+    }
+
+    @concurrent private static func readCodes(_ job: CodeJob, reading: CodeReading, events: @escaping EventSink) async
+        -> WorkerReply
+    {
+        do {
+            let files = try await reading.read(job) { events(.progress(job.id, JobProgress(fraction: $0))) }
+            for file in files.compactMap(\.error) {
+                logger.error("Code job skipped a file: \(file.logDescription, privacy: .public)")
+            }
+            return .codes(files)
+        } catch {
+            logger.error("Code job failed: \(error.logDescription, privacy: .public)")
+            return .codesFailed(error)
         }
     }
 
