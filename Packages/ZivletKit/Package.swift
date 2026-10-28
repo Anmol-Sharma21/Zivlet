@@ -11,6 +11,8 @@ let strict: [SwiftSetting] = [
 ]
 // AppKit/SwiftUI shell modules: main-actor by default (02 §6.1, SE-0466).
 let shell: [SwiftSetting] = strict + [.defaultIsolation(MainActor.self)]
+// qpdf's headers, which only the CZivletPDF shim includes (no module map: Swift never imports qpdf, D-M7-16).
+let qpdfHeaders = Context.packageDirectory + "/../../Vendor/out/CQPDF.xcframework/macos-arm64/Headers/CQPDF"
 
 let package = Package(
     name: "ZivletKit",
@@ -24,10 +26,14 @@ let package = Package(
                 "ZivletNotchCore", "ZivletNotch", "ZivletShelfCore", "ZivletBox", "ZivletIPC",
                 "ZivletWorkerCore", "EngineVision",
             ]),
-        // What ZivletWorker.xpc links (P2-01): the image engine and the worker's service, nothing of the app shell.
+        // What ZivletWorker.xpc links (P2-01): the image and PDF engines and the worker's service, nothing of the app
+        // shell. EnginePDF (qpdf) is linked only here, never into the app (D-M7-16).
         .library(
             name: "ZivletWorkerKit",
-            targets: ["ZivletCore", "ZivletEngineKit", "EngineImage", "EngineVision", "ZivletIPC", "ZivletWorkerCore"]),
+            targets: [
+                "ZivletCore", "ZivletEngineKit", "EngineImage", "EngineVision", "EnginePDF", "ZivletIPC",
+                "ZivletWorkerCore",
+            ]),
     ],
     targets: [
         .target(name: "ZivletCore", swiftSettings: strict),
@@ -43,7 +49,8 @@ let package = Package(
         .target(name: "ZivletEngineKit", dependencies: ["ZivletCore"], swiftSettings: strict),
         .target(name: "EngineMedia", dependencies: ["ZivletEngineKit"], swiftSettings: strict),
         // The worker's messages, their protocol version, request validation and the peer rule (P2-01, plan 18c).
-        .target(name: "ZivletIPC", dependencies: ["ZivletCore", "ZivletEngineKit", "EngineVision"], swiftSettings: strict),
+        .target(
+            name: "ZivletIPC", dependencies: ["ZivletCore", "ZivletEngineKit", "EngineVision"], swiftSettings: strict),
         // The worker's service without XPC: validation, engines, cancel and the idle exit (P2-01, plan 18c C3).
         .target(
             name: "ZivletWorkerCore", dependencies: ["ZivletIPC", "ZivletCore", "ZivletEngineKit", "EngineVision"],
@@ -52,6 +59,15 @@ let package = Package(
         .binaryTarget(name: "CWebP", path: "../../Vendor/out/CWebP.xcframework"),
         .binaryTarget(name: "CZivletSVG", path: "../../Vendor/out/CZivletSVG.xcframework"),
         .target(name: "EngineImage", dependencies: ["ZivletEngineKit", "CWebP", "CZivletSVG"], swiftSettings: strict),
+        // qpdf 12 with libjpeg-turbo, static, native crypto only (P2-13, D-M7-16); Vendor/ensure-native.sh builds it.
+        .binaryTarget(name: "CQPDF", path: "../../Vendor/out/CQPDF.xcframework"),
+        // Our own C++ shim with a C header around qpdf, so Swift needs no C++ interop (plan 20d C4).
+        .target(
+            name: "CZivletPDF", dependencies: ["CQPDF"],
+            cxxSettings: [.unsafeFlags(["-I", qpdfHeaders])],
+            linkerSettings: [.linkedLibrary("c++"), .linkedLibrary("z")]),
+        // PDF structure, passwords and encryption through the shim; hosted only by the worker (P2-13, D-M7-16).
+        .target(name: "EnginePDF", dependencies: ["CZivletPDF", "ZivletCore"], swiftSettings: strict),
         // Vision text recognition and PDF text for Copy Text (P2-51 base, P2-103); its calls run only in the worker.
         .target(name: "EngineVision", dependencies: ["ZivletCore", "ZivletEngineKit"], swiftSettings: strict),
         .target(
@@ -86,11 +102,16 @@ let package = Package(
         .executableTarget(
             name: "zivlet-traces", dependencies: ["ZivletTrigger", "ZivletCore", "ZivletNotchCore"],
             swiftSettings: strict),
+        // Runs the qpdf smoke calls in a process of their own, for the test that expects no output (plan 20d C4); a
+        // dev tool, not shipped or gated.
+        .executableTarget(name: "zivlet-pdf-probe", dependencies: ["EnginePDF", "ZivletCore"], swiftSettings: strict),
         .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: strict),
         // A loopback worker transport (JSON both ways, crashes on demand) for the connection and retry tests.
         .target(
             name: "WorkerTestSupport",
-            dependencies: ["ZivletRuntime", "ZivletWorkerCore", "ZivletIPC", "ZivletEngineKit", "EngineVision", "TestSupport"],
+            dependencies: [
+                "ZivletRuntime", "ZivletWorkerCore", "ZivletIPC", "ZivletEngineKit", "EngineVision", "TestSupport",
+            ],
             path: "Tests/WorkerTestSupport", swiftSettings: strict),
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
@@ -153,7 +174,8 @@ let package = Package(
         .testTarget(
             name: "ZivletRuntimeTests",
             dependencies: [
-                "ZivletRuntime", "EngineTestSupport", "TestSupport", "WorkerTestSupport", "ZivletIPC", "ZivletWorkerCore",
+                "ZivletRuntime", "EngineTestSupport", "TestSupport", "WorkerTestSupport", "ZivletIPC",
+                "ZivletWorkerCore",
                 "EngineVision",
             ], swiftSettings: strict),
         .testTarget(
@@ -189,11 +211,16 @@ let package = Package(
                 "EngineMedia", "NotchTestSupport", "EngineTestSupport", "TestSupport",
             ],
             swiftSettings: strict),
+        .testTarget(
+            name: "EnginePDFTests",
+            dependencies: ["EnginePDF", "EngineTestSupport", "TestSupport", "ZivletCore", "zivlet-pdf-probe"],
+            swiftSettings: strict),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.
         .testTarget(
             name: "ZivletMatrixTests",
             dependencies: ["ZivletRuntime", "ZivletCore", "ZivletEngineKit", "EngineMedia", "EngineImage"],
             swiftSettings: strict),
     ],
-    swiftLanguageModes: [.v6]
+    swiftLanguageModes: [.v6],
+    cxxLanguageStandard: .cxx20
 )

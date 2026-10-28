@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Line coverage per module over every test bundle; fails below the gate (owner rule: 80 %).
+# Line coverage per module over every test bundle; fails below the gate (owner rule: 80 %). CZivletPDF is the C++ shim
+# around qpdf (D-M7-16), gated like a Swift module; qpdf's vendored headers are left out of the table.
 source "$(dirname "$0")/env.sh"
 GATE="${COVERAGE_GATE:-80}"
-GATED_MODULES="${GATED_MODULES:-ZivletCore ZivletTrigger ZivletWheelCore ZivletEngineKit EngineMedia EngineImage ZivletRuntime ZivletTriggerHost ZivletWheel ZivletActions ZivletSettings ZivletUI ZivletNotchCore ZivletNotch ZivletShelfCore ZivletBox ZivletIPC ZivletWorkerCore EngineVision}"
+GATED_MODULES="${GATED_MODULES:-ZivletCore ZivletTrigger ZivletWheelCore ZivletEngineKit EngineMedia EngineImage ZivletRuntime ZivletTriggerHost ZivletWheel ZivletActions ZivletSettings ZivletUI ZivletNotchCore ZivletNotch ZivletShelfCore ZivletBox ZivletIPC ZivletWorkerCore EngineVision EnginePDF CZivletPDF}"
 # ZIVLET_SWIFT, ZIVLET_LLVM_COV and ZIVLET_COVERAGE_DIR replace the tools and the log folder (script tests only).
 SWIFT="${ZIVLET_SWIFT:-swift}"
 LLVM_COV="${ZIVLET_LLVM_COV:-xcrun llvm-cov}"
@@ -30,7 +31,7 @@ for bundle in "$BIN"/*.xctest; do
     objects+=(-object "$bundle/Contents/MacOS/$(basename "$bundle" .xctest)")
 done
 report="$($LLVM_COV report -instr-profile "$BIN/codecov/default.profdata" "${objects[@]}" \
-    -ignore-filename-regex='(Tests|\.build)/')"
+    -ignore-filename-regex='(Tests|\.build|Vendor)/')"
 status=0
 for module in $GATED_MODULES; do
     read -r covered total < <(awk -v m="$module/" '

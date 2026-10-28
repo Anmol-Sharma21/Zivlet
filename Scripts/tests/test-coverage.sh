@@ -17,6 +17,7 @@ STUB
 # A stand-in llvm-cov that prints a report table (column 8 = lines, column 9 = missed lines).
 cat >"$T/bin/llvm-cov" <<'STUB'
 #!/usr/bin/env bash
+printf '%s\n' "$@" >"$FAKE_BIN/llvm-cov.args"
 echo "Filename Regions Missed Cover Functions Missed Executed Lines Missed Cover"
 echo "ModA/a.swift 10 1 90% 5 0 100% 100 10 90.00%"
 echo "ModB/b.swift 10 1 90% 5 0 100% 50 5 90.00%"
@@ -62,4 +63,16 @@ assert_file "$T/cov/test.log"
 # (c) Coverage under the gate still fails after a passing test run.
 status=0; COVERAGE_GATE=95 run_coverage 0 >/dev/null || status=$?
 assert_eq "$status" "1" "coverage under the gate exits 1"
+# (d) The vendored headers the C++ shim includes (qpdf's inline code) are left out, so the table keeps its paths
+# relative to Sources/ and the shim's own files are gated beside the Swift modules.
+regex=$(sed -n 's/^-ignore-filename-regex=//p' "$T/kit-bin/llvm-cov.args")
+[[ -n "$regex" ]] || fail "coverage.sh passes no -ignore-filename-regex"
+grep -qE "$regex" <<<"/repo/Vendor/out/CQPDF.xcframework/macos-arm64/Headers/CQPDF/qpdf/QPDF.hh" ||
+    fail "vendored headers are not ignored: $regex"
+if grep -qE "$regex" <<<"/repo/Packages/ZivletKit/Sources/CZivletPDF/zivlet_pdf.cc"; then
+    fail "the shim's own sources are ignored: $regex"
+fi
+for module in EnginePDF CZivletPDF; do
+    grep -qE "^GATED_MODULES=.*[{ ]$module[} ]" "$ROOT/Scripts/coverage.sh" || fail "$module is not gated"
+done
 echo "PASS test-coverage"
