@@ -161,3 +161,78 @@ libjpeg-turbo notices and texts in the bundle`.
 |---|---|
 | D-M7-16 | qpdf ships static in `CQPDF.xcframework` (libqpdf + libjpeg-turbo, native crypto only), linked only into the worker through `EnginePDF` and our own C++ shim `CZivletPDF` with a C header. No in-process PDF fallback (untrusted PDFs never reach qpdf in the app, 02 P3). Never `qpdfjob` with `--check`, `--show-encryption` or `--json` and a password, because they print the user password; the shim's check is its own. No qpdf child process, so no argv can carry a password |
 | D-M7-17 | qpdf 12.4.2 and libjpeg-turbo 3.2.0 (latest stable on 2026-10-27; 10 §10's 3.1.x moves to 3.2.0), pinned by SHA-256 and upstream signature, built once under `nice -n 10` and cached in `Vendor/out` like CWebP |
+| D-M7-29 | The media and CWebP cache keys hash only their own `versions.lock` lines (`cache-key.sh` `pins`), and the media build's `SOURCE_DATE_EPOCH` is the date of the last commit that changed one of its own pins, so a PDF pin never marks the FFmpeg stage stale or moves its date. Changing a script that every key covers (COMMON) still changes every key; when such a change cannot alter an output, the existing outputs are re-stamped once, after each passes its own check (media: `verify-media.sh`; an xcframework: its tree hash), and the record lists the old and new keys. Never a re-stamp when a component's own inputs changed |
+| D-M7-30 | libjpeg-turbo installs into its own prefix (`Vendor/build/native/qpdf-prefix`), never `Vendor/prefix`, so the media build cannot pick it up; the qpdf build lives in `Vendor/build-qpdf.sh`, sourced by `build-native.sh qpdf` |
+| D-M7-31 | qpdf's manifest licence is `Apache-2.0 AND MIT` (taken under Apache-2.0; MIT for its embedded sphlib SHA-2 code, whose text is in `NOTICE.md`), not `Apache-2.0` alone |
+
+---
+
+## Execution notes (stream C, partly done on `m7`)
+
+Facts for the record (F4). Commits: C1 `d6f12fc`; C2 `8535435` (the script only, **not run**); C3 `bb424f3`; C6's
+licence part `b266f41`. **Not done: the C2 build and its wiring, C4, C5, and C6's size row**, all blocked by the same
+refusal as in planning (below). The tests of C1, C2 and C3 were run and seen to fail first: C1 by a signature line
+without a pin (the old `verify-sources.sh` exited 1 with no message, a bug now fixed) and by a PDF pin that changed
+the media key; C2 by `build-native.sh qpdf` printing its usage line (run before the change); C3 by the missing script
+and by a fake worker that loads `/usr/lib/libcrypto.46.dylib`; C6 by the gate saying "no licence entry for qpdf".
+
+**Baseline.** `make test` on `db6e2e2`: 22 bundles, all passing, load about 4.
+
+**The build was refused again (OS-M7-1, G-M7-18).** Running `Vendor/tests/test-build-qpdf.sh`, which starts
+`build-native.sh qpdf` when the xcframework is missing, was refused by this session's permission check ("code from
+external"). It was not retried or worked around. So nothing of qpdf has been compiled: no build time, no archive, no
+`verify-native.sh CQPDF` on the real archive, no size, and the prototype harness was not run. To unblock: run
+`nice -n 10 Vendor/build-native.sh qpdf` once in a terminal (or allow it), then `bash Vendor/tests/test-build-qpdf.sh`
+(it checks the symbols, the headers, arm64, no build path, runs `verify-native.sh CQPDF` and reads the log's load
+average); the next stream C session then finishes C2 and goes on with C4.
+
+**Left of C2 after the build** (deliberately not committed, so `make test` never starts the build): `cache-key.sh`
+gets a `CQPDF` component (COMMON, the `qpdf` and `libjpeg-turbo` pins, `build-native.sh`, `build-qpdf.sh`,
+`xcframework.sh`, `verify-native.sh`); `vendor.sh` builds it with `build-native.sh qpdf` then `verify-native.sh
+CQPDF`, stamp `out/CQPDF.key`; `ensure-native.sh` lists it; `pack.sh` and `unpack.sh` carry `CQPDF.xcframework`,
+`CQPDF.sha256` and `CQPDF.key`; `test-cache-key.sh` and `test-ensure-native.sh` cover it. Those scripts are in every
+key, so that commit re-stamps media, CWebP and CZivletSVG once more under D-M7-29.
+
+**Deviations from the tasks above:**
+
+- **C1.** Adding two lines to `versions.lock` would have changed the media and CWebP keys (both hashed the whole file),
+  so the next `make release-check` would have rebuilt FFmpeg and its codecs, which the owner's rules forbid. The keys
+  now hash only their own pins (D-M7-29), and the media build's date comes from its own pins (`git log -G`; still
+  `f60f424`'s date after the commit, checked). Because `cache-key.sh` is in every key, every key changed once; the
+  three outputs were re-stamped after `verify-media.sh` passed and both xcframeworks matched their tree hashes
+  (media `49f3fdf6…` → `a2cc43fe…`, CWebP `155d471c…` → `4cb4f093…`, CZivletSVG `6a9b0ead…` → `10833c52…`), and
+  `ensure-native.sh` and `ensure-media.sh` then said "up to date". Nothing was rebuilt. `fetch.sh --only` prints
+  "cached" (the tarballs were already there), not "verified". `Vendor/out/KEY` and the old pack tarball were left as
+  they were; a new pack waits for C2's wiring.
+- **C2.** The build is in its own file (D-M7-30) and libjpeg-turbo has its own prefix; dates come from the PDF pins'
+  commit; every step's output goes to the log, which starts and ends with the load average. The headers go to
+  `Headers/CQPDF/qpdf/` with no module map (Swift never imports qpdf; C4 decides how the shim finds them).
+  `build-native.sh` changed, so CWebP was re-stamped again (`4cb4f093…` → `f35d036a…`, tree hash checked;
+  `build_libwebp` is unchanged).
+- **C3.** `verify-native.sh` takes `CQPDF` or `--archive <lib.a>`. The worker check went into `check-bundle.sh`
+  (which already ran on the worker): it refuses a worker that loads `libcrypto*`, `libssl*`, `libgnutls*` or `libtls*`,
+  even from `/usr/lib`. The Release worker of the last `make release-check` lists only `/System` and `/usr/lib`
+  libraries, none of them crypto or TLS.
+- **C6.** `qpdf` is `Apache-2.0 AND MIT` (D-M7-31). `THIRD_PARTY_NOTICES.md` lists both under "Present" and says the
+  library build is pending, so this build carries their licence texts but not their code. `source-bundle.sh` needed
+  no change (its test now looks for both tarballs and `Vendor/build-qpdf.sh`). Not done: the size row (nothing is
+  linked; 10 §9's 4.5 MB expected, 6 MB worst, stays an estimate).
+
+**Not run in this session:** `Vendor/tests/test-build-qpdf.sh` (refused), `test-ensure-native.sh` and `test-build-rs.sh`
+(each rebuilds an existing component from a clean tree, which the owner's rules forbid on this Mac). The other Vendor
+tests pass: cache-key, verify-sources (four signed sources), fetch, verify-native, build-native, build-media-args,
+unpack-verify, check-tools, verify-media.
+
+**Gates after stream C's committed tasks (`nice -n 10`; load 1m; the screen was awake).** No Swift changed in this
+stream, so the test count is stream B's. `make test` on `b266f41`: 2269 tests in 22 bundles, all passing (load 2.4 →
+13). `make lint`, `make coverage` (every gated module ≥ 80 %, the same 19 modules: no `EnginePDF` yet; EngineVision
+86 % the lowest), `make app` (the Debug app now carries `Licenses/qpdf.txt` and `Licenses/libjpeg-turbo.txt`),
+`make release-check` (CWebP, CZivletSVG and media "up to date", nothing rebuilt; 53.9 MB installed, size OK),
+`make licence-gate` (15 components, 58 crates) and `make script-test` (36 scripts) passed at load 2.5–17.
+
+| Runner | Result |
+|---|---|
+| `Scripts/m5a-exit.sh` (load 2.5 → 1.9) | X1–X5 and X7 pass. X6 fails on idle CPU (`indeterminate` 1.35 %, `fast-progress` 1.99 % over a 1 % limit): G-M5a-1, not worked on |
+| `Scripts/m5b-exit.sh` (load 1.9 → 2.0) | Y1–Y9 pass |
+| `Scripts/m6-exit.sh` (load 2.0 → 2.4) | Z1–Z11 pass |
+| `Scripts/m7-exit.sh` | not yet written (stream F, F2) |

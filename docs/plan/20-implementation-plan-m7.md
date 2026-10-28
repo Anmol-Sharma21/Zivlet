@@ -264,6 +264,9 @@ scratch folder only; F3 takes the real screenshots.
 | D-M7-26 | `Scripts/m7-exit.sh` follows `m6-exit.sh`, rows V1–V13, skip ≠ pass | 20g |
 | D-M7-27 | Suggest calls `SecCreateSharedWebCredentialPassword` behind a protocol; automation uses a fake | 20c |
 | D-M7-28 | The strength hint is local, three words | 20c |
+| D-M7-29 | Media and CWebP keys hash only their own pins; the media build's date comes from its own pins; a COMMON-script change that cannot alter an output is followed by one checked re-stamp, recorded with old and new keys (added in execution) | 20d |
+| D-M7-30 | libjpeg-turbo in its own prefix; the qpdf build in `Vendor/build-qpdf.sh` (added in execution) | 20d |
+| D-M7-31 | qpdf's manifest licence is `Apache-2.0 AND MIT` (added in execution) | 20d |
 
 ---
 
@@ -334,7 +337,7 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 
 | ID | Step | Why / blocks |
 |---|---|---|
-| OS-M7-1 | **Allow the qpdf and libjpeg-turbo build** from the verified tarballs (this session's permission check refused running their build), or run it once yourself: after C1, `nice -n 10 Vendor/build-native.sh qpdf` in a terminal. Then the prototype harness (§3.1) can be compiled and run, with `ps` watched | Blocks C2 onward, and so D and E; size and build time unmeasured until then |
+| OS-M7-1 | **Allow the qpdf and libjpeg-turbo build** from the verified tarballs (this session's permission check refused running their build), or run it once yourself: after C1, `nice -n 10 Vendor/build-native.sh qpdf` in a terminal. Then the prototype harness (§3.1) can be compiled and run, with `ps` watched. **Still open after stream C's execution** (refused again, G-M7-18): C1, the script (C2), C3 and the licences (C6) are committed; run the command above, then `bash Vendor/tests/test-build-qpdf.sh` | Blocks the rest of C2, C4, C5, C6's size row, and so D and E; size and build time unmeasured until then |
 | OS-M7-2 | Confirm that the tool window does **not** activate Zivlet (D-M7-10), unlike PRD §5.7's "app activated" | The prototype shows key focus and Secure Input without activation |
 | OS-M7-3 | A mixed drop of locked and unlocked PDFs on LOCK · UNLOCK: lock the plain ones and list the locked ones (planned), or something else | D-M7-19 |
 | OS-M7-4 | Try **Suggest** once by hand (QA PW1) | Automation never calls it (hard limits keep it off anything Keychain-adjacent) |
@@ -388,3 +391,4 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 | G-M7-15 | The kernel shows no process's environment on this macOS, not even a child's (`ps -E`, `KERN_PROCARGS2`); a child's environment can only be checked at its spawn request | `LeakProbe` checks spawn requests (20c B7); E's policy run records the requests of its jobs |
 | G-M7-16 | In the test process SwiftUI exposed no accessibility tree, so the password sheet's VoiceOver labels are checked through a list that uses the view's own strings, not by walking the tree | OS-M7-6 (VoiceOver pass); an XCUITest when the owner runs them |
 | G-M7-17 | P2-102's policy through real Lock, Unlock, Change, a wrong attempt and a cancel in the worker, and the record, undo and history probes, wait for E4–E7; today the policy covers the type, the wire form, the log, the diagnostics and the settings | Stream E grows `PasswordPolicyTests` (20c B7 notes) |
+| G-M7-18 | Stream C's execution session was refused the qpdf build as well (the permission check: code from external), so CQPDF does not exist: C2's build and wiring, C4, C5, C6's size row, and streams D and E wait | OS-M7-1: the owner runs `nice -n 10 Vendor/build-native.sh qpdf` once, then `bash Vendor/tests/test-build-qpdf.sh`; then stream C resumes at C2's wiring (20d execution notes) |
