@@ -9,7 +9,8 @@ extension AppDelegate {
     /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
     /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, `-ZivletWorkerSmoke <folder>` runs the worker smoke
     /// (`WorkerSmoke`), `-ZivletCopyTextDemo <folder>` runs Copy Text (`CopyTextDemo`), `-ZivletTextStates <state>`
-    /// shows one Copy Text state (`TextShots`), `-UITestFixture <dir> [-UITestMode tools -UITestTool <tool>]` serves
+    /// shows one Copy Text state (`TextShots`), `-ZivletPasswordStates <state>` one password sheet state
+    /// (`PasswordShots`), `-UITestFixture <dir> [-UITestMode tools -UITestTool <tool>]` serves
     /// the owner-run UI tests, `-ZivletQRDemo <dir>` runs READ QR on the folder's files, `-ZivletBoxBusyDemo <folder>` cancels a box Move and undoes it
     /// (`BoxBusyDemo`, started with the box), and `-ZivletIslandPreview <state>` puts a made-up
     /// job on the notch island, so end-to-end checks need no drag. The island preview alone also exists in the CPU
@@ -37,6 +38,9 @@ extension AppDelegate {
                         await demo.run(tools: tools)
                         NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
                     }
+                }
+                if let state = PasswordShots.parse(arguments: arguments) {
+                    PasswordShots.run(state, toolWindows: toolWindows)
                 }
                 if let state = TextShots.parse(arguments: arguments) {
                     TextShots.run(state, island: island, actions: actions, tools: tools)

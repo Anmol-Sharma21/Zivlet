@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var tools = ToolWiring(
         text: TextService(selection: worker), actions: actions, store: settings.store, clipboard: Self.toolClipboard())
     lazy var toolWindows = ToolWindowWiring(actions: actions)
+    lazy var passwords = PasswordWiring(toolWindows: toolWindows)
     lazy var codes = CodeWiring(
         codes: CodeService(selection: worker), actions: actions, toolWindows: toolWindows,
         clipboard: Self.codeClipboard())

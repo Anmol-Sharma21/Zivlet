@@ -89,6 +89,7 @@ final class ToolWiring {
         #if DEBUG
             let prefixes = [
                 "-ZivletDemo", "-ZivletCopyTextDemo", "-ZivletTextStates", "-ZivletIslandPreview", "-ZivletQRDemo",
+                "-ZivletPasswordStates",
             ]
             return arguments.contains { argument in
                 prefixes.contains { argument.hasPrefix($0) } || argument == "-UITestFixture"
