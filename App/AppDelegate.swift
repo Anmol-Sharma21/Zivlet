@@ -56,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     lazy var tools = ToolWiring(
         text: TextService(selection: worker), actions: actions, store: settings.store, clipboard: Self.toolClipboard())
+    lazy var toolWindows = ToolWindowWiring(actions: actions)
     private var trigger: TriggerHost?
     var wheel: WheelController?
     private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory, island: island)
@@ -255,10 +256,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             actions.run(action, urls: selection.urls, optionHeld: selection.optionHeld, near: point)
             return nil
         }
-        if case .tool(let tool) = selection.target,
-            tools.run(tool, urls: selection.urls, optionHeld: selection.optionHeld, near: point) != nil
-        {
-            return nil
+        if case .tool(let tool) = selection.target {
+            if tools.run(tool, urls: selection.urls, optionHeld: selection.optionHeld, near: point) != nil {
+                return nil
+            }
+            if toolWindows.open(tool, urls: selection.urls, near: point) { return nil }
         }
         guard case .convert(let format) = selection.target else {
             #if DEBUG
