@@ -265,6 +265,12 @@ after.
   removed. `ManualClock` now refuses to register a cancelled sleeper, and that mutation fails the test. `ActionHUD`
   has no clock to inject (noted in the commit).
 
+- **R4 finding (G-M7-10).** The gates run after R8 showed the first drop in each process is cold: in the timing
+  suite it took 23–94 ms, including 90.8 and 93.6 ms in two runs that m5a X2 judged at load 2.9. Every later drop
+  took 3–5 ms. The old unit test never saw this, because other UI tests had already warmed its process. The suite now
+  judges the 19 warm drops strictly and prints the first drop on its own as a known issue (OS-M7-12). The app's own
+  first drop, which X2 reads from its signpost, is judged unchanged against 50 ms.
+
 **R8 proof under load.** Each fixed test ran 20 times by name with `Scripts/flaky-watch.sh`. Beside it ran a full
 debug build and a release build of the package in a separate build folder, plus `nice -n 10 make test` three times.
 The watched test ran through the toolchain's `swiftpm-testing-helper` on the built bundle, because two `swift test`
