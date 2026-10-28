@@ -33,6 +33,11 @@ struct IPCRoundTripTests {
         #expect(WorkerProtocol.version > 3)
     }
 
+    /// A plan's qpdf stage changed the shape (plan 20d C5): version 4 was Read QR's.
+    @Test func thePDFStageBumpedTheProtocolVersion() {
+        #expect(WorkerProtocol.version > 4)
+    }
+
     @Test func anotherProtocolVersionIsRefused() throws {
         let found = WorkerProtocol.version + 1
         let data = try JSONEncoder().encode(Envelope(protocolVersion: found, body: WorkerRequest.ping))

@@ -1,14 +1,16 @@
 import Darwin
 import Dispatch
 import EngineImage
+import EnginePDF
 import Foundation
 import ZivletIPC
 import ZivletWorkerCore
 import os
 
 // ZivletWorker (P2-01, 02 §2.1): an unsandboxed XPC service with the hardened runtime and no entitlements, started
-// by launchd at the app's first job. It hosts the image engine and text recognition (every Vision call, D-M6-8)
-// behind WorkerService, accepts only the app (D-M6-7), and exits 60 s after its last request (D-M6-10).
+// by launchd at the app's first job. It hosts the image engine, the PDF engine (qpdf, only here: D-M7-16) and text
+// recognition (every Vision call, D-M6-8) behind WorkerService, accepts only the app (D-M6-7), and exits 60 s after
+// its last request (D-M6-10).
 
 let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
 
@@ -25,7 +27,7 @@ setlocale(LC_CTYPE, "UTF-8")
 }
 
 let service = WorkerService(
-    engines: [ImageEngine()], text: TextReader(), codes: CodeReading(),
+    engines: [ImageEngine(), PDFEngine()], text: TextReader(), codes: CodeReading(),
     onIdle: {
         logger.notice("Worker idle; exiting")
         exit(0)

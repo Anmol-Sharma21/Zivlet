@@ -4,7 +4,8 @@
 # @rpath library the bundle lacks, or has an LC_RPATH other than @executable_path/../Frameworks; then runs the
 # bundled ffmpeg, which proves the rpath resolves inside the bundle. Plan 18c C10: the worker must be in
 # Contents/XPCServices/ZivletWorker.xpc with identifier app.zivlet.Zivlet.Worker, and load only OS or bundle code;
-# D-M7-16: no TLS or crypto library either (qpdf runs there with its native crypto).
+# D-M7-16: no TLS or crypto library either (qpdf runs there with its native crypto), qpdf's code is in the worker,
+# and none of it is in the app's own binary (untrusted PDFs never reach qpdf inside the app).
 # Usage: Scripts/check-bundle.sh <Zivlet.app>
 set -euo pipefail
 APP=${1:?usage: check-bundle.sh <app>}
@@ -12,6 +13,8 @@ HELPERS="ffmpeg ffprobe"
 RPATH="@executable_path/../Frameworks"
 WORKER=XPCServices/ZivletWorker.xpc
 WORKER_ID=app.zivlet.Zivlet.Worker
+# A message of qpdf's document reader (QPDF_encryption.cc), so the check holds when a Release build strips symbols.
+QPDF_MARKER="unsupported encryption filter"
 CONTENTS=$APP/Contents
 problems=0
 problem() { echo "check-bundle: $*" >&2; problems=1; }
@@ -56,7 +59,19 @@ check_worker() {
         esac
     done
 }
+has_qpdf() { LC_ALL=C grep -qaF -- "$QPDF_MARKER" "$1"; }
+
+check_qpdf_placement() {
+    local worker=$CONTENTS/$WORKER/Contents/MacOS/ZivletWorker app=$CONTENTS/MacOS/Zivlet
+    if [[ -f "$worker" ]] && ! has_qpdf "$worker"; then
+        problem "Contents/$WORKER/Contents/MacOS/ZivletWorker has no qpdf code"
+    fi
+    if [[ -f "$app" ]] && has_qpdf "$app"; then
+        problem "Contents/MacOS/Zivlet has qpdf code (it belongs only in the worker)"
+    fi
+}
 check_worker
+check_qpdf_placement
 libraries=0
 for lib in "$CONTENTS"/Frameworks/lib*.dylib; do
     [[ -f "$lib" ]] || continue

@@ -13,10 +13,11 @@ public struct FFmpegStage: Sendable, Codable, Equatable {
     }
 }
 
-/// One step of a plan (02 §7.3). M3 executors: ffmpeg and the ImageIO pipeline.
+/// One step of a plan (02 §7.3). Executors: ffmpeg, the ImageIO pipeline and qpdf in the worker (P2-13).
 public enum Stage: Sendable, Codable, Equatable {
     case ffmpeg(FFmpegStage)
     case image(ImagePipelineSpec)
+    case pdf(PDFStage)
 
     /// The ffmpeg payload, or nil for another executor.
     public var ffmpeg: FFmpegStage? {
@@ -28,6 +29,12 @@ public enum Stage: Sendable, Codable, Equatable {
     public var image: ImagePipelineSpec? {
         guard case .image(let spec) = self else { return nil }
         return spec
+    }
+
+    /// The qpdf payload, or nil for another executor.
+    public var pdf: PDFStage? {
+        guard case .pdf(let stage) = self else { return nil }
+        return stage
     }
 }
 

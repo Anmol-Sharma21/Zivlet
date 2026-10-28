@@ -67,7 +67,8 @@ let package = Package(
             cxxSettings: [.unsafeFlags(["-I", qpdfHeaders])],
             linkerSettings: [.linkedLibrary("c++"), .linkedLibrary("z")]),
         // PDF structure, passwords and encryption through the shim; hosted only by the worker (P2-13, D-M7-16).
-        .target(name: "EnginePDF", dependencies: ["CZivletPDF", "ZivletCore"], swiftSettings: strict),
+        .target(
+            name: "EnginePDF", dependencies: ["CZivletPDF", "ZivletCore", "ZivletEngineKit"], swiftSettings: strict),
         // Vision text recognition and PDF text for Copy Text (P2-51 base, P2-103); its calls run only in the worker.
         .target(name: "EngineVision", dependencies: ["ZivletCore", "ZivletEngineKit"], swiftSettings: strict),
         .target(
@@ -141,7 +142,7 @@ let package = Package(
             name: "ZivletWorkerCoreTests",
             dependencies: [
                 "ZivletWorkerCore", "ZivletIPC", "ZivletCore", "ZivletEngineKit", "EngineVision", "EngineTestSupport",
-                "TestSupport", "OCRTestSupport", "WorkerTestSupport",
+                "TestSupport", "OCRTestSupport", "WorkerTestSupport", "EnginePDF",
             ],
             swiftSettings: strict),
         .testTarget(
@@ -213,7 +214,9 @@ let package = Package(
             swiftSettings: strict),
         .testTarget(
             name: "EnginePDFTests",
-            dependencies: ["EnginePDF", "EngineTestSupport", "TestSupport", "ZivletCore", "zivlet-pdf-probe"],
+            dependencies: [
+                "EnginePDF", "EngineTestSupport", "TestSupport", "ZivletCore", "ZivletEngineKit", "zivlet-pdf-probe",
+            ],
             swiftSettings: strict),
         // The 161-pair matrix through the real pipeline (P1-61); conversions run only with ZIVLET_MATRIX=subset|full.
         .testTarget(

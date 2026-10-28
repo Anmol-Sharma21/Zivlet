@@ -115,6 +115,24 @@ struct ValidatorTests {
             rig.refusal(.execute(rig.job, try rig.plan(engine: .pdf), outputByteLimit: nil)) == .engineMissing(.pdf))
     }
 
+    @Test func aPDFPlanNeedsARegularFileAsItsSource() throws {
+        let rig = try ValidatorRig()
+        let validator = WorkerRequestValidator(hostedEngines: [.pdf])
+        let plan = { (source: URL) in
+            try ExecutionPlan(
+                engine: .pdf, stages: [.pdf(PDFStage(source: source, encryption: .keep, pageCount: 1))],
+                stageWeights: [1], lanes: [.cpu], outputFormat: .pdf, stagedFile: rig.staged)
+        }
+        #expect(throws: Never.self) {
+            try validator.validate(.execute(rig.job, try plan(rig.input), outputByteLimit: nil))
+        }
+        for source in ["hosts.png", "folder.png", "missing.pdf"].map({ rig.dir.url.appending(path: $0) }) {
+            #expect(throws: JobError.unsupportedInput(.notAFile)) {
+                try validator.validate(.execute(rig.job, try plan(source), outputByteLimit: nil))
+            }
+        }
+    }
+
     @Test func aTextJobNeedsSafeRegularFilesAndLanguages() throws {
         let rig = try ValidatorRig()
         let job = { (inputs: [URL], languages: [LanguageTag]) in

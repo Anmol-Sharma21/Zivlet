@@ -80,6 +80,7 @@ public struct WorkerRequestValidator: Sendable {
         guard hostedEngines.contains(plan.engine) else { throw .engineMissing(plan.engine) }
         try Self.checkStaged(plan.stagedFile)
         for spec in plan.stages.compactMap(\.image) { try Self.checkInput(spec.source) }
+        for stage in plan.stages.compactMap(\.pdf) { try Self.checkInput(stage.source) }
     }
 
     /// An absolute `file:` URL whose path has no `..` component and no control character (NUL included).
