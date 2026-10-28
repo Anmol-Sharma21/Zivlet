@@ -38,7 +38,8 @@ build_qpdf_libraries() {
         -DREQUIRE_CRYPTO_NATIVE=ON -DUSE_IMPLICIT_CRYPTO=OFF -DBUILD_DOC=OFF -DINSTALL_EXAMPLES=OFF \
         -DSTATIC_JPEG=ON "-DLIBJPEG_H_PATH=$prefix/include" "-DLIBJPEG_LIB_PATH=$prefix/lib/libjpeg.a" \
         "-DZLIB_H_PATH=$sdk/usr/include" "-DZLIB_LIB_PATH=$sdk/usr/lib/libz.tbd" >>"$log" 2>&1 || return 1
-    cmake --build "$bld/qpdf" --target libqpdf_static >>"$log" 2>&1 || return 1
+    # With BUILD_SHARED_LIBS=OFF qpdf names its static library target plain libqpdf.
+    cmake --build "$bld/qpdf" --target libqpdf >>"$log" 2>&1 || return 1
 }
 
 build_qpdf() {
