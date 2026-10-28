@@ -68,6 +68,7 @@ public final class PasswordSheetState {
 
     /// Shows `model` in place of the current one (the second sheet, a new state from the job).
     public func show(_ next: PasswordSheetModel) {
+        guard next != model else { return }
         model = next
         modelChanged(next)
     }

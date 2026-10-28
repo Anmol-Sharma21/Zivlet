@@ -197,6 +197,32 @@ struct PasswordSheetViewTests {
         #expect(await eventually { hosted.applied == 1 })
     }
 
+    @Test func theWindowGrowsToTheSheet() {
+        let window = ToolWindow()
+        defer { window.close() }
+        let sheet = state(.lock)
+        window.load(sheet.model.window, content: AnyView(PasswordSheetView(state: sheet)))
+        window.place(at: CGPoint(x: 700, y: 400), visibleFrame: CGRect(x: 0, y: 0, width: 1440, height: 875))
+        #expect(window.frame.height > 150)
+    }
+
+    /// Taking focus makes the secure field write its text again in the middle of SwiftUI's update, when the window
+    /// cannot measure its content; it must keep its size (it once shrank to one point high there).
+    @Test(.enabled(if: !ScreenSession.isLocked, Comment(rawValue: ScreenSession.lockedReason)))
+    func theWindowKeepsItsSizeOnceTheFieldHasFocus() async throws {
+        let window = ToolWindow()
+        defer { window.close() }
+        let coordinator = ToolWindowCoordinator(makeWindow: { window }, contents: { _, _ in nil }, refuse: { _, _ in })
+        let prompter = PasswordPrompter(presenter: coordinator) { PasswordSheetState(model: $0, announce: { _ in }) }
+        let far = CGPoint(x: -4_000, y: -4_000)
+        let asked = Task { await prompter.ask(PasswordRequest(mode: .lock, files: ["a.pdf"], near: far)) }
+        #expect(await eventually { (window.firstResponder as? NSTextView)?.delegate is NSSecureTextField })
+        for _ in 0..<30 { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(window.frame.height > 150)
+        window.cancelOperation(nil)
+        _ = await asked.value
+    }
+
     @Test func everyControlHasAVoiceOverLabel() {
         let sheet = state(.lock, files: ["a.pdf", "b.pdf"])
         sheet.password = password

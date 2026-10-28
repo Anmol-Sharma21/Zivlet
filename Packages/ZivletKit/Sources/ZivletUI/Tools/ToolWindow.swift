@@ -58,6 +58,9 @@ public final class ToolWindow: NSPanel {
     public func update(_ model: ToolWindowModel) {
         state.model = model
         fitToContent()
+        // A tool's content can change in the middle of SwiftUI's own update (typing, a field taking focus), when the
+        // hosting view cannot measure yet: measure again once that update is over.
+        DispatchQueue.main.async { [weak self] in self?.fitToContent() }
     }
 
     /// Shows the window at the wheel's centre (the pointer when there is none) as the key window, without activating
@@ -78,7 +81,10 @@ public final class ToolWindow: NSPanel {
 
     private func fitToContent() {
         hosting.layoutSubtreeIfNeeded()
-        let height = max(1, hosting.fittingSize.height)
+        let measured = hosting.fittingSize.height
+        // Nothing measurable (mid-update, or no model yet): keep the size the window has, never collapse to a line.
+        guard measured > 1 || state.model == nil else { return }
+        let height = max(1, measured)
         let top = frame.maxY
         setFrame(
             NSRect(x: frame.minX, y: top - height, width: ToolWindowView.width, height: height), display: isVisible)
