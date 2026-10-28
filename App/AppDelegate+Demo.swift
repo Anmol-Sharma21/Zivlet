@@ -9,7 +9,8 @@ extension AppDelegate {
     /// [-ZivletDemoCancelAfter <ms>]` runs the drop path for one file, and `-ZivletDemoAction <path> <action>
     /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, `-ZivletWorkerSmoke <folder>` runs the worker smoke
     /// (`WorkerSmoke`), `-ZivletCopyTextDemo <folder>` runs Copy Text (`CopyTextDemo`), `-ZivletTextStates <state>`
-    /// shows one Copy Text state (`TextShots`), `-ZivletBoxBusyDemo <folder>` cancels a box Move and undoes it
+    /// shows one Copy Text state (`TextShots`), `-UITestFixture <dir> [-UITestMode tools -UITestTool <tool>]` serves
+    /// the owner-run UI tests, `-ZivletBoxBusyDemo <folder>` cancels a box Move and undoes it
     /// (`BoxBusyDemo`, started with the box), and `-ZivletIslandPreview <state>` puts a made-up
     /// job on the notch island, so end-to-end checks need no drag. The island preview alone also exists in the CPU
     /// measurement build (`ZIVLET_ISLAND_PREVIEW`, D-ND3); a shipped Release build has none of these.
@@ -20,7 +21,7 @@ extension AppDelegate {
                 if let scenario = try DemoScenario.parse(arguments: arguments) { showDemo(scenario) }
                 if let pane = SettingsPane.demo(arguments: arguments) { settingsWindow.show(pane) }
                 if let dir = UITestFixture.directory(arguments: arguments) {
-                    conversion.hud.show(try UITestFixture.snapshot(in: dir))
+                    try runUITestFixture(dir, arguments: arguments)
                 }
                 if let demo = try DemoConversion.parse(arguments: arguments) { runDemo(demo) }
                 if let smoke = WorkerSmoke.parse(arguments: arguments) {
@@ -118,6 +119,18 @@ extension AppDelegate {
                     guard (try? await Task.sleep(for: gap)) != nil else { return }
                 }
             }
+        }
+
+        /// The owner-run UI test's fixture: the result card, or with `-UITestMode tools` the named tool run on the
+        /// folder's files through the drop path (D-M7-12).
+        private func runUITestFixture(_ dir: URL, arguments: [String]) throws {
+            guard try UITestFixture.mode(arguments: arguments) == .tools else {
+                return conversion.hud.show(try UITestFixture.snapshot(in: dir))
+            }
+            guard let tool = try UITestFixture.tool(arguments: arguments) else {
+                throw UITestFixtureError.missingValue(UITestFixture.toolFlag)
+            }
+            handle(WheelSelection(mode: .tools, target: .tool(tool), urls: try UITestFixture.files(in: dir)), near: nil)
         }
 
         private func runDemo(_ demo: DemoConversion) {
