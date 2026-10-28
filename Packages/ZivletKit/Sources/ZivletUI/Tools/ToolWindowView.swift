@@ -43,6 +43,7 @@ struct ToolWindowView: View {
         .background(ToolWindowSurface(finish: state.finish, shape: shape))
         .clipShape(shape)
         .environment(\.colorScheme, .dark)
+        .environment(\.islandOutlined, state.finish.outlined)
     }
 
     /// Apply's VoiceOver label: its own label, and when it is off, why ("Lock, unavailable: Passwords don't match").
@@ -113,7 +114,7 @@ struct ToolWindowFooter: View {
             }
             HStack(spacing: IslandContentLook.Spacing.s) {
                 Spacer(minLength: 0)
-                Button("Cancel", action: cancel)
+                Button(model.cancelLabel, action: cancel)
                     .keyboardShortcut(.cancelAction)
                     .buttonStyle(.glass)
                 // No accent fill (the island's ink has none, 19b D-NL11): white on glass holds its contrast where

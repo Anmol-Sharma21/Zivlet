@@ -18,22 +18,3 @@ public struct CodeJob: Codable, Sendable, Equatable {
         self.pageLimit = pageLimit
     }
 }
-
-/// One file's answer: its name and codes, or the error that kept it from being read (the others are still read).
-public struct FileCodes: Codable, Sendable, Equatable {
-    public let name: String
-    public let codes: [FoundCode]
-    public let error: CodeError?
-
-    public init(name: String, codes: [FoundCode]) {
-        self.name = name
-        self.codes = codes
-        error = nil
-    }
-
-    public init(name: String, error: CodeError) {
-        self.name = name
-        codes = []
-        self.error = error
-    }
-}

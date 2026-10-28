@@ -34,29 +34,37 @@ public enum ApplyState: Sendable, Equatable {
     }
 }
 
-/// The shell's state (P2-30, plan 20b A1): the tool's symbol and name, the file line, Apply and whether the tool is
-/// working. A value: every edit returns a new one.
+/// The shell's state (P2-30, plan 20b A1): the tool's symbol and name, the file line, Apply, the word on the button
+/// that closes without applying ("Cancel", or "Close" for a results window) and whether the tool is working. A value:
+/// every edit returns a new one.
 public struct ToolWindowModel: Sendable, Equatable {
     public let symbol: String
     public let title: String
     public let fileLine: String
     public let apply: ApplyState
+    public let cancelLabel: String
     public let isBusy: Bool
 
-    public init(symbol: String, title: String, fileLine: String, apply: ApplyState, isBusy: Bool = false) {
+    public init(
+        symbol: String, title: String, fileLine: String, apply: ApplyState, cancelLabel: String = "Cancel",
+        isBusy: Bool = false
+    ) {
         self.symbol = symbol
         self.title = title
         self.fileLine = fileLine
         self.apply = apply
+        self.cancelLabel = cancelLabel
         self.isBusy = isBusy
     }
 
     public func with(apply: ApplyState) -> ToolWindowModel {
-        ToolWindowModel(symbol: symbol, title: title, fileLine: fileLine, apply: apply, isBusy: isBusy)
+        ToolWindowModel(
+            symbol: symbol, title: title, fileLine: fileLine, apply: apply, cancelLabel: cancelLabel, isBusy: isBusy)
     }
 
     public func busy(_ isBusy: Bool = true) -> ToolWindowModel {
-        ToolWindowModel(symbol: symbol, title: title, fileLine: fileLine, apply: apply, isBusy: isBusy)
+        ToolWindowModel(
+            symbol: symbol, title: title, fileLine: fileLine, apply: apply, cancelLabel: cancelLabel, isBusy: isBusy)
     }
 
     /// Apply is on and the tool is not already working.
