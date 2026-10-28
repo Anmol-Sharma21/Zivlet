@@ -9,10 +9,14 @@ reset() { cp "$ROOT/Vendor/versions.lock" "$ROOT/Vendor/licenses.json" "$T/"; }
 
 reset
 out=$(gate) || fail "the real lock and manifest must pass: $out"
-assert_contains "$out" "Licences OK: 13 components"
+assert_contains "$out" "Licences OK: 15 components"
 
 reset; jq 'del(.components[] | select(.name == "zimg"))' "$ROOT/Vendor/licenses.json" > "$T/licenses.json"
 assert_contains "$(gate || true)" "no licence entry for zimg"
+assert_fails gate
+
+reset; jq 'del(.components[] | select(.name == "qpdf"))' "$ROOT/Vendor/licenses.json" > "$T/licenses.json"
+assert_contains "$(gate || true)" "no licence entry for qpdf"
 assert_fails gate
 
 reset; jq '(.components[] | select(.name == "lame") | .spdx) = "LicenseRef-Proprietary"' \
@@ -30,7 +34,14 @@ assert_fails gate --ffmpeg "$T/ffmpeg"
 
 # Licence texts collected for Contents/Resources/Licenses.
 LICENSES_OUT=$T/licenses "$ROOT/Scripts/collect-licences.sh" >/dev/null
-for name in ffmpeg x264 svtav1 libwebp resvg rust-crates; do assert_file "$T/licenses/$name.txt"; done
+for name in ffmpeg x264 svtav1 libwebp resvg qpdf libjpeg-turbo rust-crates; do assert_file "$T/licenses/$name.txt"; done
+# qpdf's Apache NOTICE is reproduced verbatim (10 §10); libjpeg-turbo carries the IJG README it requires.
+notice=$(tar -xOf "$ROOT/Vendor/downloads/qpdf-12.4.2/qpdf-12.4.2.tar.gz" qpdf-12.4.2/NOTICE.md)
+grep -qF -- "$(head -1 <<<"$notice")" "$T/licenses/qpdf.txt" || fail "qpdf.txt lacks NOTICE.md"
+[[ "$(awk '/^===== NOTICE.md =====$/ { on = 1; getline; next } on && /^===== / { exit } on' "$T/licenses/qpdf.txt")" == \
+    "$notice" ]] || fail "qpdf.txt does not reproduce NOTICE.md verbatim"
+grep -q "Apache License" "$T/licenses/qpdf.txt" || fail "qpdf.txt lacks the Apache licence"
+grep -q "Independent JPEG Group" "$T/licenses/libjpeg-turbo.txt" || fail "libjpeg-turbo.txt lacks README.ijg"
 grep -q "GNU GENERAL PUBLIC LICENSE" "$T/licenses/ffmpeg.txt" || fail "ffmpeg.txt lacks the GPL text"
 grep -q "tiny-skia" "$T/licenses/rust-crates.txt" || fail "crate licences lack tiny-skia"
 grep -q 'href="zimg.txt"' "$T/licenses/index.html" || fail "index.html lacks zimg"
@@ -39,7 +50,8 @@ grep -q 'href="zimg.txt"' "$T/licenses/index.html" || fail "index.html lacks zim
 ZIVLET_RELEASE_DIR=$T/release "$ROOT/Scripts/source-bundle.sh" 0.0.0-test >/dev/null
 listing=$(tar -tf "$T/release/zivlet-0.0.0-test-source.tar.xz")
 for entry in ffmpeg-9.0.2.tar.xz "x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.tar.bz2" Vendor/build-media.sh \
-    Vendor/rs/zivlet-svg/Cargo.lock vendor/resvg-0.47.0/ SOURCES.md; do
+    qpdf-12.4.2.tar.gz libjpeg-turbo-3.2.0.tar.gz Vendor/build-qpdf.sh Vendor/rs/zivlet-svg/Cargo.lock \
+    vendor/resvg-0.47.0/ SOURCES.md; do
     grep -qF -- "$entry" <<<"$listing" || fail "source bundle lacks $entry"
 done
 echo "PASS test-licence-gate"

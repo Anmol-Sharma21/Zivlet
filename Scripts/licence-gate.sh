@@ -10,7 +10,7 @@ SRC=$REPO_ROOT/Vendor/src; DOWNLOADS=$REPO_ROOT/Vendor/downloads
 FFMPEG=$REPO_ROOT/Vendor/out/media-stage/Helpers/ffmpeg
 CARGO_HOME=${ZIVLET_CARGO_HOME:-$REPO_ROOT/Vendor/downloads/cargo-home}
 ALLOWED=" GPL-2.0-or-later GPL-3.0-or-later LGPL-2.0-or-later LGPL-2.1-or-later BSD-2-Clause BSD-3-Clause
-BSD-3-Clause-Clear ISC MIT Apache-2.0 Zlib WTFPL MPL-2.0 LicenseRef-AOM-Patent-1.0 "
+BSD-3-Clause-Clear ISC MIT Apache-2.0 Zlib WTFPL MPL-2.0 LicenseRef-AOM-Patent-1.0 IJG "
 ALLOWED=" ${ALLOWED//$'\n'/ } " # one line, so every id is surrounded by spaces
 while (($#)); do
     case "$1" in

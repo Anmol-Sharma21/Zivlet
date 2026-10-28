@@ -28,6 +28,8 @@ Besides these, the app links only Apple system frameworks and the Swift runtime 
 | zimg | 3.0.6 | WTFPL | inside libavfilter | |
 | libwebp (+ mux, demux, sharpyuv) | 1.6.0 | BSD-3-Clause | static library linked into the app (`CWebP`) and inside libavcodec | WebP output (the in-app writer lands in M4 stream B) |
 | resvg / usvg / tiny-skia and their crates | 0.47.0 | resvg Apache-2.0 OR MIT; tiny-skia BSD-3-Clause; the other crates MIT, Apache-2.0, Zlib or BSD (the full list is in `rust-crates.txt` in the app) | static library linked into the app (`CZivletSVG`, through Zivlet's own `zivlet-svg` crate, GPL-3.0-or-later) | SVG input (used from M4 stream B); only `data:` image references are loaded |
+| qpdf | 12.4.2 | Apache-2.0 AND MIT (taken under Apache-2.0; the MIT part is its embedded SHA-2 code from sphlib; its Rijndael code is public domain) | static library (`CQPDF`) linked only into the converter (`ZivletWorker`), through Zivlet's own small C++ wrapper (`CZivletPDF`) | PDF lock, unlock, change password and checks. Built with its native crypto only (no OpenSSL, no GnuTLS). `NOTICE.md` reproduced verbatim. qpdf's `qtest` test tool (Artistic-2.0) is neither built nor shipped. Pinned and its licence collected; the library build is pending (owner step OS-M7-1), so this build does not contain it yet |
+| libjpeg-turbo | 3.2.0 | IJG AND BSD-3-Clause AND Zlib | static, inside `CQPDF` with qpdf | The libjpeg API library only (no tools, no TurboJPEG API). `README.ijg` reproduced as the IJG licence requires. Same status as qpdf |
 | Sparkle | 2.10.0 | MIT (includes bsdiff, BSD-2-Clause) | `Contents/Frameworks/Sparkle.framework` (from its Swift package, checksum-verified; thinned to arm64, XPC services removed) | Updates. Started only when the build has a real feed and EdDSA public key; this repository's builds have neither, so the updater never runs. The pinned tarball's release tools sign the appcast. Full LICENSE reproduced |
 
 Sounds and images that are Zivlet's own, so no third-party licence applies:
@@ -53,8 +55,6 @@ Tools used during development, not distributed with Zivlet:
 | libarchive | 3.8 | BSD-2-Clause | static | Archive read, write and conversion |
 | xz (liblzma) / zstd / lz4 | 5.8 / 1.5 / 1.10 | 0BSD / BSD-3-Clause / BSD-2-Clause | static | Compression filters for libarchive |
 | 7-Zip (`7zz` helper) | 26.x | LGPL-2.1-or-later AND BSD-3-Clause | separate helper | Built with the RAR code removed. Zivlet ships no unRAR code |
-| qpdf | 12.x | Apache-2.0 | static | PDF lock, unlock, merge, split. NOTICE reproduced |
-| libjpeg-turbo | 3.1 | IJG AND BSD-3-Clause AND Zlib | static (with qpdf) | |
 | ExifTool | 13.x | Artistic-1.0-Perl OR GPL-1.0-or-later | Perl scripts in Resources | Metadata. Used under the GPL option |
 | Perl (trimmed) | 5.42 | Artistic-1.0-Perl OR GPL-1.0-or-later | helper | Runs ExifTool |
 | libimagequant | 4.x | GPL-3.0-or-later | static | PNG quantisation |
