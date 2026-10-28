@@ -12,6 +12,7 @@ public final class ToolWindowState {
     public internal(set) var finish: IslandFinish = .glass(band: 0)
     @ObservationIgnored var apply: () -> Void = {}
     @ObservationIgnored var cancel: () -> Void = {}
+    @ObservationIgnored lazy var submit = ToolWindowSubmit { [unowned self] in apply() }
 
     init() {}
 }
@@ -44,6 +45,7 @@ struct ToolWindowView: View {
         .clipShape(shape)
         .environment(\.colorScheme, .dark)
         .environment(\.islandOutlined, state.finish.outlined)
+        .environment(\.toolWindowSubmit, state.submit)
     }
 
     /// Apply's VoiceOver label: its own label, and when it is off, why ("Lock, unavailable: Passwords don't match").
@@ -127,4 +129,21 @@ struct ToolWindowFooter: View {
             }
         }
     }
+}
+
+/// Runs the tool window's Apply when it is on: Return in a text field of a tool's content, which the field takes before
+/// the window's default button sees it. Kept by the window's state, so it is the same object on every update.
+final class ToolWindowSubmit {
+    private let run: () -> Void
+
+    init(_ run: @escaping () -> Void = {}) { self.run = run }
+
+    func callAsFunction() { run() }
+
+    /// Outside a tool window Return does nothing.
+    static let none = ToolWindowSubmit()
+}
+
+extension EnvironmentValues {
+    @Entry var toolWindowSubmit = ToolWindowSubmit.none
 }
