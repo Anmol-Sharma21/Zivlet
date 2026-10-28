@@ -51,11 +51,12 @@ action-demo:
 notch-demo:
 	$(ENV) Scripts/demo-notch.sh
 
-# Z6 (plan 18d D4): the 12 OCR fixtures and the PDF fixtures through real Vision; opt-in, as the first call compiles
-# a model for minutes. With PDFS=<folder>, the owner's private PDFs are printed with their CER (OS-M6-3).
+# Z6 (plan 18d D4): the 12 OCR fixtures, the PDF fixtures and Read QR's codes (plan 20b A7) through real Vision;
+# opt-in, as the first call compiles a model for minutes. With PDFS=<folder>, the owner's private PDFs are printed
+# with their CER (OS-M6-3).
 ocr-check:
 	$(ENV) $(NATIVE) cd "$$KIT" && ZIVLET_OCR_FIXTURES=1 ZIVLET_OCR_PDFS="$(if $(PDFS),$(abspath $(PDFS)),)" \
-	  swift test --filter "OCRFixtureTests|VisionCapabilitiesTests|PDFTextSourceTests"
+	  swift test --filter "OCRFixtureTests|VisionCapabilitiesTests|PDFTextSourceTests|CodeReaderVisionTests"
 
 # Z7 (plan 18d D15): Copy Text through the drop path of the Debug app on rendered inputs; skipped when locked.
 copy-text-demo:

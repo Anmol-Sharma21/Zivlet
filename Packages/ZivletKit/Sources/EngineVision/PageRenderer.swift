@@ -18,12 +18,13 @@ public enum PageRenderer {
         return CGSize(width: (points.width * scale).rounded(.down), height: (points.height * scale).rounded(.down))
     }
 
-    public static func render(_ page: PDFPage) throws(TextError) -> CGImage {
+    /// `dpi` is 300 for text; Read QR draws at 200 (P2-51). The caps hold at any DPI.
+    public static func render(_ page: PDFPage, dpi: CGFloat = dpi) throws(TextError) -> CGImage {
         guard let pdfPage = page.pageRef else { throw .unreadable }
         let box = page.bounds(for: .cropBox)
         let turned = page.rotation % 180 != 0
         let points = turned ? CGSize(width: box.height, height: box.width) : box.size
-        let pixels = pixelSize(points: points)
+        let pixels = pixelSize(points: points, dpi: dpi)
         guard pixels.width >= 1, pixels.height >= 1, let space = CGColorSpace(name: CGColorSpace.sRGB),
             let context = CGContext(
                 data: nil, width: Int(pixels.width), height: Int(pixels.height), bitsPerComponent: 8, bytesPerRow: 0,
