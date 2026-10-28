@@ -40,6 +40,13 @@ archive clean arm64 26.0 provider.c plain.c
 out=$(verify clean) || fail "a clean arm64 26.0 archive was refused: $out"
 assert_contains "$out" "clean.a: arm64, minos 26.0, native crypto only, no build paths"
 
+# A real archive's symbol list is far bigger than a pipe buffer; the provider sorts first, so a check that stops
+# reading at its first match would cut nm off (SIGPIPE under pipefail) and refuse a good archive.
+for i in $(seq 1 4000); do echo "int padding_symbol_with_a_long_name_for_the_listing_$i(void) { return $i; }"; done \
+    >"$T/many.c"
+archive big arm64 26.0 provider.c many.c
+out=$(verify big) || fail "a clean archive with a long symbol list was refused: $out"
+
 archive intel x86_64 26.0 provider.c plain.c
 refused intel "not arm64 only"
 archive old arm64 14.0 provider.c plain.c

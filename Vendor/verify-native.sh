@@ -35,7 +35,9 @@ done
 
 external=$(nm -u "$ARCHIVE" 2>/dev/null | grep -E "$EXTERNAL_CRYPTO" | sort -u | tr '\n' ' ' || true)
 [[ -z "$external" ]] || problem "references OpenSSL or GnuTLS: $external"
-nm -gU "$ARCHIVE" 2>/dev/null | grep -q "QPDFCrypto_native" || problem "no native crypto provider defined"
+# Read the whole listing first: grep -q stops at its first match, and under pipefail the cut-off nm fails the test.
+defined=$(nm -gU "$ARCHIVE" 2>/dev/null || true)
+grep -q "QPDFCrypto_native" <<<"$defined" || problem "no native crypto provider defined"
 
 leaks=$(strings -a "$ARCHIVE" | grep -E "$LEAK_PATTERN" | head -3 | tr '\n' ' ' || true)
 [[ -z "$leaks" ]] || problem "contains a build path: $leaks"
