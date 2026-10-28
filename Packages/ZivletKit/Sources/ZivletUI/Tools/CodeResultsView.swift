@@ -67,10 +67,14 @@ struct CodeResultsView: View {
                     }
                     CodeRowView(row: row, press: press)
                 }
-                ForEach(results.notes, id: \.self) { note in
-                    Label(note, systemImage: ToolWindowView.reasonSymbol)
-                        .font(IslandContentLook.TypeStyle.secondary)
-                        .foregroundStyle(IslandInk.secondary)
+                if let count = results.notes.first {
+                    VStack(alignment: .leading, spacing: IslandContentLook.Spacing.xs) {
+                        Label(count, systemImage: ToolWindowView.reasonSymbol)
+                        ForEach(results.notes.dropFirst(), id: \.self) { Text($0) }
+                    }
+                    .font(IslandContentLook.TypeStyle.secondary)
+                    .foregroundStyle(IslandInk.secondary)
+                    .accessibilityElement(children: .combine)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -92,7 +96,7 @@ struct CodeRowView: View {
     let press: (CodeButton, Int) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: IslandContentLook.Spacing.s) {
+        HStack(alignment: .center, spacing: IslandContentLook.Spacing.s) {
             VStack(alignment: .leading, spacing: IslandContentLook.Spacing.xs) {
                 Text(row.payload)
                     .font(IslandContentLook.TypeStyle.primary)
@@ -106,12 +110,13 @@ struct CodeRowView: View {
                 }
             }
             Spacer(minLength: 0)
-            CodeIconButton(symbol: "doc.on.doc", title: "Copy") { press(.copy, row.id) }
+            // Open before Copy, so Copy keeps one column on every row.
             if row.link != nil {
                 CodeIconButton(symbol: "arrow.up.right.square", title: "Open", hint: CodeResultsView.openHint(row)) {
                     press(.open, row.id)
                 }
             }
+            CodeIconButton(symbol: "doc.on.doc", title: "Copy") { press(.copy, row.id) }
         }
     }
 }

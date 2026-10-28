@@ -91,6 +91,22 @@ struct ToolWindowTests {
         #expect(window.state.finish == .glass(band: 0))
     }
 
+    @Test func aForcedFinishWinsOverTheSystemsUntilItIsCleared() {
+        let window = ToolWindow()
+        defer { window.close() }
+        window.finishOverride = IslandFinish.Settings(reduceTransparency: false, increaseContrast: true)
+        #expect(window.state.finish == .solid(band: 0, outline: true))
+        window.finishOverride = IslandFinish.Settings(reduceTransparency: true, increaseContrast: false)
+        #expect(window.state.finish == .solid(band: 0, outline: false))
+        window.finishOverride = nil
+        let workspace = NSWorkspace.shared
+        let system = IslandFinish.floating(
+            settings: IslandFinish.Settings(
+                reduceTransparency: workspace.accessibilityDisplayShouldReduceTransparency,
+                increaseContrast: workspace.accessibilityDisplayShouldIncreaseContrast))
+        #expect(window.state.finish == system)
+    }
+
     @Test func voiceOverHearsTheToolsNameAndWhyApplyIsOff() throws {
         let harness = Harness(Self.lock)
         defer { harness.window.close() }

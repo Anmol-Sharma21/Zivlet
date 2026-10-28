@@ -57,6 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var tools = ToolWiring(
         text: TextService(selection: worker), actions: actions, store: settings.store, clipboard: Self.toolClipboard())
     lazy var toolWindows = ToolWindowWiring(actions: actions)
+    lazy var codes = CodeWiring(
+        codes: CodeService(selection: worker), actions: actions, toolWindows: toolWindows,
+        clipboard: Self.codeClipboard())
     private var trigger: TriggerHost?
     var wheel: WheelController?
     private lazy var menu = MenuWiring(settings: settings.store, undoHistory: undoHistory, island: island)
@@ -193,6 +196,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return ClipboardAction()
     }
 
+    /// The general pasteboard; the DEBUG Read QR demo copies to its own, so the person's clipboard is left alone.
+    private static func codeClipboard() -> ClipboardAction {
+        #if DEBUG
+            if CodeToolModel.demoDirectory(arguments: ProcessInfo.processInfo.arguments) != nil {
+                return ClipboardAction(pasteboard: NSPasteboard(name: NSPasteboard.Name("app.zivlet.qr-demo")))
+            }
+        #endif
+        return ClipboardAction()
+    }
+
     /// Always false in Release, so no shipped build can install a key-class global monitor (no TCC prompt).
     private static func debugFlagsMonitorEnabled() -> Bool {
         #if DEBUG
@@ -260,6 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if tools.run(tool, urls: selection.urls, optionHeld: selection.optionHeld, near: point) != nil {
                 return nil
             }
+            if codes.run(tool, urls: selection.urls, near: point) != nil { return nil }
             if toolWindows.open(tool, urls: selection.urls, near: point) { return nil }
         }
         guard case .convert(let format) = selection.target else {

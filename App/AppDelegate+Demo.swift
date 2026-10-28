@@ -10,7 +10,7 @@ extension AppDelegate {
     /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, `-ZivletWorkerSmoke <folder>` runs the worker smoke
     /// (`WorkerSmoke`), `-ZivletCopyTextDemo <folder>` runs Copy Text (`CopyTextDemo`), `-ZivletTextStates <state>`
     /// shows one Copy Text state (`TextShots`), `-UITestFixture <dir> [-UITestMode tools -UITestTool <tool>]` serves
-    /// the owner-run UI tests, `-ZivletBoxBusyDemo <folder>` cancels a box Move and undoes it
+    /// the owner-run UI tests, `-ZivletQRDemo <dir>` runs READ QR on the folder's files, `-ZivletBoxBusyDemo <folder>` cancels a box Move and undoes it
     /// (`BoxBusyDemo`, started with the box), and `-ZivletIslandPreview <state>` puts a made-up
     /// job on the notch island, so end-to-end checks need no drag. The island preview alone also exists in the CPU
     /// measurement build (`ZIVLET_ISLAND_PREVIEW`, D-ND3); a shipped Release build has none of these.
@@ -40,6 +40,10 @@ extension AppDelegate {
                 }
                 if let state = TextShots.parse(arguments: arguments) {
                     TextShots.run(state, island: island, actions: actions, tools: tools)
+                }
+                if let dir = CodeToolModel.demoDirectory(arguments: arguments) {
+                    let urls = try UITestFixture.files(in: dir)
+                    handle(WheelSelection(mode: .tools, target: .tool(.qrScan), urls: urls), near: nil)
                 }
                 if let demo = try DemoAction.parse(arguments: arguments) {
                     let selection = WheelSelection(

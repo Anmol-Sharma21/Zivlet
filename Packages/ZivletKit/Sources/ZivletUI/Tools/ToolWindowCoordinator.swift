@@ -73,6 +73,30 @@ public final class ToolWindowCoordinator {
             refuse(.failed(ActionCard(title: Self.oneFileOnly)), point)
             return true
         }
+        show(content, near: point)
+        return true
+    }
+
+    /// Shows content that is ready, such as Read QR's results (D-M7-13). An open window is taken over only when
+    /// `replacing` says its content may be (earlier results); another tool's window is brought forward and left as it
+    /// is, and false is returned.
+    @discardableResult
+    public func present(
+        _ content: any WindowToolContent, near point: CGPoint?,
+        replacing: (any WindowToolContent) -> Bool = { _ in false }
+    ) -> Bool {
+        if isOpen, let current, let window {
+            guard replacing(current) else {
+                window.bringForward()
+                return false
+            }
+            current.cancel()
+        }
+        show(content, near: point)
+        return true
+    }
+
+    private func show(_ content: any WindowToolContent, near point: CGPoint?) {
         let window = window ?? makeWindow()
         self.window = window
         current = content
@@ -81,7 +105,6 @@ public final class ToolWindowCoordinator {
         window.onCancel = { [weak self] in self?.cancelled() }
         window.load(content.model, content: content.view)
         window.show(at: point)
-        return true
     }
 
     private func applied() {

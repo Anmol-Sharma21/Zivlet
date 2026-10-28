@@ -87,7 +87,9 @@ final class ToolWiring {
     /// A DEBUG demo or UI test run; a Release build has none (its flags are never compiled in, check-release-paths).
     private static func isDemoRun(_ arguments: [String]) -> Bool {
         #if DEBUG
-            let prefixes = ["-ZivletDemo", "-ZivletCopyTextDemo", "-ZivletTextStates", "-ZivletIslandPreview"]
+            let prefixes = [
+                "-ZivletDemo", "-ZivletCopyTextDemo", "-ZivletTextStates", "-ZivletIslandPreview", "-ZivletQRDemo",
+            ]
             return arguments.contains { argument in
                 prefixes.contains { argument.hasPrefix($0) } || argument == "-UITestFixture"
             }

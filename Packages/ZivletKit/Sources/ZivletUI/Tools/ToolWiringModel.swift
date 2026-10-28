@@ -157,3 +157,57 @@ enum TextCopy {
         }
     }
 }
+
+/// The pure part of READ QR's wiring (P2-51, plan 20b A10): the working line, what the job's end shows and the log
+/// line. The app's `CodeWiring` does the side effects.
+public enum CodeToolModel {
+    public static let reading = "Reading codes…"
+
+    /// What the end of a job shows: a HUD result (a toast, a card, or nothing after a cancel) or the results window.
+    public enum Outcome: Equatable {
+        case hud(ActionResult)
+        case window(CodeResultsModel)
+    }
+
+    /// "Reading codes…", then with the percent of files done; the island's tab shows the tool's symbol.
+    public static func working(fraction: Double?) -> WorkingStatus {
+        guard let fraction else { return WorkingStatus(line: reading, symbol: CodeResults.symbol) }
+        let percent = Int((min(max(fraction, 0), 1) * 100).rounded(.down))
+        return WorkingStatus(line: "\(reading) \(percent)%", fraction: fraction, symbol: CodeResults.symbol)
+    }
+
+    public static func outcome(_ result: Result<[FileCodes], CodeError>) -> Outcome {
+        switch result {
+        case .failure(let error): return .hud(CodeResults.failure(error))
+        case .success(let files):
+            switch CodeResults.present(files) {
+            case .toast(let result): return .hud(result)
+            case .window(let model): return .window(model)
+            }
+        }
+    }
+
+    /// Counts only: never a file name, never a payload (NFR-6).
+    public static func logLine(_ result: Result<[FileCodes], CodeError>) -> String {
+        switch result {
+        case .failure(let error): return error.logDescription
+        case .success(let files):
+            let codes = files.reduce(0) { $0 + $1.codes.count }
+            let failed = files.filter { $0.error != nil }.count
+            return "\(files.count) files, \(codes) codes, \(failed) not read"
+        }
+    }
+
+    #if DEBUG
+        public static let demoFlag = "-ZivletQRDemo"
+
+        /// DEBUG: `-ZivletQRDemo <dir>` runs READ QR on the visible files in `<dir>` without a drag (plan 20b A10,
+        /// F3); the folder must be an absolute path.
+        public static func demoDirectory(arguments: [String]) -> URL? {
+            guard let index = arguments.firstIndex(of: demoFlag), index + 1 < arguments.count,
+                arguments[index + 1].hasPrefix("/")
+            else { return nil }
+            return URL(filePath: arguments[index + 1], directoryHint: .isDirectory)
+        }
+    #endif
+}

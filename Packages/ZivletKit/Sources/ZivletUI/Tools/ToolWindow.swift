@@ -129,7 +129,19 @@ public final class ToolWindow: NSPanel {
         }
     }
 
+    /// The display options the finish is drawn with instead of the system's (the DEBUG screenshot flag
+    /// `-ZivletIslandFinish`, so the fallbacks are captured without touching the owner's settings); nil follows the
+    /// system.
+    public var finishOverride: IslandFinish.Settings? {
+        didSet { displayOptionsChanged() }
+    }
+
     private func displayOptionsChanged() {
+        if let finishOverride {
+            return applyDisplayOptions(
+                reduceTransparency: finishOverride.reduceTransparency, increaseContrast: finishOverride.increaseContrast
+            )
+        }
         let workspace = NSWorkspace.shared
         applyDisplayOptions(
             reduceTransparency: workspace.accessibilityDisplayShouldReduceTransparency,
