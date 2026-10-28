@@ -269,7 +269,7 @@ after.
   suite it took 23–94 ms, including 90.8 and 93.6 ms in two runs that m5a X2 judged at load 2.9. Every later drop
   took 3–5 ms. The old unit test never saw this, because other UI tests had already warmed its process. The suite now
   judges the 19 warm drops strictly and prints the first drop on its own as a known issue (OS-M7-12). The app's own
-  first drop, which X2 reads from its signpost, is judged unchanged against 50 ms.
+  first drop, which X2 reads from its signpost, is judged unchanged against 50 ms: **12.7 ms**, judged at load 2.3.
 
 **R8 proof under load.** Each fixed test ran 20 times by name with `Scripts/flaky-watch.sh`. Beside it ran a full
 debug build and a release build of the package in a separate build folder, plus `nice -n 10 make test` three times.
@@ -291,3 +291,27 @@ The three `make test` runs that served as load also passed, with no issues.
 `StallWatchTests` (2 s), `TextServiceTests` (2 s), `TrayTimingTests` and the opt-in `OCRFixtureTests` (3 s). None of
 them was seen to fail in this stream's runs. D-M7-3's "no wall-clock assertion outside `ZivletTimingTests`" is
 therefore not yet true; they are the next candidates for the same treatment.
+
+**Gates after stream R (load 1m before → after, `nice -n 10`).**
+
+| Gate | Result | Load |
+|---|---|---|
+| `make test` (2096 tests, 22 bundles) | pass | 6.6 → 12.9; rerun after the last commit: pass at load up to 33 |
+| `make lint` | pass | 12.9 → 11.9 |
+| `make coverage` (every gated module ≥ 80 %; lowest EngineVision 86 %) | pass | 11.9 → 17.1 |
+| `make app` | pass (also inside m6 Z1); **failed inside m5a X1 and m5b Y1** (see below) | 17.1 → 14.5 |
+| `make release-check` | pass | 14.5 → 11.7 |
+| `make licence-gate` | pass | 11.7 → 10.5 |
+| `make script-test` | pass | 10.5 → 2.3 |
+| `make timing` | first run not judged (load rose to 3.57); rerun **judged at load 2.54, every budget met**; NFR-9 and the cold first drop shown as known issues | 2.4 at the end |
+| `Scripts/m5a-exit.sh` | X3, X4, X5, X7 pass. X2 failed under the every-drop rule (fixed in `fa9c851`, then X2–X5 rerun: all pass, the app's drop 12.7 ms). X1 failed in `make app`. X6 failed on idle CPU (G-M5a-1, not worked on) | 3.6 → 2.6 |
+| `Scripts/m5b-exit.sh` | Y2, Y4–Y9 pass. Y1 failed in `make app`, Y3 by X2 (see above). Y4, Y5, Y7 rerun: pass | 2.6 → 2.8 |
+| `Scripts/m6-exit.sh` | Z1, Z2, Z4, Z5, Z6, Z10, Z11 pass. Z7–Z9 skipped (screen locked). Z3 failed by X2 and by Y5, whose screenshots failed as the screen locked; both rerun since: pass | 2.8 → 11.1 |
+| `Scripts/m7-exit.sh` | not yet written (stream F, task F2) | — |
+
+`make app` inside X1 failed first in the "Embed media helpers" phase: `rm` reported "Directory not empty" under Sparkle's
+`XPCServices`, which suggests something else was writing there at the same moment. Y1's next build then failed to sign
+Sparkle (`cannot find code object on disk`, a leftover `Autoupdate.thin`). Neither the build scripts nor the project
+changed in stream R, and the standalone `make app` and m6 Z1 passed before and after. The cause was not found; it is
+recorded as G-M7-11.
+

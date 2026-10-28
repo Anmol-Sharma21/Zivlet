@@ -379,5 +379,6 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 | G-M7-6 | P2-12 and P2-57 not built | OS-M7-8 |
 | G-M7-7 | S-PDF-LOCK interop matrix (P2-192) | OS-M7-5 |
 | G-M7-8 | `SecCreateSharedWebCredentialPassword` not exercised by automation | OS-M7-4 |
-| G-M7-10 | P1-40: the first drop in a process measured 23–94 ms in the timing suite (two judged runs at load 2.9: 90.8 and 93.6 ms); warm drops 3–5 ms. The app's own first drop (m5a X2 signpost) was not reached in this stream's runs | OS-M7-12; a known issue in `NotchHUDTiming` until then |
+| G-M7-10 | P1-40: the first drop in a process measured 23–94 ms in the timing suite (two judged runs at load 2.9: 90.8 and 93.6 ms); warm drops 3–5 ms. The app's own first drop (m5a X2 signpost) measured 12.7 ms, judged at load 2.3, so the cold cost seen in the test process was not seen in the app | OS-M7-12; a known issue in `NotchHUDTiming` until then |
+| G-M7-11 | `make app` failed twice inside exit runners (an `rm` racing on Sparkle's `XPCServices`, then a signing failure on the half-trimmed framework); it passed on its own and in m6 Z1. Cause not found | Watch in F4; look at the embed and trim phases if it recurs |
 | G-M7-9 | Unit tests outside stream R's four still assert wall time (near-drop HUD 50 ms, scheduler 100 ms / 1 s, shared load 300 ms, stall watch, text service, tray, OCR); found in R5 | Same treatment as R4–R7 in a later task (20a, execution notes) |
