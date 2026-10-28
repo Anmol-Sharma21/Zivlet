@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import TestSupport
 import Testing
 
 @testable import ZivletBox
@@ -26,7 +27,8 @@ struct BoxPanelTests {
         panel.orderOut(nil)
     }
 
-    @Test func aRealClickOnItsContentMakesItKey() throws {
+    @Test(.enabled(if: !ScreenSession.isLocked, Comment(rawValue: ScreenSession.lockedReason)))
+    func aRealClickOnItsContentMakesItKey() throws {
         let panel = BoxPanel()
         panel.contentView = NSHostingView(rootView: Color.black.frame(width: 200, height: 120))
         panel.setFrame(NSRect(x: -5000, y: -5000, width: 200, height: 120), display: false)
