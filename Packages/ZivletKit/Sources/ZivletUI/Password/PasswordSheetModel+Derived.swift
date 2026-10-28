@@ -47,7 +47,8 @@ extension PasswordSheetModel {
         ToolWindowModel(symbol: symbol, title: title, fileLine: fileLine, apply: apply)
     }
 
-    var setsPassword: Bool { mode == .lock || mode == .change }
+    /// A new password is being set (Lock, Change).
+    public var setsPassword: Bool { mode == .lock || mode == .change }
     private var asksForFilePassword: Bool { mode == .unlock || mode == .ownerNeeded }
 
     private var disabledReason: String? {

@@ -15,14 +15,18 @@ public final class PasswordSheetState {
     public var current = "" { didSet { judge() } }
     @ObservationIgnored public var modelChanged: (PasswordSheetModel) -> Void = { _ in }
     @ObservationIgnored private let pasteboard: SecretPasteboard
+    @ObservationIgnored private let suggester: (any PasswordSuggesting)?
+    private var suggestFailed = false
     @ObservationIgnored private let announce: @MainActor (String) -> Void
 
     public init(
         model: PasswordSheetModel, pasteboard: SecretPasteboard = SecretPasteboard(),
+        suggester: (any PasswordSuggesting)? = nil,
         announce: @escaping @MainActor (String) -> Void = PasswordSheetState.postAnnouncement
     ) {
         self.model = model
         self.pasteboard = pasteboard
+        self.suggester = suggester
         self.announce = announce
     }
 
@@ -72,8 +76,16 @@ public final class PasswordSheetState {
     @discardableResult
     public func copyPassword() -> Bool { pasteboard.copy(password) }
 
-    /// Fills the new password and its confirmation with `text` and reveals them (Suggest).
-    public func fill(suggested text: String) {
+    /// Suggest is offered: a new password is being set, there is a generator, and it has not come back empty.
+    public var canSuggest: Bool { model.setsPassword && suggester != nil && !suggestFailed }
+
+    /// Suggest: fills the new password and its confirmation alike and reveals them; nothing made hides the button.
+    public func suggest() {
+        guard canSuggest else { return }
+        guard let text = suggester?.suggest() else {
+            suggestFailed = true
+            return
+        }
         password = text
         confirm = text
         show(model.with(revealed: true))

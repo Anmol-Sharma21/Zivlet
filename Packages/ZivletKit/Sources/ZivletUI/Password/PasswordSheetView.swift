@@ -13,7 +13,6 @@ struct PasswordSheetView: View {
     static let errorSymbol = "xmark.circle"
 
     let state: PasswordSheetState
-    var suggest: (() -> Void)?
     @FocusState private var focus: PasswordField?
     @State private var flashing = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -29,7 +28,7 @@ struct PasswordSheetView: View {
             if let title = model.retryTitle { PasswordRetryList(title: title, names: model.retryList) }
             fields
             if let error = model.errorLine { line(error, symbol: Self.errorSymbol, ink: IslandInk.primary) }
-            if model.strength != nil || (suggest != nil && model.setsPassword) { strengthRow }
+            if model.strength != nil || state.canSuggest { strengthRow }
             ForEach(model.notes, id: \.self) { line($0.text, symbol: $0.symbol, ink: IslandInk.secondary) }
             if let label = model.sameForAllLabel {
                 Toggle(label, isOn: Binding(get: { model.sameForAll }, set: state.setSameForAll))
@@ -85,8 +84,8 @@ struct PasswordSheetView: View {
                     .accessibilityLabel(Self.strengthLabel(strength))
             }
             Spacer(minLength: 0)
-            if let suggest, model.setsPassword {
-                Button(PasswordCopy.suggest, action: suggest).buttonStyle(.glass)
+            if state.canSuggest {
+                Button(PasswordCopy.suggest, action: state.suggest).buttonStyle(.glass)
             }
             if model.strength != nil {
                 CodeIconButton(symbol: "doc.on.doc", title: PasswordCopy.copy) { state.copyPassword() }
