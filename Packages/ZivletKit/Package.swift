@@ -158,7 +158,9 @@ let package = Package(
             ], swiftSettings: strict),
         .testTarget(
             name: "ZivletActionsTests", dependencies: ["ZivletActions", "TestSupport"], swiftSettings: shell),
-        .testTarget(name: "ZivletSettingsTests", dependencies: ["ZivletSettings", "ZivletCore"], swiftSettings: strict),
+        .testTarget(
+            name: "ZivletSettingsTests", dependencies: ["ZivletSettings", "ZivletCore", "TestSupport"],
+            swiftSettings: strict),
         .testTarget(
             name: "ZivletUITests", dependencies: ["ZivletUI", "TestSupport", "NotchTestSupport", "EngineVision"],
             swiftSettings: shell),
