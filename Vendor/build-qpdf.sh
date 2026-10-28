@@ -22,7 +22,10 @@ build_qpdf_libraries() {
     qpdf=$(qpdf_source qpdf) || return 1
     flags="-arch arm64 -mmacosx-version-min=26.0 -O2 -ffile-prefix-map=$WORK/src=/zivlet/src"
     flags+=" -ffile-prefix-map=$bld=/zivlet/build -ffile-prefix-map=$prefix=/zivlet/prefix"
-    local -a common=(-G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
+    # The find settings below keep Homebrew's libraries out and also hide PATH from find_program, so Ninja (a build
+    # tool, not linked in) is named outright.
+    local ninja; ninja=$(command -v ninja) || { echo "error: ninja not found" >>"$log"; return 1; }
+    local -a common=(-G Ninja "-DCMAKE_MAKE_PROGRAM=$ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
         -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0 "-DCMAKE_OSX_SYSROOT=$sdk" "-DCMAKE_C_COMPILER=$(xcrun -f clang)"
         "-DCMAKE_CXX_COMPILER=$(xcrun -f clang++)" "-DCMAKE_INSTALL_PREFIX=$prefix"
         "-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local" -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
