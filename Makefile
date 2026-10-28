@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 ENV := source Scripts/env.sh &&
-# Builds the CWebP and CZivletSVG binary targets when missing or stale, before Swift reads Package.swift (D-M4-9).
+# Builds the CWebP, CZivletSVG and CQPDF binary targets when missing or stale, before Swift reads Package.swift.
 NATIVE := Vendor/ensure-native.sh &&
 
 .PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states m6-exit cap-lint box-busy-demo
@@ -133,7 +133,7 @@ vendor-fetch:
 vendor-media:
 	$(ENV) Vendor/build-media.sh
 
-# Every vendor output (media stage, CWebP, CZivletSVG), rebuilding only what is missing or stale (cache key).
+# Every vendor output (media stage, CWebP, CZivletSVG, CQPDF), rebuilding only what is missing or stale (cache key).
 vendor:
 	$(ENV) Vendor/vendor.sh
 

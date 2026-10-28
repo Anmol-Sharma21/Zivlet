@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Prints the cache key of the vendor outputs (11a §6.6): SHA-256 over the build inputs and `xcodebuild -version`.
-# Usage: Vendor/cache-key.sh [--root REPO] [all|media|CWebP|CZivletSVG]     (default: all)
+# Usage: Vendor/cache-key.sh [--root REPO] [all|media|CWebP|CZivletSVG|CQPDF]     (default: all)
 #   media       FFmpeg stage: the pins of its sources, build-media.sh, encoders.txt, stage-media.sh
 #   CWebP       the libwebp pin, build-media.sh, build-native.sh, xcframework.sh
 #   CZivletSVG  build-rs.sh, xcframework.sh, rust-toolchain.txt, the zivlet-svg crate (manifest, lock, sources)
-#   all         the three keys together (written to Vendor/out/KEY and into the pack tarball name)
+#   CQPDF       the qpdf and libjpeg-turbo pins, build-native.sh, build-qpdf.sh, xcframework.sh, verify-native.sh
+#   all         the four keys together (written to Vendor/out/KEY and into the pack tarball name)
 # Every component key also covers the scripts that drive, verify, pack and restore the outputs (COMMON), so a change
 # to one of them never yields outputs under the key of the code before it. A component's pins are its own lines of
 # versions.lock, so a pin for another component never invalidates it.
@@ -26,6 +27,7 @@ sources_of() {
     case "$1" in
         media) echo "$MEDIA_SOURCES" ;;
         CWebP) echo libwebp ;;
+        CQPDF) echo "qpdf libjpeg-turbo" ;;
     esac
 }
 
@@ -33,6 +35,7 @@ inputs() {
     case "$1" in
         media) echo $COMMON Vendor/build-media.sh Vendor/encoders.txt Vendor/stage-media.sh ;;
         CWebP) echo $COMMON Vendor/build-media.sh Vendor/build-native.sh Vendor/xcframework.sh ;;
+        CQPDF) echo $COMMON Vendor/build-native.sh Vendor/build-qpdf.sh Vendor/xcframework.sh Vendor/verify-native.sh ;;
         CZivletSVG)
             echo $COMMON Vendor/build-rs.sh Vendor/xcframework.sh Vendor/rust-toolchain.txt
             (cd "$ROOT" && find Vendor/rs/zivlet-svg/Cargo.toml Vendor/rs/zivlet-svg/Cargo.lock \
@@ -46,7 +49,7 @@ toolchain() { xcodebuild -version 2>/dev/null | tr '\n' ' '; }
 
 key_of() {
     local files
-    files=$(inputs "$1") || { echo "error: unknown component $1 (all, media, CWebP, CZivletSVG)" >&2; exit 2; }
+    files=$(inputs "$1") || { echo "error: unknown component $1 (all, media, CWebP, CZivletSVG, CQPDF)" >&2; exit 2; }
     # shellcheck disable=SC2086 # the list is our own fixed relative paths
     local names; names=$(sources_of "$1")
     {
@@ -58,7 +61,8 @@ key_of() {
 }
 
 if [[ "$COMPONENT" == "all" ]]; then
-    printf '%s\n' "$(key_of media)" "$(key_of CWebP)" "$(key_of CZivletSVG)" | shasum -a 256 | cut -d' ' -f1
+    printf '%s\n' "$(key_of media)" "$(key_of CWebP)" "$(key_of CZivletSVG)" "$(key_of CQPDF)" |
+        shasum -a 256 | cut -d' ' -f1
 else
     key_of "$COMPONENT"
 fi

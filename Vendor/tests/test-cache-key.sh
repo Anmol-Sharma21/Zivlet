@@ -9,7 +9,7 @@ mkdir -p "$T/repo"
 
 base=$(key)
 [[ "$base" =~ ^[0-9a-f]{64}$ ]] || fail "key is not 64 hex chars: $base"
-for c in media CWebP CZivletSVG; do [[ "$(key "$c")" =~ ^[0-9a-f]{64}$ ]] || fail "no key for $c"; done
+for c in media CWebP CZivletSVG CQPDF; do [[ "$(key "$c")" =~ ^[0-9a-f]{64}$ ]] || fail "no key for $c"; done
 assert_fails "$ROOT/Vendor/cache-key.sh" --root "$T/repo" nonsense
 
 # Unrelated files do not change any key.
@@ -18,7 +18,7 @@ echo "notes" > "$T/repo/Vendor/NOTES.txt"; echo "# more" >> "$T/repo/Vendor/test
 assert_eq "$(key)" "$base" "after an unrelated change"
 
 # A pin for a source that media and CWebP do not build changes neither key; their own pins do.
-media=$(key media); webp=$(key CWebP)
+media=$(key media); webp=$(key CWebP); pdf=$(key CQPDF)
 echo "other 1.0 https://example.invalid/other-1.0.tar.gz sha256:$(printf '0%.0s' {1..64})" >>"$T/repo/Vendor/versions.lock"
 assert_eq "$(key media)" "$media" "a pin media does not build changed its key"
 assert_eq "$(key CWebP)" "$webp" "a pin CWebP does not build changed its key"
@@ -27,6 +27,20 @@ sed -i '' 's/^zimg  /zimg x/' "$T/repo/Vendor/versions.lock"
 assert_eq "$(key CWebP)" "$webp" "the CWebP key must not depend on the zimg pin"
 sed -i '' 's/^libwebp  /libwebp x/' "$T/repo/Vendor/versions.lock"
 [[ "$(key CWebP)" != "$webp" ]] || fail "the libwebp pin is not in the CWebP key"
+assert_eq "$(key CQPDF)" "$pdf" "a media pin changed the CQPDF key"
+# CQPDF hashes only the qpdf and libjpeg-turbo pins and its own build scripts.
+pdf=$(key CQPDF); all=$(key); webp=$(key CWebP)
+sed -i '' 's/^qpdf  /qpdf x/' "$T/repo/Vendor/versions.lock"
+[[ "$(key CQPDF)" != "$pdf" ]] || fail "the qpdf pin is not in the CQPDF key"
+[[ "$(key)" != "$all" ]] || fail "the CQPDF key is not part of the whole key"
+assert_eq "$(key CWebP)" "$webp" "the CWebP key must not depend on the qpdf pin"
+pdf=$(key CQPDF); sed -i '' 's/^libjpeg-turbo /libjpeg-turbo x/' "$T/repo/Vendor/versions.lock"
+[[ "$(key CQPDF)" != "$pdf" ]] || fail "the libjpeg-turbo pin is not in the CQPDF key"
+pdf=$(key CQPDF); svg=$(key CZivletSVG); echo "# x" >>"$T/repo/Vendor/build-qpdf.sh"
+[[ "$(key CQPDF)" != "$pdf" ]] || fail "build-qpdf.sh is not in the CQPDF key"
+assert_eq "$(key CZivletSVG)" "$svg" "the SVG key must not depend on build-qpdf.sh"
+pdf=$(key CQPDF); echo "# x" >>"$T/repo/Vendor/verify-native.sh"
+[[ "$(key CQPDF)" != "$pdf" ]] || fail "verify-native.sh is not in the CQPDF key"
 media=$(key media); base=$(key)
 
 # The media key's pins are exactly the sources build-media.sh builds.
@@ -47,11 +61,12 @@ echo "// x" >> "$T/repo/Vendor/rs/zivlet-svg/src/lib.rs"
 for script in Vendor/vendor.sh Vendor/verify-media.sh Vendor/check-tools.sh Vendor/fetch.sh Vendor/pack.sh \
     Vendor/unpack.sh Vendor/cache-key.sh Vendor/ensure-media.sh Vendor/ensure-native.sh Scripts/env.sh \
     Scripts/ci-vendor.sh; do
-    before=$(key media)/$(key CWebP)/$(key CZivletSVG)
+    before=$(key media)/$(key CWebP)/$(key CZivletSVG)/$(key CQPDF)
     echo "# changed" >>"$T/repo/$script"
-    after=$(key media)/$(key CWebP)/$(key CZivletSVG)
-    IFS=/ read -r m1 w1 s1 <<<"$before"; IFS=/ read -r m2 w2 s2 <<<"$after"
-    [[ "$m1" != "$m2" && "$w1" != "$w2" && "$s1" != "$s2" ]] || fail "$script is not in every component key"
+    after=$(key media)/$(key CWebP)/$(key CZivletSVG)/$(key CQPDF)
+    IFS=/ read -r m1 w1 s1 p1 <<<"$before"; IFS=/ read -r m2 w2 s2 p2 <<<"$after"
+    [[ "$m1" != "$m2" && "$w1" != "$w2" && "$s1" != "$s2" && "$p1" != "$p2" ]] ||
+        fail "$script is not in every component key"
 done
 
 # unpack.sh: refuses an archive whose KEY differs from the current inputs unless --force.

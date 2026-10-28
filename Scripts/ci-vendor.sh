@@ -46,7 +46,7 @@ if ((PLAN)); then echo "$action"; exit 0; fi
 case "$action" in
     "build from source")
         # Stamps gone, so vendor.sh rebuilds every component instead of trusting what is already in out/.
-        rm -f "$OUT/media-stage/KEY" "$OUT/CWebP.key" "$OUT/CZivletSVG.key" "$OUT/KEY"
+        rm -f "$OUT/media-stage/KEY" "$OUT/CWebP.key" "$OUT/CZivletSVG.key" "$OUT/CQPDF.key" "$OUT/KEY"
         "$REPO_ROOT/Vendor/vendor.sh"
         ;;
     restore) "$REPO_ROOT/Vendor/unpack.sh" "$CACHE/$name" ;;

@@ -28,4 +28,9 @@ assert_eq "$(plan)" "build and store" # a developer Mac with its own cache direc
 COPYFILE_DISABLE=1 tar -C "$T/pack" -cJf "$T/cache/zivlet-vendor-$key.tar.xz" out
 PLAN_ARGS=(--from-source)
 assert_eq "$(plan GITHUB_ACTIONS=true GITHUB_EVENT_NAME=push GITHUB_REF=refs/tags/v1.0.0)" "build from source"
+# --from-source drops every component's stamp, so nothing already in out/ is trusted.
+for component in $(sed -n 's/^ALL=(\(.*\))$/\1/p' "$ROOT/Vendor/vendor.sh"); do
+    [[ "$component" == media ]] && continue
+    grep -q "\$OUT/$component.key" "$ROOT/Scripts/ci-vendor.sh" || fail "--from-source keeps the $component stamp"
+done
 echo "PASS test-ci-vendor"

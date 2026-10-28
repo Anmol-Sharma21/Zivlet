@@ -34,7 +34,7 @@ if [[ "$packed" != "$current" && "$FORCE" != "--force" ]]; then
     exit 1
 fi
 refuse() { echo "error: $(basename "$TARBALL"): $*" >&2; exit 1; }
-for component in media CWebP CZivletSVG; do
+for component in media CWebP CZivletSVG CQPDF; do
     case "$component" in media) stamp=$tmp/out/media-stage/KEY ;; *) stamp=$tmp/out/$component.key ;; esac
     [[ -f "$stamp" ]] || continue
     want=$("$ROOT/Vendor/cache-key.sh" "$component")

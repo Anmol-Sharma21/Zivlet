@@ -3,14 +3,15 @@
 #   media       build-media.sh -> stage-media.sh -> verify-media.sh     stamp: out/media-stage/KEY
 #   CWebP       build-native.sh libwebp                                 stamp: out/CWebP.key
 #   CZivletSVG  build-rs.sh                                             stamp: out/CZivletSVG.key
+#   CQPDF       build-native.sh qpdf -> verify-native.sh CQPDF          stamp: out/CQPDF.key
 # A component whose stamp equals its cache key (cache-key.sh) and whose output exists prints "up to date".
-# Usage: Vendor/vendor.sh [component...]    (default: all three, then out/KEY is written)
+# Usage: Vendor/vendor.sh [component...]    (default: all four, then out/KEY is written)
 set -euo pipefail
 source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${ZIVLET_VENDOR_WORK:-$ROOT/Vendor}
 OUT=$WORK/out
-ALL=(media CWebP CZivletSVG)
+ALL=(media CWebP CZivletSVG CQPDF)
 
 stamp_of() {
     case "$1" in
@@ -35,6 +36,10 @@ build() {
             ;;
         CWebP) "$ROOT/Vendor/build-native.sh" libwebp ;;
         CZivletSVG) "$ROOT/Vendor/build-rs.sh" ;;
+        CQPDF)
+            "$ROOT/Vendor/build-native.sh" qpdf
+            "$ROOT/Vendor/verify-native.sh" CQPDF
+            ;;
     esac
 }
 
