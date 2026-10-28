@@ -103,8 +103,12 @@ struct PasswordPolicyTests {
         let start = Date()
         let secret = JobSecret(utf8: password)
         Self.logger.notice("policy: diagnostics with \(String(describing: secret), privacy: .public)")
-        let lines = try LeakProbe.logLines(since: start)
+        // Other suites log in the same process meanwhile; the report keeps the last 200 lines, so this test's line
+        // goes in by itself, and the whole log is searched as well.
+        let all = try LeakProbe.logLines(since: start)
+        let lines = all.filter { $0.contains("policy: diagnostics") }
         let text = try await Diagnostics.build(DiagnosticsSources.fake.with(log: lines))
+        #expect(!LeakProbe.contains(needle, in: all))
         #expect(text.contains(JobSecret.redacted))
         #expect(!LeakProbe.contains(needle, in: [text]))
     }
