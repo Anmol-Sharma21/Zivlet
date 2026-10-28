@@ -30,4 +30,10 @@ mkfile -n 33m "$T/warn.dmg"
 out=$("$ROOT/Scripts/size-gate.sh" "$T/small.app" "$T/warn.dmg" 2>&1) || fail "a 33 MB DMG must only warn"
 assert_contains "$out" "warning: DMG size"
 assert_fails env SIZE_HARD_MB=5 "$ROOT/Scripts/size-gate.sh" "$T/small.app"
+
+# The worker, which carries qpdf and libjpeg-turbo statically (P2-13), is reported on its own line.
+mkdir -p "$T/small.app/Contents/XPCServices/ZivletWorker.xpc/Contents/MacOS"
+mkfile -n 3m "$T/small.app/Contents/XPCServices/ZivletWorker.xpc/Contents/MacOS/ZivletWorker"
+out=$("$ROOT/Scripts/size-gate.sh" "$T/small.app" 2>&1) || fail "a small app with a worker must pass: $out"
+grep -qE "^  XPCServices/ZivletWorker +3\.1 MB$" <<<"$out" || fail "no worker line: $out"
 echo "PASS test-size-gate"

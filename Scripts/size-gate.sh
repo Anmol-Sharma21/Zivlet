@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Size gate (P1-52): prints the installed size of the app with its parts, and the DMG size when given. Fails above
+# Size gate (P1-52): prints the installed size of the app with its parts (the worker, which carries qpdf and
+# libjpeg-turbo statically since P2-13, on its own line), and the DMG size when given. Fails above
 # SIZE_HARD_MB (85) installed or DMG_HARD_MB (40); warns above SIZE_WARN_MB (70) or DMG_WARN_MB (32). MB = 10^6
 # bytes of apparent size (what a copy out of the DMG occupies).
 # Usage: Scripts/size-gate.sh <Zivlet.app> [Zivlet.dmg]
@@ -34,6 +35,7 @@ printf '%-28s %8s MB\n' "Zivlet.app (installed)" "$(mb "$total")" \
     "  Contents/Helpers" "$(mb "$(bytes "$APP/Contents/Helpers")")" \
     "  Frameworks/libav*" "$(mb "$libav")" \
     "  Frameworks/Sparkle" "$(mb "$(bytes "$APP/Contents/Frameworks/Sparkle.framework")")" \
+    "  XPCServices/ZivletWorker" "$(mb "$(bytes "$APP/Contents/XPCServices/ZivletWorker.xpc")")" \
     "  Contents/Resources" "$(mb "$(bytes "$APP/Contents/Resources")")"
 judge "installed size" "$total" "$SIZE_HARD_MB" "$SIZE_WARN_MB"
 if [[ -n "$DMG" ]]; then
