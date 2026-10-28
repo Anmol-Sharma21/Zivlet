@@ -3,7 +3,8 @@
 # Fails when a helper is missing, names a dependency outside @rpath/, /usr/lib/ and /System/Library/, needs an
 # @rpath library the bundle lacks, or has an LC_RPATH other than @executable_path/../Frameworks; then runs the
 # bundled ffmpeg, which proves the rpath resolves inside the bundle. Plan 18c C10: the worker must be in
-# Contents/XPCServices/ZivletWorker.xpc with identifier app.zivlet.Zivlet.Worker, and load only OS or bundle code.
+# Contents/XPCServices/ZivletWorker.xpc with identifier app.zivlet.Zivlet.Worker, and load only OS or bundle code;
+# D-M7-16: no TLS or crypto library either (qpdf runs there with its native crypto).
 # Usage: Scripts/check-bundle.sh <Zivlet.app>
 set -euo pipefail
 APP=${1:?usage: check-bundle.sh <app>}
@@ -47,6 +48,13 @@ check_worker() {
     identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$bundle/Contents/Info.plist" 2>/dev/null || true)
     [[ "$identifier" == "$WORKER_ID" ]] || problem "Contents/$WORKER has identifier [$identifier] (want $WORKER_ID)"
     check_deps "$bundle/Contents/MacOS/ZivletWorker"
+    local dep
+    for dep in $(deps_of "$bundle/Contents/MacOS/ZivletWorker"); do
+        case "$(basename "$dep")" in
+            libcrypto* | libssl* | libgnutls* | libtls*)
+                problem "Contents/$WORKER/Contents/MacOS/ZivletWorker loads $dep (no OpenSSL or GnuTLS in the worker)" ;;
+        esac
+    done
 }
 check_worker
 libraries=0

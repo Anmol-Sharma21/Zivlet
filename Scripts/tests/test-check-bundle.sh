@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # check-bundle.sh: helpers in Contents/Helpers, their libraries in Contents/Frameworks, only @rpath and OS
 # dependencies, LC_RPATH @executable_path/../Frameworks, and a helper that runs from inside the bundle; the worker
-# (plan 18c C10) in Contents/XPCServices with its identifier and only OS or bundle dependencies.
+# (plan 18c C10) in Contents/XPCServices with its identifier and only OS or bundle dependencies, none of them a TLS
+# or crypto library (D-M7-16).
 source "$(dirname "$0")/../../Vendor/tests/lib.sh"
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 STAGE=$ROOT/Vendor/out/media-stage
@@ -37,6 +38,11 @@ assert_fails "$ROOT/Scripts/check-bundle.sh" "$T/Fake.app"
 
 fake; install_name_tool -change /usr/lib/libSystem.B.dylib /opt/homebrew/lib/libSystem.B.dylib "$T/$WORKER_BIN" 2>/dev/null
 assert_contains "$(check)" "/opt/homebrew/lib/libSystem"
+assert_fails "$ROOT/Scripts/check-bundle.sh" "$T/Fake.app"
+
+# The worker runs qpdf with its native crypto: no system or bundled OpenSSL, LibreSSL or GnuTLS (D-M7-16).
+fake; install_name_tool -change /usr/lib/libSystem.B.dylib /usr/lib/libcrypto.46.dylib "$T/$WORKER_BIN" 2>/dev/null
+assert_contains "$(check)" "ZivletWorker loads /usr/lib/libcrypto.46.dylib (no OpenSSL or GnuTLS in the worker)"
 assert_fails "$ROOT/Scripts/check-bundle.sh" "$T/Fake.app"
 
 fake app.zivlet.Other
