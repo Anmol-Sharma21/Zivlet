@@ -9,9 +9,22 @@ struct PasswordFieldRow: View {
     let revealed: Bool
     let focus: FocusState<PasswordField?>.Binding
     let toggleReveal: () -> Void
+    var labelled = false
     @Environment(\.toolWindowSubmit) private var submit
 
     var body: some View {
+        VStack(alignment: .leading, spacing: IslandContentLook.Spacing.xs) {
+            if labelled {
+                Text(field.label)
+                    .font(IslandContentLook.TypeStyle.secondary)
+                    .foregroundStyle(IslandInk.secondary)
+                    .accessibilityHidden(true)  // the field's own label carries it
+            }
+            row
+        }
+    }
+
+    private var row: some View {
         HStack(spacing: IslandContentLook.Spacing.s) {
             entry
                 .textFieldStyle(.roundedBorder)

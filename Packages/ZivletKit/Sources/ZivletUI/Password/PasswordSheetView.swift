@@ -61,7 +61,7 @@ struct PasswordSheetView: View {
             ForEach(model.fields, id: \.self) { field in
                 PasswordFieldRow(
                     field: field, text: binding(field), revealed: model.revealed, focus: $focus,
-                    toggleReveal: state.toggleReveal)
+                    toggleReveal: state.toggleReveal, labelled: model.labelsFields)
             }
         }
         .modifier(ShakeEffect(attempts: reduceMotion ? 0 : CGFloat(attempts)))

@@ -89,6 +89,7 @@ struct PasswordSheetModelTests {
         #expect(retry.mode == .unlock)
         #expect(retry.fileLine == "2 files")
         #expect(Self.unlock.retryTitle == nil)
+        #expect(retry.changeSwitchLabel == nil)
     }
 
     @Test func unlockCanTurnIntoChangeWithThreeFields() {
@@ -98,6 +99,8 @@ struct PasswordSheetModelTests {
         #expect(change.fields == [.current, .newPassword, .confirm])
         #expect(change.changeSwitchLabel == nil)
         #expect(change.apply.label == "Change")
+        #expect(change.labelsFields)
+        #expect(!Self.lock.labelsFields && !Self.unlock.labelsFields)
     }
 
     @Test func eachModeShowsItsFields() {

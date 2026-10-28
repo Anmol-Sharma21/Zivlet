@@ -39,7 +39,12 @@ extension PasswordSheetModel {
     public var footer: String? { asksForFilePassword ? PasswordCopy.noRecovery : nil }
 
     public var sameForAllLabel: String? { files.count > 1 ? PasswordCopy.sameForAll(files.count) : nil }
-    public var changeSwitchLabel: String? { mode == .unlock ? PasswordCopy.changeSwitch : nil }
+    /// Unlock may turn into Change, but not in the second sheet, which only retries the files that failed.
+    public var changeSwitchLabel: String? { mode == .unlock && retryList.isEmpty ? PasswordCopy.changeSwitch : nil }
+
+    /// Change's three fields carry their names above them: once typed, the placeholders are gone and three rows of
+    /// dots would look alike.
+    public var labelsFields: Bool { mode == .change }
     public var retryTitle: String? { retryList.isEmpty ? nil : PasswordCopy.retryTitle }
 
     /// The shell's header and Apply.
