@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Packages in-process native libraries as static xcframeworks for SwiftPM binary targets (P1-25, D-M4-9).
-# Usage: Vendor/build-native.sh libwebp
+# Usage: Vendor/build-native.sh libwebp|qpdf
 #   libwebp: libwebp.a + libwebpmux.a + libwebpdemux.a + libsharpyuv.a (built by build-media.sh with the same
 #   flags) -> libCWebP.a + headers + module map -> Vendor/out/CWebP.xcframework, content hash in CWebP.sha256.
+#   qpdf: libjpeg-turbo then libqpdf, static, native crypto only (no OpenSSL, no GnuTLS), arm64, minos 26.0 ->
+#   libCQPDF.a + the qpdf headers -> Vendor/out/CQPDF.xcframework, linked only into the worker (D-M7-16).
+#   The log Vendor/logs/qpdf-build-<date>.log records the build time and the load average.
 set -euo pipefail
 source "$(dirname "$0")/../Scripts/env.sh" # DEVELOPER_DIR: the same Xcode for every build and key
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -38,7 +41,10 @@ MAP
     package_xcframework CWebP "$dir/libCWebP.a" "$dir/Headers"
 }
 
+source "$ROOT/Vendor/build-qpdf.sh"
+
 case "${1:-}" in
     libwebp) build_libwebp ;;
-    *) echo "usage: build-native.sh libwebp" >&2; exit 2 ;;
+    qpdf) build_qpdf ;;
+    *) echo "usage: build-native.sh libwebp|qpdf" >&2; exit 2 ;;
 esac
