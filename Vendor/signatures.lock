@@ -3,3 +3,5 @@
 # name    signature                                                                                             fingerprint
 ffmpeg    https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz.asc                                                      FCF986EA15E6E293A5644F10B4322F04D67658D8
 libwebp   https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz.asc          6B0E6B70976DE303EDF2F601F9C3D6BDB8232B5D
+qpdf      https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2.tar.gz.asc                           C2C96B10011FE009E6D1DF828A75D10998012C7E
+libjpeg-turbo https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.0/libjpeg-turbo-3.2.0.tar.gz.sig 0338C8D8D9FDA62CF9C421BD7EC2DBB6F4DBF434

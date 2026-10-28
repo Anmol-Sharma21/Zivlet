@@ -1,5 +1,6 @@
 # Every vendored source: name, version or commit, URL, SHA-256 (P0-36, 04 §6). Vendor/fetch.sh refuses a mismatch.
-# Hashes measured on 2026-10-21; libogg, libvorbis and opus also match Xiph's published SHA256SUMS.
+# Hashes measured on 2026-10-21; libogg, libvorbis and opus also match Xiph's published SHA256SUMS. qpdf and
+# libjpeg-turbo (CQPDF, the worker's PDF engine) measured on 2026-10-27; qpdf's also equals its signed .sha256 file.
 # name      version                                   url                                                                                                   sha256
 ffmpeg      9.0.2                                     https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz                                                        sha256:8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
 x264        b35605ace3ddf7c1a5d67a2eb553f034aef41d55  https://code.videolan.org/videolan/x264/-/archive/b35605ace3ddf7c1a5d67a2eb553f034aef41d55/x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.tar.bz2  sha256:6eeb82934e69fd51e043bd8c5b0d152839638d1ce7aa4eea65a3fedcf83ff224
@@ -13,3 +14,5 @@ lame        3.100                                     https://downloads.sourcefo
 libwebp     1.6.0                                     https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz            sha256:e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564
 zimg        3.0.6                                     https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.6.tar.gz                              sha256:be89390f13a5c9b2388ce0f44a5e89364a20c1c57ce46d382b1fcc3967057577
 sparkle     2.10.0                                    https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-2.10.0.tar.xz              sha256:c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c
+qpdf        12.4.2                                    https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2.tar.gz                              sha256:8a58af5b6141319287c1883bec8bd1bd545b7567b7fc5e6ce5d25a1c85f36397
+libjpeg-turbo 3.2.0                                   https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.0/libjpeg-turbo-3.2.0.tar.gz      sha256:6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e

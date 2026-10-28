@@ -12,8 +12,10 @@ MACOS_MIN=26.0; ARCH=arm64; JOBS=$(sysctl -n hw.ncpu)
 ALL=(x264 libvpx svtav1 dav1d opus libogg libvorbis lame libwebp zimg ffmpeg)
 SDK=$(xcrun --sdk macosx --show-sdk-path)
 export MACOSX_DEPLOYMENT_TARGET=$MACOS_MIN SDKROOT=$SDK # SDKROOT: FFmpeg's host-cc checks (D-M4-4)
-# A date that only moves when the pinned sources move, so rebuilding at a later commit gives the same bytes.
-LOCK_EPOCH=$(git -C "$ROOT" log -1 --format=%ct -- Vendor/versions.lock 2>/dev/null || true)
+# A date that only moves when this stage's pinned sources move, so rebuilding at a later commit gives the same
+# bytes: the last commit that changed one of their versions.lock lines (a pin for another component does not count).
+PINS_RE="^($(IFS='|'; echo "${ALL[*]}"))[[:space:]]"
+LOCK_EPOCH=$(git -C "$ROOT" log -1 --format=%ct -G"$PINS_RE" -- Vendor/versions.lock 2>/dev/null || true)
 export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-${LOCK_EPOCH:-1761004800}}
 export ZERO_AR_DATE=1 # reproducible .a members (index §3.4)
 CC=$(xcrun -f clang); CXX=$(xcrun -f clang++); export CC CXX

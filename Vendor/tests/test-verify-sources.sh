@@ -29,6 +29,10 @@ assert_contains "$out" "pkg 1.0 signed by $fpr"
 echo "pkg file://$T/srv/pkg-1.0.tar.gz.asc $(printf 'A%.0s' {1..40})" >"$T/other-signer.lock"
 assert_fails verify "$T/other-signer.lock"
 
+echo "other file://$T/srv/pkg-1.0.tar.gz.asc $fpr" >"$T/unpinned.lock"
+out=$(verify "$T/unpinned.lock" 2>&1) && fail "a signature line without a versions.lock pin was accepted"
+assert_contains "$out" "other is not in"
+
 echo tampered >"$T/dl/pkg-1.0/pkg-1.0.tar.gz"
 assert_fails verify "$T/signatures.lock"
 
@@ -36,9 +40,12 @@ assert_fails verify "$T/signatures.lock"
 while read -r name _ pinned; do
     [[ -z "$name" || "$name" == \#* ]] && continue
     key=$ROOT/Vendor/keys/$name.asc; assert_file "$key"
+    grep -q "^$name " "$ROOT/Vendor/versions.lock" || fail "$name is signed but has no versions.lock pin"
     got=$(gpg --batch --with-colons --show-keys "$key" 2>/dev/null | awk -F: '/^fpr/ { print $10; exit }')
     assert_eq "$got" "$pinned" "fingerprint of $key"
 done <"$ROOT/Vendor/signatures.lock"
 grep -q '^ffmpeg ' "$ROOT/Vendor/signatures.lock" || fail "ffmpeg is not signature-checked"
-grep -q '^libwebp ' "$ROOT/Vendor/signatures.lock" || fail "libwebp is not signature-checked"
+for name in libwebp qpdf libjpeg-turbo; do
+    grep -q "^$name " "$ROOT/Vendor/signatures.lock" || fail "$name is not signature-checked"
+done
 echo "PASS test-verify-sources"

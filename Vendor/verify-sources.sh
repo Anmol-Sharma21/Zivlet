@@ -26,7 +26,8 @@ while read -r name url fingerprint extra; do
     [[ -z "$name" || "$name" == \#* ]] && continue
     [[ -z "${extra:-}" && "$fingerprint" =~ ^[0-9A-F]{40}$ && "$url" =~ ^(https|file):// ]] ||
         { echo "error: $SIGNATURES: bad line for $name" >&2; exit 2; }
-    read -r _ version source _ < <(awk -v n="$name" '$1 == n { print; exit }' "$LOCK")
+    version=""; source=""
+    read -r _ version source _ < <(awk -v n="$name" '$1 == n { print; exit }' "$LOCK") || true
     [[ -n "${version:-}" ]] || { echo "error: $name is not in $LOCK" >&2; exit 2; }
     tarball=$DOWNLOADS/$name-$version/$(basename "${source%%\?*}")
     [[ -f "$tarball" ]] || { echo "error: $tarball missing: run Vendor/fetch.sh first" >&2; exit 1; }

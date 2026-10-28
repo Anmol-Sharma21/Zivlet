@@ -17,6 +17,23 @@ media=$(key media); svg=$(key CZivletSVG)
 echo "notes" > "$T/repo/Vendor/NOTES.txt"; echo "# more" >> "$T/repo/Vendor/tests/test-fetch.sh"
 assert_eq "$(key)" "$base" "after an unrelated change"
 
+# A pin for a source that media and CWebP do not build changes neither key; their own pins do.
+media=$(key media); webp=$(key CWebP)
+echo "other 1.0 https://example.invalid/other-1.0.tar.gz sha256:$(printf '0%.0s' {1..64})" >>"$T/repo/Vendor/versions.lock"
+assert_eq "$(key media)" "$media" "a pin media does not build changed its key"
+assert_eq "$(key CWebP)" "$webp" "a pin CWebP does not build changed its key"
+sed -i '' 's/^zimg  /zimg x/' "$T/repo/Vendor/versions.lock"
+[[ "$(key media)" != "$media" ]] || fail "the zimg pin is not in the media key"
+assert_eq "$(key CWebP)" "$webp" "the CWebP key must not depend on the zimg pin"
+sed -i '' 's/^libwebp  /libwebp x/' "$T/repo/Vendor/versions.lock"
+[[ "$(key CWebP)" != "$webp" ]] || fail "the libwebp pin is not in the CWebP key"
+media=$(key media); base=$(key)
+
+# The media key's pins are exactly the sources build-media.sh builds.
+built=$(sed -n 's/^ALL=(\(.*\))$/\1/p' "$ROOT/Vendor/build-media.sh" | tr ' ' '\n' | sort | xargs)
+keyed=$(sed -n 's/^MEDIA_SOURCES="\(.*\)"$/\1/p' "$ROOT/Vendor/cache-key.sh" | tr ' ' '\n' | sort | xargs)
+assert_eq "$keyed" "$built" "media key pins vs build-media.sh ALL"
+
 # One byte in an input changes the keys that depend on it, and only those.
 echo "pcm_s24le" >> "$T/repo/Vendor/encoders.txt"
 [[ "$(key)" != "$base" ]] || fail "encoders.txt not in the key"
