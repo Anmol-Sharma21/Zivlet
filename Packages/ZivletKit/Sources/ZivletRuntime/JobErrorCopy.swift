@@ -53,7 +53,10 @@ public enum JobErrorCopy {
         case .engineDamaged(.media): ErrorCopy("Zivlet's media engine is damaged. Reinstall Zivlet to fix it.")
         case .engineDamaged(.image): ErrorCopy("Zivlet's image engine is damaged. Reinstall Zivlet to fix it.")
         case .engineMissing(.worker): ErrorCopy("Zivlet's converter isn't available.")
-        case .engineDamaged(.worker): ErrorCopy("Zivlet's converter is damaged. Reinstall Zivlet.")
+        case .engineDamaged(.worker), .engineDamaged(.pdf):
+            ErrorCopy("Zivlet's converter is damaged. Reinstall Zivlet.")
+        case .engineMissing(.pdf):
+            ErrorCopy("PDF tools need Zivlet's converter, which isn't available. Restart Zivlet.")
         case .engineMissing(.vision), .engineDamaged(.vision): ErrorCopy("Text recognition isn't available right now.")
         case .invalidDestination: ErrorCopy("The folder for the result isn't available any more.")
         case .permissionDenied(let folder):

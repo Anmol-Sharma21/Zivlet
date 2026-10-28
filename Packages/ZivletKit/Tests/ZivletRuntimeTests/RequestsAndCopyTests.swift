@@ -98,7 +98,7 @@ struct RequestsAndCopyTests {
         .verificationFailed("short"), .publishFailed(errno: EACCES), .internalInvariant("bug"),
         .helperFailed(errno: EMFILE), .writeFailed("encoder"), .engineDamaged(.media), .engineDamaged(.image),
         .engineDamaged(.worker), .engineMissing(.worker), .workerCrashed, .engineCrashedOnInput,
-        .engineMissing(.vision), .engineDamaged(.vision),
+        .engineMissing(.vision), .engineDamaged(.vision), .engineMissing(.pdf), .engineDamaged(.pdf),
     ]
 
     @Test(arguments: everyError)
@@ -125,6 +125,14 @@ struct RequestsAndCopyTests {
         #expect(
             JobErrorCopy.copy(for: .engineDamaged(.worker)).message
                 == "Zivlet's converter is damaged. Reinstall Zivlet.")
+    }
+
+    @Test func pdfToolsWithoutTheWorkerAskForARestart() {
+        #expect(
+            JobErrorCopy.copy(for: .engineMissing(.pdf)).message
+                == "PDF tools need Zivlet's converter, which isn't available. Restart Zivlet.")
+        #expect(
+            JobErrorCopy.copy(for: .engineDamaged(.pdf)).message == "Zivlet's converter is damaged. Reinstall Zivlet.")
     }
 
     @Test func missingTextRecognitionSaysItIsUnavailable() {

@@ -109,6 +109,12 @@ struct ValidatorTests {
         #expect(rig.refusal(.verify(output, try rig.plan(engine: .media))) == .engineMissing(.media))
     }
 
+    @Test func aWorkerWithoutThePDFEngineRefusesPDFPlans() throws {
+        let rig = try ValidatorRig()
+        #expect(
+            rig.refusal(.execute(rig.job, try rig.plan(engine: .pdf), outputByteLimit: nil)) == .engineMissing(.pdf))
+    }
+
     @Test func aTextJobNeedsSafeRegularFilesAndLanguages() throws {
         let rig = try ValidatorRig()
         let job = { (inputs: [URL], languages: [LanguageTag]) in
