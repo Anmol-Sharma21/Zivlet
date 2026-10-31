@@ -212,7 +212,7 @@ let package = Package(
             name: "ZivletTimingTests",
             dependencies: [
                 "ZivletUI", "ZivletNotch", "ZivletNotchCore", "ZivletCore", "ZivletRuntime", "ZivletEngineKit",
-                "EngineMedia", "NotchTestSupport", "EngineTestSupport", "TestSupport",
+                "EngineMedia", "EnginePDF", "NotchTestSupport", "EngineTestSupport", "TestSupport",
             ],
             swiftSettings: strict),
         .testTarget(
