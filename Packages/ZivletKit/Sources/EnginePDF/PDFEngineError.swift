@@ -19,6 +19,8 @@ public enum PDFEngineError: Error, Sendable, Equatable {
     case unusablePassword
     /// A fault inside the shim or qpdf.
     case internalFailure
+    /// An output is not what the tool should have written (`PDFVerify`).
+    case verifyFailed(PDFVerifyFailure)
 
     /// The error for a shim status, or nil for success.
     init?(status: zv_pdf_status) {

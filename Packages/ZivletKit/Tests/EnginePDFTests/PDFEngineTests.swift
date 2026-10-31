@@ -57,7 +57,7 @@ struct PDFEngineTests {
         let plan = try rig.plan(try PDFFixtures.plain(in: rig.dir.url), pageCount: 3)
         let output = try await PDFEngine().execute(plan, context: ExecutionContext())
 
-        await #expect(throws: JobError.verificationFailed(PDFEngine.pageCountMessage)) {
+        await #expect(throws: JobError.verificationFailed(PDFVerifyFailure.pageCount.message)) {
             try await PDFEngine().verify(output, plan: plan)
         }
     }
@@ -118,6 +118,7 @@ struct PDFEngineTests {
         (.outputExists, .internalInvariant(PDFEngine.stagedFileMessage)),
         (.unusablePassword, .internalInvariant(PDFEngine.passwordMessage)),
         (.internalFailure, .writeFailed(PDFEngine.writeMessage)),
+        (.verifyFailed(.forms), .verificationFailed(PDFVerifyFailure.forms.message)),
     ])
     func everyShimErrorBecomesAJobError(error: PDFEngineError, expected: JobError) {
         #expect(PDFEngine.jobError(error) == expected)

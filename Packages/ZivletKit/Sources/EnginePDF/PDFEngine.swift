@@ -10,7 +10,6 @@ import ZivletEngineKit
 public struct PDFEngine: Engine {
     static let planMessage = "The PDF engine got a plan it does not run."
     static let stagedFileMessage = "The staged file is not the empty one Zivlet claimed."
-    static let pageCountMessage = "The PDF has a different number of pages than the original."
     static let writeMessage = "The PDF could not be written."
     static let passwordMessage = "The password could not be passed to the PDF engine."
 
@@ -52,17 +51,16 @@ public struct PDFEngine: Engine {
     public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
         let stage = try Self.stage(of: plan)
         let (limits, watchdog) = (limits, watchdog)
+        let expectations: [PDFExpectation] = stage.encryption == .remove ? [.unlocked] : []
         try await BlockingWork.run { _ throws(JobError) in
-            let facts: PDFPreflight
             do throws(PDFEngineError) {
-                facts = try watchdog.guarding(inputBytes: output.byteCount) { () throws(PDFEngineError) in
-                    try QPDFDocumentReader.check(output.url, password: nil, limits: limits)
-                    return try PDFInspector.inspect(output.url, password: nil, limits: limits)
+                _ = try watchdog.guarding(inputBytes: output.byteCount) { () throws(PDFEngineError) in
+                    try PDFVerify.verify(
+                        output.url, pageCount: stage.pageCount, expect: expectations, limits: limits)
                 }
             } catch {
                 throw .verificationFailed(Self.verifyMessage(error))
             }
-            guard facts.pageCount == stage.pageCount else { throw .verificationFailed(Self.pageCountMessage) }
         }
     }
 
@@ -75,11 +73,16 @@ public struct PDFEngine: Engine {
         case .io, .internalFailure: .writeFailed(writeMessage)
         case .outputExists: .internalInvariant(stagedFileMessage)
         case .unusablePassword: .internalInvariant(passwordMessage)
+        case .verifyFailed(let failure): .verificationFailed(failure.message)
         }
     }
 
     private static func verifyMessage(_ error: PDFEngineError) -> String {
-        error == .limit ? "The PDF is too complex to check." : "The PDF did not pass qpdf's check."
+        switch error {
+        case .limit: "The PDF is too complex to check."
+        case .verifyFailed(let failure): failure.message
+        default: PDFVerifyFailure.check.message
+        }
     }
 
     private static func stage(of plan: ExecutionPlan) throws(JobError) -> PDFStage {
