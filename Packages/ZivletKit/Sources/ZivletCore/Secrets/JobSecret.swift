@@ -5,7 +5,8 @@ import Foundation
 /// the mirror and string interpolation show `<password>`, without the bytes or their length. It is not `Codable`, so
 /// no settings, history, job-record or diagnostics encoder can take one, and a type holding one cannot gain
 /// synthesised `Codable` by accident; only `ZivletIPC` reads the bytes (`withBytes`, package access) to put them on the
-/// worker's wire for their one job. Two secrets are equal only when they are the same object.
+/// worker's wire for their one job. Two secrets are equal only when they are the same object. One secret may fill two
+/// roles at once (owner = user, D-M7-20), and a caller lends both together, so a lock held by this thread lets it in.
 ///
 /// Best effort, as 17b §2.2 says: the `String` a text field produced and the buffers of XPC and the PDF library are
 /// freed without being zeroed, and Swift gives no way to reach them (G-M7-5).
@@ -16,7 +17,7 @@ public final class JobSecret: @unchecked Sendable {
     /// The secret's own allocation (one byte at least, so it is never empty) and how many of its bytes are held.
     private let allocation: UnsafeMutableRawBufferPointer
     private let count: Int
-    private let lock = NSLock()
+    private let lock = NSRecursiveLock()
     private var wiped = false
 
     /// The UTF-8 bytes of `text`, copied into the secret's own buffer.

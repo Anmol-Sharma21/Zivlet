@@ -85,6 +85,19 @@ struct QPDFSmokeTests {
         #expect(document.pageCount == 2)
     }
 
+    /// Without restrictions the owner password is the user password (D-M7-20): one secret in both roles.
+    @Test func oneSecretCanBeBothUserAndOwner() throws {
+        let dir = try TempDir()
+        let input = try PDFFixtures.plain(in: dir.url)
+        let output = dir.url.appending(path: "locked.pdf")
+        let same = JobSecret(utf8: "one password")
+        let parameters = R6Parameters(user: same, owner: same)
+
+        try QPDFWriterBridge.write(input, password: nil, mode: .encryptR6(parameters), to: output)
+
+        #expect(try PDFInspector.inspect(output, password: same).matched == .both)
+    }
+
     @Test func aWrongPasswordIsRefused() throws {
         let dir = try TempDir()
         let rc4 = try PDFFixtures.encrypted(in: dir.url, keyLength: 40, user: "u-pass", owner: "o-pass")

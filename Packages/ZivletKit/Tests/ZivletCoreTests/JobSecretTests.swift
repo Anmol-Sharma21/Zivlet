@@ -13,6 +13,15 @@ struct JobSecretTests {
         let secret: JobSecret
     }
 
+    /// One secret can be both user and owner (D-M7-20), so a caller lends it twice, one lending inside the other.
+    @Test func aSecretLentInsideItsOwnLendingDoesNotBlock() {
+        let secret = JobSecret(utf8: "one")
+
+        let total = secret.withBytes { outer in secret.withBytes { inner in outer.count + inner.count } }
+
+        #expect(total == 6)
+    }
+
     @Test func everyDescriptionOfASecretHidesItsText() {
         let secret = JobSecret(utf8: password)
         var dumped = ""
