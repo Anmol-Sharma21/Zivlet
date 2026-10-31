@@ -30,7 +30,8 @@ public struct PDFWatchdog: Sendable {
     /// Takes turns but arms no timer: tools and tests that run qpdf outside the worker.
     public static let off = PDFWatchdog()
 
-    /// Runs `step` when its turn comes, with a budget for an input of `inputBytes`.
+    /// Runs `step` when its turn comes, with a budget for an input of `inputBytes`. Wrap a whole step once: a step that
+    /// called this again would wait for its own turn forever.
     public func guarding<Value: Sendable>(
         inputBytes: Int64, _ step: () throws(PDFEngineError) -> Value
     ) throws(PDFEngineError) -> Value {
