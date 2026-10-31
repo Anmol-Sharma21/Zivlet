@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import PDFKit
 import Vision
+import ZivletEngineKit
 
 /// Vision's barcode request behind a port, so Read QR's rules are tested without Vision.
 public protocol BarcodeDetecting: Sendable {
@@ -56,6 +57,7 @@ public struct CodeReader: Sendable {
     }
 
     private func readPDF(_ url: URL, pageLimit: Int) async throws(CodeError) -> [FoundCode] {
+        guard PDFLimits.allows(fileAt: url) else { throw .tooLarge }
         guard let document = PDFDocument(url: url) else { throw .unreadable }
         guard !document.isLocked else { throw .pdfLocked }
         guard document.pageCount <= pageLimit else { throw .tooManyPages(document.pageCount) }

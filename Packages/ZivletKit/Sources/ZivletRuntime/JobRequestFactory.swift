@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import ZivletCore
+import ZivletEngineKit
 
 /// A dropped item that never became a job, with the reason.
 public struct RequestRejection: Sendable, Equatable {
@@ -71,6 +72,7 @@ public struct JobRequestFactory: Sendable {
             guard catalog.canConvert(named, to: target) else { throw .pairNotSupported(named, target) }
             let verdict = try ContentAdmission.resolve(
                 named: named, header: header.bytes, target: target, catalog: catalog)
+            if verdict.format == .pdf { try PDFLimits.check(inputBytes: header.byteCount) }
             let input = try InputItem(
                 url: url, format: verdict.format, byteCount: header.byteCount,
                 quarantine: Publisher.quarantine(of: url), namedFormat: verdict.isSniffed ? named : nil)

@@ -4,6 +4,7 @@ import OCRTestSupport
 import Synchronization
 import TestSupport
 import Testing
+import ZivletEngineKit
 
 @testable import EngineVision
 
@@ -79,6 +80,17 @@ struct CodeReaderTests {
         await #expect(throws: CodeError.tooManyPages(3)) {
             try await CodeReader(detector: FakeDetector()).read(url, pageLimit: 2)
         }
+    }
+
+    /// D2 (D-M7-18): one file over the limit is one skipped file, so the rest of a drop goes on.
+    @Test func aPDFOverTheSizeLimitIsRefusedWithoutOpeningIt() async throws {
+        let dir = try TempDir()
+        let big = try dir.file("big.pdf", "%PDF-1.7\n")
+        let handle = try FileHandle(forWritingTo: big)
+        try handle.truncate(atOffset: UInt64(PDFLimits.maxInputBytes) + 1)
+        try handle.close()
+
+        await #expect(throws: CodeError.tooLarge) { try await CodeReader(detector: FakeDetector()).read(big) }
     }
 
     @Test func aFileThatIsNotAnImageOrAPDFIsUnreadable() async throws {

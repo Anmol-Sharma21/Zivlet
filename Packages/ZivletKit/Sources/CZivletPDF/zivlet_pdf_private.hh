@@ -51,20 +51,22 @@ zv_pdf_status status_of_current_exception() noexcept;
 /// document over the page limit. Throws what qpdf throws, or LimitExceeded.
 void open_document(QPDF &pdf, char const *path, Secret const &password, zv_pdf_limits const *limits);
 
+/// `status`, or ZV_PDF_LIMIT when qpdf counted a limit error since prepare_call: qpdf either carries on after one or
+/// gives up with an error of its own, so both success and damage may be a limit underneath.
+zv_pdf_status status_after_limits(zv_pdf_status status) noexcept;
+
 /// Runs `body` under call_mutex with the limits applied; every exception becomes a status, and a limit qpdf hit on
 /// the way becomes ZV_PDF_LIMIT.
 template <typename Body> zv_pdf_status guarded(zv_pdf_limits const *limits, Body &&body) noexcept {
     std::lock_guard<std::mutex> lock(call_mutex());
+    zv_pdf_status status = ZV_PDF_INTERNAL;
     try {
         prepare_call(limits);
-        zv_pdf_status status = body();
-        if (status == ZV_PDF_OK) {
-            throw_if_limits_hit();
-        }
-        return status;
+        status = body();
     } catch (...) {
-        return status_of_current_exception();
+        status = status_of_current_exception();
     }
+    return status_after_limits(status);
 }
 
 } // namespace zivlet_pdf

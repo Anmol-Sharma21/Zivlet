@@ -9,6 +9,30 @@ import ZivletEngineKit
 
 @Suite("Drop → requests, error copy, batch snapshots, undo (P1-33, P1-15, FR-15)")
 struct RequestsAndCopyTests {
+    /// D2 (D-M7-18): the app refuses first, from the drop's own size, before any job or worker call.
+    @Test func aDroppedPDFOverTheLimitNeverBecomesAJob() throws {
+        let box = try Sandbox()
+        let big = box.dir.appending(path: "Big.pdf")
+        try Data("%PDF-1.7\n".utf8).write(to: big)
+        let handle = try FileHandle(forWritingTo: big)
+        try handle.truncate(atOffset: UInt64(PDFLimits.maxInputBytes) + 1)
+        try handle.close()
+
+        let plan = JobRequestFactory(fallbackFolder: box.dir).requests(for: [big], target: .png)
+
+        #expect(plan.requests.isEmpty)
+        #expect(plan.rejections == [RequestRejection(url: big, error: .unsupportedInput(.pdfTooLarge))])
+    }
+
+    @Test(arguments: [
+        (InputRejection.pdfTooLarge, "This PDF is larger than 512 MB."),
+        (.pdfTooComplex, "This PDF is too complex to open safely."),
+        (.pdfDamaged, "This PDF is damaged."),
+    ])
+    func aPDFRefusalSaysWhyInPlainWords(reason: InputRejection, message: String) {
+        #expect(JobErrorCopy.copy(for: .unsupportedInput(reason)).message == message)
+    }
+
     @Test func validFilesBecomeRequestsBesideTheOriginal() throws {
         let box = try Sandbox()
         let photo = try box.media("Photo.HEIC")
@@ -92,7 +116,8 @@ struct RequestsAndCopyTests {
     static let everyError: [JobError] = [
         .pairNotSupported(.mp3, .png), .unsupportedInput(.notAFile), .unsupportedInput(.unreadable),
         .unsupportedInput(.unknownFormat), .unsupportedInput(.contentMismatch), .unsupportedInput(.noAudioTrack),
-        .unsupportedInput(.noVideoTrack), .unsupportedInput(.tooLarge), .routeUnavailable(.mp3, .ogg, ["libvorbis"]),
+        .unsupportedInput(.noVideoTrack), .unsupportedInput(.tooLarge), .unsupportedInput(.pdfTooLarge),
+        .unsupportedInput(.pdfTooComplex), .unsupportedInput(.pdfDamaged), .routeUnavailable(.mp3, .ogg, ["libvorbis"]),
         .engineMissing(.media), .engineMissing(.image), .invalidDestination, .permissionDenied(folder: "/Volumes/Card"),
         .diskFull, .processFailed(status: 1, stderrTail: "a\nb"), .crashed(signal: 11), .stalled, .cancelled,
         .verificationFailed("short"), .publishFailed(errno: EACCES), .internalInvariant("bug"),

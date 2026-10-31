@@ -43,6 +43,9 @@ public enum JobErrorCopy {
         case .noAudioTrack: "This file has no audio to convert."
         case .noVideoTrack: "This file has no video to convert."
         case .tooLarge: "This file is larger than Zivlet's safety limit."
+        case .pdfTooLarge: "This PDF is larger than 512 MB."
+        case .pdfTooComplex: "This PDF is too complex to open safely."
+        case .pdfDamaged: "This PDF is damaged."
         }
     }
 

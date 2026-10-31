@@ -12,6 +12,12 @@ public enum InputRejection: String, Sendable, Codable, Equatable {
     case noVideoTrack
     /// Above a safety limit (pixel count, probe size).
     case tooLarge
+    /// A PDF above the input size limit (D-M7-18).
+    case pdfTooLarge
+    /// A PDF past a parser or page limit: nesting, filters, containers (D-M7-18).
+    case pdfTooComplex
+    /// A PDF qpdf cannot read, or one with too many warnings to write from (D-M7-18).
+    case pdfDamaged
 }
 
 /// The one error taxonomy (02 §9, 10 §8.4). Carries no user copy; `JobErrorCopy` maps cases to sentences.

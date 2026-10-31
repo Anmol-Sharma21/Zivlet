@@ -48,7 +48,8 @@ typedef enum zv_pdf_method {
     ZV_PDF_METHOD_IDENTITY = 5,
 } zv_pdf_method;
 
-/// Limits applied before each document is read. A zero leaves qpdf's own default in place.
+/// Limits applied before each document is read. A zero leaves qpdf's own default in place. zv_pdf_write alone reads
+/// max_warnings: past it the file is damaged for a write, though zv_pdf_inspect and zv_pdf_check still read it.
 typedef struct zv_pdf_limits {
     uint32_t max_pages;
     uint32_t max_nesting;
@@ -56,6 +57,7 @@ typedef struct zv_pdf_limits {
     uint32_t max_container_size_damaged;
     uint32_t max_errors;
     uint32_t max_stream_filters;
+    uint32_t max_warnings;
 } zv_pdf_limits;
 
 /// The security handler of a document.

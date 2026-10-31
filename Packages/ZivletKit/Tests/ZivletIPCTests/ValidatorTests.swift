@@ -218,3 +218,58 @@ struct ValidatorTests {
         }
     }
 }
+
+/// A PDF over the input limit is refused in the worker too (plan 20e D2, D-M7-18), whatever the app said.
+@Suite("The worker refuses a PDF over the size limit (D-M7-18)")
+struct ValidatorPDFSizeTests {
+    private func sparse(_ rig: ValidatorRig, bytes: Int64) throws -> URL {
+        let url = try rig.dir.file("big.pdf", "%PDF-1.7\n")
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: UInt64(bytes))
+        try handle.close()
+        return url
+    }
+
+    private func pdfPlan(_ rig: ValidatorRig, source: URL) throws -> ExecutionPlan {
+        try ExecutionPlan(
+            engine: .pdf, stages: [.pdf(PDFStage(source: source, encryption: .keep, pageCount: 1))],
+            stageWeights: [1], lanes: [.cpu], outputFormat: .pdf, stagedFile: rig.staged)
+    }
+
+    private func prepare(_ rig: ValidatorRig, source: URL) throws -> WorkerRequest {
+        let item = try InputItem(url: source, format: .pdf, byteCount: 4)
+        let request = try JobRequest(id: rig.job, input: item, operation: .convert(.png), destination: rig.dir.url)
+        return .prepare(request, JobWorkspace(job: rig.job, stagedFile: rig.staged))
+    }
+
+    @Test func aPDFStageOverTheLimitIsRefusedAndOneAtItPasses() throws {
+        let rig = try ValidatorRig()
+        let validator = WorkerRequestValidator(hostedEngines: [.pdf])
+        let over = try sparse(rig, bytes: PDFLimits.maxInputBytes + 1)
+
+        #expect(throws: JobError.unsupportedInput(.pdfTooLarge)) {
+            try validator.validate(.execute(rig.job, try pdfPlan(rig, source: over), outputByteLimit: nil))
+        }
+
+        let at = try sparse(rig, bytes: PDFLimits.maxInputBytes)
+        try validator.validate(.execute(rig.job, try pdfPlan(rig, source: at), outputByteLimit: nil))
+    }
+
+    @Test func preparingAPDFOverTheLimitIsRefused() throws {
+        let rig = try ValidatorRig()
+        let over = try sparse(rig, bytes: PDFLimits.maxInputBytes + 1)
+
+        #expect(throws: JobError.unsupportedInput(.pdfTooLarge)) {
+            try rig.validator.validate(try prepare(rig, source: over))
+        }
+    }
+
+    @Test func anImageOfAnySizeIsNotAPDF() throws {
+        let rig = try ValidatorRig()
+        let handle = try FileHandle(forWritingTo: rig.input)
+        try handle.truncate(atOffset: UInt64(PDFLimits.maxInputBytes) + 1)
+        try handle.close()
+
+        try rig.validator.validate(try rig.prepare())
+    }
+}

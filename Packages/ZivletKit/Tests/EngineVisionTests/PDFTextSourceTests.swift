@@ -5,6 +5,7 @@ import OCRTestSupport
 import Synchronization
 import TestSupport
 import Testing
+import ZivletEngineKit
 
 /// Records the size of every image it is given and answers with a fixed text.
 final class RecordingRecognizer: TextRecognizing {
@@ -87,6 +88,23 @@ struct PDFTextSourceTests {
         let seen = Mutex<[Double]>([])
         _ = try await read(url, RecordingRecognizer()) { fraction in seen.withLock { $0.append(fraction) } }
         #expect(seen.withLock { $0 } == [0.2, 0.4, 0.6, 0.8, 1.0])
+    }
+
+    @Test func thePageLimitIsTheRenderingToolsLimit() {
+        #expect(PDFTextSource.pageLimit == PDFLimits.maxRenderingPages)
+    }
+
+    /// D2 (D-M7-18): one file over the limit is one skipped file, so the rest of a drop goes on.
+    @Test func aPDFOverTheSizeLimitIsRefusedWithoutOpeningIt() async throws {
+        let dir = try TempDir()
+        let big = try dir.file("big.pdf", "%PDF-1.7\n")
+        let handle = try FileHandle(forWritingTo: big)
+        try handle.truncate(atOffset: UInt64(PDFLimits.maxInputBytes) + 1)
+        try handle.close()
+
+        await #expect(throws: TextError.tooLarge) {
+            try await PDFTextSource.read(big, recognizer: RecordingRecognizer(), languages: []) { _ in }
+        }
     }
 
     @Test func tooManyPagesAreRefusedBeforeAnyWork() async throws {

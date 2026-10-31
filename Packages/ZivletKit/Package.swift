@@ -172,7 +172,8 @@ let package = Package(
             name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG"],
             resources: [.copy("Goldens")], swiftSettings: strict),
         .testTarget(
-            name: "EngineVisionTests", dependencies: ["EngineVision", "ZivletCore", "OCRTestSupport", "TestSupport"],
+            name: "EngineVisionTests",
+            dependencies: ["EngineVision", "ZivletCore", "ZivletEngineKit", "OCRTestSupport", "TestSupport"],
             swiftSettings: strict),
         .testTarget(
             name: "ZivletRuntimeTests",

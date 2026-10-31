@@ -16,9 +16,11 @@ public struct PDFEngine: Engine {
 
     public let id = EngineID.pdf
     private let limits: QPDFLimits
+    private let watchdog: PDFWatchdog
 
-    public init(limits: QPDFLimits = .standard) {
+    public init(limits: QPDFLimits = .standard, watchdog: PDFWatchdog = .off) {
         self.limits = limits
+        self.watchdog = watchdog
     }
 
     public func handles(_ pair: ConversionPair) -> Bool { false }
@@ -32,12 +34,14 @@ public struct PDFEngine: Engine {
     public func execute(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
         let stage = try Self.stage(of: plan)
         let staged = plan.stagedFile
-        let limits = limits
+        let (limits, watchdog) = (limits, watchdog)
         return try await BlockingWork.run { _ throws(JobError) in
             try Self.releaseClaim(staged)
             let mode: QPDFWriterBridge.Mode = stage.encryption == .remove ? .decrypt : .preserve
             do throws(PDFEngineError) {
-                try QPDFWriterBridge.write(stage.source, password: nil, limits: limits, mode: mode, to: staged)
+                try watchdog.guarding(inputBytes: Self.size(of: stage.source)) { () throws(PDFEngineError) in
+                    try QPDFWriterBridge.write(stage.source, password: nil, limits: limits, mode: mode, to: staged)
+                }
             } catch {
                 throw Self.jobError(error)
             }
@@ -47,12 +51,14 @@ public struct PDFEngine: Engine {
 
     public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
         let stage = try Self.stage(of: plan)
-        let limits = limits
+        let (limits, watchdog) = (limits, watchdog)
         try await BlockingWork.run { _ throws(JobError) in
             let facts: PDFPreflight
             do throws(PDFEngineError) {
-                try QPDFDocumentReader.check(output.url, password: nil, limits: limits)
-                facts = try PDFInspector.inspect(output.url, password: nil, limits: limits)
+                facts = try watchdog.guarding(inputBytes: output.byteCount) { () throws(PDFEngineError) in
+                    try QPDFDocumentReader.check(output.url, password: nil, limits: limits)
+                    return try PDFInspector.inspect(output.url, password: nil, limits: limits)
+                }
             } catch {
                 throw .verificationFailed(Self.verifyMessage(error))
             }
@@ -63,8 +69,9 @@ public struct PDFEngine: Engine {
     /// The job error for a shim error; none carries a path or qpdf's own words.
     static func jobError(_ error: PDFEngineError) -> JobError {
         switch error {
-        case .wrongPassword, .damaged, .unsupportedEncryption: .unsupportedInput(.unreadable)
-        case .limit: .unsupportedInput(.tooLarge)
+        case .wrongPassword, .unsupportedEncryption: .unsupportedInput(.unreadable)
+        case .damaged: .unsupportedInput(.pdfDamaged)
+        case .limit: .unsupportedInput(.pdfTooComplex)
         case .io, .internalFailure: .writeFailed(writeMessage)
         case .outputExists: .internalInvariant(stagedFileMessage)
         case .unusablePassword: .internalInvariant(passwordMessage)

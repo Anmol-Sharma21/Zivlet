@@ -135,6 +135,17 @@ void throw_if_limits_hit() {
     }
 }
 
+zv_pdf_status status_after_limits(zv_pdf_status status) noexcept {
+    if (status != ZV_PDF_OK && status != ZV_PDF_DAMAGED) {
+        return status;
+    }
+    try {
+        return read_param(qpdf_p_limit_errors) != limit_errors_before ? ZV_PDF_LIMIT : status;
+    } catch (...) {
+        return ZV_PDF_INTERNAL;
+    }
+}
+
 zv_pdf_status status_of_current_exception() noexcept {
     try {
         throw;

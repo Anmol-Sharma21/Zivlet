@@ -36,6 +36,7 @@ struct IPCRoundTripTests {
     /// A plan's qpdf stage changed the shape (plan 20d C5): version 4 was Read QR's.
     @Test func thePDFStageBumpedTheProtocolVersion() {
         #expect(WorkerProtocol.version > 4)
+        #expect(WorkerProtocol.version > 5)
     }
 
     @Test func anotherProtocolVersionIsRefused() throws {

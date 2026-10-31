@@ -62,11 +62,11 @@ struct PDFEngineTests {
         }
     }
 
-    @Test func aDamagedSourceIsUnreadableAndLeavesTheStagedFileEmpty() async throws {
+    @Test func aDamagedSourceIsRefusedAsDamagedAndLeavesTheStagedFileEmpty() async throws {
         let rig = try Rig()
         let plan = try rig.plan(try rig.dir.file("note.pdf", "These words are not a PDF."))
 
-        await #expect(throws: JobError.unsupportedInput(.unreadable)) {
+        await #expect(throws: JobError.unsupportedInput(.pdfDamaged)) {
             try await PDFEngine().execute(plan, context: ExecutionContext())
         }
         #expect(!FileManager.default.fileExists(atPath: rig.staged.path))
@@ -111,9 +111,9 @@ struct PDFEngineTests {
 
     @Test(arguments: [
         (PDFEngineError.wrongPassword, JobError.unsupportedInput(.unreadable)),
-        (.damaged, .unsupportedInput(.unreadable)),
+        (.damaged, .unsupportedInput(.pdfDamaged)),
         (.unsupportedEncryption, .unsupportedInput(.unreadable)),
-        (.limit, .unsupportedInput(.tooLarge)),
+        (.limit, .unsupportedInput(.pdfTooComplex)),
         (.io, .writeFailed(PDFEngine.writeMessage)),
         (.outputExists, .internalInvariant(PDFEngine.stagedFileMessage)),
         (.unusablePassword, .internalInvariant(PDFEngine.passwordMessage)),

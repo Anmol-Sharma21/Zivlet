@@ -1,12 +1,13 @@
 import Foundation
 import PDFKit
+import ZivletEngineKit
 
 /// The text of a PDF, page by page (P2-104, D-M6-15). A locked file and one that disallows copying are refused
 /// (OWN-PDF-5). A page's text layer is used when it is usable and has no Devanagari: PDFKit returns Devanagari in
 /// visual order (17a L1), so those pages, scans and damaged layers are rendered at 300 DPI and recognised.
 /// Cancellation is checked between pages; progress is pages done over pages.
 public enum PDFTextSource {
-    public static let pageLimit = 500
+    public static let pageLimit = PDFLimits.maxRenderingPages
 
     public static func read(
         _ url: URL, recognizer: any TextRecognizing, languages: [LanguageTag], pageLimit: Int = pageLimit,
@@ -24,6 +25,7 @@ public enum PDFTextSource {
     }
 
     static func open(_ url: URL, pageLimit: Int) throws(TextError) -> PDFDocument {
+        guard PDFLimits.allows(fileAt: url) else { throw .tooLarge }
         guard let document = PDFDocument(url: url) else { throw .unreadable }
         guard !document.isLocked else { throw .pdfLocked }
         guard document.allowsCopying else { throw .copyingNotAllowed }

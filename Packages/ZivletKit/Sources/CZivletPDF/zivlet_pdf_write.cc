@@ -91,6 +91,10 @@ extern "C" zv_pdf_status zv_pdf_write(const char *in_path, const uint8_t *passwo
             return ZV_PDF_UNUSABLE_PASSWORD;
         }
         QPDF pdf;
+        if (limits != nullptr) {
+            // qpdf stops with a damage error at the warning after this many, in the open or during the write.
+            pdf.setMaxWarnings(limits->max_warnings);
+        }
         open_document(pdf, in_path, secret, limits);
         FILE *file = nullptr;
         if (zv_pdf_status const created = create_output(out_path, &file); created != ZV_PDF_OK) {

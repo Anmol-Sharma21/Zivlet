@@ -84,6 +84,29 @@ extension PDFFixtures {
         return url
     }
 
+    /// `pages` distinct pages sharing one empty content stream; small on disk, however many there are.
+    @discardableResult
+    public static func manyPages(in dir: URL, name: String, pages: Int) throws -> URL {
+        try raw(in: dir, name: name, objects: objects(pages: pages, page: "/Type /Page"))
+    }
+
+    /// `pages` pages, each with no `/Type`, which costs one warning per page on opening.
+    @discardableResult
+    public static func oneWarningPerPage(in dir: URL, name: String, pages: Int) throws -> URL {
+        try raw(in: dir, name: name, objects: objects(pages: pages, page: ""))
+    }
+
+    /// Catalog 1, pages 2, content 3, then one object per page with `page` among its entries.
+    private static func objects(pages: Int, page: String) -> [String] {
+        let kids = (0..<pages).map { "\($0 + 4) 0 R" }.joined(separator: " ")
+        let body = "<< \(page) /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> /Contents 3 0 R >>"
+        return [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [\(kids)] /Count \(pages) >>",
+            "<< /Length 0 >>\nstream\n\nendstream",
+        ] + Array(repeating: body, count: pages)
+    }
+
     /// The one-page objects, each object number raised by one, for a file with an object before them.
     private static func shiftedByOne(_ object: String) -> String {
         object.replacingOccurrences(of: "/Pages 2 0 R", with: "/Pages 3 0 R")

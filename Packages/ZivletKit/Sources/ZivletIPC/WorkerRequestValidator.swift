@@ -7,7 +7,8 @@ import ZivletEngineKit
 /// The worker's boundary check (03b "parser exploit", D-M6-4): every request is validated before any engine sees it.
 /// Paths must be absolute `file:` paths with no `..` component and no control character; an input must be a regular
 /// file at its last component (`lstat`, so a symlink is refused); a staged file must be `staged.<ext>` inside an
-/// existing `.zivlet-<job>` folder; a plan must name an engine this worker hosts; a byte limit must be positive.
+/// existing `.zivlet-<job>` folder; a plan must name an engine this worker hosts; a byte limit must be positive; a PDF
+/// must be within `PDFLimits`' size, measured here whatever the app said (D-M7-18).
 public struct WorkerRequestValidator: Sendable {
     public let hostedEngines: Set<EngineID>
 
@@ -21,6 +22,7 @@ public struct WorkerRequestValidator: Sendable {
         case .prepare(let job, let workspace):
             guard workspace.job == job.id else { throw .internalInvariant("The workspace belongs to another job.") }
             try Self.checkInput(job.input.url)
+            if job.input.format == .pdf { try PDFLimits.check(fileAt: job.input.url) }
             guard Self.isSafeFileURL(job.destination) else { throw .invalidDestination }
             try Self.checkStaged(workspace.stagedFile)
         case .execute(_, let plan, let limit):
@@ -80,7 +82,10 @@ public struct WorkerRequestValidator: Sendable {
         guard hostedEngines.contains(plan.engine) else { throw .engineMissing(plan.engine) }
         try Self.checkStaged(plan.stagedFile)
         for spec in plan.stages.compactMap(\.image) { try Self.checkInput(spec.source) }
-        for stage in plan.stages.compactMap(\.pdf) { try Self.checkInput(stage.source) }
+        for stage in plan.stages.compactMap(\.pdf) {
+            try Self.checkInput(stage.source)
+            try PDFLimits.check(fileAt: stage.source)
+        }
     }
 
     /// An absolute `file:` URL whose path has no `..` component and no control character (NUL included).
