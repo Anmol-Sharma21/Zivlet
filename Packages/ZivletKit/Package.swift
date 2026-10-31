@@ -144,7 +144,7 @@ let package = Package(
             name: "ZivletWorkerCoreTests",
             dependencies: [
                 "ZivletWorkerCore", "ZivletIPC", "ZivletCore", "ZivletEngineKit", "EngineVision", "EngineTestSupport",
-                "TestSupport", "OCRTestSupport", "WorkerTestSupport", "EnginePDF",
+                "TestSupport", "OCRTestSupport", "WorkerTestSupport", "EnginePDF", "EngineImage", "ZivletRuntime",
             ],
             swiftSettings: strict),
         .testTarget(

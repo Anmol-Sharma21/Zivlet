@@ -22,6 +22,7 @@ lint:
 	$(ENV) swift format lint --strict --recursive Packages/ZivletKit/Sources Packages/ZivletKit/Tests App Worker
 	Scripts/check-log-privacy.sh
 	Scripts/check-secrets.sh
+	Scripts/check-pdf-writes.sh
 
 format:
 	$(ENV) swift format format --in-place --recursive Packages/ZivletKit/Sources Packages/ZivletKit/Tests App Worker

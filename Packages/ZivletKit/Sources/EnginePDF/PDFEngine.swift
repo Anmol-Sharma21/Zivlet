@@ -105,7 +105,7 @@ public struct PDFEngine: Engine {
         }
     }
 
-    private static func size(of url: URL) -> Int64 {
+    static func size(of url: URL) -> Int64 {
         var info = stat()
         return lstat(url.path, &info) == 0 ? Int64(info.st_size) : 0
     }
