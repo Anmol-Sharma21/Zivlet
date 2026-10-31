@@ -1,6 +1,6 @@
-/// Every format Zivlet knows: 45 inputs + `html` (output only). Order = 02 §7.1.
+/// Every format Zivlet knows: 46 inputs + `html` (output only). Order = 02 §7.1, with `dng` after the rasters it reads like.
 public enum FormatID: String, CaseIterable, Codable, Sendable {
-    case jpg, png, webp, heic, tiff, avif, bmp, svg, pdf
+    case jpg, png, webp, heic, tiff, avif, bmp, dng, svg, pdf
     case mp3, m4a, wav, flac, ogg, opus, aiff, wma
     case mp4, mov, mkv, webm, avi, wmv, gif
     case srt, vtt

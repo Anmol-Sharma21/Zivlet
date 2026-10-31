@@ -24,7 +24,7 @@ struct ToolCatalogTests {
         let spec = tools.spec(.copyText)
         #expect(spec.wheelLabel == "COPY TEXT" && spec.symbolName == "text.viewfinder")
         #expect(spec.presentation == .instant && spec.cardinality == .multiAllowed && spec.outputSuffix == "Text")
-        #expect(spec.accepts == [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .gif, .pdf])
+        #expect(spec.accepts == [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .dng, .gif, .pdf])
     }
 
     @Test func instantToolsAreTheSixWindowlessOnes() {
@@ -56,6 +56,7 @@ struct ToolCatalogTests {
         ([.svg], [.qrScan]),
         ([.svg, .svg], [.pdfFromImages, .imageCollage, .qrScan]),
         ([.avif], [.qrScan, .copyText]),
+        ([.dng], [.qrScan, .copyText]),
         ([.bmp, .bmp], [.qrScan, .copyText]),
         ([.pdf], [.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan]),
         ([.pdf, .pdf], [.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .copyText, .qrScan]),

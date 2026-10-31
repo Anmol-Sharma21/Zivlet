@@ -508,7 +508,7 @@ The cap is 12 (FR-27/FR-90). New items are in **bold**. (P3) or (P4) marks the p
 | Input | Single-file default visible | Single extras | Multi-file default visible | Multi extras |
 |---|---|---|---|---|
 | jpg png webp heic tiff | **COPY TEXT**, COMPRESS, **RESIZE**, **REMOVE BG**, **FIT FOR…**, CROP, EDIT, ANNOTATE, METADATA, REDACT (10) | ADD BG | **COMBINE PDF**, **STITCH**, **REEL**, **COPY TEXT**, COMPRESS, **RESIZE**, **FIT FOR…**, **GIF**, COLLAGE, **REMOVE BG**, CROP, METADATA (12, at cap) | **THUMBNAILS** |
-| avif bmp gif | READ QR, **COPY TEXT** (+ METADATA for gif) | — | READ QR, **COPY TEXT**, **COMBINE PDF** (avif/bmp) | — |
+| avif bmp dng gif | READ QR, **COPY TEXT** (+ METADATA for gif) | — | READ QR, **COPY TEXT**, **COMBINE PDF** (avif/bmp/dng) | — |
 | svg | READ QR | — | **COMBINE PDF**, COLLAGE, READ QR | — |
 | pdf (not encrypted) | COMPRESS, **LOCK**, **SIGN** (P3), **SEARCHABLE**, **COPY TEXT**, SPLIT, ORGANIZE, **NO BLANKS**, **PAGE SIZE**, METADATA, READ QR (11) | **FIT FOR…** | **MERGE PDF**, COMPRESS, **LOCK**, SPLIT, **SEARCHABLE**, **NO BLANKS**, **PAGE SIZE**, **COPY TEXT**, METADATA, READ QR (10) | **THUMBNAILS**, **FIT FOR…** |
 | pdf (encrypted) | as above with **UNLOCK** + **CHANGE PASSWORD** (12, at cap) | — | as above with **UNLOCK** | **CHANGE PASSWORD** |

@@ -16,9 +16,10 @@ public enum ContentAdmission {
     }
 
     /// Formats that share a container or a decoder, so content of one under the name of another is no mismatch.
-    /// `gz` covers SVGZ; `mp3` under `flac` covers an ID3 tag longer than the header in front of FLAC.
+    /// `gz` covers SVGZ; `mp3` under `flac` covers an ID3 tag longer than the header in front of FLAC; a DNG is a TIFF.
     static let families: [Set<FormatID>] = [
         [.mp4, .mov, .m4a], [.heic, .avif], [.mkv, .webm], [.ogg, .opus], [.wma, .wmv], [.svg, .gz], [.mp3, .flac],
+        [.tiff, .dng],
     ]
 
     /// `named` is the extension's format and `target` a catalog target for it. Unknown, refusable or unconvertible

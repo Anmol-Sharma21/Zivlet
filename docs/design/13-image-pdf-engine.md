@@ -76,7 +76,7 @@ Probe machine: macOS **27.0** (build 26A428), arm64, Swift 6.4, SDKs `MacOSX26.s
 | ICO / CUR | ✓ / ✓ | ICO ✓ | Multi-size ICO 16/32/48/256 written and read back as 4 frames. **A 512 px frame makes `Finalize` fail** (PROBED) → clamp to 256. |
 | ICNS | ✓ | ✓ | 16…1024 multi-size works (PROBED). |
 | PSD | ✓ | ✓ | Read = **flattened composite only** (files saved without "Maximize Compatibility" may have no composite → show an error). Write = flattened single layer (40 MB for 12 MP). |
-| Camera RAW | ✓ (≈40 UTIs: CR2/CR3/NEF/ARW/RAF/ORF/RW2/DNG…) | ✗ | Use `CIRAWFilter` for exposure, white balance, boost and noise reduction before export. |
+| Camera RAW | ✓ (≈40 UTIs: CR2/CR3/NEF/ARW/RAF/ORF/RW2/DNG…) | ✗ | DNG is a conversion input (OWN-FMT-1), developed by ImageIO at the camera's as-shot settings. Use `CIRAWFilter` for exposure, white balance, boost and noise reduction before export if raw adjustments are ever offered. |
 | OpenEXR, Radiance HDR | ✓ | EXR ✓ | Tone-map to SDR with `CIToneMapHeadroom` (PROBED present) when the output is 8-bit. |
 | JPEG 2000, TGA, DDS, KTX/KTX2, ASTC, PVR, PBM, DICOM, MPO, PICT, SGI | ✓ | most ✓ | Free extra inputs; expose only a curated subset in the wheel. |
 | SVG | ✗ in ImageIO | ✗ | `NSImage` decodes it through `_NSSVGImageRep` (PROBED); see §3. |

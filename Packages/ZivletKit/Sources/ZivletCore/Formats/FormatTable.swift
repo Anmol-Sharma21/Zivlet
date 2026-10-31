@@ -10,6 +10,7 @@ extension FormatRegistry {
         Format(.tiff, .image, .raster, extensions: ["tiff", "tif"], contentTypes: ["public.tiff"]),
         Format(.avif, .image, .raster, extensions: ["avif"], contentTypes: ["public.avif"]),
         Format(.bmp, .image, .raster, extensions: ["bmp"], contentTypes: ["com.microsoft.bmp"]),
+        Format(.dng, .image, .raster, role: .inputOnly, extensions: ["dng"], contentTypes: ["com.adobe.raw-image"]),
         Format(.svg, .image, .svg, role: .inputOnly, extensions: ["svg", "svgz"], contentTypes: ["public.svg-image"]),
         Format(.pdf, .document, .pdf, extensions: ["pdf"], contentTypes: ["com.adobe.pdf"]),
     ]

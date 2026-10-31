@@ -1,4 +1,4 @@
-// The 275 conversion pairs (03a §3.3, 06b Task 4a). Row order = petal order.
+// The 283 conversion pairs (03a §3.3, 06b Task 4a). Row order = petal order.
 extension ConversionCatalog {
     static let table: [ConversionRow] = raster + audioVideo + documents + dataFormats
 
@@ -10,6 +10,7 @@ extension ConversionCatalog {
         .init(.tiff, [.jpg, .png, .webp, .heic, .avif, .bmp, .pdf]),
         .init(.avif, [.jpg, .png, .webp, .heic, .tiff, .bmp, .pdf]),
         .init(.bmp, [.jpg, .png, .webp, .heic, .tiff, .avif, .pdf]),
+        .init(.dng, [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .pdf]),
         .init(.svg, [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .pdf]),
     ]
     private static let audioVideo: [ConversionRow] = [

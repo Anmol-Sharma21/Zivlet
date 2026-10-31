@@ -3,7 +3,7 @@ import Testing
 import ZivletCore
 
 /// The pairs the matrix runs (P1-61): every catalog pair whose source is a Phase 1 media or raster format (153), plus
-/// the 8 SVG pairs pulled forward by D-M4-6.
+/// the 8 SVG pairs pulled forward by D-M4-6 and the 8 DNG pairs of OWN-FMT-1.
 enum MatrixPairs {
     static let categories: Set<FormatCategory> = [.raster, .svg, .audio, .video, .gif]
 
@@ -11,7 +11,7 @@ enum MatrixPairs {
         categories.contains(FormatRegistry.standard.format($0.source).category)
     }
 
-    static let phaseOne: [ConversionPair] = all.filter { $0.source != .svg }
+    static let phaseOne: [ConversionPair] = all.filter { $0.source != .svg && $0.source != .dng }
 
     static func count(_ category: FormatCategory) -> Int {
         all.count { FormatRegistry.standard.format($0.source).category == category }
@@ -57,7 +57,7 @@ enum MatrixEnvironment {
 enum MatrixFixtures {
     static let primary: [FormatID: String] = [
         .jpg: "srgb.jpg", .png: "alpha.png", .webp: "srgb.webp", .heic: "srgb.heic", .tiff: "p3-16bit.tiff",
-        .avif: "srgb.avif", .bmp: "srgb.bmp", .svg: "drawing.svg",
+        .avif: "srgb.avif", .bmp: "srgb.bmp", .dng: "bayer.dng", .svg: "drawing.svg",
         .mp3: "cover.mp3", .m4a: "tone.m4a", .wav: "pcm24.wav", .flac: "surround.flac", .ogg: "vorbis.ogg",
         .opus: "mono.opus", .aiff: "tone.aiff", .wma: "tone.wma",
         .mp4: "sdr-h264.mp4", .mov: "rotated.mov", .mkv: "subs-chapters.mkv", .webm: "vp9-opus.webm",
