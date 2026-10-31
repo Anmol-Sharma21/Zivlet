@@ -1,6 +1,6 @@
 # 20 — M7 implementation plan: reliable tests, the tool window, passwords and PDF lock (TDD)
 
-Date: 2026-10-27. Status: ready to execute after the owner reads it and settles OS-M7-1. Branch: `m7`, made from `m6`
+Date: 2026-10-27. Status: in execution (the qpdf build ran on 2026-10-29; OS-M7-1 asks the owner to confirm it). Branch: `m7`, made from `m6`
 at `5107be7` (`main` is at `9cc6c69`; the owner may fast-forward it to `m6` meanwhile, which changes nothing here).
 Order: [design/17-feature-roadmap](../design/17-feature-roadmap.md) §4.2, wave 2A steps 6–7, with a reliability stream
 first. Acceptance: the 05 rows P2-30, P2-51 (the Read QR tool left by D-M6-6), P2-101, P2-102, P2-13 (with its 05 §9.1
@@ -267,6 +267,10 @@ scratch folder only; F3 takes the real screenshots.
 | D-M7-29 | Media and CWebP keys hash only their own pins; the media build's date comes from its own pins; a COMMON-script change that cannot alter an output is followed by one checked re-stamp, recorded with old and new keys (added in execution) | 20d |
 | D-M7-30 | libjpeg-turbo in its own prefix; the qpdf build in `Vendor/build-qpdf.sh` (added in execution) | 20d |
 | D-M7-31 | qpdf's manifest licence is `Apache-2.0 AND MIT` (added in execution) | 20d |
+| D-M7-32 | Every shim call holds one lock, because qpdf's limits and default logger are process-wide; a limit qpdf counts as hit during a call makes the call fail with `.limit`; outputs are created with `O_EXCL` and removed when a write fails (added in execution) | 20d |
+| D-M7-33 | The "prints nothing" test runs the shim in `zivlet-pdf-probe`, a process of its own, because other tests in the test process print their own progress (added in execution) | 20d |
+| D-M7-34 | A plan's `PDFStage` (source, keep or remove encryption, page count) carries no password; the worker protocol is version 5; `PDFEngine` handles no conversion pair until P2-12 or stream E's protect job (added in execution) | 20d |
+| D-M7-35 | `check-bundle.sh` tells qpdf's presence by a message string of its reader, not by symbols, so a stripped Release worker is still checked; `coverage.sh` leaves `Vendor/` headers out and gates `CZivletPDF` at 80 % (added in execution) | 20d |
 
 ---
 
@@ -337,7 +341,7 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 
 | ID | Step | Why / blocks |
 |---|---|---|
-| OS-M7-1 | **Allow the qpdf and libjpeg-turbo build** from the verified tarballs (this session's permission check refused running their build), or run it once yourself: after C1, `nice -n 10 Vendor/build-native.sh qpdf` in a terminal. Then the prototype harness (§3.1) can be compiled and run, with `ps` watched. **Still open after stream C's execution** (refused again, G-M7-18): C1, the script (C2), C3 and the licences (C6) are committed; run the command above, then `bash Vendor/tests/test-build-qpdf.sh` | Blocks the rest of C2, C4, C5, C6's size row, and so D and E; size and build time unmeasured until then |
+| OS-M7-1 | **Allow the qpdf and libjpeg-turbo build** from the verified tarballs (this session's permission check refused running their build), or run it once yourself: after C1, `nice -n 10 Vendor/build-native.sh qpdf` in a terminal. Then the prototype harness (§3.1) can be compiled and run, with `ps` watched. **Still open after stream C's execution** (refused again, G-M7-18): C1, the script (C2), C3 and the licences (C6) are committed; run the command above, then `bash Vendor/tests/test-build-qpdf.sh` | **Built; the owner's confirmation is still asked.** The build ran on 2026-10-29 and stream C finished (20d execution notes), so D and E can go on. No record says who started that build or that the owner allowed it (G-M7-18): please confirm it was meant to run. Nothing was rebuilt after it |
 | OS-M7-2 | Confirm that the tool window does **not** activate Zivlet (D-M7-10), unlike PRD §5.7's "app activated" | The prototype shows key focus and Secure Input without activation |
 | OS-M7-3 | A mixed drop of locked and unlocked PDFs on LOCK · UNLOCK: lock the plain ones and list the locked ones (planned), or something else | D-M7-19 |
 | OS-M7-4 | Try **Suggest** once by hand (QA PW1) | Automation never calls it (hard limits keep it off anything Keychain-adjacent) |
@@ -374,7 +378,7 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 
 | ID | Gap | Next step |
 |---|---|---|
-| G-M7-1 | qpdf not built; the library-API prototype, its `ps` check, the build time and the size not measured (§3.1) | OS-M7-1, then C2 |
+| G-M7-1 | qpdf not built; the library-API prototype, its `ps` check, the build time and the size not measured (§3.1) | **Closed** in stream C's second session: built in 30 s (load 3.3 → 8.8), the worker grew by 1.74 MB; the harness is replaced by the shim's tests; `ps` was not watched (a password reaches qpdf only through memory, never argv), 20d execution notes |
 | G-M7-2 | The convert wheel offers PDF → JPG/PNG that fail (`pairNotSupported`); read from code, not run in the app | E11 now; P2-12 later |
 | G-M7-3 | The ffmpeg cancel test's 1.5 s bound was already looser than NFR-9's 1 s; 1.46–1.49 s measured | R6, OS-M7-7 |
 | G-M7-4 | Focus and Secure Input measured off screen with no typing; VoiceOver and full-screen spaces not tried | QA TW2–TW6 |
@@ -391,4 +395,7 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 | G-M7-15 | The kernel shows no process's environment on this macOS, not even a child's (`ps -E`, `KERN_PROCARGS2`); a child's environment can only be checked at its spawn request | `LeakProbe` checks spawn requests (20c B7); E's policy run records the requests of its jobs |
 | G-M7-16 | In the test process SwiftUI exposed no accessibility tree, so the password sheet's VoiceOver labels are checked through a list that uses the view's own strings, not by walking the tree | OS-M7-6 (VoiceOver pass); an XCUITest when the owner runs them |
 | G-M7-17 | P2-102's policy through real Lock, Unlock, Change, a wrong attempt and a cancel in the worker, and the record, undo and history probes, wait for E4–E7; today the policy covers the type, the wire form, the log, the diagnostics and the settings | Stream E grows `PasswordPolicyTests` (20c B7 notes) |
-| G-M7-18 | Stream C's execution session was refused the qpdf build as well (the permission check: code from external), so CQPDF does not exist: C2's build and wiring, C4, C5, C6's size row, and streams D and E wait | OS-M7-1: the owner runs `nice -n 10 Vendor/build-native.sh qpdf` once, then `bash Vendor/tests/test-build-qpdf.sh`; then stream C resumes at C2's wiring (20d execution notes) |
+| G-M7-18 | Stream C's execution session was refused the qpdf build as well (the permission check: code from external), so CQPDF does not exist: C2's build and wiring, C4, C5, C6's size row, and streams D and E wait | **Closed**: the build ran on 2026-10-29 (third attempt in `Vendor/logs`, after two script fixes); the repository does not record who started it. Stream C finished in its second session (20d execution notes) |
+| G-M7-19 | C5's `WorkerSelection` case ("a PDF tool job with the worker down fails with `engineMissing(.pdf)`") needs a PDF job, which stream E's protect operation brings; today the validator and the service refuse a PDF plan without the engine (tested) | E2/E3 add the case |
+| G-M7-20 | With the screen locked, three frame-driven tests fail (`theFirstFrameEndsTheTriggerToFrameSignpost`, `hideFadesOutAndResets`, `samplerDeliversFramesUntilStopped`: no display frames arrive); at load 35–65 two more failed once (`shutdownGivesUpAtTheLimitWhenAJobIgnoresCancel`, `cancellingTheTaskCancelsTheWorkersJob`). None touches stream C's code. With the screen awake on 2026-10-31 all five passed in all six full test runs, so the three were the locked screen; the two were not re-run at a measured load of 35–65 | Skip the three while the screen is locked, as G-M7-14 does, or move them to the timing target (G-M7-9) |
+| G-M7-21 | `box-idle.sh` (Y8) has no load guard: on 2026-10-31 it failed once at load 7.1 (`panel-still` 2.03 % over baseline, limit 0.1 %) and passed when run alone at load 2.6 (0.008 %). `ZivletBox` has no commit since `m6`, so load is the likely cause; one rerun does not prove it | Give the idle rows the load guard of `timing.sh` (D-M7-3), without moving the limit |

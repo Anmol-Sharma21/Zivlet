@@ -262,7 +262,7 @@ cmake -S qpdf -B build -G Ninja -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPL
   -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DREQUIRE_CRYPTO_NATIVE=ON -DUSE_IMPLICIT_CRYPTO=OFF \
   -DBUILD_DOC=OFF -DINSTALL_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release
 ```
-- Depends on zlib (SDK) and libjpeg (build libjpeg-turbo 3.1.x static, BSD/IJG). Native crypto avoids OpenSSL/GnuTLS.
+- Depends on zlib (SDK) and libjpeg (build libjpeg-turbo 3.2.0 static, BSD/IJG; pin moved by D-M7-17). Native crypto avoids OpenSSL/GnuTLS.
 - Call it through the **`qpdfjob` C API with JSON jobs** (`qpdfjob_run_from_json`), whose keys mirror the CLI. This keeps Swift free of C++ interop for v1; the v2 recompressor uses a small C++ shim.
 - Run inside the engine helper process (see the architecture doc) so a crash on a hostile PDF never takes down the wheel.
 - Size: libqpdf static ~4–6 MB (EST).

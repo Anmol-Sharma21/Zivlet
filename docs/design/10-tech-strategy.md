@@ -481,8 +481,8 @@ Contribution model **[OWNER]**:
 | krilla / krilla-svg / pdf-writer / skrifa | 0.8.2 / 0.8.1 / 0.15 / 0.42 | MIT OR Apache-2.0 | `libzivlet_rs` | yes | [challenge] replaces svg2pdf 0.13 (see §3 note) |
 | oxipng | 10.2.1 | MIT | `libzivlet_rs` | yes | |
 | imagequant (libimagequant) | 4.x | GPL-3.0-or-later | `libzivlet_rs` | yes | requires a GPLv3 app |
-| qpdf | 12.4.2 | Apache-2.0 | static in `ZivletEngines` | yes | reproduce NOTICE |
-| libjpeg-turbo | 3.1.x | IJG AND BSD-3-Clause AND Zlib | static (qpdf) | yes | IJG acknowledgement text |
+| qpdf | 12.4.2 | Apache-2.0 AND MIT (D-M7-31) | static, linked only into `ZivletWorker` (D-M7-16) | yes | reproduce NOTICE |
+| libjpeg-turbo | 3.2.0 (D-M7-17) | IJG AND BSD-3-Clause AND Zlib | static (qpdf) | yes | IJG acknowledgement text |
 | libarchive | 3.8.10 | BSD-2-Clause | static | yes | |
 | xz (liblzma) / zstd / lz4 | 5.8.4 / 1.5.7 / 1.10 | 0BSD / BSD-3-Clause / BSD-2-Clause | static | yes | |
 | ExifTool | 13.59 | Artistic-1.0-Perl OR GPL-1.0-or-later | Resources (Perl scripts) | yes (under GPL) | include source (it is source) |
