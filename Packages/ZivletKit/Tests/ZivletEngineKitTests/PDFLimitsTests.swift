@@ -15,6 +15,8 @@ struct PDFLimitsTests {
         #expect(PDFLimits.maxParserErrors == 1_000)
         #expect(PDFLimits.maxStreamFilters == 25)
         #expect(PDFLimits.maxWarnings == 100)
+        #expect(PDFLimits.maxWorkerFootprint == 3_000_000_000)
+        #expect(PDFLimits.memoryPollInterval == .milliseconds(100))
     }
 
     @Test func anInputOfExactly512MBPasses() throws {

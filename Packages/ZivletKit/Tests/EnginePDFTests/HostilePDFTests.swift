@@ -85,7 +85,8 @@ struct HostilePDFTests {
     @Test func aDamagedFileHasTheSmallerContainerLimit() throws {
         let dir = try TempDir()
         let size = Int(PDFLimits.maxContainerSizeDamaged)
-        let at = try PDFFixtures.brokenCrossReference(in: dir.url, name: "at.pdf", objects: container("/a", count: size))
+        let at = try PDFFixtures.brokenCrossReference(
+            in: dir.url, name: "at.pdf", objects: container("/a", count: size))
         let over = try PDFFixtures.brokenCrossReference(
             in: dir.url, name: "over.pdf", objects: container("/a", count: size + 1))
 

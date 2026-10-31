@@ -12,12 +12,20 @@ public enum PDFLimits {
     /// For tools that draw every page: Copy Text, Read QR.
     public static let maxRenderingPages = 500
     public static let maxParserNesting: UInt32 = 500
+    /// Entries in one array or dictionary. qpdf 12.4.2 counts names, strings, reals and booleans here, not numbers,
+    /// nulls or references; `maxWorkerFootprint` holds those.
     public static let maxContainerSize: UInt32 = 1_000_000
     public static let maxContainerSizeDamaged: UInt32 = 50_000
     public static let maxParserErrors: UInt32 = 1_000
     public static let maxStreamFilters: UInt32 = 25
     /// Past this many warnings a file counts as damaged for a write; pre-flight still reads and reports it.
     public static let maxWarnings: UInt32 = 100
+    /// What the worker may hold while a qpdf step runs (D-M7-44): 651 MB was measured at the structural limit, and the
+    /// rest is room for other jobs. It stands behind the limits above, which leave a file of numbers or a Flate bomb
+    /// free to grow.
+    public static let maxWorkerFootprint: Int64 = 3_000_000_000
+    /// How often the watchdog reads the worker's memory during a qpdf step.
+    public static let memoryPollInterval = Duration.milliseconds(100)
 
     /// What the watchdog gives a blocking qpdf call: this much, plus a second per `watchdogBytesPerSecond`.
     static let watchdogBase = Duration.seconds(30)

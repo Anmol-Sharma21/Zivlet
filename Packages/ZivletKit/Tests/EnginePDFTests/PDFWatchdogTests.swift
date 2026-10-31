@@ -30,7 +30,36 @@ struct PDFWatchdogTests {
                     self.events.withLock { $0.append(.armed(budget)) }
                     self.fires.withLock { $0.append(fire) }
                     return { self.events.withLock { $0.append(.disarmed) } }
-                }, onStuck: { self.stuck.withLock { $0 += 1 } })
+                }, poll: { _, _ in {} }, onStuck: { self.stuck.withLock { $0 += 1 } })
+        }
+    }
+
+    /// A memory reading the test sets, and the poll's tick it fires by hand.
+    final class Memory: Sendable {
+        let footprint = Mutex<Int64?>(0)
+        let intervals = Mutex<[Duration]>([])
+        let ticks = Mutex<[@Sendable () -> Void]>([])
+        let stopped = Mutex(0)
+        let stuck = Mutex(0)
+
+        var watchdog: PDFWatchdog {
+            PDFWatchdog(
+                schedule: { _, _ in {} },
+                poll: { interval, tick in
+                    self.intervals.withLock { $0.append(interval) }
+                    self.ticks.withLock { $0.append(tick) }
+                    return { self.stopped.withLock { $0 += 1 } }
+                },
+                footprint: { self.footprint.withLock { $0 } }, onStuck: { self.stuck.withLock { $0 += 1 } })
+        }
+
+        /// Reads `bytes` on a poll during a step, and returns how many times the step counted as stuck.
+        func stuckCount(reading bytes: Int64?) throws -> Int {
+            try watchdog.guarding(inputBytes: 0) { () throws(PDFEngineError) in
+                footprint.withLock { $0 = bytes }
+                ticks.withLock { $0 }.forEach { $0() }
+            }
+            return stuck.withLock { $0 }
         }
     }
 
@@ -103,6 +132,60 @@ struct PDFWatchdogTests {
         let value = try PDFWatchdog.off.guarding(inputBytes: 0) { () throws(PDFEngineError) -> Int in 3 }
 
         #expect(value == 3)
+    }
+
+    @Test func aWorkerPastTheMemoryCeilingIsStuck() throws {
+        #expect(try Memory().stuckCount(reading: PDFLimits.maxWorkerFootprint + 1) == 1)
+    }
+
+    @Test func aWorkerAtTheMemoryCeilingIsNot() throws {
+        #expect(try Memory().stuckCount(reading: PDFLimits.maxWorkerFootprint) == 0)
+    }
+
+    /// With no reading there is nothing to judge; the time budget still holds.
+    @Test func aReadingThatFailsIsNotStuck() throws {
+        #expect(try Memory().stuckCount(reading: nil) == 0)
+    }
+
+    @Test func thePollRunsAtItsIntervalAndStopsWithTheStep() throws {
+        let memory = Memory()
+
+        _ = try memory.stuckCount(reading: 0)
+
+        #expect(memory.intervals.withLock { $0 } == [PDFLimits.memoryPollInterval])
+        #expect(memory.stopped.withLock { $0 } == 1)
+    }
+
+    @Test func aStepThatThrowsStopsItsPollToo() {
+        let memory = Memory()
+
+        #expect(throws: PDFEngineError.damaged) {
+            try memory.watchdog.guarding(inputBytes: 0) { () throws(PDFEngineError) in throw .damaged }
+        }
+        #expect(memory.stopped.withLock { $0 } == 1)
+    }
+
+    @Test func theRealPollKeepsFiringUntilItIsStopped() async {
+        let second = Signal()
+        let count = Mutex(0)
+
+        let stop = PDFWatchdog.dispatchPoll(.milliseconds(1)) {
+            let ticks = count.withLock { value in
+                value += 1
+                return value
+            }
+            if ticks == 2 { second.fire() }
+        }
+
+        await second.wait()
+        stop()
+        #expect(second.hasFired)
+    }
+
+    @Test func theRealFootprintIsAProcessSize() throws {
+        let bytes = try #require(PDFWatchdog.processFootprint())
+
+        #expect(bytes > 1_000_000)
     }
 
     @Test func theEngineArmsItsWatchdogForARewriteAndForItsVerify() async throws {

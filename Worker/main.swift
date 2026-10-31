@@ -26,8 +26,8 @@ setlocale(LC_CTYPE, "UTF-8")
     #endif
 }
 
-/// A qpdf call past its budget cannot be cancelled, so the worker stops itself; the app retries once, then blames the
-/// file (D-M7-18). SIGKILL writes no crash report.
+/// A qpdf call past its time budget or memory ceiling cannot be cancelled, so the worker stops itself; the app retries
+/// once, then blames the file (D-M7-18, D-M7-44). SIGKILL writes no crash report.
 let pdfWatchdog = PDFWatchdog(onStuck: {
     logger.error("A PDF call passed its watchdog budget; stopping the worker")
     kill(getpid(), SIGKILL)

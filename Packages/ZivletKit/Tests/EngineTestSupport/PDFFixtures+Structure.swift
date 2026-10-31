@@ -15,6 +15,18 @@ extension PDFFixtures {
         ] + extra
     }
 
+    /// A page whose content stream inflates to `decoded` spaces from about a thousandth of that, typed as hexadecimal so
+    /// the file stays text for `raw`. Deflate alone, with zlib's two header bytes and no checksum: reading it costs the
+    /// memory before anything can object to the end of the stream.
+    @discardableResult
+    public static func flateBomb(in dir: URL, name: String = "bomb.pdf", decoded: Int) throws -> URL {
+        let deflated = try (Data(repeating: 0x20, count: decoded) as NSData).compressed(using: .zlib) as Data
+        let hex = (Data([0x78, 0x9C]) + deflated).map { String(format: "%02x", $0) }.joined() + ">"
+        let content =
+            "<< /Length \(hex.utf8.count) /Filter [/ASCIIHexDecode /FlateDecode] >>\nstream\n\(hex)\nendstream"
+        return try raw(in: dir, name: name, objects: Array(onePageObjects.dropLast()) + [content])
+    }
+
     /// A real AcroForm: a text field holding a value and a signature field, both on the page.
     @discardableResult
     public static func acroForm(in dir: URL, name: String = "acroform.pdf") throws -> URL {
