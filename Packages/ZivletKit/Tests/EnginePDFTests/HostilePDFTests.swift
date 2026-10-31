@@ -27,6 +27,16 @@ struct HostilePDFTests {
         ]
     }
 
+    /// One catalog array of `count` copies of `entry`.
+    private func container(_ entry: String, count: Int) -> [String] {
+        PDFFixtures.objects(catalog: "/Big [\(String(repeating: entry + " ", count: count))]")
+    }
+
+    /// `count` parser errors, far enough apart that qpdf does not give up on five close together.
+    private func parserErrors(_ count: Int) -> [String] {
+        container("{ /a /a /a /a /a /a", count: count)
+    }
+
     private func expectRefused(_ url: URL, _ error: PDFEngineError, in dir: TempDir) {
         let output = dir.url.appending(path: "out-\(UUID().uuidString).pdf")
         #expect(throws: error) { try QPDFWriterBridge.write(url, password: nil, mode: .preserve, to: output) }
@@ -41,9 +51,83 @@ struct HostilePDFTests {
         expectRefused(url, .limit, in: dir)
     }
 
-    @Test func arraysNestedInsideTheLimitAreRead() throws {
+    /// qpdf's own default is 499, so a file at 500 shows that the shim's value is the one in force.
+    @Test func arraysNestedToExactlyTheLimitAreReadAndOneMoreIsNot() throws {
         let dir = try TempDir()
-        let url = try PDFFixtures.raw(in: dir.url, name: "deep.pdf", objects: nested(450))
+        let depth = Int(PDFLimits.maxParserNesting)
+        let at = try PDFFixtures.raw(in: dir.url, name: "at.pdf", objects: nested(depth))
+        let over = try PDFFixtures.raw(in: dir.url, name: "over.pdf", objects: nested(depth + 1))
+
+        #expect(try PDFInspector.inspect(at, password: nil).pageCount == 1)
+        #expect(throws: PDFEngineError.limit) { try PDFInspector.inspect(over, password: nil) }
+        #expect(throws: PDFEngineError.limit) {
+            try PDFInspector.inspect(at, password: nil, limits: QPDFLimits(maxNesting: PDFLimits.maxParserNesting - 1))
+        }
+    }
+
+    /// qpdf sets no limit of its own here.
+    @Test func aContainerOfExactlyTheLimitIsReadAndOneMoreEntryIsNot() throws {
+        let dir = try TempDir()
+        let size = Int(PDFLimits.maxContainerSize)
+        let at = try PDFFixtures.raw(in: dir.url, name: "at.pdf", objects: container("/a", count: size))
+        let over = try PDFFixtures.raw(in: dir.url, name: "over.pdf", objects: container("/a", count: size + 1))
+
+        #expect(try PDFInspector.inspect(at, password: nil).pageCount == 1)
+        #expect(throws: PDFEngineError.limit) { try PDFInspector.inspect(over, password: nil) }
+        expectRefused(over, .limit, in: dir)
+        #expect(throws: PDFEngineError.limit) {
+            try PDFInspector.inspect(
+                at, password: nil, limits: QPDFLimits(maxContainerSize: PDFLimits.maxContainerSize - 1))
+        }
+    }
+
+    /// qpdf's own default is 5,000, so a file of 50,000 shows that the shim's value is the one in force.
+    @Test func aDamagedFileHasTheSmallerContainerLimit() throws {
+        let dir = try TempDir()
+        let size = Int(PDFLimits.maxContainerSizeDamaged)
+        let at = try PDFFixtures.brokenCrossReference(in: dir.url, name: "at.pdf", objects: container("/a", count: size))
+        let over = try PDFFixtures.brokenCrossReference(
+            in: dir.url, name: "over.pdf", objects: container("/a", count: size + 1))
+
+        #expect(try PDFInspector.inspect(at, password: nil).pageCount == 1)
+        #expect(throws: PDFEngineError.limit) { try PDFInspector.inspect(over, password: nil) }
+        #expect(throws: PDFEngineError.limit) {
+            try PDFInspector.inspect(
+                at, password: nil, limits: QPDFLimits(maxContainerSizeDamaged: PDFLimits.maxContainerSizeDamaged - 1))
+        }
+    }
+
+    /// qpdf's own default is 15. Its counter stops the read on the error that reaches the limit.
+    @Test func parserErrorsStopAtTheLimit() throws {
+        let dir = try TempDir()
+        let limit = Int(PDFLimits.maxParserErrors)
+        let under = try PDFFixtures.raw(in: dir.url, name: "under.pdf", objects: parserErrors(limit - 1))
+        let at = try PDFFixtures.raw(in: dir.url, name: "at.pdf", objects: parserErrors(limit))
+
+        #expect(try PDFInspector.inspect(under, password: nil).pageCount == 1)
+        #expect(throws: PDFEngineError.limit) { try PDFInspector.inspect(at, password: nil) }
+        #expect(throws: PDFEngineError.limit) {
+            try PDFInspector.inspect(under, password: nil, limits: QPDFLimits(maxErrors: PDFLimits.maxParserErrors - 1))
+        }
+    }
+
+    /// Our value equals qpdf's default, so only a lower one shows that the shim's value is the one in force.
+    @Test func theFilterLimitIsTheShimsOwn() throws {
+        let dir = try TempDir()
+        let url = try PDFFixtures.raw(in: dir.url, name: "filters.pdf", objects: filtered(6))
+
+        #expect(throws: PDFEngineError.limit) {
+            try QPDFDocumentReader.check(url, password: nil, limits: QPDFLimits(maxStreamFilters: 5))
+        }
+    }
+
+    /// qpdf 12.4.2 counts names, strings, reals and booleans towards a container's size, not these. The limit cannot
+    /// hold them, so the watchdog's memory ceiling does. If an upgrade starts counting them, this says so.
+    @Test(arguments: ["0", "null", "4 0 R"])
+    func theContainerLimitDoesNotCount(entry: String) throws {
+        let dir = try TempDir()
+        let count = Int(PDFLimits.maxContainerSize) + 1
+        let url = try PDFFixtures.raw(in: dir.url, name: "big.pdf", objects: container(entry, count: count))
 
         #expect(try PDFInspector.inspect(url, password: nil).pageCount == 1)
     }

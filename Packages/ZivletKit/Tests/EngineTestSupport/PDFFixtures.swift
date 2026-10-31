@@ -58,11 +58,13 @@ public enum PDFFixtures {
         return url
     }
 
-    /// A one-page PDF whose cross-reference offset points nowhere: qpdf reads it by rebuilding the table, with
-    /// warnings.
+    /// A PDF whose cross-reference offset points nowhere: qpdf reads it by rebuilding the table, with warnings, and
+    /// treats it as damaged from then on.
     @discardableResult
-    public static func brokenCrossReference(in dir: URL, name: String = "broken.pdf") throws -> URL {
-        let url = try raw(in: dir, name: name, objects: onePageObjects)
+    public static func brokenCrossReference(
+        in dir: URL, name: String = "broken.pdf", objects: [String] = onePageObjects
+    ) throws -> URL {
+        let url = try raw(in: dir, name: name, objects: objects)
         let text = try String(contentsOf: url, encoding: .utf8)
         guard let marker = text.range(of: "startxref\n") else { return url }
         let broken = text[..<marker.upperBound] + "9\n%%EOF\n"
