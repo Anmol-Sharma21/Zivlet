@@ -36,10 +36,13 @@ public enum PDFFixtures {
         return url
     }
 
-    /// A hand-made PDF from numbered object bodies (object 1 first) and extra trailer entries, with a correct cross
-    /// reference table; for structures CoreGraphics never writes (an unknown security handler, say).
+    /// A hand-made PDF from numbered object bodies (object 1 first, the catalog at `root`) and extra trailer entries,
+    /// with a correct cross reference table; for structures CoreGraphics never writes (an unknown security handler,
+    /// say).
     @discardableResult
-    public static func raw(in dir: URL, name: String, objects: [String], trailer: String = "") throws -> URL {
+    public static func raw(
+        in dir: URL, name: String, objects: [String], trailer: String = "", root: Int = 1
+    ) throws -> URL {
         var body = "%PDF-1.7\n"
         var offsets: [Int] = []
         for (index, object) in objects.enumerated() {
@@ -49,7 +52,7 @@ public enum PDFFixtures {
         let xref = body.utf8.count
         body += "xref\n0 \(objects.count + 1)\n0000000000 65535 f \n"
         body += offsets.map { String(format: "%010d 00000 n \n", $0) }.joined()
-        body += "trailer\n<< /Size \(objects.count + 1) /Root 1 0 R \(trailer) >>\nstartxref\n\(xref)\n%%EOF\n"
+        body += "trailer\n<< /Size \(objects.count + 1) /Root \(root) 0 R \(trailer) >>\nstartxref\n\(xref)\n%%EOF\n"
         let url = dir.appending(path: name, directoryHint: .notDirectory)
         try Data(body.utf8).write(to: url)
         return url
@@ -75,7 +78,7 @@ public enum PDFFixtures {
         "<< /Length 0 >>\nstream\n\nendstream",
     ]
 
-    private static func write(to url: URL, pages: Int, info: [CFString: Any]) throws {
+    static func write(to url: URL, pages: Int, info: [CFString: Any]) throws {
         var box = CGRect(origin: .zero, size: pageSize)
         guard let context = CGContext(url as CFURL, mediaBox: &box, info as CFDictionary) else {
             throw FixtureError.noContext

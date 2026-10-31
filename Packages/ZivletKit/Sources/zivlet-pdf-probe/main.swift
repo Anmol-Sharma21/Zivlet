@@ -1,6 +1,7 @@
 import EnginePDF
 import Foundation
 import ZivletCore
+import ZivletEngineKit
 
 // Runs the qpdf smoke calls in a process of their own, so a test can read its standard output and error and expect
 // both empty (plan 20d C4). A dev tool: not shipped, not gated. It never prints; the exit status names the step that
@@ -25,7 +26,7 @@ let opening = secret(password)
 let user = JobSecret(utf8: newUser)
 let owner = JobSecret(utf8: newOwner)
 
-do { _ = try QPDFDocumentReader.inspect(input, password: opening) } catch { fail(.inspect) }
+do { _ = try PDFInspector.inspect(input, password: opening) } catch { fail(.inspect) }
 do { try QPDFDocumentReader.check(input, password: opening) } catch { fail(.check) }
 do {
     try QPDFWriterBridge.write(
@@ -40,10 +41,10 @@ do {
     try QPDFWriterBridge.write(input, password: opening, mode: .encryptR6(parameters), to: locked)
 } catch { fail(.encrypt) }
 do {
-    guard try QPDFDocumentReader.inspect(locked, password: user).matched == .user else { fail(.reopen) }
+    guard try PDFInspector.inspect(locked, password: user).matched == .user else { fail(.reopen) }
 } catch { fail(.reopen) }
 do {
-    _ = try QPDFDocumentReader.inspect(locked, password: JobSecret(utf8: newUser + " but wrong"))
+    _ = try PDFInspector.inspect(locked, password: JobSecret(utf8: newUser + " but wrong"))
     fail(.refuseWrong)
 } catch { guard error == .wrongPassword else { fail(.refuseWrong) } }
 [opening, user, owner].compactMap { $0 }.forEach { $0.wipe() }

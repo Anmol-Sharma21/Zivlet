@@ -23,6 +23,7 @@ class Secret {
 
     /// No NUL byte inside, so qpdf sees the whole password.
     bool usable() const { return usable_; }
+    bool empty() const { return text_.empty(); }
     char const *c_str() const { return text_.c_str(); }
 
   private:

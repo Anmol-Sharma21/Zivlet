@@ -105,7 +105,9 @@ let package = Package(
             swiftSettings: strict),
         // Runs the qpdf smoke calls in a process of their own, for the test that expects no output (plan 20d C4); a
         // dev tool, not shipped or gated.
-        .executableTarget(name: "zivlet-pdf-probe", dependencies: ["EnginePDF", "ZivletCore"], swiftSettings: strict),
+        .executableTarget(
+            name: "zivlet-pdf-probe", dependencies: ["EnginePDF", "ZivletCore", "ZivletEngineKit"],
+            swiftSettings: strict),
         .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: strict),
         // A loopback worker transport (JSON both ways, crashes on demand) for the connection and retry tests.
         .target(

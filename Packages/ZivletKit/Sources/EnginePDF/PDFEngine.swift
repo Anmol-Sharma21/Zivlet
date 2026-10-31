@@ -49,14 +49,14 @@ public struct PDFEngine: Engine {
         let stage = try Self.stage(of: plan)
         let limits = limits
         try await BlockingWork.run { _ throws(JobError) in
-            let info: QPDFDocumentInfo
+            let facts: PDFPreflight
             do throws(PDFEngineError) {
                 try QPDFDocumentReader.check(output.url, password: nil, limits: limits)
-                info = try QPDFDocumentReader.inspect(output.url, password: nil, limits: limits)
+                facts = try PDFInspector.inspect(output.url, password: nil, limits: limits)
             } catch {
                 throw .verificationFailed(Self.verifyMessage(error))
             }
-            guard info.pageCount == stage.pageCount else { throw .verificationFailed(Self.pageCountMessage) }
+            guard facts.pageCount == stage.pageCount else { throw .verificationFailed(Self.pageCountMessage) }
         }
     }
 

@@ -58,19 +58,41 @@ typedef struct zv_pdf_limits {
     uint32_t max_stream_filters;
 } zv_pdf_limits;
 
-/// What zv_pdf_inspect learns about a document.
+/// The security handler of a document.
+typedef enum zv_pdf_handler {
+    /// Not encrypted.
+    ZV_PDF_HANDLER_NONE = 0,
+    ZV_PDF_HANDLER_STANDARD = 1,
+    /// A handler other than the Standard one (certificates, a vendor's own).
+    ZV_PDF_HANDLER_OTHER = 2,
+    /// The Standard handler at a revision or version qpdf cannot read.
+    ZV_PDF_HANDLER_UNKNOWN = 3,
+} zv_pdf_handler;
+
+/// What zv_pdf_inspect learns about a document. `allowed` holds the /P bits a file grants, in /P's own positions, read
+/// by that file's revision. A refused open fills only the encryption facts, pdf_major, pdf_minor and warning_count.
 typedef struct zv_pdf_info {
-    int32_t encrypted;
+    zv_pdf_handler handler;
     int32_t revision;
     int32_t version;
-    int32_t permissions;
+    uint32_t allowed;
     zv_pdf_method streams;
     zv_pdf_method strings;
     zv_pdf_method files;
     int32_t owner_matched;
     int32_t user_matched;
+    int32_t opens_without_password;
     uint32_t page_count;
     uint32_t warning_count;
+    int32_t has_acroform;
+    uint32_t field_count;
+    uint32_t signature_field_count;
+    int32_t is_tagged;
+    int32_t has_embedded_files;
+    int32_t has_javascript;
+    int32_t is_linearized;
+    int32_t pdf_major;
+    int32_t pdf_minor;
 } zv_pdf_info;
 
 /// What zv_pdf_write does with the encryption of its input.
@@ -106,7 +128,8 @@ typedef struct zv_pdf_r6_params {
     int32_t encrypt_metadata;
 } zv_pdf_r6_params;
 
-/// Opens `path` with the password (NULL or length 0: none) and fills `out`.
+/// Opens `path` with the password (NULL or length 0: none) and fills `out`. On ZV_PDF_WRONG_PASSWORD and
+/// ZV_PDF_UNSUPPORTED_ENCRYPTION it still fills what can be known without opening the file (see zv_pdf_info).
 zv_pdf_status zv_pdf_inspect(const char *path, const uint8_t *password, size_t password_length,
                              const zv_pdf_limits *limits, zv_pdf_info *out);
 
