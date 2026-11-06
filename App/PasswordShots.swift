@@ -1,5 +1,6 @@
 #if DEBUG
     import AppKit
+    import ZivletCore
     import ZivletUI
     import os
 
@@ -9,8 +10,8 @@
     /// once the window shows. Apply and Cancel only close the window.
     enum PasswordShots {
         enum State: String, CaseIterable {
-            case lockEmpty, lockMismatch, lockSuggested, lockNonASCII, unlockWrong, unlockBatch, retry, change,
-                ownerNeeded
+            case lockEmpty, lockMismatch, lockSuggested, lockNonASCII, lockRestricted, unlockWrong, unlockBatch, retry,
+                change, ownerNeeded
         }
 
         static let flag = "-ZivletPasswordStates"
@@ -57,7 +58,7 @@
 
         private static func mode(_ state: State) -> PasswordMode {
             switch state {
-            case .lockEmpty, .lockMismatch, .lockSuggested, .lockNonASCII: .lock
+            case .lockEmpty, .lockMismatch, .lockSuggested, .lockNonASCII, .lockRestricted: .lock
             case .unlockWrong, .unlockBatch, .retry: .unlock
             case .change: .change
             case .ownerNeeded: .ownerNeeded
@@ -82,6 +83,10 @@
                 sheet.password = text
                 sheet.confirm = text
                 sheet.toggleReveal()
+            case .lockRestricted:
+                sheet.password = suggestion
+                sheet.confirm = suggestion
+                sheet.setRestrictions(PDFRestrictions(printing: .low, copying: false, editing: false))
             case .unlockWrong: sheet.wrongAttempt()
             case .change:
                 sheet.current = String(suggestion.reversed())

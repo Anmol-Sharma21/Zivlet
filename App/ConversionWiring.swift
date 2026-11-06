@@ -21,6 +21,8 @@ final class ConversionWiring {
     private let origin = ContinuousClock.now
     private var routes = BatchRoutes(defaultRoute: .nearDrop)
     private var observer: Task<Void, Never>?
+    /// A failed protect card's Retry (it reopens the sheet, plan 20f E9).
+    var onProtectRetry: ((ProtectRetry, CGPoint?) -> Void)?
 
     init(
         conversions: ConversionService, undoHistory: UndoHistory, menu: MenuWiring, notch: NotchHUD,
@@ -50,7 +52,17 @@ final class ConversionWiring {
 
     private func retry(_ batch: BatchID, anchor: CGPoint?) {
         routes = routes.withDefaultRoute(defaultRoute()).retrying(batch, anchor: anchor, at: now).forgetting(batch)
-        Task { [conversions] in await conversions.retry(batch) }
+        Task { [conversions, weak self] in
+            guard await conversions.retry(batch) == nil, let retry = await conversions.protectRetry(batch) else {
+                return
+            }
+            await MainActor.run { self?.onProtectRetry?(retry, anchor) }
+        }
+    }
+
+    /// A batch that does not start from `convert` (LOCK · UNLOCK's) is coming from `point`: its card opens there.
+    func expectBatch(near point: CGPoint?) {
+        routes = routes.enqueuing(point: point, at: now, route: defaultRoute())
     }
 
     private var now: Duration { origin.duration(to: clock.now) }

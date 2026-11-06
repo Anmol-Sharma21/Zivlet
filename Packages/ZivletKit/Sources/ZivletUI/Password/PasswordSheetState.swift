@@ -13,6 +13,10 @@ public final class PasswordSheetState {
     public var password = "" { didSet { judge() } }
     public var confirm = "" { didSet { judge() } }
     public var current = "" { didSet { judge() } }
+    /// Lock's restrictions; `.none` until the person chooses some.
+    public private(set) var restrictions = PDFRestrictions.none
+    /// The owner password made when a restriction is first chosen, shown once and forgotten when the job takes it.
+    public private(set) var ownerPassword: String?
     @ObservationIgnored public var modelChanged: (PasswordSheetModel) -> Void = { _ in }
     @ObservationIgnored private let pasteboard: SecretPasteboard
     @ObservationIgnored private let suggester: (any PasswordSuggesting)?
@@ -35,13 +39,35 @@ public final class PasswordSheetState {
         AccessibilityNotification.Announcement(text).post()
     }
 
-    /// The typed passwords in their roles (Lock: new; Unlock: input; owner-needed: owner; Change: input and new), then
-    /// the fields are emptied.
+    /// The restrictions Lock applies, or nil for none.
+    public var chosenRestrictions: PDFRestrictions? {
+        model.offersRestrictions && restrictions != .none ? restrictions : nil
+    }
+
+    /// Printing, copying and editing; the first restriction makes the owner password (D-M7-20), which then stays the
+    /// same for this sheet. A generator that fails leaves the restrictions off.
+    public func setRestrictions(_ chosen: PDFRestrictions) {
+        guard model.offersRestrictions else { return }
+        if chosen != .none, ownerPassword == nil {
+            guard let made = try? OwnerPassword.make() else { return }
+            ownerPassword = made
+        }
+        restrictions = chosen
+        modelChanged(model)  // the window measures the section again
+    }
+
+    /// Copies the owner password for this Mac, concealed and transient.
+    @discardableResult
+    public func copyOwnerPassword() -> Bool { ownerPassword.map(pasteboard.copy) ?? false }
+
+    /// The typed passwords in their roles (Lock: new, and the owner password with restrictions; Unlock: input;
+    /// owner-needed: owner; Change: input and new), then the fields and the owner password are forgotten.
     public func takeSecrets() -> JobSecrets {
         let typed = JobSecret(utf8: password)
+        let owner = chosenRestrictions == nil ? nil : ownerPassword.map(JobSecret.init(utf8:))
         let secrets: JobSecrets =
             switch model.mode {
-            case .lock: JobSecrets(newUser: typed)
+            case .lock: JobSecrets(newUser: typed, owner: owner)
             case .unlock: JobSecrets(input: typed)
             case .ownerNeeded: JobSecrets(owner: typed)
             case .change: JobSecrets(input: JobSecret(utf8: current), newUser: typed)
@@ -96,6 +122,7 @@ public final class PasswordSheetState {
         password = ""
         confirm = ""
         current = ""
+        ownerPassword = nil
     }
 
     private func judge() {

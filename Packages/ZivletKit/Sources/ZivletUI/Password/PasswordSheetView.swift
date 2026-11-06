@@ -30,6 +30,7 @@ struct PasswordSheetView: View {
             if let error = model.errorLine { line(error, symbol: Self.errorSymbol, ink: IslandInk.primary) }
             if model.strength != nil || state.canSuggest { strengthRow }
             ForEach(model.notes, id: \.self) { line($0.text, symbol: $0.symbol, ink: IslandInk.secondary) }
+            if model.offersRestrictions { PasswordRestrictionsSection(state: state) }
             if let label = model.sameForAllLabel {
                 Toggle(label, isOn: Binding(get: { model.sameForAll }, set: state.setSameForAll))
                     .toggleStyle(.checkbox)

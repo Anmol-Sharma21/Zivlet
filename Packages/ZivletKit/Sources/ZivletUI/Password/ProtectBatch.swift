@@ -38,7 +38,7 @@ public struct ProtectBatch {
         guard case .secrets(let first, let sameForAll, let restrictions) = await prompter.ask(request) else {
             return .nothing
         }
-        let chosen = Self.spec(spec, restrictions)
+        let chosen = ProtectPlanner.spec(Self.spec(spec, restrictions), answered: first)
         var secrets: [URL: JobSecrets] = [:]
         for file in sameForAll ? files : Array(files.prefix(1)) { secrets[file] = first }
         if !sameForAll { secrets.merge(await askEach(files.dropFirst(), mode: mode, near: near)) { old, _ in old } }

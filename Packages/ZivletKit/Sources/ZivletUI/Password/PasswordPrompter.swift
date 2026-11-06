@@ -124,7 +124,8 @@ final class PasswordSheetContent: WindowToolContent {
     func apply() -> Bool {
         guard state.model.apply.isEnabled else { return false }
         let sameForAll = state.model.sameForAll
-        answer(.secrets(state.takeSecrets(), sameForAll: sameForAll))
+        let restrictions = state.chosenRestrictions
+        answer(.secrets(state.takeSecrets(), sameForAll: sameForAll, restrictions: restrictions))
         return true
     }
 

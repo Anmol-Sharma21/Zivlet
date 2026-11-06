@@ -58,6 +58,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         text: TextService(selection: worker), actions: actions, store: settings.store, clipboard: Self.toolClipboard())
     lazy var toolWindows = ToolWindowWiring(actions: actions)
     lazy var passwords = PasswordWiring(toolWindows: toolWindows)
+    lazy var protect = ProtectWiring(conversions: conversions, prompter: passwords.prompter) { [weak self] point in
+        self?.conversion.expectBatch(near: point)
+    }
     lazy var codes = CodeWiring(
         codes: CodeService(selection: worker), actions: actions, toolWindows: toolWindows,
         clipboard: Self.codeClipboard())
@@ -107,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             dragTraces = DragTraceRecording.start(trigger: trigger, displays: island.reader)
         #endif
         conversion.start()
+        conversion.onProtectRetry = { [weak self] retry, point in self?.protect.retry(retry, near: point) }
         startBox(trigger)
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
         onboarding.onFinished = { [weak self] in self?.tools.startWarmUpIfNeeded() }
@@ -268,6 +272,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if onboarding.receive(selection) { return nil }
         if case .action(let action) = selection.target {
             actions.run(action, urls: selection.urls, optionHeld: selection.optionHeld, near: point)
+            return nil
+        }
+        if case .tool(.protect) = selection.target {
+            protect.run(selection.urls, near: point)
             return nil
         }
         if case .tool(let tool) = selection.target {

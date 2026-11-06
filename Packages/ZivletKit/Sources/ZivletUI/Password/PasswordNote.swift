@@ -58,6 +58,14 @@ public enum PasswordCopy {
     public static let restrictionsNeedOwner = "This PDF has restrictions. Type its owner password to remove them."
     public static let changeSwitch = "Change password…"
     public static let retryTitle = "These didn't open:"
+    // Lock's restrictions (17a §3.1).
+    public static let printing = "Printing"
+    public static let printingChoices = ["None", "Low quality", "Full"]
+    public static let allowCopying = "Allow copying"
+    public static let allowEditing = "Allow editing"
+    public static let ownerShownOnce = "Owner password — shown once"
+    public static let notSecurity = "Restrictions are honoured by most apps but are not security."
+    public static let copyOwner = "Copy owner password"
 
     public static func sameForAll(_ count: Int) -> String { "Use the same password for all \(count) files" }
 

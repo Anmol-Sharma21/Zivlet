@@ -54,6 +54,8 @@ extension PasswordSheetModel {
 
     /// A new password is being set (Lock, Change).
     public var setsPassword: Bool { mode == .lock || mode == .change }
+    /// Only Lock offers printing, copying and editing restrictions (17a §3.1).
+    public var offersRestrictions: Bool { mode == .lock }
     private var asksForFilePassword: Bool { mode == .unlock || mode == .ownerNeeded }
 
     private var disabledReason: String? {
