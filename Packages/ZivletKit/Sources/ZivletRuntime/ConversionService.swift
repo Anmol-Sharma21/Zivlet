@@ -3,6 +3,7 @@ import EngineMedia
 import Foundation
 import ZivletCore
 import ZivletEngineKit
+import ZivletIPC
 import os
 
 /// The one entry point the app uses (P1-33): dropped URLs + target → a batch, observed as `BatchSnapshot`s.
@@ -16,6 +17,10 @@ public actor ConversionService {
     private var batches: [BatchID: BatchSnapshot] = [:]
     /// Finished batches with failures: their target and failed sources, for Retry (the newest few).
     private var retryable: [(batch: BatchID, target: FormatID, urls: [URL])] = []
+    /// Finished protect batches with failures: their mode and failed sources, for Retry (it reopens the sheet).
+    private var protectRetryable: [(batch: BatchID, retry: ProtectRetry)] = []
+    /// Callers of `protect` waiting for their batch to finish.
+    private var finishWaiters: [BatchID: CheckedContinuation<BatchSnapshot, Never>] = [:]
     static let retryLimit = 20
     private var listener: Task<Void, Never>?
     private let loadMonitor: SystemLoadMonitor?
@@ -49,6 +54,7 @@ public actor ConversionService {
             path: "app.zivlet.Zivlet/Capabilities", directoryHint: .isDirectory)
         let engines: [any Engine] = [
             WorkerRoutedEngine(local: ImageEngine(), selection: worker), MediaEngine(capabilityCache: caches),
+            WorkerOnlyEngine(id: .pdf, pairs: [.protectPDF], selection: worker),
         ]
         return ConversionService(
             scheduler: JobScheduler(engines: engines), engines: engines, loadMonitor: SystemLoadMonitor(),
@@ -104,6 +110,60 @@ public actor ConversionService {
         return await convert(entry.urls, to: entry.target)
     }
 
+    /// LOCK · UNLOCK's jobs (plan 20f E7): one per PDF with that file's secrets, shown like any batch; returns each
+    /// file's final state. The secrets of refused files are wiped at once; the rest as each job ends (D-M7-14).
+    public func protect(_ files: [URL], spec: ProtectSpec, secrets: [URL: JobSecrets]) async -> [URL: JobState] {
+        listen()
+        let batch = BatchID()
+        let plan = factory.protectRequests(for: files, spec: spec)
+        let held = Self.hold(secrets, for: plan.requests)
+        let snapshot = BatchSnapshot(batch: batch, target: .pdf, plan: plan, protect: spec.mode)
+        batches[batch] = snapshot
+        feed.yield(snapshot)
+        let final = await withCheckedContinuation { continuation in
+            finishWaiters[batch] = continuation
+            Task { await self.submit(plan.requests, as: batch, secrets: held) }
+        }
+        return Dictionary(
+            final.items.compactMap { item in item.source.map { ($0.url, item.state) } },
+            uniquingKeysWith: { first, _ in first })
+    }
+
+    private func submit(_ requests: [JobRequest], as batch: BatchID, secrets: BatchSecrets) async {
+        await scheduler.submit(requests, as: batch, secrets: secrets)
+    }
+
+    /// The accepted jobs' secrets; any secret no accepted job holds is wiped now.
+    static func hold(_ secrets: [URL: JobSecrets], for requests: [JobRequest]) -> BatchSecrets {
+        let held = Dictionary(
+            requests.compactMap { request in secrets[request.input.url].map { (request.id, $0) } },
+            uniquingKeysWith: { first, _ in first })
+        let kept = held.values.flatMap(\.all)
+        for secret in secrets.values.flatMap(\.all) where !kept.contains(where: { $0 === secret }) { secret.wipe() }
+        return BatchSecrets(held)
+    }
+
+    /// A finished protect batch's failed files and mode, for its Retry (which reopens the sheet); nil when it has
+    /// none or is no longer remembered.
+    public func protectRetry(_ batch: BatchID) -> ProtectRetry? {
+        guard let entry = protectRetryable.first(where: { $0.batch == batch }) else { return nil }
+        protectRetryable.removeAll { $0.batch == batch }
+        return entry.retry
+    }
+
+    /// What each dropped PDF is, read in the worker without a password (plan 20f E9). With no worker, each is refused
+    /// as the PDF engine missing: a PDF is never read with qpdf in the app (D-M7-16).
+    public func inspectPDFs(_ files: [URL]) async -> [PDFInspection] {
+        guard let worker, case .worker(let connection, _) = await worker.choice() else {
+            return files.map { _ in .refused(.engineMissing(.pdf)) }
+        }
+        do {
+            return try await connection.inspectPDFs(files)
+        } catch {
+            return files.map { _ in .refused(error) }
+        }
+    }
+
     /// Settings changed the folder used when a source folder is read-only (01-prd FR-17); later drops use it.
     public func use(fallbackFolder: URL) {
         factory = factory.with(fallbackFolder: fallbackFolder)
@@ -126,6 +186,11 @@ public actor ConversionService {
             return item.source?.url
         }
         guard !failed.isEmpty else { return }
+        if let mode = snapshot.protect {
+            let entry = (snapshot.batch, ProtectRetry(files: failed, mode: mode))
+            protectRetryable = Array(([entry] + protectRetryable).prefix(Self.retryLimit))
+            return
+        }
         retryable = Array(([(snapshot.batch, snapshot.target, failed)] + retryable).prefix(Self.retryLimit))
     }
 
@@ -144,6 +209,20 @@ public actor ConversionService {
         batches[batch] = next.isFinished ? nil : next
         if next.isFinished { remember(next) }
         feed.yield(next)
+        if next.isFinished { finishWaiters.removeValue(forKey: batch)?.resume(returning: next) }
+    }
+}
+
+extension ConversionService: ProtectSubmitting {}
+
+/// A protect batch's Retry: its failed files and the mode they were in.
+public struct ProtectRetry: Sendable, Equatable {
+    public let files: [URL]
+    public let mode: ProtectSpec.Mode
+
+    public init(files: [URL], mode: ProtectSpec.Mode) {
+        self.files = files
+        self.mode = mode
     }
 }
 

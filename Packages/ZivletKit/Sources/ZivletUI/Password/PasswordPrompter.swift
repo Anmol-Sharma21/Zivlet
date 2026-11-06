@@ -16,10 +16,11 @@ public struct PasswordRequest: Sendable, Equatable {
     }
 }
 
-/// The answer: the typed secrets and the batch choice, Cancel, or no window because another tool's window is open
-/// (it is brought forward instead). The receiver owns the secrets and wipes them when its batch ends (E9).
+/// The answer: the typed secrets, the batch choice and Lock's restrictions (nil: none), Cancel, or no window because
+/// another tool's window is open (it is brought forward instead). The receiver owns the secrets and wipes them when its
+/// batch ends (E9).
 public enum PasswordAnswer: Sendable, Equatable {
-    case secrets(JobSecrets, sameForAll: Bool)
+    case secrets(JobSecrets, sameForAll: Bool, restrictions: PDFRestrictions? = nil)
     case cancelled
     case unavailable
 }

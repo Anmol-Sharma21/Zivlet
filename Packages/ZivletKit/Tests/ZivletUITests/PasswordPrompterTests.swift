@@ -37,7 +37,7 @@ struct PasswordPrompterTests {
         let sheet = try #require(rig.prompter.showing)
         sheet.password = password
         rig.window.onApply()
-        guard case .secrets(let secrets, let sameForAll) = await asked.value else {
+        guard case .secrets(let secrets, let sameForAll, _) = await asked.value else {
             Issue.record("expected secrets")
             return
         }

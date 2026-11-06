@@ -94,6 +94,50 @@ struct ProtectLoopbackTests {
         #expect(states.first?.publishedURL?.lastPathComponent == "Report Unlocked.pdf")
     }
 
+    /// The service a sheet's batch uses (plan 20f E7): one password for three locked files opens two; the third stays
+    /// locked and is remembered for Retry, with the mode it was in.
+    @Test func theServiceUnlocksWhatThePasswordOpensAndRemembersTheRest() async throws {
+        let rig = try await ProtectWorkerRig()
+        let (shared, other) = ("zv-" + UUID().uuidString, "zv-" + UUID().uuidString)
+        let files = try [("a.pdf", shared), ("b.pdf", shared), ("c.pdf", other)].map { name, password in
+            let plain = try PDFFixtures.plain(in: rig.dir.url, name: "plain-\(name)")
+            let locked = rig.dir.url.appending(path: name)
+            let secret = JobSecret(utf8: password)
+            try QPDFWriterBridge.write(
+                plain, password: nil, mode: .encryptR6(R6Parameters(user: secret, owner: secret)), to: locked)
+            return locked
+        }
+        let service = ConversionService(scheduler: rig.scheduler)
+        let secret = JobSecret(utf8: shared)
+        let secrets = Dictionary(uniqueKeysWithValues: files.map { ($0, JobSecrets(input: secret)) })
+
+        let states = await service.protect(files, spec: ProtectSpec(mode: .unlock), secrets: secrets)
+
+        #expect(states[files[0]]?.publishedURL?.lastPathComponent == "a Unlocked.pdf")
+        #expect(states[files[1]]?.publishedURL?.lastPathComponent == "b Unlocked.pdf")
+        #expect(states[files[2]] == .failed(.wrongPassword))
+        #expect(secret.isWiped)
+        var finished: BatchSnapshot?
+        for await snapshot in service.snapshots where snapshot.isFinished {
+            finished = snapshot
+            break
+        }
+        let batch = try #require(finished)
+        #expect(batch.protect == .unlock)
+        #expect(await service.protectRetry(batch.batch) == ProtectRetry(files: [files[2]], mode: .unlock))
+    }
+
+    /// A refused file's secrets are wiped at once, and the rest still run.
+    @Test func aRefusedFilesSecretsAreWipedAtOnce() async throws {
+        let rig = try await ProtectWorkerRig()
+        let picture = try rig.dir.file("picture.png", "not a pdf")
+        let secret = JobSecret(utf8: "zv-" + UUID().uuidString)
+        let states = await ConversionService(scheduler: rig.scheduler)
+            .protect([picture], spec: ProtectSpec(mode: .lock(nil)), secrets: [picture: JobSecrets(newUser: secret)])
+        #expect(states[picture] == .failed(.pairNotSupported(.png, .pdf)))
+        #expect(secret.isWiped)
+    }
+
     @Test func theWorkerInspectsADropWithoutAPassword() async throws {
         let rig = try await ProtectWorkerRig()
         let plain = try PDFFixtures.plain(in: rig.dir.url, name: "plain.pdf")

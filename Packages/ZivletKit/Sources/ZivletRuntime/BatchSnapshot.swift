@@ -59,14 +59,16 @@ public struct BatchItem: Sendable, Equatable {
 public struct BatchSnapshot: Sendable, Equatable {
     public let batch: BatchID
     public let target: FormatID
+    /// LOCK · UNLOCK's mode for a protect batch (plan 20f E8); nil for a conversion.
+    public let protect: ProtectSpec.Mode?
     public let items: [BatchItem]
     public let isFinished: Bool
 
     /// Refused items weigh as much as the smallest accepted file, so they count without dominating.
-    public init(batch: BatchID, target: FormatID, plan: RequestPlan) {
+    public init(batch: BatchID, target: FormatID, plan: RequestPlan, protect: ProtectSpec.Mode? = nil) {
         let refusedWeight = plan.requests.map { Double($0.input.byteCount) }.min() ?? 1
         self.init(
-            batch: batch, target: target,
+            batch: batch, target: target, protect: protect,
             items: plan.requests.map {
                 BatchItem(
                     job: $0.id, name: $0.input.fileName, state: .queued, weight: Double($0.input.byteCount),
@@ -80,9 +82,10 @@ public struct BatchSnapshot: Sendable, Equatable {
             isFinished: false)
     }
 
-    init(batch: BatchID, target: FormatID, items: [BatchItem], isFinished: Bool) {
+    init(batch: BatchID, target: FormatID, protect: ProtectSpec.Mode? = nil, items: [BatchItem], isFinished: Bool) {
         self.batch = batch
         self.target = target
+        self.protect = protect
         self.items = items
         self.isFinished = isFinished
     }
@@ -94,7 +97,7 @@ public struct BatchSnapshot: Sendable, Equatable {
         case .noted(let batch, let job, let notes) where batch == self.batch:
             return replacing(job) { $0.with(notes: notes) }
         case .finished(let batch) where batch == self.batch:
-            return BatchSnapshot(batch: batch, target: target, items: items, isFinished: true)
+            return BatchSnapshot(batch: batch, target: target, protect: protect, items: items, isFinished: true)
         default:
             return self
         }
@@ -102,7 +105,8 @@ public struct BatchSnapshot: Sendable, Equatable {
 
     private func replacing(_ job: JobID, _ change: (BatchItem) -> BatchItem) -> BatchSnapshot {
         BatchSnapshot(
-            batch: batch, target: target, items: items.map { $0.job == job ? change($0) : $0 }, isFinished: isFinished)
+            batch: batch, target: target, protect: protect, items: items.map { $0.job == job ? change($0) : $0 },
+            isFinished: isFinished)
     }
 
     public var outputs: [PublishedOutput] { items.compactMap(\.state.published) }

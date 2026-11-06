@@ -81,6 +81,37 @@ public struct JobRequestFactory: Sendable {
         }
     }
 
+    /// LOCK · UNLOCK's requests (plan 20f E2): a regular PDF file, whose content says PDF, within the size limit.
+    public func protectRequests(for urls: [URL], spec: ProtectSpec) -> RequestPlan {
+        var requests: [JobRequest] = []
+        var rejections: [RequestRejection] = []
+        for url in urls {
+            switch protectRequest(for: url, spec: spec) {
+            case .success(let request): requests.append(request)
+            case .failure(let error): rejections.append(RequestRejection(url: url, error: error))
+            }
+        }
+        return RequestPlan(requests: requests, rejections: rejections)
+    }
+
+    private func protectRequest(for url: URL, spec: ProtectSpec) -> Result<JobRequest, JobError> {
+        Result { () throws(JobError) -> JobRequest in
+            let header = try InputHeader.read(url)
+            guard let named = registry.formatID(fileName: url.lastPathComponent) else {
+                throw .unsupportedInput(.unknownFormat)
+            }
+            guard named == .pdf else { throw .pairNotSupported(named, .pdf) }
+            guard header.bytes.range(of: Self.pdfMagic) != nil else { throw .unsupportedInput(.contentMismatch) }
+            try PDFLimits.check(inputBytes: header.byteCount)
+            let input = try InputItem(
+                url: url, format: .pdf, byteCount: header.byteCount, quarantine: Publisher.quarantine(of: url))
+            return try JobRequest(input: input, operation: .protect(spec), destination: destination(for: url))
+        }
+    }
+
+    /// A PDF's header may follow a little junk, so it is looked for anywhere in the bytes read.
+    static let pdfMagic = Data("%PDF".utf8)
+
     private func destination(for url: URL) -> URL {
         let folder = url.deletingLastPathComponent()
         if Self.isWritableFolder(folder) { return folder }
