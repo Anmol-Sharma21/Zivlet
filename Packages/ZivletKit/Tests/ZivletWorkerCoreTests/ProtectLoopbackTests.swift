@@ -75,6 +75,25 @@ struct ProtectLoopbackTests {
         #expect(PDFDocument(url: source)?.isEncrypted == false, "the input is left as it was")
     }
 
+    /// The user password of a restricted file asks for the owner's: nothing is published and the staging is gone.
+    @Test func anUnlockThatNeedsTheOwnerPasswordLeavesNothingBehind() async throws {
+        let rig = try await ProtectWorkerRig()
+        let (user, owner) = ("zv-user-" + UUID().uuidString, "zv-owner-" + UUID().uuidString)
+        let plain = try PDFFixtures.plain(in: rig.dir.url, name: "Plain.pdf")
+        let locked = rig.dir.url.appending(path: "Report.pdf")
+        let parameters = R6Parameters(
+            user: JobSecret(utf8: user), owner: JobSecret(utf8: owner), permissions: R6Permissions(extract: false))
+        try QPDFWriterBridge.write(plain, password: nil, mode: .encryptR6(parameters), to: locked)
+
+        let refused = await rig.run([try rig.request(locked, .unlock)], JobSecrets(input: JobSecret(utf8: user)))
+        #expect(refused == [.failed(.ownerPasswordNeeded)])
+        let names = try FileManager.default.contentsOfDirectory(atPath: rig.dir.url.path).sorted()
+        #expect(names == ["Plain.pdf", "Report.pdf"])
+
+        let states = await rig.run([try rig.request(locked, .unlock)], JobSecrets(owner: JobSecret(utf8: owner)))
+        #expect(states.first?.publishedURL?.lastPathComponent == "Report Unlocked.pdf")
+    }
+
     @Test func theWorkerInspectsADropWithoutAPassword() async throws {
         let rig = try await ProtectWorkerRig()
         let plain = try PDFFixtures.plain(in: rig.dir.url, name: "plain.pdf")

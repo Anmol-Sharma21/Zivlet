@@ -27,6 +27,12 @@ public enum JobErrorCopy {
             return ErrorCopy(input(reason))
         case .alreadyEncrypted:
             return ErrorCopy("This PDF is already locked.")
+        case .wrongPassword:
+            return ErrorCopy("That password didn't work.")
+        case .ownerPasswordNeeded:
+            return ErrorCopy("This file has restrictions. Enter the owner password to remove them.")
+        case .unsupportedEncryption:
+            return ErrorCopy("This file uses certificate-based or very old encryption Zivlet can't open.")
         case .routeUnavailable(_, let target, let missing):
             return ErrorCopy(
                 "Converting to \(label(target)) isn't available on this Mac yet.",

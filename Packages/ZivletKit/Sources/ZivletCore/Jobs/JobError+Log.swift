@@ -7,6 +7,9 @@ extension JobError {
         case .pairNotSupported(let source, let target): "pairNotSupported(\(source.rawValue) → \(target.rawValue))"
         case .unsupportedInput(let reason): "unsupportedInput(\(reason.rawValue))"
         case .alreadyEncrypted: "alreadyEncrypted"
+        case .wrongPassword: "wrongPassword"
+        case .ownerPasswordNeeded: "ownerPasswordNeeded"
+        case .unsupportedEncryption: "unsupportedEncryption"
         case .routeUnavailable(let source, let target, let missing):
             "routeUnavailable(\(source.rawValue) → \(target.rawValue), missing: \(missing.joined(separator: ", ")))"
         case .engineMissing(let engine): "engineMissing(\(engine.rawValue))"

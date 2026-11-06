@@ -63,14 +63,7 @@ public struct PDFEngine: Engine {
         return try await BlockingWork.run { _ throws(JobError) in
             let write = try Self.write(stage, secrets)
             try Self.releaseClaim(staged)
-            do throws(PDFEngineError) {
-                try watchdog.guarding(inputBytes: Self.size(of: stage.source)) { () throws(PDFEngineError) in
-                    try QPDFWriterBridge.write(
-                        stage.source, password: write.password, limits: limits, mode: write.mode, to: staged)
-                }
-            } catch {
-                throw Self.jobError(error)
-            }
+            try Self.write(write, stage.source, to: staged, limits: limits, watchdog: watchdog)
             let withdrawn = Self.withdrawnNotes(plan.notes, staged: staged, secrets: secrets)
             return StagedOutput(format: .pdf, url: staged, byteCount: Self.size(of: staged), withdrawnNotes: withdrawn)
         }
@@ -93,10 +86,39 @@ public struct PDFEngine: Engine {
         }
     }
 
+    /// One write under the watchdog, opening the input with each Unicode form of its password until one opens it (the
+    /// form prepare found); a failed write leaves nothing behind, so the next form starts clean.
+    private static func write(
+        _ write: Write, _ source: URL, to staged: URL, limits: QPDFLimits, watchdog: PDFWatchdog
+    ) throws(JobError) {
+        let attempt = { (password: JobSecret?) throws(JobError) -> Bool in
+            do throws(PDFEngineError) {
+                try watchdog.guarding(inputBytes: size(of: source)) { () throws(PDFEngineError) in
+                    try QPDFWriterBridge.write(source, password: password, limits: limits, mode: write.mode, to: staged)
+                }
+                return true
+            } catch {
+                guard error == .wrongPassword else { throw jobError(error) }
+                return false
+            }
+        }
+        guard let password = write.password else {
+            guard try attempt(nil) else { throw .wrongPassword }
+            return
+        }
+        var written = false
+        try eachForm(of: password) { form throws(JobError) in
+            written = try attempt(form)
+            return written
+        }
+        guard written else { throw .wrongPassword }
+    }
+
     /// The job error for a shim error; none carries a path or qpdf's own words.
     static func jobError(_ error: PDFEngineError) -> JobError {
         switch error {
-        case .wrongPassword, .unsupportedEncryption: .unsupportedInput(.unreadable)
+        case .wrongPassword: .wrongPassword
+        case .unsupportedEncryption: .unsupportedEncryption
         case .damaged: .unsupportedInput(.pdfDamaged)
         case .limit: .unsupportedInput(.pdfTooComplex)
         case .io, .internalFailure: .writeFailed(writeMessage)

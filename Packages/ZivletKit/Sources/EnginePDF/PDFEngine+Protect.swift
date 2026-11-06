@@ -39,7 +39,8 @@ extension PDFEngine {
     ) throws(JobError) -> (PDFStage, [PlanNote]) {
         switch spec.mode {
         case .lock(let restrictions): try lockStage(source, restrictions: restrictions, secrets: secrets)
-        case .unlock, .changePassword: throw .internalInvariant(Self.modeMessage)
+        case .unlock: try unlockStage(source, secrets: secrets)
+        case .changePassword: throw .internalInvariant(Self.modeMessage)
         }
     }
 
@@ -65,7 +66,7 @@ extension PDFEngine {
     static func write(_ stage: PDFStage, _ secrets: JobSecrets?) throws(JobError) -> Write {
         switch stage.encryption {
         case .keep: Write(password: secrets?.input, mode: .preserve)
-        case .remove: Write(password: secrets?.input, mode: .decrypt)
+        case .remove: Write(password: opening(secrets), mode: .decrypt)
         case .lock(let restrictions): Write(password: nil, mode: .encryptR6(try lockParameters(restrictions, secrets)))
         case .change: throw .internalInvariant(modeMessage)
         }

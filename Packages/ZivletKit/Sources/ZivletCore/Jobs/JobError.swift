@@ -30,6 +30,12 @@ public enum JobError: Error, Sendable, Equatable, Codable {
     case unsupportedInput(InputRejection)
     /// LOCK · UNLOCK's Lock got a PDF that already has encryption (plan 20f E4): it is left as it is.
     case alreadyEncrypted
+    /// The password (in each of its Unicode forms) opens the file neither as user nor as owner (plan 20f E5).
+    case wrongPassword
+    /// The password opens the file but may not lift its restrictions: the owner password is needed (D-M7-21).
+    case ownerPasswordNeeded
+    /// Certificate-based or unknown encryption, which Zivlet cannot open (17b §3.5).
+    case unsupportedEncryption
     // environment
     /// The route exists but this machine's engine lacks what it needs (an encoder, a filter, a renderer).
     case routeUnavailable(FormatID, FormatID, [String])

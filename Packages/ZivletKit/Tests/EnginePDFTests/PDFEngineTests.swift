@@ -110,9 +110,9 @@ struct PDFEngineTests {
     }
 
     @Test(arguments: [
-        (PDFEngineError.wrongPassword, JobError.unsupportedInput(.unreadable)),
+        (PDFEngineError.wrongPassword, JobError.wrongPassword),
         (.damaged, .unsupportedInput(.pdfDamaged)),
-        (.unsupportedEncryption, .unsupportedInput(.unreadable)),
+        (.unsupportedEncryption, .unsupportedEncryption),
         (.limit, .unsupportedInput(.pdfTooComplex)),
         (.io, .writeFailed(PDFEngine.writeMessage)),
         (.outputExists, .internalInvariant(PDFEngine.stagedFileMessage)),
