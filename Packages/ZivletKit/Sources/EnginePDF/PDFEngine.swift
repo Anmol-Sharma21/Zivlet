@@ -3,10 +3,11 @@ import Foundation
 import ZivletCore
 import ZivletEngineKit
 
-/// The worker's PDF engine (P2-13, plan 20d C5, D-M7-16): runs a plan's qpdf rewrite into the claimed staged file and
-/// checks the result with qpdf. Only the worker hosts it; the app's in-process engines never do, so an untrusted PDF
-/// never reaches qpdf inside the app. It handles no conversion pair: PDF conversions come with P2-12, and the jobs that
-/// plan its rewrites (lock, unlock, change password) with plan 20f.
+/// The worker's PDF engine (P2-13, plan 20d C5, D-M7-16): plans LOCK · UNLOCK's jobs (plan 20f), runs a plan's qpdf
+/// rewrite into the claimed staged file and checks the result with qpdf and PDFKit. Only the worker hosts it; the
+/// app's in-process engines never do, so an untrusted PDF never reaches qpdf inside the app. It handles no conversion
+/// pair (PDF conversions come with P2-12), only the protect job's `pdf → pdf`. A job's passwords reach each step
+/// beside the plan, never inside it (D-M7-14).
 public struct PDFEngine: Engine {
     static let planMessage = "The PDF engine got a plan it does not run."
     static let stagedFileMessage = "The staged file is not the empty one Zivlet claimed."
@@ -14,49 +15,77 @@ public struct PDFEngine: Engine {
     static let passwordMessage = "The password could not be passed to the PDF engine."
 
     public let id = EngineID.pdf
-    private let limits: QPDFLimits
-    private let watchdog: PDFWatchdog
+    let limits: QPDFLimits
+    let watchdog: PDFWatchdog
 
     public init(limits: QPDFLimits = .standard, watchdog: PDFWatchdog = .off) {
         self.limits = limits
         self.watchdog = watchdog
     }
 
-    public func handles(_ pair: ConversionPair) -> Bool { false }
+    public func handles(_ pair: ConversionPair) -> Bool { pair == .protectPDF }
 
-    public func availability(of pair: ConversionPair) async -> RouteAvailability { .unavailable([]) }
+    public func availability(of pair: ConversionPair) async -> RouteAvailability {
+        handles(pair) ? .available : .unavailable([])
+    }
 
     public func prepare(_ request: JobRequest, workspace: JobWorkspace) async throws(JobError) -> ExecutionPlan {
-        throw .pairNotSupported(request.input.format, request.target)
+        try await prepare(request, workspace: workspace, secrets: nil)
     }
 
     public func execute(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
+        try await execute(plan, context: context, secrets: nil)
+    }
+
+    public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
+        try await verify(output, plan: plan, secrets: nil)
+    }
+
+    /// Pre-flight of the input with what the mode needs, then a one-stage plan (`PDFEngine+Protect`).
+    public func prepare(_ request: JobRequest, workspace: JobWorkspace, secrets: JobSecrets?) async throws(JobError)
+        -> ExecutionPlan
+    {
+        guard case .protect(let spec) = request.operation else {
+            throw .pairNotSupported(request.input.format, request.target)
+        }
+        let engine = self
+        return try await BlockingWork.run { _ throws(JobError) in
+            try engine.plan(spec, source: request.input.url, workspace: workspace, secrets: secrets)
+        }
+    }
+
+    public func execute(_ plan: ExecutionPlan, context: ExecutionContext, secrets: JobSecrets?) async throws(JobError)
+        -> StagedOutput
+    {
         let stage = try Self.stage(of: plan)
         let staged = plan.stagedFile
         let (limits, watchdog) = (limits, watchdog)
         return try await BlockingWork.run { _ throws(JobError) in
+            let write = try Self.write(stage, secrets)
             try Self.releaseClaim(staged)
-            let mode: QPDFWriterBridge.Mode = stage.encryption == .remove ? .decrypt : .preserve
             do throws(PDFEngineError) {
                 try watchdog.guarding(inputBytes: Self.size(of: stage.source)) { () throws(PDFEngineError) in
-                    try QPDFWriterBridge.write(stage.source, password: nil, limits: limits, mode: mode, to: staged)
+                    try QPDFWriterBridge.write(
+                        stage.source, password: write.password, limits: limits, mode: write.mode, to: staged)
                 }
             } catch {
                 throw Self.jobError(error)
             }
-            return StagedOutput(format: .pdf, url: staged, byteCount: Self.size(of: staged))
+            let withdrawn = Self.withdrawnNotes(plan.notes, staged: staged, secrets: secrets)
+            return StagedOutput(format: .pdf, url: staged, byteCount: Self.size(of: staged), withdrawnNotes: withdrawn)
         }
     }
 
-    public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
+    public func verify(_ output: StagedOutput, plan: ExecutionPlan, secrets: JobSecrets?) async throws(JobError) {
         let stage = try Self.stage(of: plan)
         let (limits, watchdog) = (limits, watchdog)
-        let expectations: [PDFExpectation] = stage.encryption == .remove ? [.unlocked] : []
+        let check = try Self.check(stage, secrets)
         try await BlockingWork.run { _ throws(JobError) in
             do throws(PDFEngineError) {
                 _ = try watchdog.guarding(inputBytes: output.byteCount) { () throws(PDFEngineError) in
                     try PDFVerify.verify(
-                        output.url, pageCount: stage.pageCount, expect: expectations, limits: limits)
+                        output.url, pageCount: stage.pageCount, expect: check.expectations, secrets: check.secrets,
+                        limits: limits)
                 }
             } catch {
                 throw .verificationFailed(Self.verifyMessage(error))
@@ -85,7 +114,7 @@ public struct PDFEngine: Engine {
         }
     }
 
-    private static func stage(of plan: ExecutionPlan) throws(JobError) -> PDFStage {
+    static func stage(of plan: ExecutionPlan) throws(JobError) -> PDFStage {
         guard plan.engine == .pdf, plan.stages.count == 1, let stage = plan.stages.first?.pdf else {
             throw .internalInvariant(planMessage)
         }

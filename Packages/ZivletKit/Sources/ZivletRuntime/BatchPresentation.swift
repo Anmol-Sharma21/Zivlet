@@ -75,6 +75,7 @@ public struct BatchPresentation: Sendable, Equatable {
         case .hdrToneMapped: "The HDR picture was saved in standard range."
         case .longGIF(let seconds): "Long clips make very large GIFs; this one is \(minutes(seconds))."
         case .sniffed(let format): sniffedText(format)
+        case .passwordNotForPreview: "Preview on this Mac can't open it with this password."
         }
     }
 

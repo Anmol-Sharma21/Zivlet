@@ -9,6 +9,8 @@ public enum PDFExpectation: Sendable, Equatable {
     /// The same encryption, permissions and need for a password as the input had.
     case preserved(from: PDFPreflight)
     case formsKept(fieldCount: Int, signatureFieldCount: Int)
+    /// Exactly these /P bits, as qpdf reads them back with the opening password.
+    case permits(PDFPermissions)
 }
 
 /// Why an output failed verification. None carries a path, a password or qpdf's own words.

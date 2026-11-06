@@ -35,7 +35,7 @@ let pdfWatchdog = PDFWatchdog(onStuck: {
 
 let service = WorkerService(
     engines: [PDFRewritingEngine(wrapping: ImageEngine(), watchdog: pdfWatchdog), PDFEngine(watchdog: pdfWatchdog)],
-    text: TextReader(), codes: CodeReading(),
+    text: TextReader(), codes: CodeReading(), pdf: PDFPreflightReader(watchdog: pdfWatchdog),
     onIdle: {
         logger.notice("Worker idle; exiting")
         exit(0)

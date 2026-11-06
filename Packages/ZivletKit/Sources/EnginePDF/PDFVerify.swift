@@ -34,7 +34,7 @@ public enum PDFVerify {
                 guard let user = secrets?.newUser else { throw .internalFailure }
                 return user
             case .preserved: return secrets?.input
-            case .unlocked, .formsKept: continue
+            case .unlocked, .formsKept, .permits: continue
             }
         }
         return nil
@@ -79,6 +79,8 @@ public enum PDFVerify {
             guard facts.fieldCount == fields, facts.signatureFieldCount == signatures else {
                 throw .verifyFailed(.forms)
             }
+        case .permits(let permissions):
+            guard facts.permissions == permissions else { throw .verifyFailed(.permissions) }
         }
     }
 

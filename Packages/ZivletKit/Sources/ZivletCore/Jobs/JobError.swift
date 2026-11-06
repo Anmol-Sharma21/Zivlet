@@ -28,6 +28,8 @@ public enum JobError: Error, Sendable, Equatable, Codable {
     // input
     case pairNotSupported(FormatID, FormatID)
     case unsupportedInput(InputRejection)
+    /// LOCK · UNLOCK's Lock got a PDF that already has encryption (plan 20f E4): it is left as it is.
+    case alreadyEncrypted
     // environment
     /// The route exists but this machine's engine lacks what it needs (an encoder, a filter, a renderer).
     case routeUnavailable(FormatID, FormatID, [String])

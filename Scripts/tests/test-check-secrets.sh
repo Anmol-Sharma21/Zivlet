@@ -57,5 +57,13 @@ refused 'logger.info("\(secrets.input as JobSecret?)")' "logged"
 allowed 'logger.notice("Unlock finished: \(count, privacy: .public) files")'
 allowed 'logger.error("Wrong password for \(fileCount, privacy: .public) files")'
 
+# Only R6 is ever written: qpdf's older setters are refused in any source.
+mkdir -p "$T/Packages/ZivletKit/Sources/CZivletPDF"
+refused 'writer.setR4EncryptionParametersInsecure(user, owner, true, true, true, true, true, true, qpdf_r3p_full, true, false);' \
+    "R6 AES-256 only" "$T/Packages/ZivletKit/Sources/CZivletPDF/w.cc"
+refused 'writer.setR3EncryptionParametersInsecure(user, owner);' "R6 AES-256 only" "$T/Packages/ZivletKit/Sources/CZivletPDF/w.cc"
+allowed 'writer.setR6EncryptionParameters(user, owner, true, true, true, true, true, true, qpdf_r3p_full, true);' \
+    "$T/Packages/ZivletKit/Sources/CZivletPDF/w.cc"
+
 "$ROOT/Scripts/check-secrets.sh" || fail "the repository itself fails the check"
 echo "PASS test-check-secrets"

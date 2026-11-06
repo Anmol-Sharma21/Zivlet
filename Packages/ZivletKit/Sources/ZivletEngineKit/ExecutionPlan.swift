@@ -41,12 +41,15 @@ public enum Stage: Sendable, Codable, Equatable {
 /// Something the result card tells the user about the output (10 §4.2: "Animation flattened to first frame").
 /// `svgRasterizedInPDF`: an SVG became a PDF page holding a picture of it, not vector art (D-M4-6). `longGIF`: a
 /// video longer than a minute became a GIF, which is large (03b §5.6); never a refusal. `hdrToneMapped`: an HDR
-/// gain-map picture was saved in standard range.
+/// gain-map picture was saved in standard range. `passwordNotForPreview`: see the case.
 public enum PlanNote: Sendable, Codable, Hashable {
     case alphaFlattened, firstFrameOnly, svgRasterizedInPDF, hdrToneMapped
     case longGIF(seconds: Int)
     /// The content was another format than the extension said; it was converted as this one (G-8).
     case sniffed(FormatID)
+    /// A PDF locked with a password PDFKit, and so Preview on this Mac, cannot use (OWN-PDF-1); qpdf and other readers
+    /// can. Planned for a password that is not ASCII, taken back when PDFKit opens the output after all.
+    case passwordNotForPreview
 }
 
 public enum PlanError: Error, Equatable, Sendable {

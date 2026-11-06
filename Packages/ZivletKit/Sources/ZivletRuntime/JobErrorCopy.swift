@@ -25,6 +25,8 @@ public enum JobErrorCopy {
             return ErrorCopy("Zivlet can't convert \(label(source)) files to \(label(target)).")
         case .unsupportedInput(let reason):
             return ErrorCopy(input(reason))
+        case .alreadyEncrypted:
+            return ErrorCopy("This PDF is already locked.")
         case .routeUnavailable(_, let target, let missing):
             return ErrorCopy(
                 "Converting to \(label(target)) isn't available on this Mac yet.",

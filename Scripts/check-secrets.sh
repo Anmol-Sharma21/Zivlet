@@ -3,7 +3,8 @@
 # package's Sources: a `--password` flag or a `password=` value on a line that builds a command line (argv shows in
 # `ps`; comment lines are skipped); any Keychain item API, comments included (no password is ever stored, 17b §2.2);
 # SecCreateSharedWebCredentialPassword outside SystemPasswordSuggester.swift (Suggest only); and a Logger or os_log
-# line that interpolates an identifier named password, secret or passphrase, or a JobSecret, at any privacy level.
+# line that interpolates an identifier named password, secret or passphrase, or a JobSecret, at any privacy level; and
+# a call to qpdf's R2–R5 encryption setters in any source, C++ included (Lock writes R6 AES-256 only, D-M7-20).
 # Lines are checked one at a time: an interpolation on a later line of a multi-line log call is not seen.
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -43,5 +44,9 @@ refuse "$generator" "SecCreateSharedWebCredentialPassword outside SystemPassword
 
 logged='(Logger|logger|os_log|log)[.(].*\\\([^)]*([Pp]assword|[Ss]ecret|[Pp]assphrase|JobSecret)'
 refuse "$(matches "$logged" yes)" "a password or secret is logged (P2-102); log counts and outcomes only"
+
+weak=$(grep -rnE --include='*.swift' --include='*.cc' --include='*.cpp' --include='*.hh' --include='*.h' \
+    -- 'setR[2-5]Encryption' "${SOURCES[@]}" || true)
+refuse "$weak" "RC4 or AES-128 encryption is written (Lock writes R6 AES-256 only, D-M7-20)"
 
 exit $status

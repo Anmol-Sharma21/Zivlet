@@ -17,6 +17,13 @@ enum PDFKitReopen {
         return try checkOpen(url, pageCount: pageCount, noEncryption: expectations.contains(.unlocked), password: user)
     }
 
+    /// PDFKit unlocks `url` with `password` (or it was not locked at all).
+    static func opens(_ url: URL, with password: JobSecret) -> Bool {
+        guard let document = PDFDocument(url: url) else { return false }
+        guard document.isLocked else { return true }
+        return text(of: password).map(document.unlock(withPassword:)) ?? false
+    }
+
     /// Locked until the right password; a wrong one refused; each password opens with the rights it should have.
     private static func checkLocked(
         _ url: URL, pageCount: Int, user: JobSecret, owner: JobSecret?
