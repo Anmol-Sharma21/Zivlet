@@ -9,6 +9,9 @@ public enum HUDCopy {
         "Converting to \(registry.format(target).wheelLabel)"
     }
 
+    /// A running batch's title: "Converting to JPG", or LOCK · UNLOCK's mode ("Locking").
+    public static func title(_ snapshot: BatchSnapshot) -> String { BatchPresentation.workingTitle(snapshot) }
+
     /// "i of n" only for batches of more than one file.
     public static func working(
         name: String, index: Int, count: Int, fraction: Double?, eta: Duration?, bytes: Int64?

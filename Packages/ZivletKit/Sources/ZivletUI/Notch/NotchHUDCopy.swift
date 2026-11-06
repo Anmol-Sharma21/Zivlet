@@ -15,8 +15,10 @@ enum NotchHUDCopy {
 
     /// "holiday.mov → MP4"; the target alone before the first file starts (19b §5).
     static func workingTitle(_ snapshot: BatchSnapshot, registry: FormatRegistry = .standard) -> String {
+        let name = snapshot.current?.item.name ?? snapshot.items.first?.name
+        if let mode = snapshot.protect { return name.map { "\(mode.workingTitle) \($0)" } ?? mode.workingTitle }
         let target = registry.format(snapshot.target).wheelLabel
-        guard let name = snapshot.current?.item.name ?? snapshot.items.first?.name else { return target }
+        guard let name else { return target }
         return "\(name) → \(target)"
     }
 
@@ -32,6 +34,12 @@ enum NotchHUDCopy {
 
     /// "Saved photo.jpg" gives way; " · 2.1 MB → 640 KB" stays whole.
     static func savedParts(_ snapshot: BatchSnapshot) -> [LinePart] {
+        if snapshot.protect != nil, !snapshot.outputs.isEmpty {
+            let shown = BatchPresentation.make(snapshot)
+            return [
+                LinePart(text: shown.title, givesWay: false), LinePart(text: " · \(shown.subtitle)", givesWay: true),
+            ]
+        }
         guard let line = ResultCardModel.sizeLine(snapshot), let split = line.range(of: " · ", options: .backwards)
         else { return [LinePart(text: BatchPresentation.make(snapshot).title, givesWay: false)] }
         return [
@@ -85,7 +93,7 @@ enum NotchHUDCopy {
 
     /// "Converting to PNG, file0.heic": announced once when a batch appears.
     static func started(_ snapshot: BatchSnapshot) -> String {
-        let title = HUDCopy.title(target: snapshot.target)
+        let title = HUDCopy.title(snapshot)
         guard let name = snapshot.current?.item.name ?? snapshot.items.first?.name else { return title }
         return "\(title), \(name)"
     }

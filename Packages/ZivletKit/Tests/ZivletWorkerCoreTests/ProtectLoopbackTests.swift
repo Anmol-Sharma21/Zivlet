@@ -75,6 +75,30 @@ struct ProtectLoopbackTests {
         #expect(PDFDocument(url: source)?.isEncrypted == false, "the input is left as it was")
     }
 
+    /// Undo on a Lock card moves the output away and leaves the original as it was (plan 20f E8).
+    @Test func undoRemovesTheLockedCopyAndLeavesTheInput() async throws {
+        let rig = try await ProtectWorkerRig()
+        let source = try PDFFixtures.plain(in: rig.dir.url, name: "Report.pdf")
+        let before = try Data(contentsOf: source)
+        let states = await rig.run(
+            [try rig.request(source, .lock(nil))], JobSecrets(newUser: JobSecret(utf8: "zv-" + UUID().uuidString)))
+        guard case .succeeded(let output) = states.first else {
+            Issue.record("\(states)")
+            return
+        }
+        let history = UndoHistory(
+            store: UndoStore(file: rig.dir.url.appending(path: "undo.json")),
+            trash: { try FileManager.default.removeItem(at: $0) })
+        let batch = BatchID()
+        await history.record(batch, outputs: [output])
+
+        let result = try #require(await history.undo(batch))
+
+        #expect(result.trashed == [output.url])
+        #expect(!FileManager.default.fileExists(atPath: output.url.path))
+        #expect(try Data(contentsOf: source) == before)
+    }
+
     /// The user password of a restricted file asks for the owner's: nothing is published and the staging is gone.
     @Test func anUnlockThatNeedsTheOwnerPasswordLeavesNothingBehind() async throws {
         let rig = try await ProtectWorkerRig()

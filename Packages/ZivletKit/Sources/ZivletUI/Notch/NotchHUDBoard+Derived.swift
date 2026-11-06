@@ -152,7 +152,7 @@ extension NotchHUDBoard {
         switch item.kind {
         case .batch(let snapshot) where !snapshot.isFinished:
             return NotchHUDRow(
-                id: item.id, title: HUDCopy.title(target: snapshot.target), detail: HUDCopy.working(snapshot),
+                id: item.id, title: HUDCopy.title(snapshot), detail: HUDCopy.working(snapshot),
                 status: .working(snapshot.isIndeterminate ? nil : snapshot.fraction),
                 line: NotchHUDCopy.workingTitle(snapshot), summary: NotchHUDCopy.percent(snapshot) ?? "")
         case .batch(let snapshot):

@@ -20,9 +20,13 @@ public struct BatchPresentation: Sendable, Equatable {
     public var canCancel: Bool { phase == .working }
 
     public static func make(_ snapshot: BatchSnapshot, registry: FormatRegistry = .standard) -> BatchPresentation {
+        guard snapshot.isFinished else { return working(snapshot, title: workingTitle(snapshot, registry: registry)) }
         let label = registry.format(snapshot.target).wheelLabel
-        guard snapshot.isFinished else { return working(snapshot, label: label) }
         let notes = snapshot.items.flatMap(\.notes).uniqued().map(noteText) + fallbackNotes(snapshot)
+        if let mode = snapshot.protect {
+            let hasOutcome = !snapshot.outputs.isEmpty || !snapshot.failures.isEmpty
+            if hasOutcome { return protect(snapshot, mode: mode, notes: notes) }
+        }
         let saved = snapshot.outputs
         let failures = snapshot.failures
         let firstFailure = failures.first.map {
@@ -57,12 +61,12 @@ public struct BatchPresentation: Sendable, Equatable {
 
     static let retryingLine = "The converter stopped unexpectedly. Trying again…"
 
-    private static func working(_ snapshot: BatchSnapshot, label: String) -> BatchPresentation {
+    private static func working(_ snapshot: BatchSnapshot, title: String) -> BatchPresentation {
         let percent = Int((snapshot.fraction * 100).rounded(.down))
         let position = snapshot.current.map { "\($0.item.name) · \($0.index + 1) of \(snapshot.items.count)" } ?? ""
         let retrying = snapshot.items.contains { $0.state == .retrying }
         return BatchPresentation(
-            phase: .working, title: "Converting to \(label)",
+            phase: .working, title: title,
             subtitle: retrying ? retryingLine : "\(position) · \(percent)%", fraction: snapshot.fraction, notes: [],
             detail: nil)
     }

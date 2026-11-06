@@ -14,9 +14,7 @@ public struct ProtectBatchOutcome: Sendable, Equatable {
     public static let nothing = ProtectBatchOutcome(succeeded: [], notOpened: [], cancelled: true)
 
     /// The card's line for files that stayed locked (17b §3.3).
-    public static func notUnlockedLine(_ count: Int) -> String {
-        count == 1 ? "1 file not unlocked" : "\(count) files not unlocked"
-    }
+    public static func notUnlockedLine(_ count: Int) -> String { BatchPresentation.notUnlockedLine(count) }
 }
 
 /// One sheet per drop (17b §3.3, plan 20f E7). With "the same password for all" on (the default), one set of secrets

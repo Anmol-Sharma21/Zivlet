@@ -26,7 +26,7 @@ public enum JobErrorCopy {
         case .unsupportedInput(let reason):
             return ErrorCopy(input(reason))
         case .alreadyEncrypted:
-            return ErrorCopy("This PDF is already locked.")
+            return ErrorCopy("Already locked: left as it is.")
         case .wrongPassword:
             return ErrorCopy("That password didn't work.")
         case .ownerPasswordNeeded:

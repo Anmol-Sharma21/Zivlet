@@ -11,7 +11,7 @@ struct WorkingContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(HUDCopy.title(target: snapshot.target)).font(.headline).lineLimit(1)
+            Text(HUDCopy.title(snapshot)).font(.headline).lineLimit(1)
             PartedLine(parts: HUDCopy.workingParts(snapshot)).font(.callout).foregroundStyle(HUDInk.secondary)
             if snapshot.isIndeterminate {
                 ProgressView().progressViewStyle(.linear)
