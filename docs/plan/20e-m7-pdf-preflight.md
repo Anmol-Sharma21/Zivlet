@@ -107,6 +107,8 @@ RED: the test does not exist in the filter's output. Commit `test(timing): the P
 | D-M7-41 | The qpdf-first rewrite is the last step of `execute`, in a wrapper engine (`PDFRewritingEngine`), not in `verify`: verify then judges the published bytes, and the app gets the final size. `ZivletWorkerCore` is in the app's product and must not link qpdf, so `WorkerService` has no hook (added in execution) |
 | D-M7-42 | `JobSecret`'s lock is recursive: one secret may be both user and owner (D-M7-20), and a caller lends both together (added in execution) |
 | D-M7-43 | A limit outranks what qpdf did next: the shim reports `ZV_PDF_LIMIT` when qpdf counted a limit error, whether the call then succeeded or ended in damage (added in execution) |
+| D-M7-44 | While a qpdf step runs, the worker's footprint may not pass 3 GB: `PDFWatchdog` reads it every 100 ms, and past that the step counts as stuck, the same way out as its time budget. It stands behind D-M7-18, whose limits do not hold memory: qpdf 12.4.2 does not count numbers, nulls or references towards a container, and nothing limits what a Flate stream inflates to. The ceiling is on the whole process, not a step's growth, because malloc keeps what an earlier step freed and that would hide a later step's memory; another job's memory counts too, which at worst costs one retry (added in execution, attempt 2) |
+| D-M7-45 | No per-stream decode limit (`qpdf_p_flate_max_memory` and its kin): the ceiling already holds the memory, an honest large stream passes through the check to nowhere and must stay readable, and that limit raises no limit error, so the file would say "damaged" (added in execution, attempt 2) |
 
 ---
 
@@ -185,13 +187,13 @@ release one).
 
 - The watchdog's stop has never run in a real worker (G-M7-22). No test makes a qpdf call hang, so `onStuck` in
   `Worker/main.swift` is only compiled. The timer, the budget, the turns and the disarm are tested with an injected
-  clock.
+  clock. (Attempt 2 ran the same stop in a real process, below.)
 - The watchdog covers qpdf steps only, not PDFKit rendering in Copy Text and Read QR (G-M7-24).
 - Copy Text and Read QR refuse an oversized PDF with their general line, not "This PDF is larger than 512 MB."
   (G-M7-23).
 - Limits proved through real files: size, pages, filters and warnings at their boundaries, nesting at 450 and 600 rather
   than 500 and 501. The container and parser-error limits are only shown to reach the shim, with no file at 1,000,000,
-  50,000 or 1,000 (G-M7-25).
+  50,000 or 1,000 (G-M7-25, closed in attempt 2, below).
 - `hasJavaScript` reads what the row names: `/AA` on the catalog and pages, not on fields or annotations, and not
   `/Next` chains after an `/OpenAction`. It is a fact for warnings, not a security filter.
 - Nothing calls pre-flight from the app yet (`.inspectPDFs` is E3), and `PDFVerify`'s note reaches no card yet (E8):
@@ -227,4 +229,89 @@ release one).
   it is a system daemon and was left alone. This stream adds no timer, task, loop or display link to anything the app
   runs, and `ZivletBox` has no commit since `m6`, so the stream is not the likely cause. That is a reading of the diff,
   not a measurement: **no passing Y8 was seen on this commit.** The limit was not moved. The row still has no load guard
-  (G-M7-21).
+  (G-M7-21; attempt 2 found input, not load, behind it, below).
+
+---
+
+## Execution notes, attempt 2 (stream D on `m7`, 2026-11-01 to 11-07)
+
+Commits: `f349846` (each parser limit at its exact boundary), `47b1288` (the memory ceiling), and this record. Attempt
+1's notes above stand as written, with pointers here. Attempt 1 ended with G-M7-25 open and Y8 failing; attempt 2
+closed the first, found a defect while doing it, and found what Y8 reads. `make test` on `47b1288` was green before
+this record: 2418 tests, 23 bundles.
+
+**G-M7-25, closed (`f349846`).** Each qpdf parser limit has a typed file at it and one past it, and a check that a
+limit one lower refuses the first, so the test can fail: 500 nested arrays are read and 501 are not; a container of
+1,000,000 entries is read and one more is not, and in a damaged file the same holds at 50,000; 999 parser errors pass
+and 1,000 stop. The filter limit (25) equals qpdf's default, so a limit of 5 refusing six filters shows that the shim's
+value is the one in force.
+
+**A defect: the limits did not hold memory (`47b1288`, D-M7-44, D-M7-45).** Proving the container limit meant
+reading qpdf's parser: it counts names, strings, reals and booleans towards a container, not numbers, nulls or
+references. A test pins that (`theContainerLimitDoesNotCount`), so an upgrade that starts counting them says so.
+Measured with the real probe and no ceiling: 1,000,001 numbers were read and written, and 5,000,000 of them (a 10 MB
+file) peaked at 780 MB, which scales to about 40 GB for a 512 MB file. A 0.2 MB Flate bomb peaked at 693 MB, because
+the check holds decoded page content in memory, and nothing limits what a stream inflates to. This Mac has 17 GB, the
+worker has no memory cap and the time watchdog allows up to 81 s, so stream E's Lock and Unlock would have reached it.
+
+qpdf cannot be patched here, so `PDFWatchdog` now reads the process's footprint every 100 ms during a qpdf step and
+treats a step past 3 GB as stuck, the same way out as its time budget. Measured with the real probe and the 3 GB
+ceiling:
+
+| File | Result | Peak footprint |
+|---|---|---|
+| 5.1 MB Flate bomb (about 17 GB without the ceiling, estimated) | stopped in 0.76 s | 3,201 MB |
+| 10,000 pages, 230,002 objects (the worst ordinary file tried) | runs to the end | 651 MB |
+| 500 MB of images | runs to the end | 241 MB |
+
+- The ceiling is on the whole process, not on a step's growth. A limit on growth was built first and failed its test
+  (`memoryAnEarlierStepFreedStillCounts`): malloc keeps what an earlier step freed and that counts as footprint, so a
+  later step starts high and shows almost no growth. `malloc_zone_pressure_relief` did not change that. Another job's
+  memory counts too; at worst that costs one retry (G-M7-26).
+- No per-stream decode limit (D-M7-45): the ceiling already holds the memory, an honest large stream must stay
+  readable, and qpdf's per-stream limit raises no limit error, so such a file would say "damaged".
+- `zivlet-pdf-probe` takes an optional ceiling and runs its check as the worker does, so `PDFMemoryCeilingTests` see a
+  real process end by SIGKILL: a Flate bomb, a file of uncounted entries, and memory an earlier step freed. An ordinary
+  file under the ceiling, and a small bomb with no ceiling, run to the end. Their ceilings are 50 and 150 MB on files
+  under 1 MB, so a failing run costs the Mac little. The poll, the ceiling's boundary (at it is not stuck), a reading
+  that fails and the real footprint are unit tests with an injected clock and footprint.
+- This takes G-M7-22 halfway: the stop has run in a real process, not yet in the XPC worker, because nothing in the app
+  reaches `PDFEngine` until stream E.
+
+**Y8 reads input, not load (G-M7-21).** A watcher beside two runs on 2026-11-01 showed the same load passing and
+failing: run 1 passed against a baseline the same bursts had raised to 0.342 %, run 2 failed all three rows
+(`box-armed` 2.1 % over). The extra CPU moved between states and came with input (`HIDIdleTime` falling), not with
+load. In this record's gate run Y8 passed while nothing touched the Mac: `HIDIdleTime` rose without a break from 530 to
+1,053 s across the run, at load 4.4 → 2.3 (baseline 0.217 %, every state at or under it). So a load guard alone will
+not do; the limit was not moved, and the row still has no guard on input. The same watcher saw no input during X6
+either, so X6's failure below is the app's own idle CPU (G-M5a-1), not the owner's.
+
+**G-M7-11 recurred.** `make app` on its own failed once in this record's gate run: Xcode's copy of `Sparkle.framework`
+found no `_CodeSignature`. The rerun passed, and so did the `make app` inside X1, Y1 and Z1. The passing rerun's log
+shows the likely cause: Xcode's copy of the Sparkle package framework ran after the "Embed media helpers" phase, which
+trims Sparkle and signs the nested code. That Debug app kept an untrimmed universal Sparkle with its XPC services, and
+`codesign --verify --deep --strict` calls its nested code invalid; when the copy and the phase overlap, they race. The
+phase declares no inputs, so nothing orders it after the copy. The Release app of `make release-check` was trimmed
+(arm64, no XPC services) and verifies. Read from the logs and the bundles, not fixed: it is outside P2-105, and the
+next step is in G-M7-11.
+
+**Gates** (`nice -n 10`, in the working repository on `47b1288` with only this record's edits uncommitted; the screen
+was awake, so the screenshot rows ran; load 1m).
+
+| Gate | Result |
+|---|---|
+| `make test` on `47b1288` | 2418 tests, 23 bundles, all pass (load 2.3 → 12.1) |
+| `make lint` | passes |
+| `make coverage` | 21 modules ≥ 80 %: EnginePDF 98 % (579/588), CZivletPDF 91 % (471/512), EngineVision 86 % the lowest |
+| `make app` | failed once (G-M7-11, above); passed on the rerun and inside X1, Y1 and Z1 |
+| `make release-check` | passes: Bundle OK, 55.9 MB installed, worker 8.1 MB, size OK |
+| `make licence-gate` | 15 components, 58 crates |
+| `make script-test` | 37 scripts pass |
+| `Scripts/m5a-exit.sh` (load 4.5 → 3.3) | X1–X5 and X7 pass, X2 judged. X6 fails on idle CPU (G-M5a-1, not worked on): four of eight states over their limits, `fast-progress` 1.93 % over 1 % the most, `hidden` 0.109 % over 0.1 % the least |
+| `Scripts/m5b-exit.sh` (load 3.3 → 2.3) | Y1–Y9 pass, Y3 with X2 judged, Y8 with the Mac untouched |
+| `Scripts/m6-exit.sh` (load 2.3 → 7.7) | Z1–Z11 pass, Z3 with X2 judged, Z5's `make worker-smoke` among them |
+| `Scripts/m7-exit.sh` | not yet written (stream F, F2) |
+
+**Still open from this stream:** G-M7-21 (Y8 has no guard on input), G-M7-22 (the stop in the XPC worker), G-M7-23,
+G-M7-24 (PDFKit rendering has no budget or ceiling), G-M7-26 (the words a ceiling stop reaches, and a false stop, not
+seen) and G-M7-11 (above). No fresh clone was run, as in attempt 1.
