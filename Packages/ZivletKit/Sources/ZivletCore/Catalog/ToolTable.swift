@@ -29,8 +29,9 @@ extension ToolCatalog {
         .init(formats: [.svg], single: .visible(.qrScan), multi: .visible(.pdfFromImages, .imageCollage, .qrScan)),
         .init(formats: [.avif, .bmp], single: .visible(.qrScan, .copyText), multi: .visible(.qrScan, .copyText)),
         .init(
-            formats: [.pdf], single: .visible(.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan),
-            multi: .visible(.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .copyText, .qrScan)),
+            formats: [.pdf],
+            single: .visible(.shrink, .protect, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan),
+            multi: .visible(.pdfCombine, .shrink, .protect, .stripMetadata, .pdfSplit, .copyText, .qrScan)),
         .init(
             formats: [.mp3, .m4a, .wav, .flac],
             single: .visible(
@@ -63,6 +64,7 @@ extension ToolCatalog {
         spec(.archiveUnpack, "EXTRACT", "shippingbox", .instant, .multiAllowed, "Extracted"),
         spec(.pdfFromImages, "CREATE PDF", "doc.badge.plus", .instant, .multiOnly, "Images"),
         spec(.pdfCombine, "MERGE PDF", "doc.on.clipboard", .editor, .multiOnly, "Merged"),
+        spec(.protect, "LOCK · UNLOCK", "lock", .editor, .multiAllowed, "Locked", accepts: [.pdf]),
         spec(.videoCrop, "CROP", "crop", .editor, .single, "Cropped"),
         spec(.videoSpeed, "SPEED", "gauge.with.dots.needle.67percent", .editor, .single, "Speed"),
         spec(.videoJoin, "JOIN", "film.stack", .editor, .multiOnly, "Joined"),

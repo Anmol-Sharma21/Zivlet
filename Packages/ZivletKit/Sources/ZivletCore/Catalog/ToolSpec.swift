@@ -1,8 +1,10 @@
-/// The 28 tools, grouped by domain. Zivlet's own identifiers; the wheel order is data (`ToolCatalog.specTable`).
+/// The 29 tools, grouped by domain. Zivlet's own identifiers; the wheel order is data (`ToolCatalog.specTable`).
 public enum ToolID: String, CaseIterable, Codable, Sendable {
     case shrink, stripMetadata
     case imageAdjust, imageMarkup, imageBackdrop, imageCrop, imageCollage, imageRedact
     case pdfSplit, pdfArrange, pdfFromImages, pdfCombine
+    /// LOCK · UNLOCK (P2-106, D-M7-19): 17 §8.1's one `tools.protect` slot; the mode comes after the drop.
+    case protect
     case archiveUnpack
     case audioNormalize, audioWaveform, audioTrim, audioChannelMix, audioBleep
     case videoMute, videoTrim, videoCrop, videoSpeed, videoJoin, videoFrameGrab, videoClips, videoRedact

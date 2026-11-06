@@ -64,7 +64,9 @@ struct CombiningRuleTests {
         let images = FormatID.allCases.filter { FormatRegistry.standard.format($0).family == .image }
         #expect(ToolCatalog.standard.spec(.qrScan).accepts == Set(images + [.gif, .pdf]))
         #expect(ToolCatalog.standard.spec(.copyText).accepts == Set(images + [.gif, .pdf]).subtracting([.svg]))
-        let others = ToolCatalog.standard.specs.filter { $0.id != .qrScan && $0.id != .copyText }
+        // LOCK · UNLOCK names PDF alone (D-M7-19), so it never shows for a mix of families.
+        #expect(ToolCatalog.standard.spec(.protect).accepts == [.pdf])
+        let others = ToolCatalog.standard.specs.filter { ![.qrScan, .copyText, .protect].contains($0.id) }
         #expect(others.allSatisfy { $0.accepts == nil })
     }
 

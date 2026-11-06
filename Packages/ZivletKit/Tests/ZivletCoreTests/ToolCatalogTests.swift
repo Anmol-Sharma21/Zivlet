@@ -6,14 +6,14 @@ import Testing
 struct ToolCatalogTests {
     let tools = ToolCatalog.standard
 
-    @Test func has28ToolsInCanonicalOrderEndingWithReadQRAndCopyText() {
+    @Test func has29ToolsInCanonicalOrderEndingWithReadQRAndCopyText() {
         let wheelOrder: [ToolID] = [
-            .shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop, .audioNormalize,
-            .videoMute, .videoTrim, .pdfSplit, .pdfArrange, .archiveUnpack, .pdfFromImages, .pdfCombine,
+            ToolID.shrink, .stripMetadata, .imageAdjust, .imageMarkup, .imageBackdrop, .imageCrop, .audioNormalize,
+            .videoMute, .videoTrim, .pdfSplit, .pdfArrange, .archiveUnpack, .pdfFromImages, .pdfCombine, .protect,
             .videoCrop, .videoSpeed, .videoJoin, .videoFrameGrab, .videoClips, .audioWaveform,
             .audioTrim, .audioChannelMix, .imageCollage, .imageRedact, .videoRedact, .audioBleep, .qrScan, .copyText,
         ]
-        #expect(ToolID.allCases.count == 28)
+        #expect(ToolID.allCases.count == 29)
         #expect(tools.specs.map(\.id) == wheelOrder)
         #expect(Set(wheelOrder) == Set(ToolID.allCases))
         #expect(tools.specs.suffix(2).map(\.wheelLabel) == ["READ QR", "COPY TEXT"])
@@ -25,6 +25,16 @@ struct ToolCatalogTests {
         #expect(spec.wheelLabel == "COPY TEXT" && spec.symbolName == "text.viewfinder")
         #expect(spec.presentation == .instant && spec.cardinality == .multiAllowed && spec.outputSuffix == "Text")
         #expect(spec.accepts == [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .gif, .pdf])
+    }
+
+    /// P2-106, D-M7-19: one LOCK · UNLOCK slot (17 §8.1's `tools.protect`), a window tool for one or many PDFs. The
+    /// label is fixed in M7; P2-114 refines it later without moving the slot.
+    @Test func protectIsOneEditorSlotForPDFs() {
+        let spec = tools.spec(.protect)
+        #expect(ToolID.protect.rawValue == "protect")
+        #expect(spec.wheelLabel == "LOCK · UNLOCK" && spec.symbolName == "lock")
+        #expect(spec.presentation == .editor && spec.cardinality == .multiAllowed && spec.outputSuffix == "Locked")
+        #expect(spec.accepts == [.pdf])
     }
 
     @Test func instantToolsAreTheSixWindowlessOnes() {
@@ -57,8 +67,8 @@ struct ToolCatalogTests {
         ([.svg, .svg], [.pdfFromImages, .imageCollage, .qrScan]),
         ([.avif], [.qrScan, .copyText]),
         ([.bmp, .bmp], [.qrScan, .copyText]),
-        ([.pdf], [.shrink, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan]),
-        ([.pdf, .pdf], [.shrink, .stripMetadata, .pdfSplit, .pdfCombine, .copyText, .qrScan]),
+        ([.pdf], [.shrink, .protect, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan]),
+        ([.pdf, .pdf], [.pdfCombine, .shrink, .protect, .stripMetadata, .pdfSplit, .copyText, .qrScan]),
         (
             [.wav],
             [
@@ -88,6 +98,7 @@ struct ToolCatalogTests {
         ([FormatID.jpg, .png], [ToolID.copyText, .shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage]),
         ([.jpg, .avif], [.copyText]),
         ([.jpg, .pdf], [.qrScan, .copyText]),
+        ([.pdf, .png], [.qrScan, .copyText]),
         ([.gif, .png], [.qrScan, .copyText]),
         ([.jpg, .mp4], []),
         ([.mp4, .webm], []),
