@@ -19,9 +19,11 @@ public actor CodeService {
         self.selection = selection
     }
 
-    public func readCodes(_ urls: [URL], progress: @escaping @Sendable (Double) -> Void = { _ in })
-        async throws(CodeError) -> [FileCodes]
-    {
+    /// `secrets` opens a locked PDF among `urls` (P2-107, plan 20f E10); wiped when the job ends.
+    public func readCodes(
+        _ urls: [URL], secrets: JobSecrets? = nil, progress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws(CodeError) -> [FileCodes] {
+        defer { secrets?.wipeAll() }
         try Self.validate(urls)
         guard case .worker(let connection, _) = await selection.choice() else { throw .unavailable }
         do {
@@ -29,7 +31,7 @@ public actor CodeService {
         } catch {
             throw .cancelled
         }
-        let result = await Self.run(connection, urls: urls, progress: progress)
+        let result = await Self.run(connection, urls: urls, secrets: secrets, progress: progress)
         await lane.release()
         return try result.get()
     }
@@ -46,11 +48,12 @@ public actor CodeService {
 
     /// Up to two attempts, each with a fresh job id.
     private static func run(
-        _ connection: WorkerConnection, urls: [URL], progress: @escaping @Sendable (Double) -> Void
+        _ connection: WorkerConnection, urls: [URL], secrets: JobSecrets?,
+        progress: @escaping @Sendable (Double) -> Void
     ) async -> Result<[FileCodes], CodeError> {
         for attempt in 1...attempts {
             do {
-                return try await connection.readCodes(CodeJob(inputs: urls), progress: progress)
+                return try await connection.readCodes(CodeJob(inputs: urls), secrets: secrets, progress: progress)
             } catch {
                 guard error == .workerCrashed else { return .failure(codeError(error)) }
                 guard attempt < attempts else { break }

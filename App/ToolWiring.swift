@@ -20,6 +20,8 @@ final class ToolWiring {
     private let actions: ActionWiring
     private let store: SettingsStore
     private let clipboard: ClipboardAction
+    /// Asks for a locked PDF's password (set once the password sheet exists).
+    var prompter: (any PasswordPrompting)?
     /// Show All; the DEBUG text states show it too.
     let preview = TextPreviewWindow()
     private var capabilities: VisionCapabilities?
@@ -63,7 +65,7 @@ final class ToolWiring {
         let presenter = actions.currentPresenter
         let line = WorkingLine(presenter: presenter, point: point)
         let task = Task { @MainActor in
-            let result = await self.copyText(urls, optionHeld: optionHeld, line: line)
+            let result = await self.copyText(urls, optionHeld: optionHeld, line: line, near: point)
             line.finish()
             presenter.show(result, near: point)
             self.log(result, files: urls.count)
@@ -89,7 +91,7 @@ final class ToolWiring {
         #if DEBUG
             let prefixes = [
                 "-ZivletDemo", "-ZivletCopyTextDemo", "-ZivletTextStates", "-ZivletIslandPreview", "-ZivletQRDemo",
-                "-ZivletPasswordStates",
+                "-ZivletPasswordStates", "-ZivletProtectDemo",
             ]
             return arguments.contains { argument in
                 prefixes.contains { argument.hasPrefix($0) } || argument == "-UITestFixture"
@@ -99,14 +101,18 @@ final class ToolWiring {
         #endif
     }
 
-    private func copyText(_ urls: [URL], optionHeld: Bool, line: WorkingLine) async -> ActionResult {
+    private func copyText(_ urls: [URL], optionHeld: Bool, line: WorkingLine, near point: CGPoint?) async
+        -> ActionResult
+    {
         do {
             let plan = try await languages()
             line.show(ToolWiringModel.working(warmupDone: plan.warmed, fraction: nil))
             let recognized = try await text.copyText(urls, languages: plan.languages) { fraction in
                 Task { @MainActor in line.show(ToolWiringModel.working(warmupDone: plan.warmed, fraction: fraction)) }
             }
-            return await finish(recognized, sources: urls, optionHeld: optionHeld, skipsHindi: plan.skipsHindi)
+            let unlocked = await unlocking(recognized, urls: urls, languages: plan.languages, near: point)
+            let merged = TextAssembly.merge(recognized, replacing: unlocked)
+            return await finish(merged, sources: urls, optionHeld: optionHeld, skipsHindi: plan.skipsHindi)
         } catch {
             if error == .cancelled {
                 logger.notice("Copy Text cancelled")
@@ -115,6 +121,26 @@ final class ToolWiring {
             }
             return ToolWiringModel.failure(error)
         }
+    }
+
+    /// Each locked PDF asks for its password once and runs as its own job (P2-107, plan 20f E10); one the person
+    /// cancels stays skipped.
+    private func unlocking(_ recognized: RecognizedText, urls: [URL], languages: [LanguageTag], near point: CGPoint?)
+        async -> [String: RecognizedText]
+    {
+        guard let prompter else { return [:] }
+        let names = Set(recognized.skipped.filter { $0.error == .pdfLocked }.map(\.name))
+        let locked = urls.filter { names.contains($0.lastPathComponent) }
+        guard !locked.isEmpty else { return [:] }
+        let text = self.text
+        let opened = await LockedInputPrompting.unlockEach(locked, prompter: prompter, near: point) {
+            file, secrets -> RecognizedText? in
+            guard let result = try? await text.copyText([file], languages: languages, secrets: secrets),
+                !result.skipped.contains(where: { $0.error == .pdfLocked })
+            else { return nil }
+            return result
+        }
+        return Dictionary(opened.map { ($0.key.lastPathComponent, $0.value) }, uniquingKeysWith: { first, _ in first })
     }
 
     /// The clipboard first; with ⌥ the files; then the card. A refused clipboard or a file not saved becomes a note

@@ -19,9 +19,13 @@ public actor TextService {
         self.selection = selection
     }
 
+    /// `secrets` opens a locked PDF among `urls` (P2-107, plan 20f E10): it goes with this job's requests only, its one
+    /// crash retry included, and is wiped when the job ends.
     public func copyText(
-        _ urls: [URL], languages: [LanguageTag], progress: @escaping @Sendable (Double) -> Void = { _ in }
+        _ urls: [URL], languages: [LanguageTag], secrets: JobSecrets? = nil,
+        progress: @escaping @Sendable (Double) -> Void = { _ in }
     ) async throws(TextError) -> RecognizedText {
+        defer { secrets?.wipeAll() }
         try Self.validate(urls)
         let connection = try await worker()
         do {
@@ -29,7 +33,8 @@ public actor TextService {
         } catch {
             throw .cancelled
         }
-        let result = await Self.run(connection, urls: urls, languages: languages, progress: progress)
+        let result = await Self.run(
+            connection, urls: urls, languages: languages, secrets: secrets, progress: progress)
         await lane.release()
         return try result.get()
     }
@@ -74,13 +79,13 @@ public actor TextService {
     /// Up to two attempts, each with a fresh job id: a worker crash on the first is retried, on the second the drop
     /// is named as the cause.
     private static func run(
-        _ connection: WorkerConnection, urls: [URL], languages: [LanguageTag],
+        _ connection: WorkerConnection, urls: [URL], languages: [LanguageTag], secrets: JobSecrets?,
         progress: @escaping @Sendable (Double) -> Void
     ) async -> Result<RecognizedText, TextError> {
         for attempt in 1...attempts {
             let job = TextJob(inputs: urls, languages: languages)
             do {
-                return try await connection.recognizeText(job, progress: progress)
+                return try await connection.recognizeText(job, secrets: secrets, progress: progress)
             } catch {
                 guard error == .workerCrashed else { return .failure(textError(error)) }
                 guard attempt < attempts else { break }

@@ -1,5 +1,6 @@
 import EngineVision
 import Foundation
+import ZivletCore
 import ZivletIPC
 
 /// Read QR in the worker (P2-51, plan 20b A8): each input is read by `CodeReader`; a file that cannot be read comes
@@ -12,15 +13,18 @@ public struct CodeReading: Sendable {
         self.reader = reader
     }
 
-    public func read(_ job: CodeJob, progress: @escaping @Sendable (Double) -> Void) async throws(CodeError)
-        -> [FileCodes]
-    {
+    /// `secrets` opens locked PDFs among the inputs (P2-107, plan 20f E10); the caller wipes them after the job.
+    public func read(
+        _ job: CodeJob, secrets: JobSecrets? = nil, progress: @escaping @Sendable (Double) -> Void
+    ) async throws(CodeError) -> [FileCodes] {
         var files: [FileCodes] = []
         for (index, url) in job.inputs.enumerated() {
             if Task.isCancelled { throw .cancelled }
             do {
                 files.append(
-                    FileCodes(name: url.lastPathComponent, codes: try await reader.read(url, pageLimit: job.pageLimit)))
+                    FileCodes(
+                        name: url.lastPathComponent,
+                        codes: try await reader.read(url, pageLimit: job.pageLimit, password: secrets?.input)))
             } catch {
                 guard error.isPerFile else { throw error }
                 files.append(FileCodes(name: url.lastPathComponent, error: error))

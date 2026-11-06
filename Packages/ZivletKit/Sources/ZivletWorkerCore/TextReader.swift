@@ -1,5 +1,6 @@
 import EngineVision
 import Foundation
+import ZivletCore
 import ZivletIPC
 
 /// Copy Text in the worker (P2-103, P2-104): each input is read as a PDF (`PDFTextSource`) or an image
@@ -22,9 +23,10 @@ public struct TextReader: Sendable {
         self.maximumPixels = maximumPixels
     }
 
-    public func read(_ job: TextJob, progress: @escaping @Sendable (Double) -> Void) async throws(TextError)
-        -> RecognizedText
-    {
+    /// `secrets` opens locked PDFs among the inputs (P2-107, plan 20f E10); the caller wipes them after the job.
+    public func read(
+        _ job: TextJob, secrets: JobSecrets? = nil, progress: @escaping @Sendable (Double) -> Void
+    ) async throws(TextError) -> RecognizedText {
         var files: [FileText] = []
         var skipped: [SkippedFile] = []
         let count = Double(job.inputs.count)
@@ -33,7 +35,8 @@ public struct TextReader: Sendable {
             let share: @Sendable (Double) -> Void = { part in progress((Double(index) + part) / count) }
             let name = url.lastPathComponent
             do {
-                files.append(FileText(name: name, pages: try await pages(of: url, job: job, share: share)))
+                let read = try await pages(of: url, job: job, password: secrets?.input, share: share)
+                files.append(FileText(name: name, pages: read))
                 if !ImageTextSource.isPDF(url) { share(1) }
             } catch {
                 guard error.isPerFile else { throw error }
@@ -45,11 +48,12 @@ public struct TextReader: Sendable {
         return TextAssembly.combine(files, skipped: skipped)
     }
 
-    private func pages(of url: URL, job: TextJob, share: @escaping @Sendable (Double) -> Void) async throws(TextError)
-        -> [RecognizedPage]
-    {
+    private func pages(
+        of url: URL, job: TextJob, password: JobSecret?, share: @escaping @Sendable (Double) -> Void
+    ) async throws(TextError) -> [RecognizedPage] {
         if ImageTextSource.isPDF(url) {
-            return try await PDFTextSource.read(url, recognizer: recognizer, languages: job.languages, progress: share)
+            return try await PDFTextSource.read(
+                url, recognizer: recognizer, languages: job.languages, password: password, progress: share)
         }
         return [
             try await ImageTextSource.read(

@@ -111,6 +111,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         conversion.start()
         conversion.onProtectRetry = { [weak self] retry, point in self?.protect.retry(retry, near: point) }
+        tools.prompter = passwords.prompter
+        codes.prompter = passwords.prompter
         startBox(trigger)
         ProcessInfo.processInfo.disableAutomaticTermination("Watching drag gestures")
         onboarding.onFinished = { [weak self] in self?.tools.startWarmUpIfNeeded() }

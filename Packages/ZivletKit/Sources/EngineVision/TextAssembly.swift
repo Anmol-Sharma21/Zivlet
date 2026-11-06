@@ -75,6 +75,19 @@ public enum TextAssembly {
     }
 
     /// The non-empty pages, cleaned and joined by a blank line, with one final newline; empty when none has text.
+    /// `result` with each locked file's own result in its place (plan 20f E10): the text is put together again in the
+    /// drop's order, and the replaced files' skips give way to theirs.
+    public static func merge(_ result: RecognizedText, replacing: [String: RecognizedText]) -> RecognizedText {
+        guard !replacing.isEmpty else { return result }
+        let files = result.perFile.map { file in
+            let text = replacing[file.name]?.perFile.first { $0.name == file.name }?.text ?? file.text
+            return FileText(name: file.name, pages: text.isEmpty ? [] : [RecognizedPage(text: text)])
+        }
+        let skipped =
+            result.skipped.filter { replacing[$0.name] == nil } + replacing.values.flatMap(\.skipped)
+        return combine(files, skipped: skipped)
+    }
+
     static func body(of pages: [RecognizedPage]) -> String {
         let cleaned = pages.map { clean($0.text) }.filter { !$0.isEmpty }
         return cleaned.isEmpty ? "" : cleaned.joined(separator: "\n\n") + "\n"

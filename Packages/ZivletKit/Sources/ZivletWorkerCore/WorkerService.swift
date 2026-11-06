@@ -113,10 +113,12 @@ public actor WorkerService {
         case .recognizeText, .textCapabilities, .warmUpText:
             guard let text else { return .failed(.engineMissing(.vision)) }
             return await answerText(request, session: session, reader: text, events: events)
-        case .readCodes(let job, _):
+        case .readCodes(let job, let wire):
             guard let codes else { return .failed(.engineMissing(.vision)) }
             return await track(Step(session: session, job: job.id), cancelled: .codesFailed(.cancelled)) {
-                await Self.readCodes(job, reading: codes, events: events)
+                await Self.withSecrets(wire) { secrets in
+                    await Self.readCodes(job, secrets: secrets, reading: codes, events: events)
+                }
             }
         #if DEBUG
             case .selfKillForTesting(let milliseconds):
@@ -137,9 +139,11 @@ public actor WorkerService {
         _ request: WorkerRequest, session: WorkerSessionID, reader: TextReader, events: @escaping EventSink
     ) async -> WorkerReply {
         switch request {
-        case .recognizeText(let job, _):
+        case .recognizeText(let job, let wire):
             return await track(Step(session: session, job: job.id), cancelled: .textFailed(.cancelled)) {
-                await Self.recognize(job, reader: reader, events: events)
+                await Self.withSecrets(wire) { secrets in
+                    await Self.recognize(job, secrets: secrets, reader: reader, events: events)
+                }
             }
         case .warmUpText(let id, let languages):
             let step = Step(session: session, job: id)
@@ -161,11 +165,13 @@ public actor WorkerService {
         }
     }
 
-    @concurrent private static func recognize(_ job: TextJob, reader: TextReader, events: @escaping EventSink) async
-        -> WorkerReply
-    {
+    @concurrent private static func recognize(
+        _ job: TextJob, secrets: JobSecrets?, reader: TextReader, events: @escaping EventSink
+    ) async -> WorkerReply {
         do {
-            let text = try await reader.read(job) { events(.progress(job.id, JobProgress(fraction: $0))) }
+            let text = try await reader.read(job, secrets: secrets) {
+                events(.progress(job.id, JobProgress(fraction: $0)))
+            }
             for file in text.skipped {
                 logger.error("Text job skipped a file: \(file.error.logDescription, privacy: .public)")
             }
@@ -176,11 +182,13 @@ public actor WorkerService {
         }
     }
 
-    @concurrent private static func readCodes(_ job: CodeJob, reading: CodeReading, events: @escaping EventSink) async
-        -> WorkerReply
-    {
+    @concurrent private static func readCodes(
+        _ job: CodeJob, secrets: JobSecrets?, reading: CodeReading, events: @escaping EventSink
+    ) async -> WorkerReply {
         do {
-            let files = try await reading.read(job) { events(.progress(job.id, JobProgress(fraction: $0))) }
+            let files = try await reading.read(job, secrets: secrets) {
+                events(.progress(job.id, JobProgress(fraction: $0)))
+            }
             for file in files.compactMap(\.error) {
                 logger.error("Code job skipped a file: \(file.logDescription, privacy: .public)")
             }

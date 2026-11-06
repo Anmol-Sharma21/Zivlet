@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import PDFKit
 import Vision
+import ZivletCore
 import ZivletEngineKit
 
 /// Vision's barcode request behind a port, so Read QR's rules are tested without Vision.
@@ -42,7 +43,10 @@ public struct CodeReader: Sendable {
         self.maximumPixels = maximumPixels
     }
 
-    public func read(_ url: URL, pageLimit: Int = PDFTextSource.pageLimit) async throws(CodeError) -> [FoundCode] {
+    /// `password` opens a locked PDF (P2-107); rendering pages needs no permission bit.
+    public func read(_ url: URL, pageLimit: Int = PDFTextSource.pageLimit, password: JobSecret? = nil)
+        async throws(CodeError) -> [FoundCode]
+    {
         if Task.isCancelled { throw .cancelled }
         guard ImageTextSource.isPDF(url) else {
             let image: CGImage
@@ -53,12 +57,12 @@ public struct CodeReader: Sendable {
             }
             return FoundCode.arranged(try await detect(image), page: nil)
         }
-        return try await readPDF(url, pageLimit: pageLimit)
+        return try await readPDF(url, pageLimit: pageLimit, password: password)
     }
 
-    private func readPDF(_ url: URL, pageLimit: Int) async throws(CodeError) -> [FoundCode] {
+    private func readPDF(_ url: URL, pageLimit: Int, password: JobSecret?) async throws(CodeError) -> [FoundCode] {
         guard PDFLimits.allows(fileAt: url) else { throw .tooLarge }
-        guard let document = PDFDocument(url: url) else { throw .unreadable }
+        guard let document = LockedPDF.open(url, password: password) else { throw .unreadable }
         guard !document.isLocked else { throw .pdfLocked }
         guard document.pageCount <= pageLimit else { throw .tooManyPages(document.pageCount) }
         var found: [FoundCode] = []

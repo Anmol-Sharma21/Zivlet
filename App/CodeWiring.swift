@@ -8,7 +8,8 @@ import os
 
 /// READ QR from the wheel (P2-51, plan 20b A10, D-M7-13): the working line with Cancel where the placement says, the
 /// job in the worker (`CodeService`), then the results window at the drop, "No codes found", a card for files not
-/// read, or nothing after a cancel. A locked PDF is listed as "Needs a password" until P2-107 adds the prompt. Codes
+/// read, or nothing after a cancel. A locked PDF asks for its password once (P2-107, plan 20f E10); one left locked is
+/// listed as "Needs a password". Codes
 /// are copied only when the person presses Copy or Copy All, and a link opens only when they press Open. Payloads
 /// and file names are never logged (NFR-6).
 @MainActor
@@ -18,6 +19,8 @@ final class CodeWiring {
     private let actions: ActionWiring
     private let toolWindows: ToolWindowWiring
     private let clipboard: ClipboardAction
+    /// Asks for a locked PDF's password (set once the password sheet exists).
+    var prompter: (any PasswordPrompting)?
 
     /// `clipboard` is the general pasteboard; the DEBUG Read QR demo passes a private one.
     init(codes: CodeService, actions: ActionWiring, toolWindows: ToolWindowWiring, clipboard: ClipboardAction) {
@@ -35,7 +38,7 @@ final class CodeWiring {
         let line = WorkingLine(presenter: presenter, point: point)
         line.show(CodeToolModel.working(fraction: nil))
         let task = Task { @MainActor in
-            let result = await self.read(urls, line: line)
+            let result = await self.unlocking(await self.read(urls, line: line), urls: urls, near: point)
             line.finish()
             self.logger.notice("Read QR finished: \(CodeToolModel.logLine(result), privacy: .public)")
             return self.show(CodeToolModel.outcome(result), presenter: presenter, near: point)
@@ -53,6 +56,24 @@ final class CodeWiring {
         } catch {
             return .failure(error)
         }
+    }
+
+    /// Each locked PDF asks for its password once; its own job then replaces its line (plan 20f E10).
+    private func unlocking(_ result: Result<[FileCodes], CodeError>, urls: [URL], near point: CGPoint?) async
+        -> Result<[FileCodes], CodeError>
+    {
+        guard let prompter, case .success(let files) = result else { return result }
+        let locked = zip(urls, files).filter { $0.1.error == .pdfLocked }.map(\.0)
+        guard !locked.isEmpty else { return result }
+        let codes = self.codes
+        let opened = await LockedInputPrompting.unlockEach(locked, prompter: prompter, near: point) {
+            file, secrets -> FileCodes? in
+            guard let read = try? await codes.readCodes([file], secrets: secrets), let first = read.first,
+                first.error != .pdfLocked
+            else { return nil }
+            return first
+        }
+        return .success(zip(urls, files).map { url, file in opened[url] ?? file })
     }
 
     /// The HUD result, or the results window (the working line is cleared first). Another tool's open window keeps
