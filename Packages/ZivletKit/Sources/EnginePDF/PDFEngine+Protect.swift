@@ -5,8 +5,6 @@ import ZivletEngineKit
 /// LOCK · UNLOCK's three modes in the engine (plan 20f E4–E6): what prepare reads, what execute writes and what verify
 /// holds the output to. Each mode's own rules live in `PDFEngine+Lock`, `+Unlock` and `+Change`.
 extension PDFEngine {
-    static let modeMessage = "mode not handled"
-
     /// What a write opens the input with and how it encrypts the output.
     struct Write {
         let password: JobSecret?
@@ -40,7 +38,7 @@ extension PDFEngine {
         switch spec.mode {
         case .lock(let restrictions): try lockStage(source, restrictions: restrictions, secrets: secrets)
         case .unlock: try unlockStage(source, secrets: secrets)
-        case .changePassword: throw .internalInvariant(Self.modeMessage)
+        case .changePassword: try changeStage(source, secrets: secrets)
         }
     }
 
@@ -68,7 +66,10 @@ extension PDFEngine {
         case .keep: Write(password: secrets?.input, mode: .preserve)
         case .remove: Write(password: opening(secrets), mode: .decrypt)
         case .lock(let restrictions): Write(password: nil, mode: .encryptR6(try lockParameters(restrictions, secrets)))
-        case .change: throw .internalInvariant(modeMessage)
+        case .change(let keepOwner):
+            Write(
+                password: opening(secrets),
+                mode: .encryptR6(try changeParameters(stage, keepOwner: keepOwner, secrets)))
         }
     }
 
@@ -79,7 +80,7 @@ extension PDFEngine {
         case .keep: return Check(expectations: [], secrets: nil)
         case .remove: return Check(expectations: [.unlocked, forms], secrets: nil)
         case .lock(let restrictions): return try lockCheck(restrictions, secrets, forms: forms)
-        case .change: throw .internalInvariant(modeMessage)
+        case .change(let keepOwner): return try changeCheck(stage, keepOwner: keepOwner, secrets, forms: forms)
         }
     }
 
