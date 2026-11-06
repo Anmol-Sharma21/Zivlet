@@ -8,8 +8,18 @@ import ZivletEngineKit
 /// Paths must be absolute `file:` paths with no `..` component and no control character; an input must be a regular
 /// file at its last component (`lstat`, so a symlink is refused); a staged file must be `staged.<ext>` inside an
 /// existing `.zivlet-<job>` folder; a plan must name an engine this worker hosts; a byte limit must be positive; a PDF
-/// must be within `PDFLimits`' size, measured here whatever the app said (D-M7-18).
+/// must be within `PDFLimits`' size, measured here whatever the app said (D-M7-18). Passwords come only with a protect
+/// job's steps and with text or code jobs whose inputs are all PDFs; each is 1…127 bytes, at most one per role
+/// (plan 20f E3).
 public struct WorkerRequestValidator: Sendable {
+    public static let misplacedSecrets = JobError.internalInvariant("Passwords came with a request that takes none.")
+    /// More PDFs than this in one inspection are refused, as Read QR refuses more files.
+    public static let maximumInspections = 500
+    public static let tooManyInspections = JobError.internalInvariant(
+        "A PDF inspection takes 1 to \(maximumInspections) files.")
+    /// R6 reads at most 127 bytes of a password (ISO 32000-2 §7.6.4.3.3).
+    public static let passwordBytes = 1...127
+
     public let hostedEngines: Set<EngineID>
 
     public init(hostedEngines: Set<EngineID>) {
@@ -17,21 +27,22 @@ public struct WorkerRequestValidator: Sendable {
     }
 
     public func validate(_ request: WorkerRequest) throws(JobError) {
+        try checkSecrets(of: request)
         switch request {
         case .ping, .capabilities, .cancel: return
-        case .prepare(let job, let workspace):
+        case .prepare(let job, let workspace, _):
             guard workspace.job == job.id else { throw .internalInvariant("The workspace belongs to another job.") }
             try Self.checkInput(job.input.url)
             if job.input.format == .pdf { try PDFLimits.check(fileAt: job.input.url) }
             guard Self.isSafeFileURL(job.destination) else { throw .invalidDestination }
             try Self.checkStaged(workspace.stagedFile)
-        case .execute(_, let plan, let limit):
+        case .execute(_, let plan, let limit, _):
             if let limit, limit <= 0 { throw .internalInvariant("The output byte limit must be positive.") }
             try check(plan)
-        case .verify(let output, let plan):
+        case .verify(let output, let plan, _):
             try check(plan)
             try Self.checkStaged(output.url)
-        case .recognizeText(let job):
+        case .recognizeText(let job, _):
             try checkVision()
             try Self.check(job)
         case .textCapabilities:
@@ -39,13 +50,44 @@ public struct WorkerRequestValidator: Sendable {
         case .warmUpText(_, let languages):
             try checkVision()
             try Self.check(languages)
-        case .readCodes(let job):
+        case .readCodes(let job, _):
             try checkVision()
             try Self.check(job)
+        case .inspectPDFs(let files):
+            guard hostedEngines.contains(.pdf) else { throw .engineMissing(.pdf) }
+            guard (1...Self.maximumInspections).contains(files.count) else { throw Self.tooManyInspections }
+            for file in files { try Self.checkInput(file) }
         #if DEBUG
             case .selfKillForTesting, .setIdleForTesting: return
         #endif
         }
+    }
+
+    /// Where passwords may come, and their shape.
+    private func checkSecrets(of request: WorkerRequest) throws(JobError) {
+        guard let secrets = request.secrets else { return }
+        guard Self.mayCarrySecrets(request) else { throw Self.misplacedSecrets }
+        let roles = secrets.roles
+        guard roles.count <= WireSecrets.Role.allCases.count, Set(roles).count == roles.count,
+            secrets.byteCounts.allSatisfy(Self.passwordBytes.contains)
+        else { throw .unsupportedInput(.badPassword) }
+    }
+
+    /// A protect job's steps (its plans are the PDF engine's), and text or code jobs of PDFs only.
+    private static func mayCarrySecrets(_ request: WorkerRequest) -> Bool {
+        switch request {
+        case .prepare(let job, _, _):
+            if case .protect = job.operation { return true }
+            return false
+        case .execute(_, let plan, _, _), .verify(_, let plan, _): return plan.engine == .pdf
+        case .recognizeText(let job, _): return allPDFs(job.inputs)
+        case .readCodes(let job, _): return allPDFs(job.inputs)
+        default: return false
+        }
+    }
+
+    private static func allPDFs(_ urls: [URL]) -> Bool {
+        !urls.isEmpty && urls.allSatisfy { $0.pathExtension.lowercased() == "pdf" }
     }
 
     private func checkVision() throws(JobError) {

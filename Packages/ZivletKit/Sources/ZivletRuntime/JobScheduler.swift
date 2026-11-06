@@ -26,13 +26,19 @@ public actor JobScheduler {
             freeSpace: freeSpace, clock: clock)
     }
 
-    /// `batch` may be chosen by the caller, so it can prepare for the batch's events before submitting.
+    /// `batch` may be chosen by the caller, so it can prepare for the batch's events before submitting. `secrets` holds
+    /// the jobs' passwords (plan 20f E3): each job gets its own for its whole life and they are wiped when it ends.
     @discardableResult
-    public func submit(_ requests: [JobRequest], as batch: BatchID = BatchID()) -> BatchID {
+    public func submit(_ requests: [JobRequest], as batch: BatchID = BatchID(), secrets: BatchSecrets? = nil)
+        -> BatchID
+    {
         continuation.yield(.submitted(batch, requests))
         remaining[batch] = Set(requests.map(\.id))
-        if requests.isEmpty { finishIfDone(batch) }
-        for request in requests { start(request, in: batch) }
+        if requests.isEmpty {
+            secrets?.releaseAll()
+            finishIfDone(batch)
+        }
+        for request in requests { start(request, in: batch, secrets: secrets) }
         return batch
     }
 
@@ -78,17 +84,18 @@ public actor JobScheduler {
 
     static let shutdownPoll = Duration.milliseconds(10)
 
-    private func start(_ request: JobRequest, in batch: BatchID) {
+    private func start(_ request: JobRequest, in batch: BatchID, secrets: BatchSecrets?) {
         let job = request.id
         batchOf[job] = batch
         record(.queued, job: job, batch: batch)
         let pipeline = JobPipeline(
-            services: services, request: request,
+            services: services, request: request, secrets: secrets?.secrets(for: job),
             report: { state in await self.record(state, job: job, batch: batch) },
             beginPublishing: { await self.beginPublishing(job: job, batch: batch) },
             noted: { notes in await self.note(notes, job: job, batch: batch) })
         tasks[job] = Task {
             let final = await pipeline.run()
+            secrets?.release(job)
             self.complete(job, batch: batch, final: final)
         }
     }

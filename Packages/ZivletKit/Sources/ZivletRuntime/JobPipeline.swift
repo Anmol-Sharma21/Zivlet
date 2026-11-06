@@ -32,6 +32,8 @@ struct JobPipeline: Sendable {
 
     let services: JobServices
     let request: JobRequest
+    /// The job's passwords (plan 20f E3), lent to each step; the batch wipes them when the job ends.
+    let secrets: JobSecrets?
     let report: @Sendable (JobState) async -> Void
     /// Moves the job to `.publishing` unless it was cancelled first; false means "do not publish".
     let beginPublishing: @Sendable () async -> Bool
@@ -115,7 +117,7 @@ struct JobPipeline: Sendable {
         -> PublishedOutput
     {
         let plan = try await services.gates.preparation.withPermit { () async throws(JobError) in
-            try await engine.prepare(request, workspace: workspace)
+            try await engine.prepare(request, workspace: workspace, secrets: secrets)
         }
         let planned = admissionNotes + plan.notes
         if !planned.isEmpty { await noted(planned) }
@@ -130,7 +132,7 @@ struct JobPipeline: Sendable {
         }
         await report(.verifying)
         try await JobSignposts.interval("verify") { () async throws(JobError) in
-            try await engine.verify(output, plan: plan)
+            try await engine.verify(output, plan: plan, secrets: secrets)
         }
         guard await beginPublishing() else { throw .cancelled }
         return try JobSignposts.interval("publish") { () throws(JobError) in
@@ -152,7 +154,7 @@ struct JobPipeline: Sendable {
         let context = ExecutionContext(progress: sink, spawned: spawnRecorder(record), outputByteLimit: limit)
         let result: Result<StagedOutput, JobError>
         do {
-            result = .success(try await engine.execute(plan, context: context))
+            result = .success(try await engine.execute(plan, context: context, secrets: secrets))
         } catch {
             result = .failure(error)
         }

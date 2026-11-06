@@ -92,4 +92,36 @@ public protocol Engine: Sendable {
 
     /// Re-opens the staged file and checks it against the plan (03a §4.3 "Verify").
     func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError)
+
+    /// The same steps with the job's passwords (plan 20f E3): a protect job's engine reads them; every other engine
+    /// takes the defaults below, which ignore them (no other job has any).
+    func prepare(_ request: JobRequest, workspace: JobWorkspace, secrets: JobSecrets?) async throws(JobError)
+        -> ExecutionPlan
+    func execute(_ plan: ExecutionPlan, context: ExecutionContext, secrets: JobSecrets?) async throws(JobError)
+        -> StagedOutput
+    func verify(_ output: StagedOutput, plan: ExecutionPlan, secrets: JobSecrets?) async throws(JobError)
+}
+
+extension Engine {
+    public func prepare(_ request: JobRequest, workspace: JobWorkspace, secrets: JobSecrets?) async throws(JobError)
+        -> ExecutionPlan
+    {
+        try await prepare(request, workspace: workspace)
+    }
+
+    public func execute(_ plan: ExecutionPlan, context: ExecutionContext, secrets: JobSecrets?) async throws(JobError)
+        -> StagedOutput
+    {
+        try await execute(plan, context: context)
+    }
+
+    public func verify(_ output: StagedOutput, plan: ExecutionPlan, secrets: JobSecrets?) async throws(JobError) {
+        try await verify(output, plan: plan)
+    }
+}
+
+extension ConversionPair {
+    /// The engine key of LOCK · UNLOCK's jobs: a PDF in, a PDF out (plan 20f E2). It is not a conversion, so the
+    /// conversion catalog does not list it; the worker reports it among the PDF engine's routes.
+    public static let protectPDF = ConversionPair(source: .pdf, target: .pdf)
 }

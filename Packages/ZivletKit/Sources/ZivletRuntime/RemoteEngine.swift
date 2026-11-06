@@ -23,14 +23,31 @@ public struct RemoteEngine: Engine {
     public func availability(of pair: ConversionPair) async -> RouteAvailability { capability.availability(of: pair) }
 
     public func prepare(_ request: JobRequest, workspace: JobWorkspace) async throws(JobError) -> ExecutionPlan {
-        try await connection.prepare(request, workspace: workspace)
+        try await prepare(request, workspace: workspace, secrets: nil)
     }
 
     public func execute(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
-        try await connection.execute(plan, job: JobID(), context: context)
+        try await execute(plan, context: context, secrets: nil)
     }
 
     public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
-        try await connection.verify(output, plan: plan)
+        try await verify(output, plan: plan, secrets: nil)
+    }
+
+    /// The job's passwords go with each of its own requests, and with nothing else (plan 20f E3).
+    public func prepare(_ request: JobRequest, workspace: JobWorkspace, secrets: JobSecrets?) async throws(JobError)
+        -> ExecutionPlan
+    {
+        try await connection.prepare(request, workspace: workspace, secrets: secrets)
+    }
+
+    public func execute(_ plan: ExecutionPlan, context: ExecutionContext, secrets: JobSecrets?) async throws(JobError)
+        -> StagedOutput
+    {
+        try await connection.execute(plan, job: JobID(), context: context, secrets: secrets)
+    }
+
+    public func verify(_ output: StagedOutput, plan: ExecutionPlan, secrets: JobSecrets?) async throws(JobError) {
+        try await connection.verify(output, plan: plan, secrets: secrets)
     }
 }

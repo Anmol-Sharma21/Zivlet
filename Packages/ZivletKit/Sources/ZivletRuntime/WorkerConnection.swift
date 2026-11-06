@@ -49,38 +49,54 @@ public final class WorkerConnection: Sendable {
         return capabilities
     }
 
-    public func prepare(_ request: JobRequest, workspace: JobWorkspace) async throws(JobError) -> ExecutionPlan {
-        guard case .planned(let plan) = try await cancellable(.prepare(request, workspace), job: request.id) else {
+    /// `secrets` are the job's own (plan 20f E3): their wire form is made here, right before the one request that
+    /// carries them, and is not kept.
+    public func prepare(_ request: JobRequest, workspace: JobWorkspace, secrets: JobSecrets? = nil)
+        async throws(JobError) -> ExecutionPlan
+    {
+        let message = WorkerRequest.prepare(request, workspace, secrets: WireSecrets(secrets))
+        guard case .planned(let plan) = try await cancellable(message, job: request.id) else {
             throw Self.unexpected("prepare")
         }
         return plan
     }
 
-    public func execute(_ plan: ExecutionPlan, job: JobID, context: ExecutionContext) async throws(JobError)
-        -> StagedOutput
+    public func execute(_ plan: ExecutionPlan, job: JobID, context: ExecutionContext, secrets: JobSecrets? = nil)
+        async throws(JobError) -> StagedOutput
     {
         state.withLock { $0.routes[job] = context }
         defer { _ = state.withLock { $0.routes.removeValue(forKey: job) } }
-        let request = WorkerRequest.execute(job, plan, outputByteLimit: context.outputByteLimit)
+        let request = WorkerRequest.execute(
+            job, plan, outputByteLimit: context.outputByteLimit, secrets: WireSecrets(secrets))
         guard case .staged(let output) = try await cancellable(request, job: job) else {
             throw Self.unexpected("execute")
         }
         return output
     }
 
-    public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
-        guard case .verified = try await send(.verify(output, plan)) else { throw Self.unexpected("verify") }
+    public func verify(_ output: StagedOutput, plan: ExecutionPlan, secrets: JobSecrets? = nil) async throws(JobError) {
+        guard case .verified = try await send(.verify(output, plan, secrets: WireSecrets(secrets))) else {
+            throw Self.unexpected("verify")
+        }
+    }
+
+    /// Pre-flight of dropped PDFs in the worker, with no password (plan 20f E9).
+    public func inspectPDFs(_ files: [URL]) async throws(JobError) -> [PDFInspection] {
+        guard case .inspected(let answers) = try await send(.inspectPDFs(files)), answers.count == files.count else {
+            throw Self.unexpected("inspectPDFs")
+        }
+        return answers
     }
 
     /// A Copy Text job (P2-104). Transport failures throw (`.workerCrashed` among them, for the caller's retry);
     /// the worker's own outcome is the result. Progress arrives unthrottled and in order, best-effort.
-    public func recognizeText(_ job: TextJob, progress: @escaping @Sendable (Double) -> Void) async throws(JobError)
-        -> Result<RecognizedText, TextError>
-    {
+    public func recognizeText(
+        _ job: TextJob, secrets: JobSecrets? = nil, progress: @escaping @Sendable (Double) -> Void
+    ) async throws(JobError) -> Result<RecognizedText, TextError> {
         let sink = ProgressSink(interval: .zero) { progress($0.fraction ?? 0) }
         state.withLock { $0.routes[job.id] = ExecutionContext(progress: sink) }
         defer { _ = state.withLock { $0.routes.removeValue(forKey: job.id) } }
-        switch try await cancellable(.recognizeText(job), job: job.id) {
+        switch try await cancellable(.recognizeText(job, secrets: WireSecrets(secrets)), job: job.id) {
         case .text(let text): return .success(text)
         case .textFailed(let error): return .failure(error)
         default: throw Self.unexpected("recognizeText")
@@ -88,13 +104,13 @@ public final class WorkerConnection: Sendable {
     }
 
     /// Read QR's job; its progress is the share of files done.
-    public func readCodes(_ job: CodeJob, progress: @escaping @Sendable (Double) -> Void) async throws(JobError)
-        -> Result<[FileCodes], CodeError>
-    {
+    public func readCodes(
+        _ job: CodeJob, secrets: JobSecrets? = nil, progress: @escaping @Sendable (Double) -> Void
+    ) async throws(JobError) -> Result<[FileCodes], CodeError> {
         let sink = ProgressSink(interval: .zero) { progress($0.fraction ?? 0) }
         state.withLock { $0.routes[job.id] = ExecutionContext(progress: sink) }
         defer { _ = state.withLock { $0.routes.removeValue(forKey: job.id) } }
-        switch try await cancellable(.readCodes(job), job: job.id) {
+        switch try await cancellable(.readCodes(job, secrets: WireSecrets(secrets)), job: job.id) {
         case .codes(let files): return .success(files)
         case .codesFailed(let error): return .failure(error)
         default: throw Self.unexpected("readCodes")

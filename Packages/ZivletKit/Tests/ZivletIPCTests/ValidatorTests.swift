@@ -210,7 +210,7 @@ struct ValidatorTests {
 
     @Test func aWorkspaceForAnotherJobIsRefused() throws {
         let rig = try ValidatorRig()
-        guard case .prepare(let request, let workspace) = try rig.prepare() else { return }
+        guard case .prepare(let request, let workspace, _) = try rig.prepare() else { return }
         let other = WorkerRequest.prepare(request, JobWorkspace(job: JobID(), stagedFile: workspace.stagedFile))
         guard case .internalInvariant = rig.refusal(other) else {
             Issue.record("a workspace of another job passed")

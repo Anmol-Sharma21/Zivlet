@@ -9,25 +9,47 @@ import ZivletEngineKit
 public enum WorkerRequest: Codable, Sendable, Equatable {
     case ping
     case capabilities
-    case prepare(JobRequest, JobWorkspace)
-    case execute(JobID, ExecutionPlan, outputByteLimit: Int64?)
-    case verify(StagedOutput, ExecutionPlan)
+    /// A protect job's steps carry its passwords (plan 20f E3); every other job's carry none.
+    case prepare(JobRequest, JobWorkspace, secrets: WireSecrets? = nil)
+    case execute(JobID, ExecutionPlan, outputByteLimit: Int64?, secrets: WireSecrets? = nil)
+    case verify(StagedOutput, ExecutionPlan, secrets: WireSecrets? = nil)
     case cancel(JobID)
     /// Copy Text (P2-104): every Vision call runs here, never in the app (D-M6-8).
-    case recognizeText(TextJob)
+    /// `secrets` opens a locked PDF among the inputs (plan 20f E10).
+    case recognizeText(TextJob, secrets: WireSecrets? = nil)
     /// The languages this Mac's Vision reads (OWN-OCR-1).
     case textCapabilities
     /// The one-time warm-up in the production configuration (D-M6-16), under its own job id so a cancel or the end
     /// of the session stops it.
     case warmUpText(JobID, [LanguageTag])
     /// Read QR (P2-51): barcode detection runs here too, never in the app.
-    case readCodes(CodeJob)
+    case readCodes(CodeJob, secrets: WireSecrets? = nil)
+    /// Pre-flight of dropped PDFs, without a password: LOCK · UNLOCK picks its mode from the answer (plan 20f E9).
+    case inspectPDFs([URL])
     #if DEBUG
         /// The smoke run's real crash (D-M6-18): the worker SIGKILLs itself, so no crash report is written.
         case selfKillForTesting(afterMilliseconds: Int)
         /// The smoke run's short idle exit; launchd starts the worker, so no launch argument can reach it.
         case setIdleForTesting(seconds: Int)
     #endif
+}
+
+extension WorkerRequest {
+    /// The passwords this request carries, if any.
+    public var secrets: WireSecrets? {
+        switch self {
+        case .prepare(_, _, let secrets), .execute(_, _, _, let secrets), .verify(_, _, let secrets),
+            .recognizeText(_, let secrets), .readCodes(_, let secrets):
+            secrets
+        default: nil
+        }
+    }
+}
+
+/// One dropped PDF's pre-flight, or why it could not be read.
+public enum PDFInspection: Codable, Sendable, Equatable {
+    case read(PDFPreflight)
+    case refused(JobError)
 }
 
 /// The worker's answer to one request.
@@ -46,6 +68,8 @@ public enum WorkerReply: Codable, Sendable, Equatable {
     /// Each file's codes, or why it was not read.
     case codes([FileCodes])
     case codesFailed(CodeError)
+    /// One answer per inspected file, in the order asked.
+    case inspected([PDFInspection])
 }
 
 /// What the worker reports while a step runs.

@@ -6,8 +6,9 @@ import ZivletCore
 public enum WorkerProtocol {
     /// 2: the text requests and replies of Copy Text (plan 18d D8). 3: the text warm-up as a tracked job. 4: Read
     /// QR's request and replies (plan 20b A8). 5: a plan's qpdf stage (plan 20d C5). 6: the PDF refusals among a job's
-    /// input errors (plan 20e D2).
-    public static let version = 6
+    /// input errors (plan 20e D2). 7: a job's passwords on its own requests, the protect job and PDF inspection
+    /// (plan 20f E2, E3).
+    public static let version = 7
 }
 
 public enum WorkerProtocolError: Error, Equatable, Sendable {

@@ -190,15 +190,31 @@ public struct WorkerRoutedEngine: Engine {
     }
 
     public func prepare(_ request: JobRequest, workspace: JobWorkspace) async throws(JobError) -> ExecutionPlan {
-        try await chosen().prepare(request, workspace: workspace)
+        try await prepare(request, workspace: workspace, secrets: nil)
     }
 
     public func execute(_ plan: ExecutionPlan, context: ExecutionContext) async throws(JobError) -> StagedOutput {
-        try await chosen().execute(plan, context: context)
+        try await execute(plan, context: context, secrets: nil)
     }
 
     public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
-        try await chosen().verify(output, plan: plan)
+        try await verify(output, plan: plan, secrets: nil)
+    }
+
+    public func prepare(_ request: JobRequest, workspace: JobWorkspace, secrets: JobSecrets?) async throws(JobError)
+        -> ExecutionPlan
+    {
+        try await chosen().prepare(request, workspace: workspace, secrets: secrets)
+    }
+
+    public func execute(_ plan: ExecutionPlan, context: ExecutionContext, secrets: JobSecrets?) async throws(JobError)
+        -> StagedOutput
+    {
+        try await chosen().execute(plan, context: context, secrets: secrets)
+    }
+
+    public func verify(_ output: StagedOutput, plan: ExecutionPlan, secrets: JobSecrets?) async throws(JobError) {
+        try await chosen().verify(output, plan: plan, secrets: secrets)
     }
 
     private func chosen() async -> any Engine {

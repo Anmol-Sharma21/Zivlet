@@ -19,7 +19,8 @@ struct ProtectJobTests {
     static func request(_ format: FormatID = .pdf, _ spec: ProtectSpec = ProtectSpec(mode: .lock(nil))) throws
         -> JobRequest
     {
-        let input = try InputItem(url: report.deletingPathExtension().appendingPathExtension("\(format)"), format: format, byteCount: 900)
+        let url = report.deletingPathExtension().appendingPathExtension("\(format)")
+        let input = try InputItem(url: url, format: format, byteCount: 900)
         return try JobRequest(input: input, operation: .protect(spec), destination: folder)
     }
 
@@ -73,7 +74,8 @@ struct ProtectJobTests {
 
     @Test func theRequestNamesItsOwnOutput() throws {
         let namer = OutputNamer()
-        #expect(namer.output(for: try Self.request(.pdf, ProtectSpec(mode: .unlock))).rendered() == "Report Unlocked.pdf")
+        let unlock = try Self.request(.pdf, ProtectSpec(mode: .unlock))
+        #expect(namer.output(for: unlock).rendered() == "Report Unlocked.pdf")
         let convert = try JobRequest(
             input: try InputItem(url: URL(fileURLWithPath: "/a/photo.heic"), format: .heic, byteCount: 3),
             operation: .convert(.jpg), destination: URL(fileURLWithPath: "/a"))

@@ -22,6 +22,7 @@ public actor WorkerService {
     private let engines: [any Engine]
     private let text: TextReader?
     private let codes: CodeReading?
+    private let pdf: (any PDFInspecting)?
     private let validator: WorkerRequestValidator
     private let idle: IdleTimer
     private let onSelfKill: @Sendable (Int) -> Void
@@ -36,17 +37,21 @@ public actor WorkerService {
     static let rememberedCancels = 64
     private var handling = 0
 
-    /// `text` hosts Copy Text and `codes` Read QR (nil: their requests are refused as `.engineMissing(.vision)`).
-    /// `onSelfKill` serves the DEBUG smoke request only; the worker's main passes a SIGKILL of its own process.
+    /// `text` hosts Copy Text and `codes` Read QR (nil: their requests are refused as `.engineMissing(.vision)`);
+    /// `pdf` answers PDF inspections. `onSelfKill` serves the DEBUG smoke request only; the worker's main passes a
+    /// SIGKILL of its own process.
     public init(
-        engines: [any Engine], text: TextReader? = nil, codes: CodeReading? = nil, idleAfter: Duration = .seconds(60),
+        engines: [any Engine], text: TextReader? = nil, codes: CodeReading? = nil, pdf: (any PDFInspecting)? = nil,
+        idleAfter: Duration = .seconds(60),
         sleep: @escaping IdleTimer.Sleeper = IdleTimer.realSleep,
         onIdle: @escaping @Sendable () -> Void, onSelfKill: @escaping @Sendable (Int) -> Void = { _ in }
     ) {
         self.engines = engines
         self.text = text
         self.codes = codes
+        self.pdf = pdf
         let hosted = Set(engines.map(\.id)).union(text == nil && codes == nil ? [] : [.vision])
+            .union(pdf == nil ? [] : [.pdf])
         validator = WorkerRequestValidator(hostedEngines: hosted)
         idle = IdleTimer(after: idleAfter, sleep: sleep, onIdle: onIdle)
         self.onSelfKill = onSelfKill
@@ -82,28 +87,33 @@ public actor WorkerService {
         switch request {
         case .ping: return .pong(pid: getpid(), osBuild: Self.osBuild)
         case .capabilities: return .capabilities(await capabilities())
-        case .prepare(let job, let workspace):
+        case .prepare(let job, let workspace, let wire):
             guard let engine = engines.first(where: { $0.handles(job.pair) }) else {
                 return .failed(.pairNotSupported(job.input.format, job.target))
             }
             return await track(Step(session: session, job: job.id), cancelled: .failed(.cancelled)) {
-                await Self.prepare(engine, job, workspace)
+                await Self.withSecrets(wire) { secrets in await Self.prepare(engine, job, workspace, secrets) }
             }
-        case .execute(let job, let plan, let limit):
+        case .execute(let job, let plan, let limit, let wire):
             guard let engine = engine(plan.engine) else { return .failed(.engineMissing(plan.engine)) }
             return await track(Step(session: session, job: job), cancelled: .failed(.cancelled)) {
-                await Self.execute(engine, plan, job: job, limit: limit, events: events)
+                await Self.withSecrets(wire) { secrets in
+                    await Self.execute(engine, plan, job: job, limit: limit, secrets: secrets, events: events)
+                }
             }
-        case .verify(let output, let plan):
+        case .verify(let output, let plan, let wire):
             guard let engine = engine(plan.engine) else { return .failed(.engineMissing(plan.engine)) }
-            return await Self.verify(engine, output, plan)
+            return await Self.withSecrets(wire) { secrets in await Self.verify(engine, output, plan, secrets) }
+        case .inspectPDFs(let files):
+            guard let pdf else { return .failed(.engineMissing(.pdf)) }
+            return await Self.inspect(files, with: pdf)
         case .cancel(let job):
             cancel(Step(session: session, job: job))
             return .accepted
         case .recognizeText, .textCapabilities, .warmUpText:
             guard let text else { return .failed(.engineMissing(.vision)) }
             return await answerText(request, session: session, reader: text, events: events)
-        case .readCodes(let job):
+        case .readCodes(let job, _):
             guard let codes else { return .failed(.engineMissing(.vision)) }
             return await track(Step(session: session, job: job.id), cancelled: .codesFailed(.cancelled)) {
                 await Self.readCodes(job, reading: codes, events: events)
@@ -127,7 +137,7 @@ public actor WorkerService {
         _ request: WorkerRequest, session: WorkerSessionID, reader: TextReader, events: @escaping EventSink
     ) async -> WorkerReply {
         switch request {
-        case .recognizeText(let job):
+        case .recognizeText(let job, _):
             return await track(Step(session: session, job: job.id), cancelled: .textFailed(.cancelled)) {
                 await Self.recognize(job, reader: reader, events: events)
             }
@@ -214,12 +224,12 @@ public actor WorkerService {
         if handling == 0 { idle.arm() }
     }
 
-    /// Every catalog route each engine handles, with its availability on this Mac.
+    /// Every catalog route (and the protect job's `pdf → pdf`) each engine handles, with its availability on this Mac.
     private func capabilities() async -> WorkerCapabilities {
         var entries: [EngineCapability] = []
         for engine in engines {
             var routes: [RouteCapability] = []
-            for pair in ConversionCatalog.standard.pairs where engine.handles(pair) {
+            for pair in ConversionCatalog.standard.pairs + [.protectPDF] where engine.handles(pair) {
                 routes.append(RouteCapability(pair: pair, availability: await engine.availability(of: pair)))
             }
             entries.append(EngineCapability(id: engine.id, routes: routes))
@@ -227,36 +237,59 @@ public actor WorkerService {
         return WorkerCapabilities(engines: entries)
     }
 
-    @concurrent private static func prepare(_ engine: any Engine, _ job: JobRequest, _ workspace: JobWorkspace) async
-        -> WorkerReply
-    {
+    /// A step's passwords exist in the worker only while that step runs (D-M7-14): rebuilt from the request, lent to
+    /// the step, wiped when it ends however it ends.
+    private static func withSecrets(
+        _ wire: WireSecrets?, _ step: (JobSecrets?) async -> WorkerReply
+    ) async -> WorkerReply {
+        let secrets = wire?.secrets()
+        defer { secrets?.wipeAll() }
+        return await step(secrets)
+    }
+
+    @concurrent private static func prepare(
+        _ engine: any Engine, _ job: JobRequest, _ workspace: JobWorkspace, _ secrets: JobSecrets?
+    ) async -> WorkerReply {
         do {
-            return .planned(try await engine.prepare(job, workspace: workspace))
+            return .planned(try await engine.prepare(job, workspace: workspace, secrets: secrets))
         } catch {
             return .failed(error)
         }
     }
 
     @concurrent private static func execute(
-        _ engine: any Engine, _ plan: ExecutionPlan, job: JobID, limit: Int64?, events: @escaping EventSink
+        _ engine: any Engine, _ plan: ExecutionPlan, job: JobID, limit: Int64?, secrets: JobSecrets?,
+        events: @escaping EventSink
     ) async -> WorkerReply {
         let sink = ProgressSink { events(.progress(job, $0)) }
         let context = ExecutionContext(progress: sink, spawned: { events(.spawned(job, $0)) }, outputByteLimit: limit)
         do {
-            return .staged(try await engine.execute(plan, context: context))
+            return .staged(try await engine.execute(plan, context: context, secrets: secrets))
         } catch {
             return .failed(error)
         }
     }
 
-    @concurrent private static func verify(_ engine: any Engine, _ output: StagedOutput, _ plan: ExecutionPlan) async
-        -> WorkerReply
-    {
+    @concurrent private static func verify(
+        _ engine: any Engine, _ output: StagedOutput, _ plan: ExecutionPlan, _ secrets: JobSecrets?
+    ) async -> WorkerReply {
         do {
-            try await engine.verify(output, plan: plan)
+            try await engine.verify(output, plan: plan, secrets: secrets)
             return .verified
         } catch {
             return .failed(error)
         }
+    }
+
+    /// One answer per file, in order; a file that cannot be read is refused alone.
+    @concurrent private static func inspect(_ files: [URL], with reader: any PDFInspecting) async -> WorkerReply {
+        var answers: [PDFInspection] = []
+        for file in files {
+            switch await reader.preflight(file) {
+            case .success(let preflight): answers.append(.read(preflight))
+            case .failure(let error): answers.append(.refused(error))
+            }
+        }
+        return .inspected(answers)
     }
 }

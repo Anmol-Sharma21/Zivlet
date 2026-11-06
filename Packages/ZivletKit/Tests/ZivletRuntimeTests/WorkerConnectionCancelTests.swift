@@ -166,7 +166,7 @@ struct ProbeChannel: WorkerChannel {
         case .ping:
             if transport.crashOnPing { throw .workerCrashed }
             return .pong(pid: 1, osBuild: "26A1")
-        case .execute(let job, _, _): return await transport.wait(job)
+        case .execute(let job, _, _, _): return await transport.wait(job)
         case .cancel(let job):
             transport.cancel(job, on: session)
             return .accepted

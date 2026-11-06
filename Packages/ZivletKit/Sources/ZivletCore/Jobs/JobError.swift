@@ -18,6 +18,8 @@ public enum InputRejection: String, Sendable, Codable, Equatable {
     case pdfTooComplex
     /// A PDF qpdf cannot read, or one with too many warnings to write from (D-M7-18).
     case pdfDamaged
+    /// A password outside 1…127 UTF-8 bytes, or more passwords than a job takes (plan 20f E3).
+    case badPassword
 }
 
 /// The one error taxonomy (02 §9, 10 §8.4). Carries no user copy; `JobErrorCopy` maps cases to sentences.

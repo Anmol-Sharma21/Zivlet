@@ -46,6 +46,7 @@ public enum JobErrorCopy {
         case .pdfTooLarge: "This PDF is larger than 512 MB."
         case .pdfTooComplex: "This PDF is too complex to open safely."
         case .pdfDamaged: "This PDF is damaged."
+        case .badPassword: "Use a password of 127 bytes or fewer."
         }
     }
 

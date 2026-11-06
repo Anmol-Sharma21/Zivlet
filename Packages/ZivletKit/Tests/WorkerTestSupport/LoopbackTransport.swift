@@ -81,7 +81,7 @@ public final class LoopbackTransport: WorkerTransport {
     /// Counts prepares per input name and follows second attempts until their verify; returns the prepared name.
     private static func track(_ request: WorkerRequest, in state: inout State) -> String? {
         switch request {
-        case .prepare(let job, _):
+        case .prepare(let job, _, _):
             let name = job.input.fileName
             state.attempts[name, default: 0] += 1
             if state.attempts[name] == 2 {
@@ -89,11 +89,11 @@ public final class LoopbackTransport: WorkerTransport {
                 state.maxRetrying = max(state.maxRetrying, state.retrying.count)
             }
             return name
-        case .recognizeText(let job):
+        case .recognizeText(let job, _):
             let name = job.inputs.first?.lastPathComponent ?? ""
             state.attempts[name, default: 0] += 1
             return name
-        case .verify(let output, _):
+        case .verify(let output, _, _):
             let folder = output.url.deletingLastPathComponent().lastPathComponent
             state.retrying = state.retrying.filter { !folder.hasSuffix($0) }
             return nil

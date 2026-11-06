@@ -30,12 +30,11 @@ extension OutputNamer {
     /// LOCK · UNLOCK (D-PDF-6): `<base> Locked.pdf` for Lock and Change, `<base> Unlocked.pdf` for Unlock. A name that
     /// already ends in the other word has it replaced, not appended (`Report Locked.pdf` → `Report Unlocked.pdf`).
     public func protect(source fileName: String, mode: ProtectSpec.Mode) -> OutputName {
-        let words = [Self.lockedSuffix, Self.unlockedSuffix]
         let base = baseName(of: fileName)
-        let stem = words.lazy.compactMap { word -> String? in
-            let ending = " " + word
-            return base.count > ending.count && base.hasSuffix(ending) ? String(base.dropLast(ending.count)) : nil
-        }.first ?? base
+        let ending = [Self.lockedSuffix, Self.unlockedSuffix].map { " " + $0 }.first { ending in
+            base.count > ending.count && base.hasSuffix(ending)
+        }
+        let stem = ending.map { String(base.dropLast($0.count)) } ?? base
         let suffix = mode == .unlock ? Self.unlockedSuffix : tools.spec(.protect).outputSuffix ?? Self.lockedSuffix
         return OutputName(stem: "\(stem) \(suffix)", validExtension: registry.format(.pdf).canonicalExtension)
     }

@@ -1,3 +1,6 @@
+import Foundation
+import ZivletCore
+
 /// How a part of a PDF is encrypted.
 public enum PDFCipher: String, Sendable, Codable, Equatable {
     case rc4, aes128, aes256, identity, unknown
@@ -89,4 +92,10 @@ public struct PDFPreflight: Sendable, Codable, Equatable {
 
     /// Locked and not opened: what is behind the password is unknown.
     public var isShut: Bool { !opensWithoutPassword && matched == .none }
+}
+
+/// Reads a dropped PDF's pre-flight without a password (plan 20f E9). The worker hosts the qpdf-backed reader
+/// (`EnginePDF`); the worker's service sees only this protocol, so it never links qpdf itself.
+public protocol PDFInspecting: Sendable {
+    func preflight(_ file: URL) async -> Result<PDFPreflight, JobError>
 }
