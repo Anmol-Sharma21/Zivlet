@@ -37,7 +37,7 @@ public struct Publisher: Sendable {
 
     /// The staged path is checked first (`StagedFile`), and the quarantine is set without following a symlink.
     public func publish(_ output: StagedOutput, for request: JobRequest) throws(JobError) -> PublishedOutput {
-        let name = namer.conversion(source: request.input.fileName, target: request.target)
+        let name = namer.output(for: request)
         return try publish(output, as: name, in: request.destination, quarantine: request.input.quarantine)
     }
 

@@ -27,6 +27,30 @@ extension OutputNamer {
         return OutputName(stem: "\(baseName(of: fileName)) \(suffix)", validExtension: ext)
     }
 
+    /// LOCK · UNLOCK (D-PDF-6): `<base> Locked.pdf` for Lock and Change, `<base> Unlocked.pdf` for Unlock. A name that
+    /// already ends in the other word has it replaced, not appended (`Report Locked.pdf` → `Report Unlocked.pdf`).
+    public func protect(source fileName: String, mode: ProtectSpec.Mode) -> OutputName {
+        let words = [Self.lockedSuffix, Self.unlockedSuffix]
+        let base = baseName(of: fileName)
+        let stem = words.lazy.compactMap { word -> String? in
+            let ending = " " + word
+            return base.count > ending.count && base.hasSuffix(ending) ? String(base.dropLast(ending.count)) : nil
+        }.first ?? base
+        let suffix = mode == .unlock ? Self.unlockedSuffix : tools.spec(.protect).outputSuffix ?? Self.lockedSuffix
+        return OutputName(stem: "\(stem) \(suffix)", validExtension: registry.format(.pdf).canonicalExtension)
+    }
+
+    /// The name a job's output is published under: a conversion's, or its tool's.
+    public func output(for request: JobRequest) -> OutputName {
+        switch request.operation {
+        case .convert(let target): conversion(source: request.input.fileName, target: target)
+        case .protect(let spec): protect(source: request.input.fileName, mode: spec.mode)
+        }
+    }
+
+    static let lockedSuffix = "Locked"
+    static let unlockedSuffix = "Unlocked"
+
     func suffix(_ tool: ToolID, format: FormatID, naming: ToolNaming) -> String? {
         switch tool {
         case .stripMetadata where registry.format(format).family == .image:

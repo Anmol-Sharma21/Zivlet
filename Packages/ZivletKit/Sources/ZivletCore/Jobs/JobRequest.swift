@@ -27,13 +27,15 @@ public struct InputItem: Sendable, Hashable, Codable {
     public var fileName: String { url.lastPathComponent }
 }
 
-/// What a job does. M3 has conversions only; tools add cases later.
+/// What a job does: a conversion, or a tool that writes one output per input (LOCK · UNLOCK, plan 20f E2).
 public enum JobOperation: Sendable, Hashable, Codable {
     case convert(FormatID)
+    case protect(ProtectSpec)
 }
 
-/// An immutable conversion request (02 §7.2, adapted for M3: one input per job, a resolved destination folder).
-/// Invariant: the pair is in the catalog and the destination is a safe absolute folder path.
+/// An immutable job request (02 §7.2, adapted for M3: one input per job, a resolved destination folder).
+/// Invariant: a conversion's pair is in the conversion catalog, a tool's input is a format the tool accepts, and the
+/// destination is a safe absolute folder path.
 public struct JobRequest: Sendable, Hashable, Codable {
     public let id: JobID
     public let input: InputItem
@@ -42,14 +44,22 @@ public struct JobRequest: Sendable, Hashable, Codable {
 
     public init(
         id: JobID = JobID(), input: InputItem, operation: JobOperation, destination: URL,
-        catalog: ConversionCatalog = .standard
+        catalog: ConversionCatalog = .standard, tools: ToolCatalog = .standard
     ) throws(JobError) {
         guard destination.isFileURL, PathRules.isSafeAbsolute(destination.path) else { throw .invalidDestination }
         let request = Self(unchecked: id, input, operation, destination)
-        guard catalog.canConvert(input.format, to: request.target) else {
+        guard request.isAllowed(catalog: catalog, tools: tools) else {
             throw .pairNotSupported(input.format, request.target)
         }
         self = request
+    }
+
+    /// A conversion by the conversion catalog; a tool by the formats its spec accepts.
+    private func isAllowed(catalog: ConversionCatalog, tools: ToolCatalog) -> Bool {
+        switch operation {
+        case .convert(let format): catalog.canConvert(input.format, to: format)
+        case .protect: tools.spec(.protect).accepts?.contains(input.format) == true
+        }
     }
 
     private init(unchecked id: JobID, _ input: InputItem, _ operation: JobOperation, _ destination: URL) {
@@ -62,9 +72,11 @@ public struct JobRequest: Sendable, Hashable, Codable {
     public var target: FormatID {
         switch operation {
         case .convert(let format): format
+        case .protect: .pdf
         }
     }
 
+    /// The engine key: a conversion's pair, and `pdf → pdf` for a protect job.
     public var pair: ConversionPair { ConversionPair(source: input.format, target: target) }
 }
 
