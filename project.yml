@@ -61,6 +61,10 @@ targets:
       - name: Embed media helpers
         script: '"$SRCROOT/Scripts/embed-helpers.sh"'
         basedOnDependencyAnalysis: false
+        # It trims and signs the embedded Sparkle, so it must run after Xcode copies it (G-M7-11): naming the copy as
+        # an input orders the two.
+        inputFiles:
+          - $(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/Sparkle.framework
   # P2-01 (plan 18c C9): the out-of-process engine worker. Hardened runtime from Base.xcconfig, no entitlements: the
   # library-validation exception the app needs for Sparkle is turned off here (the worker loads only system libraries).
   ZivletWorker:
