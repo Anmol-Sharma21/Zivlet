@@ -13,10 +13,13 @@ extension SliceBuilder {
         return mixedFamilies(formats, families: families, caps)
     }
 
-    /// First format's targets that every other format can also produce, in that order (03a §2.6).
+    /// First format's targets that every other format can also produce, in that order (03a §2.6), and that an engine
+    /// here can make from each of them (plan 20f E11).
     private func sameFamily(_ formats: [FormatID], _ caps: CapabilitySnapshot) -> WheelContent {
         let shared = sharedTargets(formats)
-        let available = shared.filter { !caps.unavailableTargets.contains($0) }
+        let available = shared.filter { target in
+            !caps.unavailableTargets.contains(target) && formats.allSatisfy { caps.allows($0, to: target) }
+        }
         if !available.isEmpty { return .slices(available.prefix(maxSlots).map { slice($0, badge: nil) }) }
         if formats.count == 1, !shared.isEmpty { return .empty(.noInstalledConverter(formats[0])) }
         return .empty(formats.count == 1 ? .unsupportedFile : .noCommonFormat)
@@ -28,12 +31,14 @@ extension SliceBuilder {
         _ caps: CapabilitySnapshot
     ) -> WheelContent {
         let ordered = families.flatMap { family in
-            sharedTargets(formats.uniqued().filter { registry.format($0).family == family })
+            let members = formats.uniqued().filter { registry.format($0).family == family }
+            return sharedTargets(members).filter { target in members.allSatisfy { caps.allows($0, to: target) } }
         }.uniqued().filter { !caps.unavailableTargets.contains($0) }
         guard !ordered.isEmpty, ordered.count <= maxSlots else { return .empty(.noCommonFormat) }
         return .slices(
             ordered.map { target in
-                let able = formats.filter { conversions.canConvert($0, to: target) }.count
+                let able = formats.filter { conversions.canConvert($0, to: target) && caps.allows($0, to: target) }
+                    .count
                 return slice(target, badge: able < formats.count ? "\(able) of \(formats.count)" : nil)
             })
     }

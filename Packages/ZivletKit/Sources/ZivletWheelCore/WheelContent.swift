@@ -72,9 +72,20 @@ public struct CapabilitySnapshot: Sendable, Equatable, Codable {
     public static let full = CapabilitySnapshot(unavailableTargets: [])
     public let unavailableTargets: Set<FormatID>
     public let unavailableActions: Set<ActionID>
+    /// The catalog pairs an engine handles and can run here (plan 20f E11); nil: every catalog pair is assumed.
+    public let availablePairs: Set<ConversionPair>?
 
-    public init(unavailableTargets: Set<FormatID>, unavailableActions: Set<ActionID> = []) {
+    public init(
+        unavailableTargets: Set<FormatID>, unavailableActions: Set<ActionID> = [],
+        availablePairs: Set<ConversionPair>? = nil
+    ) {
         self.unavailableTargets = unavailableTargets
         self.unavailableActions = unavailableActions
+        self.availablePairs = availablePairs
+    }
+
+    /// An engine can convert `source` to `target` here.
+    public func allows(_ source: FormatID, to target: FormatID) -> Bool {
+        availablePairs?.contains(ConversionPair(source: source, target: target)) ?? true
     }
 }

@@ -120,7 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             wheel.capabilities = CapabilitySnapshot(
                 unavailableTargets: await conversions.unavailableTargets(),
-                unavailableActions: ActionWiring.unavailableActions)
+                unavailableActions: ActionWiring.unavailableActions, availablePairs: await conversions.availablePairs())
             await wheel.prewarm()
             launchDemoIfRequested()
             onboarding.showIfNeeded()

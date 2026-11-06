@@ -95,6 +95,17 @@ public actor ConversionService {
         return catalog.distinctTargets.subtracting(available)
     }
 
+    /// The catalog pairs an engine handles and can run here (plan 20f E11, G-M7-2), so the wheel offers a conversion
+    /// only for sources that have one: a PDF shows none until an engine reads PDFs (P2-12).
+    public func availablePairs(catalog: ConversionCatalog = .standard) async -> Set<ConversionPair> {
+        var available: Set<ConversionPair> = []
+        for pair in catalog.pairs {
+            guard let engine = engines.first(where: { $0.handles(pair) }) else { continue }
+            if await engine.availability(of: pair).isAvailable { available.insert(pair) }
+        }
+        return available
+    }
+
     /// Every engine's helper versions, in engine order (Settings › Advanced).
     public func helperVersions() async -> [HelperVersion] {
         var versions: [HelperVersion] = []

@@ -190,3 +190,15 @@ enum RealMedia {
         }
     }
 }
+
+/// The wheel's pairs come from the engines (plan 20f E11, G-M7-2).
+@Suite("Available pairs")
+struct AvailablePairsTests {
+    @Test func noPairFromAPDFIsAvailableAndImagePairsAre() async {
+        let engines: [any Engine] = [ImageEngine()]
+        let service = ConversionService(scheduler: JobScheduler(engines: engines, records: nil), engines: engines)
+        let pairs = await service.availablePairs()
+        #expect(!pairs.contains { $0.source == .pdf })
+        #expect(pairs.contains(ConversionPair(source: .png, target: .jpg)))
+    }
+}
