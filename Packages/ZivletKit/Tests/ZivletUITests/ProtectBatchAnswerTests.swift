@@ -118,6 +118,19 @@ struct ProtectBatchAnswerTests {
         #expect(outcome.succeeded == files && outcome.notOpened.isEmpty)
     }
 
+    /// Change on a restricted file opened by its user password needs the owner password as the current one. It is not
+    /// sent through the owner-needed sheet, whose job is Unlock: that would write the file decrypted.
+    @Test func aChangeThatNeedsTheOwnerPasswordIsNeverUnlocked() async {
+        let owner = PasswordAnswer.secrets(JobSecrets(owner: JobSecret(utf8: "owner")), sameForAll: true)
+        let prompter = FakePrompter([change("user", to: "new"), owner])
+        let submitter = FakeSubmitter(opensWith: ["a.pdf": "user"], restricted: ["a.pdf"], owners: ["a.pdf": "owner"])
+        let outcome = await ProtectBatch(prompter: prompter, submitter: submitter)
+            .run([files[0]], mode: .unlock, spec: ProtectSpec(mode: .unlock), near: nil)
+        #expect(prompter.asked.map(\.mode) == [.unlock])
+        #expect(submitter.specs.map(\.mode) == [.changePassword])
+        #expect(outcome.succeeded.isEmpty && outcome.notOpened == [files[0]])
+    }
+
     @Test func aSheetThatCouldNotOpenIsNotACancel() async {
         let submitter = FakeSubmitter(opensWith: [:])
         let outcome = await runUnlock(FakePrompter([.unavailable]), submitter)

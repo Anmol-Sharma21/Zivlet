@@ -65,7 +65,9 @@ public struct ProtectBatch {
         var states = await submit(answers, in: asked)
         states = await retryWrong(states, answers: answers, files: asked, near: near)
         if mode == .unlock || mode == .ownerNeeded {
-            states = await askOwner(states, files: asked, near: near)
+            // Only Unlock answers: a Change whose current password is not the owner one fails with its own line, and
+            // its Retry asks for Change again; the owner-needed sheet's job would write it decrypted.
+            states = await askOwner(states, files: asked.filter { answers[$0]?.spec.mode == .unlock }, near: near)
         }
         return Self.outcome(files, states)
     }
