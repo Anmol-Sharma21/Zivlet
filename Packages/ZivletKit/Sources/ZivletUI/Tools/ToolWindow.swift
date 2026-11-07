@@ -11,6 +11,7 @@ import ZivletNotchCore
 public final class ToolWindow: NSPanel {
     public var onApply: () -> Void = {}
     public var onCancel: () -> Void = {}
+    public var onClose: () -> Void = {}
     let state = ToolWindowState()
     private let hosting: NSHostingView<ToolWindowView>
     private var displayOptions: (any NSObjectProtocol)?
@@ -144,6 +145,7 @@ public final class ToolWindow: NSPanel {
         placedIn = nil
         state.model = nil
         state.content = nil
+        onClose()
     }
 
     /// Glass unless Reduce Transparency or Increase Contrast asks for the solid surface.

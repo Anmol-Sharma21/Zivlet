@@ -62,26 +62,40 @@ final class CodeWiring {
         }
     }
 
-    /// Each locked PDF asks for its password once; its own job then replaces its line (plan 20f E10).
+    /// Each locked PDF asks for its password; its own job then replaces its line (plan 20f E10). An error other than
+    /// "still locked" becomes that file's line, never a wrong password; a cancelled job ends Read QR.
     private func unlocking(_ result: Result<[FileCodes], CodeError>, urls: [URL], near point: CGPoint?) async
         -> Result<[FileCodes], CodeError>
     {
         guard let prompter, case .success(let files) = result else { return result }
-        let locked = zip(urls, files).filter { $0.1.error == .pdfLocked }.map(\.0)
+        let locked = files.indices.filter { files[$0].error == .pdfLocked && urls.indices.contains($0) }
         guard !locked.isEmpty else { return result }
         let codes = self.codes
-        let opened = await LockedInputPrompting.unlockEach(locked, prompter: prompter, near: point) {
-            file, secrets -> FileCodes? in
-            guard let read = try? await codes.readCodes([file], secrets: secrets), let first = read.first,
-                first.error != .pdfLocked
-            else { return nil }
-            return first
+        let outcomes = await LockedInputPrompting.unlockEach(locked.map { urls[$0] }, prompter: prompter, near: point) {
+            file, secrets -> LockedAttempt<FileCodes, CodeError> in
+            do throws(CodeError) {
+                guard let read = try await codes.readCodes([file], secrets: secrets).first else {
+                    return .failed(.unreadable)
+                }
+                return read.error == .pdfLocked ? .stillLocked : .opened(read)
+            } catch {
+                return .failed(error)
+            }
         }
-        return .success(zip(urls, files).map { url, file in opened[url] ?? file })
+        var merged = files
+        for (index, outcome) in zip(locked, outcomes) {
+            switch outcome {
+            case .opened(let read): merged[index] = read
+            case .cancelled, .failed(.cancelled): return .failure(.cancelled)
+            case .failed(let error): merged[index] = FileCodes(name: files[index].name, error: error)
+            case .skipped, .unavailable: break
+            }
+        }
+        return .success(merged)
     }
 
     /// The HUD result, or the results window (the working line is cleared first). Another tool's open window keeps
-    /// its place; the codes are then announced in the HUD instead.
+    /// its place; the HUD then says the codes open when it closes, and they do.
     private func show(_ outcome: CodeToolModel.Outcome, presenter: any ActionPresenter, near point: CGPoint?)
         -> ActionResult
     {
@@ -97,7 +111,7 @@ final class CodeWiring {
             let content = CodeResultsContent(model: model, clipboard: clipboard)
             guard toolWindows.present(results: content, near: point) else {
                 let busy = ActionResult.done(
-                    toast: "\(model.window.title) found. Close the tool window to see them", undo: nil)
+                    toast: "\(model.window.title) found. They open when the window closes", undo: nil)
                 presenter.show(busy, near: point)
                 return busy
             }

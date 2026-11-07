@@ -100,11 +100,23 @@ struct TextMergeTests {
             skipped: [SkippedFile(name: "b.pdf", error: .pdfLocked)])
         let unlocked = TextAssembly.combine([FileText(name: "b.pdf", pages: Self.page("Bravo"))])
 
-        let merged = TextAssembly.merge(first, replacing: ["b.pdf": unlocked])
+        let merged = TextAssembly.merge(first, replacing: [1: unlocked])
 
         #expect(merged.perFile.map(\.name) == ["a.png", "b.pdf"])
         #expect(merged.text == "— a.png —\nAlpha\n\n— b.pdf —\nBravo\n")
         #expect(merged.skipped.isEmpty)
+    }
+
+    /// Two dropped files of one name from different folders: only the locked one's place takes the unlocked text.
+    @Test func twoFilesOfOneNameKeepTheirOwnText() {
+        let first = TextAssembly.combine(
+            [FileText(name: "same.pdf", pages: Self.page("Alpha")), FileText(name: "same.pdf", pages: [])],
+            skipped: [SkippedFile(name: "same.pdf", error: .pdfLocked)])
+        let unlocked = TextAssembly.combine([FileText(name: "same.pdf", pages: Self.page("Bravo"))])
+        let merged = TextAssembly.merge(first, replacing: [1: unlocked])
+        #expect(merged.perFile.map(\.text) == ["Alpha\n", "Bravo\n"])
+        #expect(merged.skipped.isEmpty)
+        #expect(TextAssembly.skippedInputs(first).map(\.index) == [1])
     }
 
     @Test func aFileLeftLockedKeepsItsSkip() {

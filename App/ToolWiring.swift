@@ -110,7 +110,7 @@ final class ToolWiring {
             let recognized = try await text.copyText(urls, languages: plan.languages) { fraction in
                 Task { @MainActor in line.show(ToolWiringModel.working(warmupDone: plan.warmed, fraction: fraction)) }
             }
-            let unlocked = await unlocking(recognized, urls: urls, languages: plan.languages, near: point)
+            let unlocked = try await unlocking(recognized, urls: urls, languages: plan.languages, near: point)
             let merged = TextAssembly.merge(recognized, replacing: unlocked)
             return await finish(merged, sources: urls, optionHeld: optionHeld, skipsHindi: plan.skipsHindi)
         } catch {
@@ -123,24 +123,40 @@ final class ToolWiring {
         }
     }
 
-    /// Each locked PDF asks for its password once and runs as its own job (P2-107, plan 20f E10); one the person
-    /// cancels stays skipped.
+    /// Each locked PDF asks for its password and runs as its own job (P2-107, plan 20f E10), keyed by its place in the
+    /// drop. One the person cancels stays skipped; an error other than "still locked" takes the file's place as its own
+    /// skip, never as a wrong password; a cancelled job ends Copy Text.
     private func unlocking(_ recognized: RecognizedText, urls: [URL], languages: [LanguageTag], near point: CGPoint?)
-        async -> [String: RecognizedText]
+        async throws(TextError) -> [Int: RecognizedText]
     {
         guard let prompter else { return [:] }
-        let names = Set(recognized.skipped.filter { $0.error == .pdfLocked }.map(\.name))
-        let locked = urls.filter { names.contains($0.lastPathComponent) }
+        let locked = TextAssembly.skippedInputs(recognized)
+            .filter { $0.file.error == .pdfLocked && urls.indices.contains($0.index) }.map(\.index)
         guard !locked.isEmpty else { return [:] }
         let text = self.text
-        let opened = await LockedInputPrompting.unlockEach(locked, prompter: prompter, near: point) {
-            file, secrets -> RecognizedText? in
-            guard let result = try? await text.copyText([file], languages: languages, secrets: secrets),
-                !result.skipped.contains(where: { $0.error == .pdfLocked })
-            else { return nil }
-            return result
+        let outcomes = await LockedInputPrompting.unlockEach(locked.map { urls[$0] }, prompter: prompter, near: point) {
+            file, secrets -> LockedAttempt<RecognizedText, TextError> in
+            do throws(TextError) {
+                let result = try await text.copyText([file], languages: languages, secrets: secrets)
+                return result.skipped.contains { $0.error == .pdfLocked } ? .stillLocked : .opened(result)
+            } catch {
+                return .failed(error)
+            }
         }
-        return Dictionary(opened.map { ($0.key.lastPathComponent, $0.value) }, uniquingKeysWith: { first, _ in first })
+        var opened: [Int: RecognizedText] = [:]
+        for (index, outcome) in zip(locked, outcomes) {
+            switch outcome {
+            case .opened(let result): opened[index] = result
+            case .cancelled, .failed(.cancelled): throw .cancelled
+            case .failed(let error):
+                logger.error("Copy Text: a locked file was not read: \(error.logDescription, privacy: .public)")
+                let name = urls[index].lastPathComponent
+                opened[index] = TextAssembly.combine(
+                    [FileText(name: name, pages: [])], skipped: [SkippedFile(name: name, error: error)])
+            case .skipped, .unavailable: break
+            }
+        }
+        return opened
     }
 
     /// The clipboard first; with ⌥ the files; then the card. A refused clipboard or a file not saved becomes a note

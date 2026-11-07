@@ -74,20 +74,37 @@ public enum TextAssembly {
             perFile: perFile, skipped: skipped)
     }
 
-    /// The non-empty pages, cleaned and joined by a blank line, with one final newline; empty when none has text.
-    /// `result` with each locked file's own result in its place (plan 20f E10): the text is put together again in the
-    /// drop's order, and the replaced files' skips give way to theirs.
-    public static func merge(_ result: RecognizedText, replacing: [String: RecognizedText]) -> RecognizedText {
+    /// `result` with each locked file's own one-file result in its place, keyed by the file's position in the drop
+    /// (plan 20f E10; never by name, as two dropped files may share one): the text is put together again in the drop's
+    /// order, and the replaced files' skips give way to theirs.
+    public static func merge(_ result: RecognizedText, replacing: [Int: RecognizedText]) -> RecognizedText {
         guard !replacing.isEmpty else { return result }
-        let files = result.perFile.map { file in
-            let text = replacing[file.name]?.perFile.first { $0.name == file.name }?.text ?? file.text
+        let files = result.perFile.enumerated().map { index, file in
+            let text = replacing[index]?.perFile.first?.text ?? file.text
             return FileText(name: file.name, pages: text.isEmpty ? [] : [RecognizedPage(text: text)])
         }
-        let skipped =
-            result.skipped.filter { replacing[$0.name] == nil } + replacing.values.flatMap(\.skipped)
+        let original = skippedInputs(result)
+        let skipped = result.perFile.indices.flatMap { index in
+            replacing[index]?.skipped ?? original.filter { $0.index == index }.map(\.file)
+        }
         return combine(files, skipped: skipped)
     }
 
+    /// Each skipped file with its position in the drop. Skips and inputs are both in drop order, so the n-th skip of a
+    /// name is the n-th input of that name without text.
+    public static func skippedInputs(_ result: RecognizedText) -> [(index: Int, file: SkippedFile)] {
+        var used: Set<Int> = []
+        return result.skipped.compactMap { skip in
+            let index = result.perFile.indices.first { index in
+                !used.contains(index) && result.perFile[index].name == skip.name && result.perFile[index].isEmpty
+            }
+            guard let index else { return nil }
+            used.insert(index)
+            return (index, skip)
+        }
+    }
+
+    /// The non-empty pages, cleaned and joined by a blank line, with one final newline; empty when none has text.
     static func body(of pages: [RecognizedPage]) -> String {
         let cleaned = pages.map { clean($0.text) }.filter { !$0.isEmpty }
         return cleaned.isEmpty ? "" : cleaned.joined(separator: "\n\n") + "\n"

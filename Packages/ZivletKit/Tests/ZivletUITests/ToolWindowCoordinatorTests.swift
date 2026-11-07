@@ -15,6 +15,7 @@ struct ToolWindowCoordinatorTests {
     final class FakeWindow: ToolWindowing {
         var onApply: () -> Void = {}
         var onCancel: () -> Void = {}
+        var onClose: () -> Void = {}
         var loaded: [ToolWindowModel] = []
         var updates: [ToolWindowModel] = []
         var shownAt: [CGPoint?] = []
@@ -28,7 +29,10 @@ struct ToolWindowCoordinatorTests {
             isVisible = true
         }
         func bringForward() { broughtForward += 1 }
-        func close() { isVisible = false }
+        func close() {
+            isVisible = false
+            onClose()
+        }
         /// Esc as the real window does it: Cancel, then close.
         func pressEscape() {
             onCancel()
@@ -153,6 +157,19 @@ struct ToolWindowCoordinatorTests {
         #expect(harness.coordinator.open(.pdfArrange, urls: [Self.report, Self.other], near: nil))
         #expect(harness.windows.isEmpty)
         #expect(harness.refusals == [.failed(ActionCard(title: "This tool works on one file at a time"))])
+    }
+
+    /// Read QR's results ready while another tool's window is open wait for it, and open when it closes.
+    @Test func resultsReadyWhileAnotherWindowIsOpenShowWhenItCloses() throws {
+        let harness = Harness()
+        harness.coordinator.open(.pdfArrange, urls: [Self.report], near: nil)
+        let window = try #require(harness.windows.first)
+        let results = FakeContent(urls: [Self.other])
+        #expect(!harness.coordinator.present(results, near: CGPoint(x: 5, y: 5), whenFree: true))
+        #expect(window.loaded.count == 1 && window.broughtForward == 1)
+        window.pressEscape()
+        #expect(window.loaded.map(\.fileLine) == ["Report.pdf", "Other.pdf"] && window.isVisible)
+        #expect(window.shownAt.last == CGPoint(x: 5, y: 5) && harness.coordinator.isOpen)
     }
 
     @Test func theRealWindowIsAToolWindow() {

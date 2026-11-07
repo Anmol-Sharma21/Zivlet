@@ -7,6 +7,8 @@ import ZivletCore
 public protocol ToolWindowing: AnyObject {
     var onApply: () -> Void { get set }
     var onCancel: () -> Void { get set }
+    /// Called once the window has closed, whatever closed it.
+    var onClose: () -> Void { get set }
     var isVisible: Bool { get }
     func load(_ model: ToolWindowModel, content: AnyView)
     func update(_ model: ToolWindowModel)
@@ -48,6 +50,8 @@ public final class ToolWindowCoordinator {
     private let catalog: ToolCatalog
     private var window: (any ToolWindowing)?
     private var current: (any WindowToolContent)?
+    /// Content that waits for the open window to close (Read QR's results), with where it opens.
+    private var pending: (content: any WindowToolContent, point: CGPoint?)?
 
     public init(
         makeWindow: @escaping () -> any ToolWindowing,
@@ -81,14 +85,24 @@ public final class ToolWindowCoordinator {
 
     /// Shows content that is ready, such as Read QR's results (D-M7-13). An open window is taken over only when
     /// `replacing` says its content may be (earlier results); another tool's window is brought forward and left as it
-    /// is, and false is returned.
+    /// is, and false is returned. With `whenFree`, the content then opens as soon as that window closes (a later one
+    /// takes the place of one still waiting).
     @discardableResult
     public func present(
         _ content: any WindowToolContent, near point: CGPoint?,
         replacing: (any WindowToolContent) -> Bool = { _ in false }
     ) -> Bool {
+        present(content, near: point, replacing: replacing, whenFree: false)
+    }
+
+    @discardableResult
+    public func present(
+        _ content: any WindowToolContent, near point: CGPoint?,
+        replacing: (any WindowToolContent) -> Bool = { _ in false }, whenFree: Bool
+    ) -> Bool {
         if isOpen, let current, let window {
             guard replacing(current) else {
+                if whenFree { pending = (content, point) }
                 window.bringForward()
                 return false
             }
@@ -105,6 +119,7 @@ public final class ToolWindowCoordinator {
         content.modelChanged = { [weak window] model in window?.update(model) }
         window.onApply = { [weak self] in self?.applied() }
         window.onCancel = { [weak self] in self?.cancelled() }
+        window.onClose = { [weak self] in self?.closed() }
         window.load(content.model, content: content.view)
         window.show(at: point)
     }
@@ -118,5 +133,12 @@ public final class ToolWindowCoordinator {
     private func cancelled() {
         current?.cancel()
         current = nil
+    }
+
+    /// The window closed: content that waited for it opens now.
+    private func closed() {
+        guard current == nil, let waiting = pending else { return }
+        pending = nil
+        show(waiting.content, near: waiting.point)
     }
 }

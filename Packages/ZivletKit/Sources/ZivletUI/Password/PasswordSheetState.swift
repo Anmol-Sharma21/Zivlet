@@ -60,7 +60,7 @@ public final class PasswordSheetState {
     @discardableResult
     public func copyOwnerPassword() -> Bool { ownerPassword.map(pasteboard.copy) ?? false }
 
-    /// The typed passwords in their roles (Lock: new, and the owner password with restrictions; Unlock: input;
+    /// The typed passwords in their roles (Lock: new, and the owner password with restrictions; Unlock and Open: input;
     /// owner-needed: owner; Change: input and new), then the fields and the owner password are forgotten.
     public func takeSecrets() -> JobSecrets {
         let typed = JobSecret(utf8: password)
@@ -68,7 +68,7 @@ public final class PasswordSheetState {
         let secrets: JobSecrets =
             switch model.mode {
             case .lock: JobSecrets(newUser: typed, owner: owner)
-            case .unlock: JobSecrets(input: typed)
+            case .unlock, .open: JobSecrets(input: typed)
             case .ownerNeeded: JobSecrets(owner: typed)
             case .change: JobSecrets(input: JobSecret(utf8: current), newUser: typed)
             }

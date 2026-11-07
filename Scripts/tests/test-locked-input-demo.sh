@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # demo-locked-input.sh (plan 20g F3, exit row V10): a locked PDF in Copy Text. Here the app, the renderer and the CER
-# tool are stand-ins: one Unlock sheet and the text within 1 % CER pass; a second sheet, a text too far off or a
-# secret file left behind fail; the password is never on a command line; a locked screen is skipped with nothing run.
+# tool are stand-ins: one Open sheet and the text within 1 % CER pass; a second sheet, an Unlock sheet (which offers
+# Change), a text too far off or a secret file left behind fail; the password is never on a command line; a locked
+# screen is skipped with nothing run.
 source "$(dirname "$0")/../../Vendor/tests/lib.sh"
 source "$(dirname "$0")/demo-stubs.sh"
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -17,7 +18,7 @@ folder=$(flag_value -ZivletLockedInputDemo "$@")
 [[ "$(stat -f %Lp "$folder/secret")" == 600 ]] || exit 1
 cp "$folder/secret" "$(dirname "$0")/seen-secret"
 [[ -n "${FAKE_KEEP_SECRET:-}" ]] || rm -f "$folder/secret"
-printf '{"asked":%s,"kind":"text","clipboard":"Zivlet keeps this page private"}' "${FAKE_ASKED:-[\"unlock\"]}" \
+printf '{"asked":%s,"kind":"text","clipboard":"Zivlet keeps this page private"}' "${FAKE_ASKED:-[\"open\"]}" \
     >"$folder/locked.json"
 touch "$folder/done"
 EOF
@@ -36,7 +37,9 @@ assert_no_file "$T/good/secret"
 assert_no_file "$T/good/inputs-secret"
 assert_no_password_in_argv "$T/seen-secret" "$T/argv.log"
 
-out=$(FAKE_ASKED='["unlock","retry"]' run "$T/twice" 2>&1 || true)
+out=$(FAKE_ASKED='["open","retry"]' run "$T/twice" 2>&1 || true)
+assert_contains "$out" "FAIL locked"
+out=$(FAKE_ASKED='["unlock"]' run "$T/unlock" 2>&1 || true)
 assert_contains "$out" "FAIL locked"
 out=$(FAKE_CER=0.200 run "$T/far" 2>&1 || true)
 assert_contains "$out" "FAIL locked"

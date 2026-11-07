@@ -2,9 +2,10 @@ import Foundation
 import ZivletCore
 
 /// What the sheet asks for: a new password (Lock), the file's password (Unlock), the current and a new one (Change),
-/// or the owner password of a file with restrictions (17a §3.2's [challenge]).
+/// the owner password of a file with restrictions (17a §3.2's [challenge]), or a locked file's password only so another
+/// tool can read it (Open: Copy Text and Read QR, which never change the file).
 public enum PasswordMode: Sendable, Equatable {
-    case lock, unlock, change, ownerNeeded
+    case lock, unlock, change, ownerNeeded, open
 }
 
 /// A wrong password: each attempt shakes the field once, with no limit and no delay (17b §3.2).

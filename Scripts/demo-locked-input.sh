@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Exit row V10 (plan 20g F3, P2-107): a locked PDF in COPY TEXT through the drop path of the Debug app. The test
 # bundle draws Locked.pdf (two pages of our own words, AES-128) and the text Copy Text must copy; the app
-# (-ZivletLockedInputDemo <folder>) runs Copy Text on it, a scripted prompter answers the one Unlock sheet from a
-# 0600 file it deletes once read, and the text goes to a private pasteboard. The check: exactly one sheet was asked
+# (-ZivletLockedInputDemo <folder>) runs Copy Text on it, a scripted prompter answers the one Open sheet from a
+# 0600 file it deletes once read, and the text goes to a private pasteboard. The check: exactly one Open sheet was asked
 # for, the result is text, the copied text is within 1 % CER of the expected text (Scripts/cer.swift), and every
 # secret file is gone. With the screen locked it runs nothing and says "skipped: screen locked". It deletes only its
 # default folder or one it made (marked by .zivlet-locked-input-demo); the app quits itself after the run.
@@ -24,7 +24,7 @@ check() {
     kind=$(json_value "$report" kind)
     json_value "$report" clipboard >"$OUT/clipboard.txt"
     rate=$($CER "$OUT/expected.txt" "$OUT/clipboard.txt")
-    if [[ "$asked" == '["unlock"]' && "$kind" == text ]] && awk -v c="$rate" -v m="$MAX_CER" 'BEGIN { exit !(c <= m) }'
+    if [[ "$asked" == '["open"]' && "$kind" == text ]] && awk -v c="$rate" -v m="$MAX_CER" 'BEGIN { exit !(c <= m) }'
     then
         echo "PASS locked: one sheet, then the text with CER $rate"
     else

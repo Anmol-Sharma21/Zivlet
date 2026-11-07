@@ -8,7 +8,7 @@ extension PasswordSheetModel {
     public var fields: [PasswordField] {
         switch mode {
         case .lock: [.password, .confirm]
-        case .unlock, .ownerNeeded: [.password]
+        case .unlock, .ownerNeeded, .open: [.password]
         case .change: [.current, .newPassword, .confirm]
         }
     }
@@ -56,7 +56,7 @@ extension PasswordSheetModel {
     public var setsPassword: Bool { mode == .lock || mode == .change }
     /// Only Lock offers printing, copying and editing restrictions (17a §3.1).
     public var offersRestrictions: Bool { mode == .lock }
-    private var asksForFilePassword: Bool { mode == .unlock || mode == .ownerNeeded }
+    private var asksForFilePassword: Bool { mode == .unlock || mode == .ownerNeeded || mode == .open }
 
     private var disabledReason: String? {
         if mode == .change, !facts.hasCurrent { return PasswordCopy.typeCurrent }
@@ -71,6 +71,7 @@ extension PasswordSheetModel {
         case .lock: "Lock"
         case .unlock, .ownerNeeded: "Unlock"
         case .change: "Change"
+        case .open: "Open"
         }
     }
 
@@ -81,7 +82,7 @@ extension PasswordSheetModel {
     private var symbol: String {
         switch mode {
         case .lock: "lock"
-        case .unlock, .ownerNeeded: "lock.open"
+        case .unlock, .ownerNeeded, .open: "lock.open"
         case .change: "lock.rotation"
         }
     }

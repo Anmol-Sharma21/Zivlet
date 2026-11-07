@@ -36,9 +36,9 @@ final class ToolWindowWiring {
         return opened
     }
 
-    /// Read QR's results; they replace earlier results but never another tool's open window.
+    /// Read QR's results; they replace earlier results but never another tool's open window, and open when it closes.
     func present(results: CodeResultsContent, near point: CGPoint?) -> Bool {
-        let shown = coordinator.present(results, near: point) { $0 is CodeResultsContent }
+        let shown = coordinator.present(results, near: point, replacing: { $0 is CodeResultsContent }, whenFree: true)
         if shown { logShown("results") }
         return shown
     }
