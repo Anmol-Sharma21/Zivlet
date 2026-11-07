@@ -4,13 +4,13 @@
     import ZivletUI
     import os
 
-    /// DEBUG `-ZivletProtectDemo <folder> [-ZivletProtectDemoPause <ms>]` (plan 20f E9, exit row V8): LOCK · UNLOCK
-    /// through the app's flow (the worker's pre-flight, the service, the cards) on `Report.pdf`, which the script made in
-    /// `<folder>`, with a scripted prompter answering for the sheet. The password is the first line of `<folder>/secret`,
-    /// a 0600 file the script wrote, deleted here once read; it is never in argv or the environment. Steps: lock,
-    /// unlock the locked copy, then a wrong password and Cancel on the second sheet. Each step writes `<step>.json` (the
-    /// sheets asked for and the files done or not opened, by name), `done` marks the end; `pause` leaves each card on
-    /// screen for the screenshots.
+    /// DEBUG `-ZivletProtectDemo <folder> [-ZivletProtectDemoPause <ms>]` (plan 20f E9, 20g F3, exit rows V6 and V8):
+    /// LOCK · UNLOCK through the app's flow (the worker's pre-flight, the service, the cards) on PDFs the script made
+    /// in `<folder>`, with a scripted prompter answering for the sheet. `<folder>/steps.json` lists the steps (see
+    /// `ProtectDemoStep`); the passwords are the lines of `<folder>/secret`, a 0600 file deleted once read
+    /// (`DemoSecrets`), so none is ever in argv or the environment. Each step writes `<step>.json` (the sheets asked
+    /// for, the files done or not opened, and the new files in the folder, by name) and logs the near-drop card's
+    /// window (`ShotFrame`); `done` marks the end; `pause` leaves each card on screen for a look.
     struct ProtectDemo {
         static let flag = "-ZivletProtectDemo"
         static let pauseFlag = "-ZivletProtectDemoPause"
@@ -20,86 +20,101 @@
         let pause: Duration
 
         static func parse(arguments: [String]) -> ProtectDemo? {
-            guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
-            let path = arguments[index + 1]
-            var isFolder: ObjCBool = false
-            guard path.hasPrefix("/"), FileManager.default.fileExists(atPath: path, isDirectory: &isFolder),
-                isFolder.boolValue
-            else { return nil }
+            guard let folder = DemoFolder.parse(flag, arguments: arguments) else { return nil }
             let pause = arguments.firstIndex(of: pauseFlag).flatMap {
                 arguments.indices.contains($0 + 1) ? Int(arguments[$0 + 1]) : nil
             }
-            return ProtectDemo(folder: URL(fileURLWithPath: path, isDirectory: true), pause: .milliseconds(pause ?? 0))
+            return ProtectDemo(folder: folder, pause: .milliseconds(min(max(pause ?? 0, 0), 10_000)))
         }
 
         @MainActor func run(protect: ProtectWiring) async {
-            guard let password = readSecret() else {
+            guard let passwords = DemoSecrets.read(in: folder) else {
                 Self.logger.error("Protect demo: no secret file")
-                return finish()
+                return DemoFolder.finish(folder)
             }
-            let report = folder.appending(path: "Report.pdf")
-            let locked = folder.appending(path: "Report Locked.pdf")
-            let lock = PasswordAnswer.secrets(JobSecrets(newUser: JobSecret(utf8: password)), sameForAll: true)
-            await step("lock", [report], answers: [lock], protect: protect)
-            let unlock = PasswordAnswer.secrets(JobSecrets(input: JobSecret(utf8: password)), sameForAll: true)
-            await step("unlock", [locked], answers: [unlock], protect: protect)
-            let wrong = PasswordAnswer.secrets(
-                JobSecrets(input: JobSecret(utf8: "zv-wrong-\(UUID())")), sameForAll: true)
-            await step("wrong", [locked], answers: [wrong, .cancelled], protect: protect)
-            finish()
+            guard let steps = ProtectDemoStep.load(from: folder, passwords: passwords.count) else {
+                Self.logger.error("Protect demo: steps refused")
+                return DemoFolder.finish(folder)
+            }
+            for step in steps {
+                await run(step, passwords: passwords, protect: protect)
+            }
+            DemoFolder.finish(folder)
         }
 
-        /// The first line of the 0600 secret file, which is removed whether or not it could be read.
-        private func readSecret() -> String? {
-            let file = folder.appending(path: "secret")
-            defer { try? FileManager.default.removeItem(at: file) }
-            guard let attributes = try? FileManager.default.attributesOfItem(atPath: file.path),
-                (attributes[.posixPermissions] as? Int) == 0o600,
-                let text = try? String(contentsOf: file, encoding: .utf8)
-            else { return nil }
-            return text.split(separator: "\n").first.map(String.init)
-        }
-
-        @MainActor private func step(_ name: String, _ files: [URL], answers: [PasswordAnswer], protect: ProtectWiring)
-            async
-        {
-            let prompter = ScriptedPrompter(answers)
+        @MainActor private func run(_ step: ProtectDemoStep, passwords: [String], protect: ProtectWiring) async {
+            let before = pdfNames()
+            let prompter = ScriptedPrompter(step.answers.map { $0.answer(passwords) })
+            let files = step.files.map { folder.appending(path: $0) }
             let outcome = await protect.flow(near: nil, prompter: prompter).run(files, near: nil)
             let report: [String: Any] = [
                 "asked": prompter.modes, "succeeded": outcome.succeeded.map(\.lastPathComponent),
                 "notOpened": outcome.notOpened.map(\.lastPathComponent),
+                "outputs": pdfNames().subtracting(before).sorted(),
             ]
-            do {
-                let data = try JSONSerialization.data(withJSONObject: report, options: [.sortedKeys])
-                try data.write(to: folder.appending(path: "\(name).json"))
-                Self.logger.notice("Protect demo step \(name, privacy: .public) written")
-            } catch {
-                Self.logger.error("Protect demo step \(name, privacy: .public) not written")
-            }
+            DemoFolder.write(report, named: step.name, in: folder, logger: Self.logger)
+            try? await Task.sleep(for: .milliseconds(600))
+            Self.logger.notice("Protect demo: \(step.name, privacy: .public) shown")
+            if let card = ShotFrame.visible(HUDWindow.self) { ShotFrame.log("Protect demo", card, logger: Self.logger) }
             try? await Task.sleep(for: pause)
         }
 
-        private func finish() {
-            FileManager.default.createFile(atPath: folder.appending(path: "done").path, contents: Data())
+        private func pdfNames() -> Set<String> {
+            let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+            return Set(names.filter { $0.lowercased().hasSuffix(".pdf") })
         }
     }
 
-    /// Answers each sheet in order, as a person would, and records which sheets were asked for.
-    @MainActor
-    private final class ScriptedPrompter: PasswordPrompting {
-        private var answers: [PasswordAnswer]
-        private(set) var modes: [String] = []
+    /// One step of `steps.json`: a name (lower-case letters, digits and dashes), the folder's PDFs to drop by name,
+    /// and the answers the sheets get in order. In an answer, `input`, `newUser` and `owner` are 1-based lines of the
+    /// secret file, or 0 for a made-up wrong password; `restrict` turns printing, copying and editing off; `cancel`
+    /// presses Cancel.
+    struct ProtectDemoStep: Decodable {
+        struct Answer: Decodable {
+            let input: Int?
+            let newUser: Int?
+            let owner: Int?
+            let restrict: Bool?
+            let cancel: Bool?
 
-        init(_ answers: [PasswordAnswer]) { self.answers = answers }
+            var indices: [Int] { [input, newUser, owner].compactMap { $0 } }
 
-        func ask(_ request: PasswordRequest) async -> PasswordAnswer {
-            modes.append("\(request.mode)")
-            return answers.isEmpty ? .cancelled : answers.removeFirst()
+            func answer(_ passwords: [String]) -> PasswordAnswer {
+                guard cancel != true else { return .cancelled }
+                let secret = { (index: Int?) -> JobSecret? in
+                    index.map { JobSecret(utf8: $0 == 0 ? "zv-wrong-\(UUID())" : passwords[$0 - 1]) }
+                }
+                let restrictions =
+                    restrict == true ? PDFRestrictions(printing: .none, copying: false, editing: false) : nil
+                let secrets = JobSecrets(input: secret(input), newUser: secret(newUser), owner: secret(owner))
+                return .secrets(secrets, sameForAll: true, restrictions: restrictions)
+            }
         }
 
-        func retry(_ request: PasswordRequest, failed: [String]) async -> PasswordAnswer {
-            modes.append("retry")
-            return answers.isEmpty ? .cancelled : answers.removeFirst()
+        static let maxSteps = 12
+        static let maxAnswers = 6
+
+        let name: String
+        let files: [String]
+        let answers: [Answer]
+
+        /// The steps, validated: plain names, at most 12 steps of at most 6 answers, indices within the secret file.
+        static func load(from folder: URL, passwords: Int) -> [ProtectDemoStep]? {
+            guard let data = try? Data(contentsOf: folder.appending(path: "steps.json")),
+                let steps = try? JSONDecoder().decode([ProtectDemoStep].self, from: data),
+                (1...maxSteps).contains(steps.count)
+            else { return nil }
+            return steps.allSatisfy { $0.isValid(passwords: passwords) } ? steps : nil
+        }
+
+        private func isValid(passwords: Int) -> Bool {
+            let plainName = { (name: String) in
+                !name.isEmpty && !name.contains("/") && !name.hasPrefix(".") && name.count <= 128
+            }
+            return name.range(of: "^[a-z0-9-]{1,32}$", options: .regularExpression) != nil
+                && !files.isEmpty && files.count <= 20 && files.allSatisfy(plainName)
+                && answers.count <= Self.maxAnswers
+                && answers.allSatisfy { $0.indices.allSatisfy { (0...passwords).contains($0) } }
         }
     }
 #endif

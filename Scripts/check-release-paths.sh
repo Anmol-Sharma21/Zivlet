@@ -10,7 +10,8 @@
 # requests (selfKillForTesting, setIdleForTesting) and the smoke run's flags (-ZivletWorkerSmoke, -ZivletWorkerIdleSeconds).
 # Plan 18d D15: so are the Copy Text demo's and the text states' flags (-ZivletCopyTextDemo, -ZivletTextStates), and
 # plan 18e E2's cancelled box move (-ZivletBoxBusyDemo). Plan 20c B6: so are the password sheet states' flag
-# (-ZivletPasswordStates) and the fake password generator (FakeSuggester) that tests and those demos use.
+# (-ZivletPasswordStates) and the fake password generator (FakeSuggester) that tests and those demos use. Plan 20g
+# F3: so are the M7 demos' flags (-ZivletProtectDemo, -ZivletQRDemo, -ZivletLockedInputDemo, -ZivletToolStates).
 # Usage: Scripts/check-release-paths.sh              build and check the Release app
 #        Scripts/check-release-paths.sh --scan-only FILE   only the scans, on one file (script tests)
 source "$(dirname "$0")/env.sh"
@@ -23,6 +24,8 @@ WORKER_MARKERS=("selfKillForTesting" "setIdleForTesting" "-ZivletWorkerSmoke" "-
 TEXT_FLAGS=("-ZivletCopyTextDemo" "-ZivletTextStates")
 # Plan 20c B6: the password sheet screenshots and the fake Suggest generator.
 PASSWORD_MARKERS=("-ZivletPasswordStates" "FakeSuggester")
+# Plan 20g F3: LOCK · UNLOCK, Read QR and the locked-input demos, and the tool window screenshots.
+M7_DEMO_FLAGS=("-ZivletProtectDemo" "-ZivletQRDemo" "-ZivletLockedInputDemo" "-ZivletToolStates")
 
 # Prints what is wrong with one Mach-O file; exits 1 when anything is. Every byte is searched (grep -a), also data
 # after the last segment, which strings skips in a universal file.
@@ -62,6 +65,12 @@ scan_file() {
     for flag in "${PASSWORD_MARKERS[@]}"; do
         if LC_ALL=C grep -qaF -- "$flag" "$file"; then
             echo "error: the password sheet's debug marker $flag is in $label (Release must not fake Suggest)" >&2
+            found=1
+        fi
+    done
+    for flag in "${M7_DEMO_FLAGS[@]}"; do
+        if LC_ALL=C grep -qaF -- "$flag" "$file"; then
+            echo "error: the M7 demo flag $flag is in $label (Release must not run demos)" >&2
             found=1
         fi
     done

@@ -7,7 +7,7 @@
     /// DEBUG `-ZivletPasswordStates <state>` (plan 20c B4, 20g): one password sheet state in the tool window at the
     /// main screen's centre, for screenshots. The typed text is made up here per launch (never a real password) and the
     /// Suggest state uses a fake generator, so the system's is never called. Logs `Password shot: <state> window <n>`
-    /// once the window shows. Apply and Cancel only close the window.
+    /// and `Password shot: window <n> frame x y w h` once the window shows. Apply and Cancel only close it.
     enum PasswordShots {
         enum State: String, CaseIterable {
             case lockEmpty, lockMismatch, lockSuggested, lockNonASCII, lockRestricted, unlockWrong, unlockBatch, retry,
@@ -53,6 +53,7 @@
                 logger.notice(
                     "Password shot: \(state.rawValue, privacy: .public) window \(number, privacy: .public) size \(Int(size.width), privacy: .public)x\(Int(size.height), privacy: .public)"
                 )
+                if let window { ShotFrame.log("Password shot", window, logger: logger) }
             }
         }
 

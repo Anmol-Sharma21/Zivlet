@@ -10,8 +10,10 @@ extension AppDelegate {
     /// [-ZivletDemoOption YES]` runs Copy, Copy Path or Terminal, `-ZivletWorkerSmoke <folder>` runs the worker smoke
     /// (`WorkerSmoke`), `-ZivletCopyTextDemo <folder>` runs Copy Text (`CopyTextDemo`), `-ZivletTextStates <state>`
     /// shows one Copy Text state (`TextShots`), `-ZivletPasswordStates <state>` one password sheet state
-    /// (`PasswordShots`), `-ZivletProtectDemo <folder>` runs LOCK · UNLOCK (`ProtectDemo`), `-UITestFixture <dir> [-UITestMode tools -UITestTool <tool>]` serves
-    /// the owner-run UI tests, `-ZivletQRDemo <dir>` runs READ QR on the folder's files, `-ZivletBoxBusyDemo <folder>` cancels a box Move and undoes it
+    /// (`PasswordShots`), `-ZivletProtectDemo <folder>` runs LOCK · UNLOCK (`ProtectDemo`), `-ZivletLockedInputDemo
+    /// <folder>` runs Copy Text on a locked PDF (`LockedInputDemo`), `-ZivletToolStates <state>` shows one M7 state
+    /// (`ToolShots`), `-UITestFixture <dir> [-UITestMode tools -UITestTool <tool>]` serves
+    /// the owner-run UI tests, `-ZivletQRDemo <dir>` runs READ QR on the folder's files (`QRDemo`), `-ZivletBoxBusyDemo <folder>` cancels a box Move and undoes it
     /// (`BoxBusyDemo`, started with the box), and `-ZivletIslandPreview <state>` puts a made-up
     /// job on the notch island, so end-to-end checks need no drag. The island preview alone also exists in the CPU
     /// measurement build (`ZIVLET_ISLAND_PREVIEW`, D-ND3); a shipped Release build has none of these.
@@ -39,19 +41,7 @@ extension AppDelegate {
                         NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
                     }
                 }
-                if let demo = ProtectDemo.parse(arguments: arguments) {
-                    Task { await demo.run(protect: protect) }
-                }
-                if let state = PasswordShots.parse(arguments: arguments) {
-                    PasswordShots.run(state, toolWindows: toolWindows)
-                }
-                if let state = TextShots.parse(arguments: arguments) {
-                    TextShots.run(state, island: island, actions: actions, tools: tools)
-                }
-                if let dir = CodeToolModel.demoDirectory(arguments: arguments) {
-                    let urls = try UITestFixture.files(in: dir)
-                    handle(WheelSelection(mode: .tools, target: .tool(.qrScan), urls: urls), near: nil)
-                }
+                try launchToolDemos(arguments)
                 if let demo = try DemoAction.parse(arguments: arguments) {
                     let selection = WheelSelection(
                         mode: .actions, target: .action(demo.action), urls: [demo.url], optionHeld: demo.optionHeld)
@@ -113,6 +103,36 @@ extension AppDelegate {
     #endif
 
     #if DEBUG
+        /// The tool demos and screenshots: LOCK · UNLOCK, a locked PDF in Copy Text, Read QR, and the states of the
+        /// password sheet, the tool window, the protect cards and Copy Text (plans 18d, 20c, 20f, 20g).
+        private func launchToolDemos(_ arguments: [String]) throws {
+            if let demo = ProtectDemo.parse(arguments: arguments) {
+                Task { await demo.run(protect: protect) }
+            }
+            if let demo = LockedInputDemo.parse(arguments: arguments) {
+                Task {
+                    await demo.run(tools: tools)
+                    NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
+                }
+            }
+            if let state = ToolShots.parse(arguments: arguments) {
+                let launch = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+                let atNotch = PlacementOverride.parse(launch) == .notch
+                ToolShots.run(state, toolWindows: toolWindows, island: island, conversion: conversion, atNotch: atNotch)
+            }
+            if let state = PasswordShots.parse(arguments: arguments) {
+                PasswordShots.run(state, toolWindows: toolWindows)
+            }
+            if let state = TextShots.parse(arguments: arguments) {
+                TextShots.run(state, island: island, actions: actions, tools: tools)
+            }
+            if let dir = CodeToolModel.demoDirectory(arguments: arguments) {
+                let urls = try UITestFixture.files(in: dir)
+                QRDemo.observe(codes, folder: dir)
+                handle(WheelSelection(mode: .tools, target: .tool(.qrScan), urls: urls), near: nil)
+            }
+        }
+
         /// Shows the demo wheel `repeats` times, 200 ms shown and 200 ms hidden each, for the bench (P1-63).
         private func showDemo(_ scenario: DemoScenario) {
             guard scenario.repeats > 1 else {

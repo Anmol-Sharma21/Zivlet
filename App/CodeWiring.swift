@@ -21,6 +21,10 @@ final class CodeWiring {
     private let clipboard: ClipboardAction
     /// Asks for a locked PDF's password (set once the password sheet exists).
     var prompter: (any PasswordPrompting)?
+    #if DEBUG
+        /// The DEBUG Read QR demo's report (plan 20g F3): what each run showed, before it is shown.
+        var outcomeObserver: (@MainActor (CodeToolModel.Outcome) -> Void)?
+    #endif
 
     /// `clipboard` is the general pasteboard; the DEBUG Read QR demo passes a private one.
     init(codes: CodeService, actions: ActionWiring, toolWindows: ToolWindowWiring, clipboard: ClipboardAction) {
@@ -81,6 +85,9 @@ final class CodeWiring {
     private func show(_ outcome: CodeToolModel.Outcome, presenter: any ActionPresenter, near point: CGPoint?)
         -> ActionResult
     {
+        #if DEBUG
+            outcomeObserver?(outcome)
+        #endif
         switch outcome {
         case .hud(let result):
             presenter.show(result, near: point)

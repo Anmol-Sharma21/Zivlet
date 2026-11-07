@@ -28,7 +28,10 @@
             return CopyTextDemo(folder: URL(fileURLWithPath: path, isDirectory: true))
         }
 
-        static var isRequested: Bool { ProcessInfo.processInfo.arguments.contains(flag) }
+        /// This demo or the locked-input demo, which copies to the same private pasteboard.
+        static var isRequested: Bool {
+            ProcessInfo.processInfo.arguments.contains(flag) || LockedInputDemo.isRequested
+        }
 
         /// The fixtures are Hindi and English: "Match my languages" would read English only on a Mac whose languages and
         /// keyboards have no Hindi (the P2-103 rule), so the demo picks "Hindi and English" for this run only.

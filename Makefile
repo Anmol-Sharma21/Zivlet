@@ -5,7 +5,7 @@ ENV := source Scripts/env.sh &&
 # Builds the CWebP, CZivletSVG and CQPDF binary targets when missing or stale, before Swift reads Package.swift.
 NATIVE := Vendor/ensure-native.sh &&
 
-.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states m6-exit cap-lint box-busy-demo m7-exit password-policy
+.PHONY: test smoke coverage lint format app demo settings-demo release-check convert-demo action-demo vendor-test vendor-fetch vendor-media vendor vendor-pack vendor-unpack script-test licence-gate source-bundle fixtures fixtures-check fixtures-test matrix matrix-subset bench ci-local release-dry-run m4-exit m5a-exit m5b-exit notch-demo notch-timing timing notch-idle notch-states drag-replay box-states box-demo box-idle worker-smoke ocr-check copy-text-demo text-states m6-exit cap-lint box-busy-demo m7-exit password-policy pdf-smoke lock-demo qr-demo locked-input-demo tool-states
 
 test:
 	$(ENV) $(NATIVE) cd "$$KIT" && swift test
@@ -67,6 +67,27 @@ copy-text-demo:
 # Z9 (plan 18d D15): every Copy Text state on screen into build/text-states/; skipped when the screen is locked.
 text-states:
 	$(ENV) Scripts/demo-text-states.sh
+
+# V6 (plan 20g): lock, unlock, change, wrong passwords, legacy inputs and a form in the real worker of the Debug app,
+# with the app's and worker's command lines watched for the passwords; build/pdf-smoke/.
+pdf-smoke:
+	$(ENV) $(NATIVE) Scripts/pdf-smoke.sh
+
+# V8 (plan 20g F3): LOCK · UNLOCK through the drop path of the Debug app; skipped when the screen is locked.
+lock-demo:
+	$(ENV) $(NATIVE) Scripts/demo-lock.sh
+
+# V9 (plan 20g F3): READ QR through the drop path of the Debug app; skipped when the screen is locked.
+qr-demo:
+	$(ENV) $(NATIVE) Scripts/demo-qr.sh
+
+# V10 (plan 20g F3): a locked PDF's password asked for by Copy Text; skipped when the screen is locked.
+locked-input-demo:
+	$(ENV) $(NATIVE) Scripts/demo-locked-input.sh
+
+# V11 (plan 20g F3): every new M7 state on screen into build/tool-states/; skipped when the screen is locked.
+tool-states:
+	$(ENV) Scripts/demo-tool-states.sh
 
 # D-M7-3: the real-time budgets (ZivletTimingTests), judged only below the load limit; exit 3 = not judged.
 timing:
