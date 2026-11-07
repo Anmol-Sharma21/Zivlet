@@ -11,7 +11,7 @@
     enum PasswordShots {
         enum State: String, CaseIterable {
             case lockEmpty, lockMismatch, lockSuggested, lockNonASCII, lockRestricted, unlockWrong, unlockBatch, retry,
-                change, ownerNeeded
+                change, changeRetry, ownerNeeded, open
         }
 
         static let flag = "-ZivletPasswordStates"
@@ -37,8 +37,8 @@
             let center = NSScreen.main.map { CGPoint(x: $0.frame.midX, y: $0.frame.midY) }
             let request = PasswordRequest(mode: mode(state), files: files(state), near: center)
             Task { @MainActor in
-                if state == .retry {
-                    _ = await prompter.retry(request, failed: ["Budget 2026.pdf", "Lease.pdf"])
+                if state == .retry || state == .changeRetry {
+                    _ = await prompter.retry(request, failed: Array(files(state).prefix(2)))
                 } else {
                     _ = await prompter.ask(request)
                 }
@@ -61,8 +61,9 @@
             switch state {
             case .lockEmpty, .lockMismatch, .lockSuggested, .lockNonASCII, .lockRestricted: .lock
             case .unlockWrong, .unlockBatch, .retry: .unlock
-            case .change: .change
+            case .change, .changeRetry: .change
             case .ownerNeeded: .ownerNeeded
+            case .open: .open
             }
         }
 
@@ -89,9 +90,12 @@
                 sheet.password = suggestion
                 sheet.confirm = suggestion
                 sheet.setRestrictions(PDFRestrictions(printing: .low, copying: false, editing: false))
-            case .unlockWrong: sheet.wrongAttempt()
+            case .unlockWrong, .open: sheet.wrongAttempt()
             case .change:
                 sheet.current = String(suggestion.reversed())
+                sheet.password = suggestion
+                sheet.confirm = suggestion
+            case .changeRetry:  // the second sheet has shaken once already
                 sheet.password = suggestion
                 sheet.confirm = suggestion
             case .lockEmpty, .unlockBatch, .retry, .ownerNeeded: break

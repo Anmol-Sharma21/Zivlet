@@ -13,7 +13,7 @@ grep -q '^tool-states:' "$ROOT/Makefile" || fail "Makefile has no tool-states ta
 out=$(ZIVLET_STATES_DRY_RUN=1 "$SCRIPT" "$T/out")
 for finish in glass solid contrast; do
     for state in lockEmpty lockMismatch lockSuggested lockNonASCII lockRestricted unlockWrong unlockBatch retry change \
-        ownerNeeded; do
+        changeRetry ownerNeeded open; do
         assert_contains "$out" "capture password-$state-$finish.png"
     done
     assert_contains "$out" "capture qr-results-$finish.png"
@@ -21,7 +21,7 @@ for finish in glass solid contrast; do
 done
 for card in lockCard unlockCard changeCard wrongCard; do assert_contains "$out" "capture near-$card-glass.png"; done
 assert_contains "$out" "-ZivletPasswordStates unlockWrong -ZivletIslandFinish contrast"
-assert_eq "$(grep -c '^capture ' <<<"$out")" "49" "49 captures"
+assert_eq "$(grep -c '^capture ' <<<"$out")" "55" "55 captures"
 
 stub_bin "$T"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$T/fake-app"

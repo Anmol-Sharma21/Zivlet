@@ -37,7 +37,7 @@ add() { CAPTURES+=("$1|$2|$3|$4|${5:-}"); }
 finish_flag() { [[ "$1" == glass ]] && echo "" || echo " -ZivletIslandFinish $1"; }
 for finish in glass solid contrast; do
     for state in lockEmpty lockMismatch lockSuggested lockNonASCII lockRestricted unlockWrong unlockBatch retry change \
-        ownerNeeded; do
+        changeRetry ownerNeeded open; do
         add "password-$state-$finish" "Password shot" "$state window" \
             "-ZivletPasswordStates $state$(finish_flag "$finish")" window
     done
