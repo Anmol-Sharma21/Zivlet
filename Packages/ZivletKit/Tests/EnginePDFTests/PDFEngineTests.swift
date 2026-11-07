@@ -62,6 +62,20 @@ struct PDFEngineTests {
         }
     }
 
+    /// The free-disk guard the media engine has too: a write as large as the free space allows is refused before qpdf
+    /// runs, with the claimed staged file left for the runtime to discard.
+    @Test func aWriteThatWouldNotFitIsRefusedBeforeQpdfRuns() async throws {
+        let rig = try Rig()
+        let source = try PDFFixtures.plain(in: rig.dir.url)
+        let plan = try rig.plan(source)
+        let size = try #require(try source.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+
+        await #expect(throws: JobError.diskFull) {
+            try await PDFEngine().execute(plan, context: ExecutionContext(outputByteLimit: Int64(size)))
+        }
+        #expect(try Data(contentsOf: rig.staged).isEmpty)
+    }
+
     @Test func aDamagedSourceIsRefusedAsDamagedAndLeavesTheStagedFileEmpty() async throws {
         let rig = try Rig()
         let plan = try rig.plan(try rig.dir.file("note.pdf", "These words are not a PDF."))

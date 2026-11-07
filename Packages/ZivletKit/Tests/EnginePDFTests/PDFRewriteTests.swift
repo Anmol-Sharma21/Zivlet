@@ -129,6 +129,16 @@ struct PDFRewritingEngineTests {
         #expect(output.withdrawnNotes == [.alphaFlattened])
     }
 
+    /// A full disk, a limit or a fault keeps its own cause; only a PDF qpdf cannot read back fails the checks.
+    @Test func aRewriteFailureKeepsItsCause() {
+        #expect(PDFRewritingEngine.rewriteError(.io) == PDFEngine.jobError(.io))
+        #expect(PDFRewritingEngine.rewriteError(.limit) == .unsupportedInput(.pdfTooComplex))
+        #expect(PDFRewritingEngine.rewriteError(.internalFailure) == PDFEngine.jobError(.internalFailure))
+        let checks = JobError.verificationFailed(PDFRewritingEngine.rewriteMessage)
+        #expect(PDFRewritingEngine.rewriteError(.damaged) == checks)
+        #expect(PDFRewritingEngine.rewriteError(.verifyFailed(.pageCount)) == checks)
+    }
+
     @Test func anOutputThatIsNotAPDFIsLeftAlone() async throws {
         let dir = try TempDir()
         let staged = try dir.file("staged.png", "not touched")

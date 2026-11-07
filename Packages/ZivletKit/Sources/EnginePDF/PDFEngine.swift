@@ -60,6 +60,9 @@ public struct PDFEngine: Engine {
         let stage = try Self.stage(of: plan)
         let staged = plan.stagedFile
         let (limits, watchdog) = (limits, watchdog)
+        // The free-disk guard (as MediaEngine's): the output is about the input's size, so one at the limit is refused
+        // before qpdf writes anything.
+        if let limit = context.outputByteLimit, Self.size(of: stage.source) >= limit { throw .diskFull }
         return try await BlockingWork.run { _ throws(JobError) in
             let write = try Self.write(stage, secrets)
             try Self.releaseClaim(staged)

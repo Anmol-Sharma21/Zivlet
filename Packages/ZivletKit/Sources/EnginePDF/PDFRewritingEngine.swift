@@ -38,7 +38,7 @@ public struct PDFRewritingEngine: Engine {
                     try PDFRewrite.normalise(staged: url)
                 }
             } catch {
-                throw .verificationFailed(Self.rewriteMessage)
+                throw Self.rewriteError(error)
             }
         }
         return StagedOutput(
@@ -47,5 +47,14 @@ public struct PDFRewritingEngine: Engine {
 
     public func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {
         try await inner.verify(output, plan: plan)
+    }
+
+    /// A rewrite that fails keeps its cause (a full disk, a limit, a fault), as the PDF engine's jobs do; only a PDF
+    /// that qpdf cannot read back or that fails its checks is a failed verification.
+    static func rewriteError(_ error: PDFEngineError) -> JobError {
+        switch error {
+        case .damaged, .verifyFailed: .verificationFailed(rewriteMessage)
+        default: PDFEngine.jobError(error)
+        }
     }
 }
