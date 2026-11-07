@@ -8,10 +8,14 @@ import ZivletEngineKit
 /// Where an ffmpeg cancel spends its time, at the production grace (1 s, P1-20), judged against NFR-9 (the ffmpeg
 /// process group is gone ≤ 1 s after a cancel) by `make timing` below the load limit (D-M7-6). Printed: cancel →
 /// SIGINT sent, SIGINT → ffmpeg exited (and whether by itself, by SIGINT or by the SIGKILL at the grace), exit →
-/// the job's task returned (the reap, the pipes' end and the engine's return, together).
+/// the job's task returned (the reap, the pipes' end and the engine's return, together). NFR-9's 1 s is a known
+/// issue (OS-M7-7); P1-20's bound, the grace plus 500 ms, is a hard ceiling for the group's end and the task's return
+/// alike, so a slower teardown fails (D-M7-64).
 @Suite("ffmpeg cancel wall time (NFR-9)", .enabled(if: TimingGate.isEnabled()), .serialized)
 struct MediaCancelTiming {
     static let nfr9 = Duration.seconds(1)
+    /// P1-20: the 1 s grace, then SIGKILL, the reap and the pipes' end within 500 ms.
+    static let ceiling = Duration.milliseconds(1_500)
 
     @Test func aCancelledEncodeIsGoneWithinOneSecond() async throws {
         _ = try EngineLocator().locateMediaTools()
@@ -36,6 +40,8 @@ struct MediaCancelTiming {
         withKnownIssue("NFR-9 missed: ffmpeg ends at the SIGKILL after the 1 s grace (OS-M7-7)", isIntermittent: true) {
             #expect(split.cancelToExit <= Self.nfr9)
         }
+        #expect(split.cancelToExit < Self.ceiling, "the group outlived P1-20's bound")
+        #expect(returned - cancelled < Self.ceiling, "the job's task outlived P1-20's bound")
         TimingGate.report(
             "NFR-9 (group gone ≤ 1000 ms): \(split.cancelToExit <= Self.nfr9 ? "met" : "missed, known issue OS-M7-7")")
     }
