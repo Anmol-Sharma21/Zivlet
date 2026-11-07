@@ -72,3 +72,13 @@ screen`, `test(app): lock, unlock and change through the drop path`, `test(app):
 **Files:** create `docs/plan/21-m7-record.md`.
 
 Commit `docs: record M7`.
+
+---
+
+## Execution notes (stream F, done on `m7`)
+
+Commits: F1 `5ab5ac3`; F2 `5138cf0` and `a7ad58c`; F3 `9dcf587`, the island card fix `b9b7af6` and the tool states
+quit fix `ed6c756` (found by the exit run); F4 the record. What was run, the deviations (D-M7-53 to D-M7-59,
+`make pdf-smoke` built here, captures by window number after a region capture took another app's window, rows that
+quit every Zivlet not run while another was open) and what was not done are in [21](21-m7-record.md) §9; the exit run
+in §3 and §4.

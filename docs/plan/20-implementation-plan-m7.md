@@ -288,6 +288,13 @@ scratch folder only; F3 takes the real screenshots.
 | D-M7-50 | A mixed Lock drop submits the locked files too; each is refused with `alreadyEncrypted` ("Already locked: left as it is.") and listed as a note on the card, not a failure (added in execution) | 20f |
 | D-M7-51 | The Lock sheet shows Printing, Allow copying and Allow editing inline; the first restriction makes the owner password, shown once with Copy (added in execution) | 20f |
 | D-M7-52 | A locked PDF in Copy Text or Read QR runs as its own job with its password; a password that opens nothing comes back as locked again, so no new error crosses the wire (added in execution) | 20f |
+| D-M7-53 | A demo's passwords are the lines of `<folder>/secret`, 0600 in the demo's own folder and deleted by the app once read (E9's convention), not a `-ZivletDemoSecrets <file>` argument; inputs that need a password read `<folder>/inputs-secret`, deleted by the test suite that draws them (added in execution) | 20g, 21 §9 |
+| D-M7-54 | Every M7 capture is of one Zivlet window by its number (`screencapture -l`), never a region of the screen: a region capture took another app's window once (deleted at once). The glass is then drawn without its backdrop, so contrast is read over Zivlet's own surface (added in execution) | 21 §8 |
+| D-M7-55 | The protect cards in `make tool-states` are made-up batches (names only, no files), as Copy Text's states are; the real flow's cards run in `make lock-demo` and `make pdf-smoke`, which check behaviour and capture nothing. The card near the drop is captured in glass only: `ResultHUD` has no finish flag (added in execution) | 21 §8 |
+| D-M7-56 | The sheet's words, the wrong password's line included, are white or white at 0.8 (stream B's rule); red is only the field's outline, so the captures judge white text only (added in execution) | 21 §8 |
+| D-M7-57 | `make pdf-smoke` (V6) and `make lock-demo` (V8) drive one DEBUG demo, `ProtectDemo`, from a `steps.json` of sheets and answers; V6 runs with the screen locked too (it captures nothing) and samples the app's and the worker's command lines every 0.2 s; the PDFKit checker gets passwords and checks on stdin (added in execution) | 21 §9 |
+| D-M7-58 | The island's opened card keeps a protect batch's line ("Locked with AES-256") over the size line instead of "Saved <name>" (`b9b7af6`, seen in the captures) | 21 §8 |
+| D-M7-59 | An exit run does not quit a Zivlet it did not launch. While one is open, the rows that run the M5 demos (they quit every Zivlet, G-M6-16) are not run: V3, m5a X6, m5b Y8, m6 Z3, Z9 and Z10, which needs Z9. Their last results are reported with the commit and run they came from (added in execution) | 21 §3, §4 |
 
 ---
 
@@ -370,6 +377,8 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 | OS-M7-10 | Run the owner-only XCUITests (`ResultCardUITests`, `ToolWindowUITests`) | D-M4-14 |
 | OS-M7-12 | The cold first drop of a process takes 23–94 ms to show the island (warm drops 3–5 ms): draw the island's content once at launch, or set a separate first-drop budget | G-M7-10; M7 does not change P1-40 |
 | OS-M7-11 | Merge and push `m7` when satisfied | Owner only |
+| OS-M7-13 | Move the M5 and M6 demo captures (`demo-text-states`, `demo-box-states`, `demo-notch-states`, `demo-box`, `demo-box-busy`) to window captures, or keep them for a Mac with nothing private on screen | G-M7-29 |
+| OS-M7-14 | With no other Zivlet open, run `Scripts/m7-exit.sh --only V3` and `Scripts/m6-exit.sh --only Z3,Z5,Z6,Z7,Z8,Z9,Z10`; or allow an exit run to quit the Zivlet that is open | D-M7-59 |
 
 ---
 
@@ -423,3 +432,9 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 | G-M7-27 | PDFKit cannot tell a certificate handler, so Copy Text and Read QR call a certificate-locked PDF "locked", not "certificate-based or very old encryption" (17b §3.5); LOCK · UNLOCK does say it | Ask the worker's pre-flight before PDFKit, as LOCK · UNLOCK does |
 | G-M7-28 | Seen only through the loopback worker or not at all: a locked PDF in Copy Text or Read QR in the app, a non-ASCII password through the app, the restrictions in other readers (P2-192), real typing and VoiceOver in the sheet | F3's demos and the owner rows (OS-M7-5, OS-M7-6) |
 | G-M7-26 | A file stopped by the memory ceiling reaches the person through the crash rule (retry once, then blame the file), not as "This PDF is too complex to open safely."; that has not been seen with a PDF, as nothing reaches `PDFEngine` from the app yet. A false stop, with another job's memory past the ceiling during a qpdf step, has not been seen or measured either (D-M7-44) | Look at the words when stream E reaches the engine |
+| G-M7-29 | The M5 and M6 demos crop screen regions (`screencapture -R`), which hold whatever window is on top there; an M7 region capture once held another app's window and was deleted (21 §9) | OS-M7-13: window captures, as M7's (D-M7-54) |
+| G-M7-30 | In that run the region the app logged for Read QR's results window did not show the window; another Space or a capture before the first draw was not told apart | QA TW6 |
+| G-M7-31 | The PDFKit checker of V6 and V8 cannot tell R6 or AES-256 | The engine's verify (qpdf, D-M7-23) and its unit tests hold R6 |
+| G-M7-32 | V6 samples the app's and the worker's command lines every 0.2 s; a password shown between two samples would be missed | Recorded |
+| G-M7-33 | The M6 `demo-text-states.sh` (Z9) captures inside `$(...)`, as `demo-tool-states.sh` did before `ed6c756`, so it leaves each state's app open (six per run, by reading; not counted) | The same fix with a stand-in test, as `ed6c756` |
+| G-M7-34 | V11 waits a fixed 1.2 s after a window's line; in two of 49 captures that was not enough (a window not yet drawn, a window not key). Each was right when run again (21 §8) | QA TW5 for what took key |
