@@ -50,8 +50,10 @@ struct NotchResultCard: View {
     }
 
     /// The name once: "Saved photo.jpg" and "2.1 MB → 640 KB". Several files or a partial result keep the model's
-    /// title, which says so; without a saved file, the title and subtitle.
+    /// title, which says so; without a saved file, the title and subtitle. A title that says what happened (Lock,
+    /// Unlock) stays, with the whole size line under it.
     static func lines(_ model: ResultCardModel) -> (primary: String, secondary: String) {
+        if model.titleSaysWhatHappened, let line = model.sizeLine { return (model.title, line) }
         guard let line = model.sizeLine, let split = line.range(of: " · ", options: .backwards) else {
             return (model.title, model.subtitle)
         }

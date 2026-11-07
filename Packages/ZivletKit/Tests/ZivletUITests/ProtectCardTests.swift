@@ -68,6 +68,17 @@ struct ProtectCardTests {
         #expect(line == "Unlocked · Report Unlocked.pdf")
     }
 
+    /// The island's opened card says what happened, as its line and the card near the drop do, not "Saved" (seen on
+    /// screen in plan 20g F3).
+    @Test func theIslandsCardSaysTheLineNotSaved() {
+        let lock = Self.snapshot(.lock(nil), Self.saved("Report Locked.pdf"))
+        let locked = NotchResultCard.lines(ResultCardModel(lock))
+        #expect(locked.primary == "Locked with AES-256")
+        #expect(locked.secondary == "Report Locked.pdf · 2 KB → 2 KB")
+        let unlock = Self.snapshot(.unlock, Self.saved("Report Unlocked.pdf"))
+        #expect(NotchResultCard.lines(ResultCardModel(unlock)).primary == "Unlocked")
+    }
+
     @Test func theIslandAndTheCardNameTheModeWhileWorking() {
         let working = Self.snapshot(.lock(nil), .preparing, finished: false)
         #expect(NotchHUDCopy.workingTitle(working) == "Locking Report.pdf")

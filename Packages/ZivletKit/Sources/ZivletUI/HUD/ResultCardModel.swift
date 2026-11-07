@@ -23,6 +23,8 @@ public struct ResultCardModel: Sendable, Equatable {
     public let lingers: Duration?
     public let holdsWhileHovered: Bool
     public let outputs: [URL]
+    /// The title says what happened ("Locked with AES-256"), so no surface replaces it with "Saved <name>" (P2-106).
+    public let titleSaysWhatHappened: Bool
 
     public init(_ snapshot: BatchSnapshot, registry: FormatRegistry = .standard) {
         let shown = BatchPresentation.make(snapshot, registry: registry)
@@ -36,6 +38,7 @@ public struct ResultCardModel: Sendable, Equatable {
         buttons = Self.buttons(shown, hasDetails: shown.detail != nil)
         lingers = snapshot.failures.isEmpty ? Self.successLinger : nil
         holdsWhileHovered = true
+        titleSaysWhatHappened = snapshot.protect != nil
     }
 
     /// Success: Undo, Reveal, Open, Copy. Failure: Show Details (when there are any), Retry, Close. Part of each:
