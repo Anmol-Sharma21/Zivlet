@@ -89,10 +89,13 @@ contrast() {
         BEGIN { t = dec(0.8 + enc(l) * 0.2); printf "%.2f", (t + 0.05) / (l + 0.05) }'
 }
 
-# Launches one state, waits for its line and then a window line after it; captures that window only and prints
-# "<window> <x> <y> <w> <h>".
+# Launches one state, waits for its line and then a window line after it; captures that window only and sets FRAME
+# to "<window> <x> <y> <w> <h>". It runs in this shell, never in $(...): launch_app records the new app in APP_PID,
+# and a subshell would lose it, so the next quit_app would quit nothing and every state's app would stay open.
+FRAME=""
 capture() {
     local file=$1 source=$2 state=$3 arguments=$4 start lines found="" refused
+    FRAME=""
     quit_app
     start=$(date '+%Y-%m-%d %H:%M:%S')
     # shellcheck disable=SC2086 # the arguments are words on purpose
@@ -111,7 +114,7 @@ capture() {
     read -r window _ <<<"$found"
     screencapture -x -o -l "$window" "$OUT/$file.png" || true
     [[ -s "$OUT/$file.png" ]] || { echo "error: $file: no PNG was written" >&2; return 1; }
-    echo "$found"
+    FRAME=$found
 }
 
 # Reads the surface in a text-free box of a capture and judges white text at 0.8 over it.
@@ -133,8 +136,8 @@ status=0
 for entry in "${CAPTURES[@]}"; do
     IFS='|' read -r file source state arguments kind <<<"$entry"
     selected "$file" || continue
-    if ! frame=$(capture "$file" "$source" "$state" "$arguments"); then status=1; continue; fi
-    echo "$file.png ($frame)"
-    [[ -z "$kind" ]] || measure "$file" "$frame" "$kind" || status=1
+    if ! capture "$file" "$source" "$state" "$arguments"; then status=1; continue; fi
+    echo "$file.png ($FRAME)"
+    [[ -z "$kind" ]] || measure "$file" "$FRAME" "$kind" || status=1
 done
 exit "$status"
