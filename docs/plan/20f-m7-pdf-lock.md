@@ -227,3 +227,95 @@ engine handles that pair`.
 | D-M7-24 | In M7, P2-107 covers Copy Text and Read QR on locked PDFs (one prompt per file, password in that job only, permission bits honoured) and Lock/Change; conversions from PDF wait for P2-12, and E11 stops the wheel offering them meanwhile |
 | D-M7-25 | Every test PDF is made at test time by our own code: CoreGraphics (plain, RC4-40 R3, AES-128 R4, restrictions-only, owner + permissions), PDFKit widgets (form and signature fields), and the shim (R6 with and without restrictions, non-ASCII passwords, structure and hostile cases). Nothing is downloaded |
 | D-M7-26 | The M7 exit runner `Scripts/m7-exit.sh` follows `m6-exit.sh` (rows V1–V13, each in its own process, skip ≠ pass) |
+
+---
+
+## Execution notes (stream E on `m7`, 2026-11-07)
+
+Commits: E1 `616a273`, E2 `b08e5e3`, E3 `1344f77`, E4 `a15b591`, E5 `524e463`, E6 `d5b437b`, E7 `ab91b89`, E8
+`a3a23dc`, E9 `c81de3d`, E10 `bdaf472`, E11 `abe050a`, B7's deferred policy test `6f643dd`, and the build-order fix
+`6d73e67` (G-M7-11) that the gate run needed. `make test` on `695c5cc`
+was green before any of them: 2418 tests in 23 bundles (load 4.5–7.8).
+
+**TDD.** Each task's test was written first and seen to fail, with these exceptions: E4's RED was a missing
+`JobError.alreadyEncrypted` and plan note, not "cannot find PDFEngine" (stream C made the engine); `OwnerPasswordTests`
+first failed on a test-code error, so the missing type was never seen alone; E10's text merge and E11's
+`availablePairs()` were written beside their tests; the policy test (`6f643dd`) was written after the jobs existed, and
+its probes are the ones stream B proved on planted leaks. E2's commit passed a lint call that checked nothing (an
+unsplit file list in zsh); its two long lines and an indentation were fixed in E3's commit.
+
+**Deviations from the tasks above** (decisions D-M7-46 to D-M7-52 in the index):
+
+- **E1.** `protect` sits after `pdfCombine` in the catalog order. The label test measures every tool label with
+  AppKit's 7.5 pt semibold and the petal's tracking, not a `WheelGeometry` call (there is none for labels).
+- **E2.** The change mode's wire name is `change`, so no key of a request reads like a password. Either suffix is
+  replaced (`Report Unlocked.pdf` locked is `Report Locked.pdf`). Every output is named through
+  `OutputNamer.output(for:)`.
+- **E3.** `WireSecrets` is a list of role entries rather than three fields, so "four secrets" and "a role twice" can be
+  refused. Passwords on the wrong request are an internal invariant; only their shape is `.badPassword`. The worker's
+  inspection is answered through an injected `PDFInspecting`, because `ZivletWorkerCore` must not link qpdf. The worker
+  reports `pdf → pdf` among the PDF engine's routes, since it is not a catalog pair. **New:** `WorkerOnlyEngine`, the
+  app's handle on an engine that exists only in the worker; with no worker a PDF tool job fails with
+  `engineMissing(.pdf)` (closes G-M7-19). The real-XPC round trip covers `prepare`; the loopback covers the three
+  steps. Worker protocol 7.
+- **E4.** Verify also holds the output to its exact /P bits (`.permits`). The OWN-PDF-1 note is planned in prepare when
+  the new password is not ASCII and withdrawn by execute when PDFKit opens the output after all. The restrictions
+  section of the sheet was built in E9, where the sheet is used. `check-secrets.sh` refuses qpdf's R2–R5 setters in
+  any source, C++ included.
+- **E5.** Execute tries the Unicode forms again, because a plan carries no password. The owner-needed sheet's
+  password is the one Unlock opens with. An unencrypted file in an Unlock job is rewritten without encryption, not
+  refused.
+- **E6.** Whether the owner password and restrictions stay is read from the file (it has restrictions and the owner
+  password opened it), not from `keepRestrictions`. The kept owner password is the bytes as typed.
+- **E7.** The batch logic is tested with a fake prompter and submitter in `ZivletUITests`, which cannot link the
+  worker; `ConversionService.protect` is tested with the real PDF engine in the loopback worker. Each second sheet
+  runs a batch of its own, with its own card. The "not unlocked" line counts wrong and owner-needed answers.
+- **E8.** The mixed drop's locked files go through Lock and are refused with `alreadyEncrypted`, whose copy is now
+  "Already locked: left as it is."; the card lists them as notes, not failures. *New* strings: the working titles
+  "Locking", "Unlocking", "Changing password" and the partial title "Unlocked 2 of 3 files" (the mode's line, then
+  the count).
+- **E9.** The flow (`ProtectFlow`) lives in `ZivletUI` so it can be tested; the app's `ProtectWiring` only builds it
+  and announces each batch to the presenters. "Change password…" is seen from the answer (a new password came back).
+  Files the worker cannot read go along, so their job says why. DEBUG `-ZivletProtectDemo <folder>` runs lock,
+  unlock and a wrong password through the flow with a scripted prompter; the password comes from a 0600 file it
+  deletes once read.
+- **E10.** A password that opens nothing comes back as `pdfLocked` again, so no new error crossed the wire. Each
+  locked file runs its own job and its text takes its place in the drop's order. **Not done:** PDFKit cannot tell a
+  certificate handler, so Copy Text and Read QR do not say "certificate-based" (they say locked), and G-M7-23's
+  wording is unchanged.
+- **E11.** With no pairs given, a PDF shows the whole catalog list (9 targets), not the two of G-M7-2: the app's real
+  snapshot had already hidden the document targets. The test expects the catalog list.
+
+**Seen in the Debug app** (screen awake, load 3–5). `-ZivletProtectDemo` locked, unlocked and refused a wrong password
+on a two-page PDF made for the demo: the jobs ran in `ZivletWorker` ("Worker ready" in the log), "Report Locked.pdf"
+and "Report Unlocked.pdf" were published beside the input, and the secret file was gone. This is the first PDF job
+from the app to reach `PDFEngine` in the XPC worker; the watchdog's stop there was still not triggered (G-M7-22 stays
+half). Captured by window number into the session's scratch folder (not tracked): the cards near the drop ("Locked
+with AES-256", "Unlocked", "That password didn't work." with Retry), the island's lines for the same, and the sheets
+`lockEmpty`, `lockRestricted`, `unlockWrong` and `ownerNeeded`. The first `lockRestricted` capture showed the Printing
+control clipped at the sheet's right edge; it now sits on its own row (fixed in `c81de3d`). A first try captured the
+whole screen, which takes other apps' windows; those files were deleted, and every capture since takes Zivlet's own
+windows only.
+
+**Not seen or not measured:** real typing in the sheet, Suggest, VoiceOver, the restrictions on another reader
+(P2-192, owner row), a non-ASCII password through the app, a locked PDF through Copy Text or Read QR in the app (only
+the loopback worker), and the island's working line for a protect batch on screen.
+
+**Gates** (`nice -n 10`; load 1m; the screen was awake except where said).
+
+| Gate | Result |
+|---|---|
+| `make test` on `6f643dd` | 2537 tests, 23 bundles, all pass (2418 at the baseline), load 4–13 |
+| `make lint` | passes (with `check-secrets.sh`, now refusing qpdf's R2–R5 setters) |
+| `make coverage` | 21 modules ≥ 80 %: EnginePDF 98 % (862/876), CZivletPDF 91 % (471/512), ZivletIPC 100 %, ZivletUI 92 %, ZivletRuntime 93 %, EngineVision 90 % the lowest |
+| `make app` | passes after `6d73e67`; the Debug app verifies `codesign --verify --deep --strict` |
+| `make release-check` | passes: Bundle OK, 57.0 MB installed, worker 8.4 MB, size OK |
+| `make licence-gate` | 15 components, 58 crates |
+| `make script-test` | passes |
+| `Scripts/m5a-exit.sh` (load 4.6 → 3.1) | X1–X5 and X7 pass; X2 judged at load 3.00, every budget met. X6 fails on idle CPU (G-M5a-1, not worked on): `indeterminate`, `pill-progress`, `fast-progress` and `pill-progress-solid` over their 1 % (2.1 % the most) |
+| `Scripts/m5b-exit.sh` (load 4.2 → 3.4) | Y1–Y9 pass, Y3 with X2 judged, Y8 passed |
+| `Scripts/m6-exit.sh` (load 3.4 → 4.4) | Z1, Z2 and Z4–Z11 pass. **Z3 not judged (skip):** the Mac slept with its lid closed during its X2 wait (about ten hours by the clock), and X2 never found the load under 3.0; Z3's other rows (X3–X5, Y4, Y5, Y7) passed. X2 itself was judged twice in this run (X2, Y3) |
+| `Scripts/m7-exit.sh` | not yet written (stream F, F2) |
+
+The first gate run failed m5a X1 at `make app` (G-M7-11's race), which left an unsigned Debug app, so X2 and X3 of that
+run failed too. `6d73e67` fixed the order; the runners above are the rerun. No fresh clone was run.
