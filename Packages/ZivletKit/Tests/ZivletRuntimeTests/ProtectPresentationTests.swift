@@ -83,6 +83,16 @@ struct ProtectPresentationTests {
         #expect(shown.subtitle == "1 file not unlocked")
     }
 
+    /// The count comes right after the verb, so it never runs into the cipher's name.
+    @Test(arguments: [
+        (ProtectSpec.Mode.lock(nil), "Locked 1 of 2 files"), (.changePassword, "Password changed for 1 of 2 files"),
+    ])
+    func aPartialLockOrChangeCountsAfterTheVerb(mode: ProtectSpec.Mode, title: String) {
+        let shown = BatchPresentation.make(
+            Self.snapshot(mode, [("a.pdf", .succeeded(Self.output("a Locked.pdf"))), ("b.pdf", .failed(.diskFull))]))
+        #expect(shown.phase == .partial && shown.title == title)
+    }
+
     @Test func aWrongPasswordAloneSaysSo() {
         let shown = BatchPresentation.make(Self.snapshot(.unlock, [("c.pdf", .failed(.wrongPassword))]))
         #expect(shown.phase == .failed && shown.title == "That password didn't work." && shown.subtitle == "c.pdf")

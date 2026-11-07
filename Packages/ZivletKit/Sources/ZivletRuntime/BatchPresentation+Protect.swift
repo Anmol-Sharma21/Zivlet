@@ -13,6 +13,15 @@ extension ProtectSpec.Mode {
         }
     }
 
+    /// The card's title when only some files were done: the count right after the verb ("Locked 2 of 3 files").
+    public func partialTitle(_ done: Int, of total: Int) -> String {
+        switch self {
+        case .lock: "Locked \(done) of \(total) files"
+        case .unlock: "Unlocked \(done) of \(total) files"
+        case .changePassword: "Password changed for \(done) of \(total) files"
+        }
+    }
+
     /// The working title.
     public var workingTitle: String {
         switch self {
@@ -44,7 +53,7 @@ extension BatchPresentation {
         guard !saved.isEmpty else { return failedProtect(snapshot, failed: failed, notes: allNotes) }
         let total = saved.count + failed.count
         return BatchPresentation(
-            phase: .partial, title: "\(mode.doneLine) \(saved.count) of \(total) files",
+            phase: .partial, title: mode.partialTitle(saved.count, of: total),
             subtitle: partialLine(failed), fraction: nil, notes: allNotes, detail: nil)
     }
 
