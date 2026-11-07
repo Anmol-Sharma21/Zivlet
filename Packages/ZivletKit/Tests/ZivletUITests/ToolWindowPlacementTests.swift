@@ -36,6 +36,20 @@ struct ToolWindowPlacementTests {
         #expect(frame.minX == 1440 + Self.margin && frame.minY == -200 + Self.margin)
     }
 
+    /// The window keeps its top as its content grows, and moves up only as far as the bottom margin needs.
+    @Test func growingKeepsTheTopUntilTheBottomMarginIsReached() {
+        let placed = CGRect(x: 100, y: 400, width: 340, height: 200)
+        let grown = { (height: CGFloat, frame: CGRect) in
+            ToolWindowPlacement.grown(frame, toHeight: height, visibleFrame: Self.screen)
+        }
+        #expect(grown(300, placed) == CGRect(x: 100, y: 300, width: 340, height: 300))
+        let low = CGRect(x: 100, y: Self.margin, width: 340, height: 215)
+        #expect(grown(285, low) == CGRect(x: 100, y: Self.margin, width: 340, height: 285))
+        let tooTall = grown(2_000, low)
+        #expect(tooTall.maxY == 875 - Self.margin && tooTall.height == 2_000)
+        #expect(grown(150, placed) == CGRect(x: 100, y: 450, width: 340, height: 150))
+    }
+
     @Test func aScreenSmallerThanTheWindowKeepsItsTopLeftVisible() {
         let small = CGRect(x: 0, y: 0, width: 300, height: 150)
         let frame = Self.frame(CGPoint(x: 150, y: 75), screen: small)

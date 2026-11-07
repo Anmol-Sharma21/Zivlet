@@ -14,6 +14,8 @@ public final class ToolWindow: NSPanel {
     let state = ToolWindowState()
     private let hosting: NSHostingView<ToolWindowView>
     private var displayOptions: (any NSObjectProtocol)?
+    /// The visible frame the window was placed in, so content that grows later keeps it on screen.
+    private var placedIn: CGRect?
 
     public init() {
         hosting = NSHostingView(rootView: ToolWindowView(state: state))
@@ -51,12 +53,12 @@ public final class ToolWindow: NSPanel {
     public func load(_ model: ToolWindowModel, content: AnyView) {
         state.content = content
         update(model)
-        setAccessibilityLabel(model.title)
     }
 
     /// A new state for the open window (Apply's state, busy); the content stays.
     public func update(_ model: ToolWindowModel) {
         state.model = model
+        setAccessibilityLabel(model.title)
         fitToContent()
         // A tool's content can change in the middle of SwiftUI's own update (typing, a field taking focus), when the
         // hosting view cannot measure yet: measure again once that update is over.
@@ -73,7 +75,9 @@ public final class ToolWindow: NSPanel {
     }
 
     func place(at center: CGPoint, visibleFrame: CGRect) {
+        placedIn = nil
         fitToContent()
+        placedIn = visibleFrame
         setFrame(
             ToolWindowPlacement.frame(size: frame.size, wheelCenter: center, visibleFrame: visibleFrame), display: false
         )
@@ -85,9 +89,9 @@ public final class ToolWindow: NSPanel {
         // Nothing measurable (mid-update, or no model yet): keep the size the window has, never collapse to a line.
         guard measured > 1 || state.model == nil else { return }
         let height = max(1, measured)
-        let top = frame.maxY
-        setFrame(
-            NSRect(x: frame.minX, y: top - height, width: ToolWindowView.width, height: height), display: isVisible)
+        let kept = NSRect(x: frame.minX, y: frame.maxY - height, width: ToolWindowView.width, height: height)
+        let fitted = placedIn.map { ToolWindowPlacement.grown(kept, toHeight: height, visibleFrame: $0) } ?? kept
+        setFrame(fitted, display: isVisible)
     }
 
     /// Runs Apply when it is on and the tool is not working; true when it ran.
@@ -103,6 +107,31 @@ public final class ToolWindow: NSPanel {
         close()
     }
 
+    /// Zivlet has no main menu (it lives in the menu bar), so no Edit menu turns ⌘X, ⌘C, ⌘V, ⌘A, ⌘Z and ⇧⌘Z into
+    /// their commands: the window sends them up the responder chain from the field that has the keyboard.
+    override public func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if let action = Self.editingAction(for: event), let responder = firstResponder,
+            responder.tryToPerform(action, with: self)
+        {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    /// The standard editing command of `event`, or nil.
+    static func editingAction(for event: NSEvent) -> Selector? {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        return switch (flags, event.charactersIgnoringModifiers?.lowercased()) {
+        case (.command, "x"): #selector(NSText.cut(_:))
+        case (.command, "c"): #selector(NSText.copy(_:))
+        case (.command, "v"): #selector(NSText.paste(_:))
+        case (.command, "a"): #selector(NSResponder.selectAll(_:))
+        case (.command, "z"): Selector(("undo:"))
+        case ([.command, .shift], "z"): Selector(("redo:"))
+        default: nil
+        }
+    }
+
     /// Return and the keypad's Enter run Apply when nothing inside the window took them first.
     override public func keyDown(with event: NSEvent) {
         let returnKeys: Set<UInt16> = [36, 76]
@@ -112,6 +141,7 @@ public final class ToolWindow: NSPanel {
 
     override public func close() {
         super.close()
+        placedIn = nil
         state.model = nil
         state.content = nil
     }

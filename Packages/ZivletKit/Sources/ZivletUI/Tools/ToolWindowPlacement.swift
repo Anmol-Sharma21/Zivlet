@@ -17,4 +17,12 @@ public enum ToolWindowPlacement {
             : min(max(wheelCenter.y - size.height / 2, inside.minY), inside.maxY - size.height)
         return CGRect(origin: CGPoint(x: x, y: y), size: size)
     }
+
+    /// `frame` at a new `height` with its top kept, moved up just enough to stay inside the bottom margin; a window
+    /// taller than the frame keeps its top visible.
+    public static func grown(_ frame: CGRect, toHeight height: CGFloat, visibleFrame: CGRect) -> CGRect {
+        let inside = visibleFrame.insetBy(dx: margin, dy: margin)
+        let top = height > inside.height ? inside.maxY : min(max(frame.maxY, inside.minY + height), inside.maxY)
+        return CGRect(x: frame.minX, y: top - height, width: frame.width, height: height)
+    }
 }
