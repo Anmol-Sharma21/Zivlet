@@ -58,7 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         text: TextService(selection: worker), actions: actions, store: settings.store, clipboard: Self.toolClipboard())
     lazy var toolWindows = ToolWindowWiring(actions: actions)
     lazy var passwords = PasswordWiring(toolWindows: toolWindows)
-    lazy var protect = ProtectWiring(conversions: conversions, prompter: passwords.prompter) { [weak self] point in
+    lazy var protect = ProtectWiring(
+        conversions: conversions, prompter: passwords.prompter,
+        present: { [weak self] result, point in self?.actions.present(result, near: point) }
+    ) { [weak self] point in
         self?.conversion.expectBatch(near: point)
     }
     lazy var codes = CodeWiring(

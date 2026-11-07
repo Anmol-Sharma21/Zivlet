@@ -53,9 +53,20 @@ struct ProtectBatchTests {
             return states
         }
 
+        /// As `PDFEngine` does: Lock needs a new password, and an owner password with restrictions; Change needs a new
+        /// password. A missing one is an internal error, never a wrong password.
         private func state(_ file: URL, _ spec: ProtectSpec, _ secrets: JobSecrets?) -> JobState {
             let name = file.lastPathComponent
-            if case .lock = spec.mode { return .succeeded(published(name)) }
+            let missing = JobState.failed(.internalInvariant("missing password"))
+            switch spec.mode {
+            case .lock(let restrictions):
+                guard secrets?.newUser != nil, restrictions == nil || secrets?.owner != nil else { return missing }
+                return .succeeded(published(name))
+            case .changePassword:
+                guard secrets?.newUser != nil else { return missing }
+            case .unlock:
+                break
+            }
             let text = { (secret: JobSecret?) in secret?.withBytes { String(decoding: $0, as: UTF8.self) } }
             if let owner = text(secrets?.owner) {
                 return owners[name] == owner ? .succeeded(published(name)) : .failed(.wrongPassword)

@@ -39,6 +39,8 @@ public protocol WindowToolContent: AnyObject {
 /// the HUD rather than doing nothing (PRD §5.7). A tool with no content is left to the caller.
 public final class ToolWindowCoordinator {
     static let oneFileOnly = "This tool works on one file at a time"
+    /// Another tool's window is open, so a new one cannot open yet.
+    public static let windowBusy = "Finish the open window first"
 
     private let makeWindow: () -> any ToolWindowing
     private let contents: (ToolID, [URL]) -> (any WindowToolContent)?
