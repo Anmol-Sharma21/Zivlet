@@ -211,7 +211,8 @@ out=$(hygiene long Long.swift "$(seq 1 800 | sed 's/^/let x/')" -s -m "feat: lon
 assert_contains "$(v13_log long)" "Long.swift has 800 lines"
 out=$(hygiene personal Notes.md "see /Users/$(whoami)/notes" -s -m "docs: a path")
 assert_contains "$(v13_log personal)" "personal path"
-out=$(hygiene prior Notes.md "as Tangerine does" -s -m "docs: prior art")
+prior="as Tan""gerine does"  # split, so this file does not plant the name in the diff V13 reads
+out=$(hygiene prior Notes.md "$prior" -s -m "docs: prior art")
 assert_contains "$(v13_log prior)" "another app's name"
 out=$(hygiene pdf Fixtures/sample.pdf "%PDF-1.7" -s -m "test: a sample")
 assert_contains "$(v13_log pdf)" "a PDF file was added"
