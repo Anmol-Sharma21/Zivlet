@@ -77,7 +77,7 @@ public actor TextService {
     }
 
     /// Up to two attempts, each with a fresh job id: a worker crash on the first is retried with the worker to itself
-    /// (D-M7-60), and on the second the drop is named as the cause.
+    /// (D-M7-66), and on the second the drop is named as the cause.
     private static func run(
         _ connection: WorkerConnection, urls: [URL], languages: [LanguageTag], secrets: JobSecrets?,
         progress: @escaping @Sendable (Double) -> Void

@@ -60,7 +60,7 @@ struct ParkingEngine: Engine {
     func verify(_ output: StagedOutput, plan: ExecutionPlan) async throws(JobError) {}
 }
 
-/// A crash retry runs alone in the worker (review of M7, D-M7-60): one file's stuck qpdf call stops the whole shared
+/// A crash retry runs alone in the worker (review of M7, D-M7-66): one file's stuck qpdf call stops the whole shared
 /// worker, so a retry beside another file's first attempt could be blamed for that file's crash.
 @Suite("A retry has the worker to itself")
 struct WorkerIsolationRetryTests {

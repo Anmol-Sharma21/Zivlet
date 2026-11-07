@@ -46,7 +46,7 @@ public actor CodeService {
         }
     }
 
-    /// Up to two attempts, each with a fresh job id; the retry has the worker to itself (D-M7-60).
+    /// Up to two attempts, each with a fresh job id; the retry has the worker to itself (D-M7-66).
     private static func run(
         _ connection: WorkerConnection, urls: [URL], secrets: JobSecrets?,
         progress: @escaping @Sendable (Double) -> Void

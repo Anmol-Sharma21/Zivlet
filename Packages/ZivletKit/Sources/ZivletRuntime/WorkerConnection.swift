@@ -14,7 +14,7 @@ import os
 /// the step's reply, and one that comes after the reply is dropped (the reply carries the outcome). A cancelled Swift
 /// task sends `.cancel(job)` on the session its request went to, never on a new one; the worker remembers a cancel
 /// that overtakes its request. Every request that does work in the worker passes `isolation`, so a crash retry runs
-/// there alone (D-M7-60); pings, capabilities and cancels never wait.
+/// there alone (D-M7-66); pings, capabilities and cancels never wait.
 public final class WorkerConnection: Sendable {
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
 

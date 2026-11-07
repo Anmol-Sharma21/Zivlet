@@ -52,7 +52,7 @@ public struct RemoteEngine: Engine {
     }
 }
 
-/// An engine whose steps may run in the worker: its jobs go through the worker's isolation (D-M7-60).
+/// An engine whose steps may run in the worker: its jobs go through the worker's isolation (D-M7-66).
 protocol WorkerHosted {
     var workerIsolation: WorkerIsolation { get }
 }

@@ -6,7 +6,7 @@ import ZivletCore
 
 @testable import ZivletRuntime
 
-/// The worker's shared and exclusive permits (D-M7-60): ordinary work runs together, a retry runs alone once the work in
+/// The worker's shared and exclusive permits (D-M7-66): ordinary work runs together, a retry runs alone once the work in
 /// flight has ended, waiters go in first in, first out, a cancelled waiter holds nothing, and a holder's own requests
 /// never wait behind its permit.
 @Suite("Worker isolation")

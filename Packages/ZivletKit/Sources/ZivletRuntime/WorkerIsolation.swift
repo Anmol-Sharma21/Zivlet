@@ -1,6 +1,6 @@
 import ZivletCore
 
-/// Who may use the worker at once (D-M7-60). One file's stuck qpdf call stops the whole worker (the PDF watchdog can
+/// Who may use the worker at once (D-M7-66). One file's stuck qpdf call stops the whole worker (the PDF watchdog can
 /// only kill the process), so every job in flight there crashes with it. Ordinary work holds a shared permit; a crash
 /// retry holds the worker alone, so a second crash during it can only be its own file's and P2-01's rule names the
 /// right file. Waiters are served first in, first out: shared ones that queue behind a retry wait for it, and a retry
