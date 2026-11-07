@@ -1,8 +1,8 @@
 import SwiftUI
 import ZivletNotch
 
-/// One password field with its eye button (P2-101): a `SecureField`, or a `TextField` on the same text while the
-/// passwords are revealed. Return submits the window (Apply, when it is on).
+/// One password field with its own eye button (P2-101): a `SecureField`, or a `TextField` on the same text while this
+/// field is revealed. Return submits the window (Apply, when it is on).
 struct PasswordFieldRow: View {
     let field: PasswordField
     @Binding var text: String

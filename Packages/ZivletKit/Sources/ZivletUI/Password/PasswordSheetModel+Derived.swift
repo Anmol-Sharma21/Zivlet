@@ -52,6 +52,15 @@ extension PasswordSheetModel {
         ToolWindowModel(symbol: symbol, title: title, fileLine: fileLine, apply: apply)
     }
 
+    /// The fields that hold the new password, which Suggest fills and reveals (never Change's current password).
+    public var newPasswordFields: Set<PasswordField> {
+        switch mode {
+        case .lock: [.password, .confirm]
+        case .change: [.newPassword, .confirm]
+        case .unlock, .ownerNeeded, .open: []
+        }
+    }
+
     /// A new password is being set (Lock, Change).
     public var setsPassword: Bool { mode == .lock || mode == .change }
     /// Only Lock offers printing, copying and editing restrictions (17a §3.1).

@@ -83,7 +83,8 @@
                 let text = "पासवर्ड-" + suggestion
                 sheet.password = text
                 sheet.confirm = text
-                sheet.toggleReveal()
+                sheet.toggleReveal(.password)
+                sheet.toggleReveal(.confirm)
             case .lockRestricted:
                 sheet.password = suggestion
                 sheet.confirm = suggestion

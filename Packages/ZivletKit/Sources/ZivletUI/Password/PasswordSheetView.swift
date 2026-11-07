@@ -33,9 +33,7 @@ struct PasswordSheetView: View {
             if model.offersRestrictions { PasswordRestrictionsSection(state: state) }
             if let label = model.sameForAllLabel {
                 Toggle(label, isOn: Binding(get: { model.sameForAll }, set: state.setSameForAll))
-                    .toggleStyle(.checkbox)
-                    .font(IslandContentLook.TypeStyle.secondary)
-                    .foregroundStyle(IslandInk.primary)
+                    .toggleStyle(PasswordCheckboxStyle())
             }
             if let label = model.changeSwitchLabel {
                 Button(label, action: state.switchToChange)
@@ -61,8 +59,8 @@ struct PasswordSheetView: View {
         VStack(alignment: .leading, spacing: IslandContentLook.Spacing.s) {
             ForEach(model.fields, id: \.self) { field in
                 PasswordFieldRow(
-                    field: field, text: binding(field), revealed: model.revealed, focus: $focus,
-                    toggleReveal: state.toggleReveal, labelled: model.labelsFields)
+                    field: field, text: binding(field), revealed: model.isRevealed(field), focus: $focus,
+                    toggleReveal: { state.toggleReveal(field) }, labelled: model.labelsFields)
             }
         }
         .modifier(ShakeEffect(attempts: reduceMotion ? 0 : CGFloat(attempts)))
@@ -127,8 +125,7 @@ struct PasswordSheetView: View {
     /// The VoiceOver labels of the sheet's controls in `model`, in order (the fields, their eye buttons, Suggest and
     /// Copy, the batch switch, the switch to Change).
     static func controlLabels(_ model: PasswordSheetModel, canSuggest: Bool) -> [String] {
-        let eye = PasswordFieldRow.eyeLabel(revealed: model.revealed)
-        let fields = model.fields.flatMap { [$0.label, eye] }
+        let fields = model.fields.flatMap { [$0.label, PasswordFieldRow.eyeLabel(revealed: model.isRevealed($0))] }
         let suggest = canSuggest && model.setsPassword ? [PasswordCopy.suggest] : []
         let copy = model.strength != nil ? [PasswordCopy.copy] : []
         return fields + suggest + copy + [model.sameForAllLabel, model.changeSwitchLabel].compactMap { $0 }

@@ -4,7 +4,8 @@ import ZivletNotch
 
 /// Lock's restrictions (17a §3.1, D-M7-20; OWN-UI-1): printing, copying and editing. Choosing any shows the owner
 /// password the app made, once, with Copy, and the line saying restrictions are not security. White and white at 0.8 on
-/// the dark surface, as the rest of the sheet.
+/// the dark surface, as the rest of the sheet; the choices draw no accent colour (D-M7-62). VoiceOver reads the owner
+/// password as the value of its caption.
 struct PasswordRestrictionsSection: View {
     static let printingValues: [PDFRestrictions.Printing] = [.none, .low, .full]
 
@@ -18,15 +19,13 @@ struct PasswordRestrictionsSection: View {
                 Text(PasswordCopy.printing)
                     .font(IslandContentLook.TypeStyle.secondary)
                     .foregroundStyle(IslandInk.primary)
-                Picker(PasswordCopy.printing, selection: printing) {
-                    ForEach(Array(Self.printingValues.enumerated()), id: \.offset) { index, value in
-                        Text(PasswordCopy.printingChoices[index]).tag(value)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel(PasswordCopy.printing)
+                    .accessibilityHidden(true)  // the choice's own title carries it
+                PasswordSegmentedChoice(
+                    title: PasswordCopy.printing,
+                    choices: Array(zip(Self.printingValues, PasswordCopy.printingChoices)).map {
+                        (value: $0, label: $1)
+                    },
+                    selection: printing)
             }
             checkbox(PasswordCopy.allowCopying, isOn: copying)
             checkbox(PasswordCopy.allowEditing, isOn: editing)
@@ -35,10 +34,7 @@ struct PasswordRestrictionsSection: View {
     }
 
     private func checkbox(_ title: String, isOn: Binding<Bool>) -> some View {
-        Toggle(title, isOn: isOn)
-            .toggleStyle(.checkbox)
-            .font(IslandContentLook.TypeStyle.secondary)
-            .foregroundStyle(IslandInk.primary)
+        Toggle(title, isOn: isOn).toggleStyle(PasswordCheckboxStyle())
     }
 
     private func ownerRow(_ owner: String) -> some View {
@@ -46,13 +42,16 @@ struct PasswordRestrictionsSection: View {
             Text(PasswordCopy.ownerShownOnce)
                 .font(IslandContentLook.TypeStyle.secondary)
                 .foregroundStyle(IslandInk.secondary)
+                .accessibilityHidden(true)  // read as the password's label
             HStack(spacing: IslandContentLook.Spacing.s) {
+                let read = Self.ownerAccessibility(owner)
                 Text(owner)
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(IslandInk.primary)
                     .textSelection(.enabled)
                     .lineLimit(1)
-                    .accessibilityLabel(PasswordCopy.ownerShownOnce)
+                    .accessibilityLabel(read.label)
+                    .accessibilityValue(read.value)
                 Spacer(minLength: 0)
                 CodeIconButton(symbol: "doc.on.doc", title: PasswordCopy.copyOwner) { state.copyOwnerPassword() }
             }
@@ -61,6 +60,11 @@ struct PasswordRestrictionsSection: View {
                 .foregroundStyle(IslandInk.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// What VoiceOver reads for the owner password: its caption, then the password itself (it is shown only once).
+    static func ownerAccessibility(_ owner: String) -> (label: String, value: String) {
+        (PasswordCopy.ownerShownOnce, owner)
     }
 
     private var printing: Binding<PDFRestrictions.Printing> {

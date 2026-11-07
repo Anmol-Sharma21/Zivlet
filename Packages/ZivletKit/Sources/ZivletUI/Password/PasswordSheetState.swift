@@ -89,7 +89,8 @@ public final class PasswordSheetState {
         show(model.switchedToChange())
     }
 
-    public func toggleReveal() { show(model.with(revealed: !model.revealed)) }
+    /// The eye of one field: shows or hides that field only.
+    public func toggleReveal(_ field: PasswordField) { show(model.revealing([field], !model.isRevealed(field))) }
     public func setSameForAll(_ on: Bool) { show(model.with(sameForAll: on)) }
 
     /// Shows `model` in place of the current one (the second sheet, a new state from the job).
@@ -106,7 +107,8 @@ public final class PasswordSheetState {
     /// Suggest is offered: a new password is being set, there is a generator, and it has not come back empty.
     public var canSuggest: Bool { model.setsPassword && suggester != nil && !suggestFailed }
 
-    /// Suggest: fills the new password and its confirmation alike and reveals them; nothing made hides the button.
+    /// Suggest: fills the new password and its confirmation alike and reveals those two only; nothing made hides the
+    /// button.
     public func suggest() {
         guard canSuggest else { return }
         guard let text = suggester?.suggest() else {
@@ -115,7 +117,7 @@ public final class PasswordSheetState {
         }
         password = text
         confirm = text
-        show(model.with(revealed: true))
+        show(model.revealing(model.newPasswordFields, true))
     }
 
     public func clearFields() {

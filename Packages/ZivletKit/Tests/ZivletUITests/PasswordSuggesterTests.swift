@@ -27,9 +27,21 @@ struct PasswordSuggesterTests {
         #expect(state.canSuggest)
         state.suggest()
         #expect(state.password == text && state.confirm == text)
-        #expect(state.model.revealed)
+        #expect(state.model.revealed == [.password, .confirm])
         #expect(state.model.strength == .strong)
         #expect(state.model.apply == .enabled(label: "Lock"))
+    }
+
+    /// Change's Suggest shows the new password, never the file's current one (screen sharing, a look over a shoulder).
+    @Test func suggestInChangeLeavesTheCurrentPasswordHidden() {
+        let state = sheet(.change, suggester: FakeSuggester(Self.made()))
+        state.current = "the file's own password"
+        state.suggest()
+        let labels = PasswordSheetView.controlLabels(state.model, canSuggest: true)
+        #expect(
+            Array(labels.prefix(6)) == [
+                "Current password", "Show password", "New password", "Hide password", "Confirm", "Hide password",
+            ])
     }
 
     @Test func aSuggesterWithNothingHidesTheButton() {

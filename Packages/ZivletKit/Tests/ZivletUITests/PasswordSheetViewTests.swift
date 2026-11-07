@@ -99,12 +99,15 @@ struct PasswordSheetViewTests {
         #expect(sheet.password.isEmpty)
     }
 
-    @Test func revealingShowsEveryField() {
-        let sheet = state(.lock)
-        sheet.toggleReveal()
-        #expect(sheet.model.revealed)
-        sheet.toggleReveal()
-        #expect(!sheet.model.revealed)
+    /// Each eye shows its own field only: the eye on New password never shows Change's current password.
+    @Test func eachEyeShowsItsOwnFieldOnly() {
+        let sheet = state(.change)
+        sheet.toggleReveal(.newPassword)
+        #expect(sheet.model.revealed == [.newPassword])
+        sheet.toggleReveal(.confirm)
+        #expect(sheet.model.revealed == [.newPassword, .confirm] && !sheet.model.isRevealed(.current))
+        sheet.toggleReveal(.newPassword)
+        #expect(sheet.model.revealed == [.confirm])
     }
 
     @Test func copyMarksThePasswordConcealedTransientAndForThisMac() throws {
@@ -230,7 +233,7 @@ struct PasswordSheetViewTests {
         #expect(Set(labels).isSuperset(of: ["Password", "Confirm", "Show password", "Copy", "Suggest"]))
         #expect(labels.contains("Use the same password for all 2 files"))
         #expect(
-            PasswordSheetView.controlLabels(sheet.model.with(revealed: true), canSuggest: false)
+            PasswordSheetView.controlLabels(sheet.model.revealing([.password], true), canSuggest: false)
                 .contains("Hide password"))
         #expect(
             PasswordSheetView.controlLabels(state(.unlock).model, canSuggest: true)

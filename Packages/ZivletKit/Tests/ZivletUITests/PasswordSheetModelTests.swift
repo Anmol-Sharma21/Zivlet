@@ -136,9 +136,10 @@ struct PasswordSheetModelTests {
     }
 
     @Test func revealingIsAValueChange() {
-        let shown = Self.lock.with(revealed: true)
-        #expect(shown.revealed)
-        #expect(!Self.lock.revealed)
+        let shown = Self.lock.revealing([.password], true)
+        #expect(shown.isRevealed(.password) && !shown.isRevealed(.confirm))
+        #expect(Self.lock.revealed.isEmpty)
+        #expect(shown.revealing([.password], false).revealed.isEmpty)
     }
 
     @Test func theShellGetsTheToolsHeaderAndApply() {

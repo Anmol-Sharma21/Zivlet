@@ -55,19 +55,20 @@ public struct PasswordSheetModel: Sendable, Equatable {
     public let mode: PasswordMode
     public let files: [String]
     public let sameForAll: Bool
-    public let revealed: Bool
+    /// The fields shown as plain text; each has its own eye (no reveal shows another field's password).
+    public let revealed: Set<PasswordField>
     public let failure: PasswordFailure?
     public let retryList: [String]
     let facts: PasswordFacts
 
     public init(mode: PasswordMode, files: [String]) {
         self.init(
-            mode: mode, files: files, sameForAll: files.count > 1, revealed: false, failure: nil, retryList: [],
+            mode: mode, files: files, sameForAll: files.count > 1, revealed: [], failure: nil, retryList: [],
             facts: .empty)
     }
 
     private init(
-        mode: PasswordMode, files: [String], sameForAll: Bool, revealed: Bool, failure: PasswordFailure?,
+        mode: PasswordMode, files: [String], sameForAll: Bool, revealed: Set<PasswordField>, failure: PasswordFailure?,
         retryList: [String], facts: PasswordFacts
     ) {
         self.mode = mode
@@ -80,7 +81,7 @@ public struct PasswordSheetModel: Sendable, Equatable {
     }
 
     private func copy(
-        mode: PasswordMode? = nil, sameForAll: Bool? = nil, revealed: Bool? = nil,
+        mode: PasswordMode? = nil, sameForAll: Bool? = nil, revealed: Set<PasswordField>? = nil,
         failure: PasswordFailure?? = nil, facts: PasswordFacts? = nil
     ) -> PasswordSheetModel {
         PasswordSheetModel(
@@ -93,7 +94,12 @@ public struct PasswordSheetModel: Sendable, Equatable {
 
     public func entered(_ entry: PasswordEntry) -> PasswordSheetModel { copy(facts: PasswordFacts(entry)) }
     public func with(sameForAll: Bool) -> PasswordSheetModel { copy(sameForAll: sameForAll) }
-    public func with(revealed: Bool) -> PasswordSheetModel { copy(revealed: revealed) }
+    /// `fields` shown as plain text (`on`) or hidden again; the other fields stay as they are.
+    public func revealing(_ fields: Set<PasswordField>, _ on: Bool) -> PasswordSheetModel {
+        copy(revealed: on ? revealed.union(fields) : revealed.subtracting(fields))
+    }
+
+    public func isRevealed(_ field: PasswordField) -> Bool { revealed.contains(field) }
 
     /// One more wrong attempt: one more shake.
     public func wrongAttempt() -> PasswordSheetModel {
@@ -103,12 +109,14 @@ public struct PasswordSheetModel: Sendable, Equatable {
     }
 
     /// The same window as Change: Current, New and Confirm (FR-96), with the fields empty again.
-    public func switchedToChange() -> PasswordSheetModel { copy(mode: .change, failure: .some(nil), facts: .empty) }
+    public func switchedToChange() -> PasswordSheetModel {
+        copy(mode: .change, revealed: [], failure: .some(nil), facts: .empty)
+    }
 
     /// The second sheet (17b §3.3): only the files that did not open, fields empty, no failure yet.
     public func retry(names: [String]) -> PasswordSheetModel {
         PasswordSheetModel(
-            mode: mode, files: names, sameForAll: names.count > 1, revealed: false, failure: nil, retryList: names,
+            mode: mode, files: names, sameForAll: names.count > 1, revealed: [], failure: nil, retryList: names,
             facts: .empty)
     }
 }
