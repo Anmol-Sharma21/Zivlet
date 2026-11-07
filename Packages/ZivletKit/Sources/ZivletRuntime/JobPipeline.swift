@@ -40,24 +40,36 @@ struct JobPipeline: Sendable {
     let noted: @Sendable ([PlanNote]) async -> Void
 
     /// `@concurrent`: the job runs on the global executor, never on the scheduler actor (02 §6.2). A worker crash
-    /// gets one more attempt from the start, behind the retry gate so retries run one at a time; a second crash
-    /// names the file (P2-01). Other failures end the job at once.
+    /// gets one more attempt from the start, behind the retry gate so retries run one at a time, and with the worker
+    /// to itself (D-M7-60), so a second crash is its own file's and names it (P2-01). Other failures end the job at
+    /// once. A job for the worker's engines holds the worker's shared permit for its whole first attempt.
     @concurrent func run() async -> JobState {
         await report(.preparing)
-        let first = await attempt()
+        let isolation = (try? selectEngine()).flatMap { ($0 as? any WorkerHosted)?.workerIsolation }
+        let first = await firstAttempt(isolation)
         guard first == .failure(.workerCrashed) else { return Self.state(first) }
         JobPipeline.logger.error("Worker crashed during job \(request.id, privacy: .public); retrying once")
-        let second = await retryAttempt()
+        let second = await retryAttempt(isolation)
         if second == .failure(.workerCrashed) { return .failed(.engineCrashedOnInput) }
         return Self.state(second)
     }
 
-    private func retryAttempt() async -> Result<PublishedOutput, JobError> {
+    private func firstAttempt(_ isolation: WorkerIsolation?) async -> Result<PublishedOutput, JobError> {
+        guard let isolation else { return await attempt() }
+        do {
+            return try await isolation.shared { () async throws(JobError) in await attempt() }
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private func retryAttempt(_ isolation: WorkerIsolation?) async -> Result<PublishedOutput, JobError> {
         do {
             return try await services.gates.retry.withPermit { () async throws(JobError) in
                 if Task.isCancelled { throw .cancelled }
                 await report(.retrying)
-                return await attempt()
+                guard let isolation else { return await attempt() }
+                return try await isolation.alone { () async throws(JobError) in await attempt() }
             }
         } catch {
             return .failure(error)

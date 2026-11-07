@@ -46,14 +46,17 @@ public actor CodeService {
         }
     }
 
-    /// Up to two attempts, each with a fresh job id.
+    /// Up to two attempts, each with a fresh job id; the retry has the worker to itself (D-M7-60).
     private static func run(
         _ connection: WorkerConnection, urls: [URL], secrets: JobSecrets?,
         progress: @escaping @Sendable (Double) -> Void
     ) async -> Result<[FileCodes], CodeError> {
         for attempt in 1...attempts {
             do {
-                return try await connection.readCodes(CodeJob(inputs: urls), secrets: secrets, progress: progress)
+                let run = { () async throws(JobError) in
+                    try await connection.readCodes(CodeJob(inputs: urls), secrets: secrets, progress: progress)
+                }
+                return try await (attempt < attempts ? run() : connection.isolation.alone(run))
             } catch {
                 guard error == .workerCrashed else { return .failure(codeError(error)) }
                 guard attempt < attempts else { break }

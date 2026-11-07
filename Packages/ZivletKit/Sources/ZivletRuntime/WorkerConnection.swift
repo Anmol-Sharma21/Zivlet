@@ -13,7 +13,8 @@ import os
 /// of the call that runs it, in order among themselves; they are best-effort, since XPC does not order them against
 /// the step's reply, and one that comes after the reply is dropped (the reply carries the outcome). A cancelled Swift
 /// task sends `.cancel(job)` on the session its request went to, never on a new one; the worker remembers a cancel
-/// that overtakes its request.
+/// that overtakes its request. Every request that does work in the worker passes `isolation`, so a crash retry runs
+/// there alone (D-M7-60); pings, capabilities and cancels never wait.
 public final class WorkerConnection: Sendable {
     static let logger = Logger(subsystem: "app.zivlet.Zivlet", category: "scheduler")
 
@@ -30,6 +31,8 @@ public final class WorkerConnection: Sendable {
     }
 
     private let transport: any WorkerTransport
+    /// Shared by every user of this worker: conversions, Copy Text, Read QR and pre-flight.
+    let isolation = WorkerIsolation()
     private let state = Mutex(State())
     private let opening = Mutex(())
 
@@ -75,14 +78,14 @@ public final class WorkerConnection: Sendable {
     }
 
     public func verify(_ output: StagedOutput, plan: ExecutionPlan, secrets: JobSecrets? = nil) async throws(JobError) {
-        guard case .verified = try await send(.verify(output, plan, secrets: WireSecrets(secrets))) else {
+        guard case .verified = try await work(.verify(output, plan, secrets: WireSecrets(secrets))) else {
             throw Self.unexpected("verify")
         }
     }
 
     /// Pre-flight of dropped PDFs in the worker, with no password (plan 20f E9).
     public func inspectPDFs(_ files: [URL]) async throws(JobError) -> [PDFInspection] {
-        guard case .inspected(let answers) = try await send(.inspectPDFs(files)), answers.count == files.count else {
+        guard case .inspected(let answers) = try await work(.inspectPDFs(files)), answers.count == files.count else {
             throw Self.unexpected("inspectPDFs")
         }
         return answers
@@ -140,6 +143,11 @@ public final class WorkerConnection: Sendable {
         try await send(request, on: try currentSession())
     }
 
+    /// One request that does work in the worker, beside other work (or alone, inside a retry).
+    private func work(_ request: WorkerRequest) async throws(JobError) -> WorkerReply {
+        try await isolation.shared { () async throws(JobError) in try await send(request) }
+    }
+
     /// Drops the current session without latching (the worker did not answer in time): the next call opens a new one.
     public func reset() {
         let session = state.withLock { state in
@@ -189,6 +197,10 @@ public final class WorkerConnection: Sendable {
     /// cancellation handler is, so a cancel always has the request's session to go to; one that comes before the
     /// request is sent is caught by the check inside.
     private func cancellable(_ request: WorkerRequest, job: JobID) async throws(JobError) -> WorkerReply {
+        try await isolation.shared { () async throws(JobError) in try await sendCancellable(request, job: job) }
+    }
+
+    private func sendCancellable(_ request: WorkerRequest, job: JobID) async throws(JobError) -> WorkerReply {
         if Task.isCancelled { throw .cancelled }
         let session = try currentSession()
         let result = await withTaskCancellationHandler {

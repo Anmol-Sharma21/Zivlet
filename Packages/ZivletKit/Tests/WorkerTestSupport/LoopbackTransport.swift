@@ -19,6 +19,18 @@ public final class LoopbackTransport: WorkerTransport {
         case whenInputIs(String)
         /// Only the first such request crashes the worker.
         case onceWhenInputIs(String)
+        /// Any of the rules crashes the worker.
+        indirect case any([CrashRule])
+
+        func crashes(_ name: String?, call: Int, attempts: [String: Int]) -> Bool {
+            switch self {
+            case .never: false
+            case .onCall(let n): call == n
+            case .whenInputIs(let bad): name == bad
+            case .onceWhenInputIs(let bad): name == bad && attempts[bad] == 1
+            case .any(let rules): rules.contains { $0.crashes(name, call: call, attempts: attempts) }
+            }
+        }
     }
 
     struct State {
@@ -69,12 +81,7 @@ public final class LoopbackTransport: WorkerTransport {
         state.withLock { state in
             state.calls += 1
             let name = Self.track(request, in: &state)
-            switch crash {
-            case .never: return false
-            case .onCall(let n): return state.calls == n
-            case .whenInputIs(let bad): return name == bad
-            case .onceWhenInputIs(let bad): return name == bad && state.attempts[bad] == 1
-            }
+            return crash.crashes(name, call: state.calls, attempts: state.attempts)
         }
     }
 

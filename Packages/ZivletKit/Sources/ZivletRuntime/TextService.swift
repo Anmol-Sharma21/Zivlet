@@ -76,8 +76,8 @@ public actor TextService {
         return connection
     }
 
-    /// Up to two attempts, each with a fresh job id: a worker crash on the first is retried, on the second the drop
-    /// is named as the cause.
+    /// Up to two attempts, each with a fresh job id: a worker crash on the first is retried with the worker to itself
+    /// (D-M7-60), and on the second the drop is named as the cause.
     private static func run(
         _ connection: WorkerConnection, urls: [URL], languages: [LanguageTag], secrets: JobSecrets?,
         progress: @escaping @Sendable (Double) -> Void
@@ -85,7 +85,10 @@ public actor TextService {
         for attempt in 1...attempts {
             let job = TextJob(inputs: urls, languages: languages)
             do {
-                return try await connection.recognizeText(job, secrets: secrets, progress: progress)
+                let run = { () async throws(JobError) in
+                    try await connection.recognizeText(job, secrets: secrets, progress: progress)
+                }
+                return try await (attempt < attempts ? run() : connection.isolation.alone(run))
             } catch {
                 guard error == .workerCrashed else { return .failure(textError(error)) }
                 guard attempt < attempts else { break }

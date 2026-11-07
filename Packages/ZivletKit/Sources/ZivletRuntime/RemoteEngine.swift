@@ -51,3 +51,20 @@ public struct RemoteEngine: Engine {
         try await connection.verify(output, plan: plan, secrets: secrets)
     }
 }
+
+/// An engine whose steps may run in the worker: its jobs go through the worker's isolation (D-M7-60).
+protocol WorkerHosted {
+    var workerIsolation: WorkerIsolation { get }
+}
+
+extension RemoteEngine: WorkerHosted {
+    var workerIsolation: WorkerIsolation { connection.isolation }
+}
+
+extension WorkerOnlyEngine: WorkerHosted {
+    var workerIsolation: WorkerIsolation { selection.workerConnection.isolation }
+}
+
+extension WorkerRoutedEngine: WorkerHosted {
+    var workerIsolation: WorkerIsolation { selection.workerConnection.isolation }
+}
