@@ -51,7 +51,9 @@ To rebuild on an Apple-silicon Mac with Xcode and the tools named in \`README.md
 
 1. Copy the directories in \`upstream/\` into \`zivlet-$VERSION/Vendor/downloads/\` (\`Vendor/fetch.sh\` checks the
    hashes and skips the download).
-2. Run \`make vendor\` in \`zivlet-$VERSION/\`: FFmpeg with its codec libraries, libwebp and the SVG renderer.
+2. Run \`make vendor\` in \`zivlet-$VERSION/\`: FFmpeg with its codec libraries, libwebp, the SVG renderer, and the
+   PDF engine \`CQPDF\` (qpdf and libjpeg-turbo, built by \`Vendor/build-qpdf.sh\` with CMake and Ninja and linked
+   statically into the converter, \`ZivletWorker\`).
 3. For the Rust crates without network access, point Cargo at \`vendor/\` (\`[source.crates-io] replace-with\`).
 4. \`make app\` builds Zivlet with those binaries.
 EOF

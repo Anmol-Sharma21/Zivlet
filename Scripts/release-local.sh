@@ -23,7 +23,7 @@ step() { echo "==> $*"; }
 signed() { [[ "$IDENTITY" != "-" ]]; }
 
 step "Vendor outputs"; "$REPO_ROOT/Vendor/ensure-native.sh"; "$REPO_ROOT/Vendor/ensure-media.sh"
-step "Licence gate"; "$S/licence-gate.sh"; "$S/collect-licences.sh"
+step "Licence gate"; "$S/licence-gate.sh" --release; "$S/collect-licences.sh"
 step "Release archive"; "$S/release-build.sh" "$VERSION"
 step "Sign ($IDENTITY)"; "$S/sign-app.sh" "$IDENTITY" "$APP"
 step "Signature gate"

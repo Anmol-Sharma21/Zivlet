@@ -81,7 +81,7 @@ jobs:
       - name: Vendor outputs (built from the pinned sources)
         run: Scripts/ci-vendor.sh --from-source
       - name: Licence gate
-        run: make licence-gate
+        run: make licence-gate RELEASE=1
       - name: Release archive and dSYMs
         run: Scripts/release-build.sh "$ZIVLET_VERSION"
       - name: Sign inside-out

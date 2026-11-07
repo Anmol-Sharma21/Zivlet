@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Collects the licence texts that ship in Contents/Resources/Licenses (P1-51): one <name>.txt per component in
-# Vendor/licenses.json, rust-crates.txt for every crate in zivlet-svg's tree, and an index.html linking them.
+# Vendor/licenses.json (its licence files, then the leading comment of each notice file), rust-crates.txt for every
+# crate in zivlet-svg's tree, and an index.html linking them with the acknowledgements some licences ask for.
 # Usage: Scripts/collect-licences.sh        (output: Vendor/out/licenses, or LICENSES_OUT)
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
@@ -36,7 +37,16 @@ write_component() {
             printf '\n===== %s =====\n\n' "$file"
             licence_text "$name" "$version" "$source" "$file"
         done < <(jq -r --arg n "$name" '.components[] | select(.name == $n) | .files[]' "$MANIFEST")
+        while IFS= read -r file; do
+            printf '\n===== %s (its notice) =====\n\n' "$file"
+            licence_text "$name" "$version" "$source" "$file" | leading_comment
+        done < <(jq -r --arg n "$name" '.components[] | select(.name == $n) | (.notices // [])[]' "$MANIFEST")
     } >"$OUT/$name.txt"
+}
+
+# The comment at the top of a source file, up to its first line of code; formatter switches are left out.
+leading_comment() {
+    awk '/^[[:space:]]*(#|[A-Za-z])/ { exit } !/clang-format/ { print }'
 }
 
 # Every crate linked into CZivletSVG, with the licence files it ships (LICENSE*, COPYING*, NOTICE*).
@@ -61,7 +71,10 @@ write_index() {
     local name
     {
         echo '<!doctype html><html><head><meta charset="utf-8"><title>Zivlet acknowledgements</title></head><body>'
-        echo '<h1>Third-party software in Zivlet</h1><p>Zivlet is free software under GPL-3.0-or-later.</p><ul>'
+        echo '<h1>Third-party software in Zivlet</h1><p>Zivlet is free software under GPL-3.0-or-later.</p>'
+        echo '<h2>Acknowledgements</h2><ul>'
+        jq -r '.components[] | select(.acknowledgement != null) | "<li>\(.acknowledgement)</li>"' "$MANIFEST"
+        echo '</ul><h2>Components and their licences</h2><ul>'
         for name in $(jq -r '.components[].name' "$MANIFEST"); do
             printf '<li><a href="%s.txt">%s %s</a> (%s)</li>\n' "$name" "$name" "$(field "$name" version)" \
                 "$(field "$name" spdx)"

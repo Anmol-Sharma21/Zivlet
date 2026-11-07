@@ -58,6 +58,8 @@ check.(paths.include?("Vendor/**"), "vendor: not triggered by Vendor/**")
 # Release (P1-53): protected environment, write access to contents only, dry run by default, secrets only in the
 # env of the steps that need them (never in workflow or job env, never pasted into a run script).
 rtext = File.read(File.join(ARGV[0], "release.yml"))
+# D-M7-63: a licence that waits for the owner's decision passes CI with a warning but never a release.
+check.(rtext =~ /^\s*run:\s*make licence-gate RELEASE=1\s*$/, "release: the licence gate is not in release mode")
 release = YAML.safe_load(rtext)
 rtriggers = release["on"] || release[true] || {}
 check.(Array(rtriggers.dig("push", "tags")).include?("v*"), "release: not triggered by v* tags")

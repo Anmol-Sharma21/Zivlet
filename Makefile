@@ -185,8 +185,9 @@ script-test:
 
 # P1-51: licence manifest against the lock, allowed licences, licence files, no nonfree ffmpeg; then the texts that
 # ship in Contents/Resources/Licenses.
+# RELEASE=1 (the release workflow) also refuses a licence that waits for the owner's decision (D-M7-63).
 licence-gate:
-	$(ENV) Scripts/licence-gate.sh && Scripts/collect-licences.sh
+	$(ENV) Scripts/licence-gate.sh $(if $(RELEASE),--release,) && Scripts/collect-licences.sh
 
 # Corresponding source for a release: make source-bundle VERSION=0.1.0 (writes build/release/).
 source-bundle:

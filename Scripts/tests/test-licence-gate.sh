@@ -10,6 +10,18 @@ reset() { cp "$ROOT/Vendor/versions.lock" "$ROOT/Vendor/licenses.json" "$T/"; }
 reset
 out=$(gate) || fail "the real lock and manifest must pass: $out"
 assert_contains "$out" "Licences OK: 15 components"
+# qpdf's MD5 code is under RSA's MD5 notice, which waits for the owner (D-M7-63, OS-M7-15): said on every run, and
+# refused by a release.
+assert_contains "$out" "pending owner decision: qpdf (RSA-MD)"
+assert_contains "$(gate --release || true)" "pending owner decision: qpdf (RSA-MD)"
+assert_fails gate --release
+grep -q 'licence-gate.sh" --release' "$ROOT/Scripts/release-local.sh" || fail "the release does not run the gate with --release"
+
+# A licence that asks for words in the product's documentation (IJG, RSA-MD) needs its acknowledgement.
+reset; jq 'del(.components[] | select(.name == "libjpeg-turbo") | .acknowledgement)' \
+    "$ROOT/Vendor/licenses.json" > "$T/licenses.json"
+assert_contains "$(gate || true)" "no acknowledgement for libjpeg-turbo"
+assert_fails gate
 
 reset; jq 'del(.components[] | select(.name == "zimg"))' "$ROOT/Vendor/licenses.json" > "$T/licenses.json"
 assert_contains "$(gate || true)" "no licence entry for zimg"
@@ -42,6 +54,16 @@ grep -qF -- "$(head -1 <<<"$notice")" "$T/licenses/qpdf.txt" || fail "qpdf.txt l
     "$notice" ]] || fail "qpdf.txt does not reproduce NOTICE.md verbatim"
 grep -q "Apache License" "$T/licenses/qpdf.txt" || fail "qpdf.txt lacks the Apache licence"
 grep -q "Independent JPEG Group" "$T/licenses/libjpeg-turbo.txt" || fail "libjpeg-turbo.txt lacks README.ijg"
+# The binary's documentation states the IJG sentence (README.ijg clause 2) and names qpdf's MD5 code as RSA's notice
+# asks; qpdf.txt keeps that notice.
+ijg="This software is based in part on the work of the Independent JPEG Group."
+rsa="derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm"
+grep -qF "$ijg" "$T/licenses/index.html" || fail "index.html lacks the IJG acknowledgement"
+grep -qF "$rsa" "$T/licenses/index.html" || fail "index.html lacks the RSA MD5 identification"
+grep -qF "$ijg" "$ROOT/THIRD_PARTY_NOTICES.md" || fail "THIRD_PARTY_NOTICES.md lacks the IJG acknowledgement"
+grep -qF "$rsa" "$ROOT/THIRD_PARTY_NOTICES.md" || fail "THIRD_PARTY_NOTICES.md lacks the RSA MD5 identification"
+grep -qF "Copyright (C) 1991-2, RSA Data Security, Inc." "$T/licenses/qpdf.txt" || fail "qpdf.txt lacks RSA's MD5 notice"
+grep -qF "These notices must be retained" "$T/licenses/qpdf.txt" || fail "qpdf.txt cuts RSA's MD5 notice short"
 grep -q "GNU GENERAL PUBLIC LICENSE" "$T/licenses/ffmpeg.txt" || fail "ffmpeg.txt lacks the GPL text"
 grep -q "tiny-skia" "$T/licenses/rust-crates.txt" || fail "crate licences lack tiny-skia"
 grep -q 'href="zimg.txt"' "$T/licenses/index.html" || fail "index.html lacks zimg"
@@ -53,5 +75,9 @@ for entry in ffmpeg-9.0.2.tar.xz "x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.
     qpdf-12.4.2.tar.gz libjpeg-turbo-3.2.0.tar.gz Vendor/build-qpdf.sh Vendor/rs/zivlet-svg/Cargo.lock \
     vendor/resvg-0.47.0/ SOURCES.md; do
     grep -qF -- "$entry" <<<"$listing" || fail "source bundle lacks $entry"
+done
+guide=$(tar -xOf "$T/release/zivlet-0.0.0-test-source.tar.xz" zivlet-0.0.0-test-source/SOURCES.md)
+for word in qpdf libjpeg-turbo CQPDF ZivletWorker; do
+    grep -qF -- "$word" <<<"$guide" || fail "SOURCES.md does not name $word"
 done
 echo "PASS test-licence-gate"
