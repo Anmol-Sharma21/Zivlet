@@ -25,9 +25,9 @@ All four must exit 0. Fill in the pull request template, including the DCO check
 
 ## CI
 
-GitHub's hosted macOS runners don't ship Xcode 27, which Zivlet needs, so the workflows in `.github/workflows` run
-on a self-hosted runner. Until that runner is registered they don't run; `make ci-local` runs the same steps as
-`ci.yml`, in the same order, on your Mac. Please paste its summary into your pull request.
+`ci.yml` runs on every pull request and every push to `main`, on GitHub's hosted `xcode-27` image (macOS 27 with
+Xcode 27). The nightly, vendor and release workflows run on a self-hosted runner and don't run until it is
+registered. `make ci-local` runs the same steps as `ci.yml`, in the same order, on your Mac; it installs nothing.
 
 ## Third-party code
 

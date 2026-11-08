@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# The GitHub workflows (P0-07, P0-37, P1-53) run only on our self-hosted runner, never on pull_request_target, with
-# least-privilege permissions, actions pinned by commit SHA and no secrets outside the release workflow. Parsed with
-# the system Ruby's YAML (Python has no YAML module on macOS).
+# The GitHub workflows (P0-07, P0-37, P1-53): CI on GitHub's hosted `xcode-27` image (OWN-CI-1), every other workflow
+# on our self-hosted runner; never on pull_request_target, with least-privilege permissions, actions pinned by commit
+# SHA and no secrets outside the release workflow. Parsed with the system Ruby's YAML (Python has no YAML module on
+# macOS).
 source "$(dirname "$0")/../../Vendor/tests/lib.sh"
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 WF=$ROOT/.github/workflows
@@ -28,14 +29,20 @@ Dir.glob(File.join(ARGV[0], "*.yml")).sort.each do |path|
   end
   (doc["jobs"] || {}).each do |job_name, job|
     labels = Array(job["runs-on"])
-    check.(labels.include?("self-hosted") && labels.any? { |l| l.to_s.start_with?("zivlet") },
-           "#{name}/#{job_name}: runs-on must be self-hosted with a zivlet label")
+    if name == "ci"
+      check.(labels == ["xcode-27"], "#{name}/#{job_name}: runs-on must be GitHub's hosted xcode-27 image")
+    else
+      check.(labels.include?("self-hosted") && labels.any? { |l| l.to_s.start_with?("zivlet") },
+             "#{name}/#{job_name}: runs-on must be self-hosted with a zivlet label")
+    end
     check.(job["permissions"].nil?, "#{name}/#{job_name}: job widens permissions") unless name == "release"
   end
   check.(!triggers.nil?, "#{name}: no triggers")
-  # Code from a fork never runs on the persistent self-hosted runner (it could poison the shared vendor cache).
+  # Code from a fork never runs on the persistent self-hosted runner (it could poison the shared vendor cache). A
+  # hosted job gets a fresh machine each run, so forks may run there.
   if triggers.is_a?(Hash) && triggers.key?("pull_request")
     (doc["jobs"] || {}).each do |job_name, job|
+      next unless Array(job["runs-on"]).include?("self-hosted")
       check.(job["if"].to_s.include?("github.event.pull_request.head.repo.full_name == github.repository"),
              "#{name}/#{job_name}: pull requests from forks must not run on the self-hosted runner")
     end
@@ -44,6 +51,16 @@ end
 ci = File.read(File.join(ARGV[0], "ci.yml"))
 ["make lint", "make test", "make coverage", "make release-check", "make licence-gate", "make vendor-test"].each do |cmd|
   check.(ci =~ /^\s*run:.*\b#{Regexp.escape(cmd)}\b/, "ci: does not run #{cmd}")
+end
+# Only a push to main saves the vendor cache, so a pull request cannot put outputs under main's key; nothing uses the
+# combined actions/cache step, which would save from any event.
+ci_steps = YAML.safe_load(ci)["jobs"].values.flat_map { |j| j["steps"] || [] }
+check.(ci_steps.none? { |s| s["uses"].to_s.start_with?("actions/cache@") }, "ci: actions/cache saves from every event")
+saves = ci_steps.select { |s| s["uses"].to_s.start_with?("actions/cache/save@") }
+check.(!saves.empty?, "ci: never saves the vendor cache")
+saves.each do |s|
+  check.(s["if"].to_s.include?("github.event_name == 'push'") && s["if"].to_s.include?("github.ref == 'refs/heads/main'"),
+         "ci: a cache save runs on more than pushes to main")
 end
 nightly = YAML.safe_load(File.read(File.join(ARGV[0], "nightly.yml")))
 nightly_env = nightly["jobs"].values.map { |j| (j["env"] || {}).merge(*(j["steps"] || []).map { |s| s["env"] || {} }) }
@@ -96,7 +113,8 @@ assert_contains "$out" "workflows OK"
 listed=$("$ROOT/Scripts/ci-local.sh" --list)
 assert_contains "$listed" "make lint"
 assert_contains "$listed" "make release-check"
-first=$(head -1 <<<"$listed"); assert_eq "$first" "make vendor-test" "first ci-local step"
+first=$(head -1 <<<"$listed"); assert_eq "$first" "Scripts/ci-tools.sh" "first ci-local step"
+assert_contains "$listed" "make vendor-test"
 grep -q '^ci-local:' "$ROOT/Makefile" || fail "Makefile has no ci-local target"
 
 # A run step with a GitHub expression cannot run locally, so ci-local refuses it rather than guessing.

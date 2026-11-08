@@ -217,3 +217,12 @@ branch so M7's streams were not disturbed.
 | ID | Decision | Consequences |
 |---|---|---|
 | OWN-FMT-1 | **`.dng` is a photo input**: DNG → JPG, PNG, WebP, HEIC, TIFF, AVIF, BMP and PDF, plus READ QR and COPY TEXT | Eight pairs beyond the 275 of parity (283 in the catalog), an extra under PRD §6.1. Input only: ImageIO reads DNG but cannot write it (probed on macOS 26: `CGImageDestinationCopyTypeIdentifiers` lists no raw type). ImageIO develops the photo at the camera's as-shot settings; there are no raw adjustments. A DNG's bytes say TIFF, so `tiff` and `dng` are one family at admission and a file keeps the format its name gives. Other camera RAW formats stay in P3 |
+
+## Owner decisions, 2026-11-08: first pre-release, CI on GitHub's Macs
+
+Date: 2026-11-08, after M7 was pushed; the owner chose each option in chat.
+
+| ID | Decision | Consequences |
+|---|---|---|
+| OWN-REL-1 | **Publish `v0.1.0-alpha.1` as a GitHub pre-release now**, built with `Scripts/release-local.sh` on the owner's Mac: ad-hoc signed, not notarized, with the corresponding source, the SBOM and SHA-256 sums | Users open it once with Privacy & Security › Open Anyway (the notes say how). The dSYMs stay off the release: they hold the build Mac's paths. O-1 (Developer ID, notarization), O-2 (Sparkle key) and O-4 (release runner) stay open; the release workflow's own run was cancelled and its deployment record removed |
+| OWN-CI-1 | **`ci.yml` runs on GitHub's hosted `xcode-27` image** instead of the self-hosted runner, which is not connected | `Scripts/ci-tools.sh` installs the missing Homebrew tools and the pinned Rust there (never on a developer Mac). The vendor outputs move through GitHub's cache, saved only by pushes to main. Forks' pull requests run too (fresh machine, read-only, no secrets). Nightly, vendor and release stay self-hosted; `test-workflows.sh` checks both rules. The image is a GitHub preview, so a failure there may be the image's |
