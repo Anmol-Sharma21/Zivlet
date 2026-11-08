@@ -1,4 +1,5 @@
 import CoreGraphics
+import DNGFixture
 import Foundation
 import ImageIO
 import Testing
@@ -64,6 +65,10 @@ enum ImageFixture {
         }
         if format == .svg {
             try Data(#"<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"/>"#.utf8).write(to: url)
+            return url
+        }
+        if format == .dng {
+            try DNGFixture.bytes().write(to: url)
             return url
         }
         let exif = [kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: date]]

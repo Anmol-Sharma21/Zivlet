@@ -298,8 +298,8 @@ Extras beyond 275 (same catalog, never counted toward parity):
 
 | Extra | Phase |
 |---|---|
-| video → m4a (copy when AAC), animated WebP output and input, WebM AV1 option | P2 |
-| png/jpg/heic → docx (OCR); RAW/PSD/JXL/EXR/JP2 inputs; ICO/ICNS outputs; md ↔ html; odt/doc/odp inputs (with LO) | P3 |
+| video → m4a (copy when AAC), animated WebP output and input, WebM AV1 option; DNG input (OWN-FMT-1) | P2 |
+| png/jpg/heic → docx (OCR); other RAW, PSD/JXL/EXR/JP2 inputs; ICO/ICNS outputs; md ↔ html; odt/doc/odp inputs (with LO) | P3 |
 | JPEG XL output; keynote/numbers inputs; 7z/xz/zst/iso/cab inputs; 7z, AES-ZIP, tar.xz/zst outputs; ASS/SSA/SBV input; subtitle shift/fps | P4 |
 
 ### 6.2 Tools (27)

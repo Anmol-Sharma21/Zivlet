@@ -207,3 +207,13 @@ the recommended option for each point, given in chat.
 | OWN-BOX-6 | **The Drop Box keeps its 0.18 s fade under Reduce Motion** (no movement, opacity only), as D-BL12 says | OS-M6-6 closed; D-M6-3 stands |
 | OWN-SIZE-2 | **The image engines stay linked into both the app and the worker** for now (about +6 MB, 53 MB of 85 MB); revisit a shared framework when the PDF and archive engines land | OS-M6-9 closed |
 | OWN-PLAN-7 | **Merge and push M6 after a clean-clone re-verify** of the fixed branch; then start M7 (P2-30, P2-101/102, P2-13, P2-105…107) | OS-M6-10; the hardware and look rows stay open |
+
+
+## Owner decisions, 2026-11-01: DNG
+
+Date: 2026-11-01, during M7; the owner asked for DNG support and named it a photo type, in chat. Built on its own
+branch so M7's streams were not disturbed.
+
+| ID | Decision | Consequences |
+|---|---|---|
+| OWN-FMT-1 | **`.dng` is a photo input**: DNG → JPG, PNG, WebP, HEIC, TIFF, AVIF, BMP and PDF, plus READ QR and COPY TEXT | Eight pairs beyond the 275 of parity (283 in the catalog), an extra under PRD §6.1. Input only: ImageIO reads DNG but cannot write it (probed on macOS 26: `CGImageDestinationCopyTypeIdentifiers` lists no raw type). ImageIO develops the photo at the camera's as-shot settings; there are no raw adjustments. A DNG's bytes say TIFF, so `tiff` and `dng` are one family at admission and a file keeps the format its name gives. Other camera RAW formats stay in P3 |

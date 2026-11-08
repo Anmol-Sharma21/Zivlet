@@ -24,7 +24,7 @@ struct ToolCatalogTests {
         let spec = tools.spec(.copyText)
         #expect(spec.wheelLabel == "COPY TEXT" && spec.symbolName == "text.viewfinder")
         #expect(spec.presentation == .instant && spec.cardinality == .multiAllowed && spec.outputSuffix == "Text")
-        #expect(spec.accepts == [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .gif, .pdf])
+        #expect(spec.accepts == [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .dng, .gif, .pdf])
     }
 
     /// P2-106, D-M7-19: one LOCK · UNLOCK slot (17 §8.1's `tools.protect`), a window tool for one or many PDFs. The
@@ -66,6 +66,7 @@ struct ToolCatalogTests {
         ([.svg], [.qrScan]),
         ([.svg, .svg], [.pdfFromImages, .imageCollage, .qrScan]),
         ([.avif], [.qrScan, .copyText]),
+        ([.dng], [.qrScan, .copyText]),
         ([.bmp, .bmp], [.qrScan, .copyText]),
         ([.pdf], [.shrink, .protect, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan]),
         ([.pdf, .pdf], [.pdfCombine, .shrink, .protect, .stripMetadata, .pdfSplit, .copyText, .qrScan]),

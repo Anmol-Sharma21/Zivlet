@@ -120,8 +120,8 @@ struct ImagePlannerTests {
         [.raster, .svg].contains(FormatRegistry.standard.format($0.source).category)
     }
 
-    @Test func thereAre49RasterAnd8SVGPairs() {
-        #expect(Self.imagePairs.count == 57)
+    @Test func thereAre57RasterAnd8SVGPairs() {
+        #expect(Self.imagePairs.count == 65)
         #expect(Self.imagePairs.filter { $0.source == .svg }.count == 8)
     }
 

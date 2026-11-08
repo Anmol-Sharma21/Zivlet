@@ -3,17 +3,17 @@ import ZivletCore
 
 @Suite("Phase 1 pair set (P1-61)")
 struct MatrixPairsTests {
-    @Test func countsMatchThePhaseOneScopePlusSVG() {
+    @Test func countsMatchThePhaseOneScopePlusSVGAndDNG() {
         let pairs = MatrixPairs.all
-        #expect(pairs.count == 161)
-        #expect(MatrixPairs.count(.raster) == 49 && MatrixPairs.count(.svg) == 8)
+        #expect(pairs.count == 169)
+        #expect(MatrixPairs.count(.raster) == 57 && MatrixPairs.count(.svg) == 8)
         #expect(MatrixPairs.count(.audio) == 56 && MatrixPairs.count(.video) == 42 && MatrixPairs.count(.gif) == 6)
         #expect(Set(pairs).count == pairs.count)
     }
 
-    @Test func thePhaseOneSetIsTheFullSetWithoutSVG() {
+    @Test func thePhaseOneSetIsTheFullSetWithoutSVGAndDNG() {
         #expect(MatrixPairs.phaseOne.count == 153)
-        #expect(MatrixPairs.phaseOne.allSatisfy { $0.source != .svg })
+        #expect(MatrixPairs.phaseOne.allSatisfy { $0.source != .svg && $0.source != .dng })
     }
 
     @Test func theSubsetCoversEverySourceAndEveryTarget() {

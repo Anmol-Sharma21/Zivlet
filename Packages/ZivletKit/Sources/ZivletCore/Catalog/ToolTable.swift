@@ -27,7 +27,7 @@ extension ToolCatalog {
                 .imageRedact),
             multi: .visible(.copyText, .shrink, .stripMetadata, .imageCrop, .pdfFromImages, .imageCollage)),
         .init(formats: [.svg], single: .visible(.qrScan), multi: .visible(.pdfFromImages, .imageCollage, .qrScan)),
-        .init(formats: [.avif, .bmp], single: .visible(.qrScan, .copyText), multi: .visible(.qrScan, .copyText)),
+        .init(formats: [.avif, .bmp, .dng], single: .visible(.qrScan, .copyText), multi: .visible(.qrScan, .copyText)),
         .init(
             formats: [.pdf],
             single: .visible(.shrink, .protect, .stripMetadata, .pdfSplit, .pdfArrange, .copyText, .qrScan),
@@ -91,10 +91,14 @@ extension ToolCatalog {
     }
 
     /// READ QR combines every image format, GIF and PDF.
-    private static let qrScanAccepts: Set<FormatID> = [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .svg, .gif, .pdf]
+    private static let qrScanAccepts: Set<FormatID> = [
+        .jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .dng, .svg, .gif, .pdf,
+    ]
 
     /// COPY TEXT (P2-104) reads raster images, GIF and PDF pages; SVG gets none (17 §8.1).
-    private static let copyTextAccepts: Set<FormatID> = [.jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .gif, .pdf]
+    private static let copyTextAccepts: Set<FormatID> = [
+        .jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .dng, .gif, .pdf,
+    ]
 }
 
 extension [ToolCatalog.ApplicabilityRow.Entry] {

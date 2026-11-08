@@ -6,6 +6,7 @@
 probe-only  image  animated.heics
 03b7f4e41da648b128a7623fd48a1c81d667e95926bf3d1197eb1fbb46facfb6  image  animated.png
 e409441862d79a69761f7e7dddcf4ab870511e8ca71b8c896b61a53d5496532a  media  audio-only.mp4
+a3131ec3c4a86a9cc66e17115c82b89d623ea1c624a041f3aa6ae6f12ad88d11  image  bayer.dng
 6170f264eaaf5da2347137a1f366ab5ad95f60ba79aab5a47342ddf53a517d9e  image  cmyk.jpg
 736c7ffb8e7af582de774b18cb3c83423602dab546d823989562a0527a201f07  media  cover.mp3
 f9e6c98886e62c578eb6c26d3bd61e35fb752058cbe2800b199e20b9775c5125  text  drawing.svg

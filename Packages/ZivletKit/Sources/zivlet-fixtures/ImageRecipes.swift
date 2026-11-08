@@ -1,4 +1,5 @@
 import CoreGraphics
+import DNGFixture
 import Foundation
 import ImageIO
 
@@ -50,6 +51,13 @@ enum ImageRecipes {
         still("srgb.tiff", type: "public.tiff") { Paint($0.still, space: srgb) },
         still("srgb.avif", type: "public.avif") { Paint($0.still, space: srgb) },
         still("srgb.bmp", type: "com.microsoft.bmp") { Paint($0.still, space: srgb) },
+        ImageRecipe(name: "bayer.dng") { _, url throws(FixtureError) in
+            do {
+                try DNGFixture.bytes().write(to: url)
+            } catch {
+                throw .writing(url.lastPathComponent)
+            }
+        },
     ]
 
     /// JPEGs tagged with each EXIF orientation 1…8 over the same pixels.

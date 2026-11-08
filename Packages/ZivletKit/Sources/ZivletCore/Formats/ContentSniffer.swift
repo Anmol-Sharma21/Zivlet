@@ -16,7 +16,7 @@ public enum ContentSniffer {
 
     /// Inputs whose signatures this table knows; admission confirms these and leaves other formats alone.
     public static let covered: Set<FormatID> = [
-        .jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .svg,
+        .jpg, .png, .webp, .heic, .tiff, .avif, .bmp, .dng, .svg,
         .mp3, .m4a, .wav, .flac, .ogg, .opus, .aiff, .wma,
         .mp4, .mov, .mkv, .webm, .avi, .wmv, .gif,
     ]

@@ -8,7 +8,7 @@ import ZivletEngineKit
 /// Plan snapshots for every raster pair under five probes (P1-08). The goldens are JSON maps "source__target" →
 /// `ExecutionPlan`, one file per probe, generated once with `ZIVLET_RECORD_GOLDENS=1` and reviewed. Bit depth and
 /// profile do not appear in a plan (ImageIO keeps them at execute time), so the probes vary what plans do depend on.
-@Suite("Image plan goldens: 49 raster pairs × 5 probes (P1-08)")
+@Suite("Image plan goldens: 57 raster pairs × 5 probes (P1-08)")
 struct ImagePlanGoldenTests {
     enum Variant: String, CaseIterable, Sendable {
         case still, alpha, animated, rotated, gainMap
@@ -35,7 +35,7 @@ struct ImagePlanGoldenTests {
         return plans
     }
 
-    @Test func thereAre49Pairs() { #expect(Self.pairs.count == 49) }
+    @Test func thereAre57Pairs() { #expect(Self.pairs.count == 57) }
 
     @Test(arguments: Variant.allCases)
     func plansMatchTheirGoldens(variant: Variant) throws {

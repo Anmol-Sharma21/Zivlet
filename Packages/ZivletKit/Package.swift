@@ -94,7 +94,7 @@ let package = Package(
                 "ZivletSettings", "ZivletNotchCore", "ZivletNotch", "EngineVision",
             ], swiftSettings: shell),
         // Writes the image fixtures for Fixtures/generate.sh (P1-60, D-M4-15); a dev tool, not shipped or gated.
-        .executableTarget(name: "zivlet-fixtures", dependencies: ["CWebP"], swiftSettings: strict),
+        .executableTarget(name: "zivlet-fixtures", dependencies: ["CWebP", "DNGFixture"], swiftSettings: strict),
         // Times one engine conversion for Scripts/bench.sh (P1-63); a dev tool, not shipped or gated.
         .executableTarget(
             name: "zivlet-bench", dependencies: ["ZivletCore", "ZivletEngineKit", "EngineImage", "EngineMedia"],
@@ -116,6 +116,8 @@ let package = Package(
                 "ZivletRuntime", "ZivletWorkerCore", "ZivletIPC", "ZivletEngineKit", "EngineVision", "TestSupport",
             ],
             path: "Tests/WorkerTestSupport", swiftSettings: strict),
+        // A raw DNG from our own bytes, for the engine tests and the fixture set: ImageIO cannot write one.
+        .target(name: "DNGFixture", path: "Tests/DNGFixture", swiftSettings: strict),
         .target(
             name: "EngineTestSupport", dependencies: ["ZivletEngineKit"], path: "Tests/EngineTestSupport",
             swiftSettings: strict),
@@ -169,11 +171,14 @@ let package = Package(
             resources: [.copy("Goldens")],
             swiftSettings: strict),
         .testTarget(
-            name: "EngineImageTests", dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG"],
+            name: "EngineImageTests",
+            dependencies: ["EngineImage", "EngineTestSupport", "CWebP", "CZivletSVG", "DNGFixture"],
             resources: [.copy("Goldens")], swiftSettings: strict),
         .testTarget(
             name: "EngineVisionTests",
-            dependencies: ["EngineVision", "ZivletCore", "ZivletEngineKit", "OCRTestSupport", "TestSupport"],
+            dependencies: [
+                "EngineVision", "ZivletCore", "ZivletEngineKit", "OCRTestSupport", "DNGFixture", "TestSupport",
+            ],
             swiftSettings: strict),
         .testTarget(
             name: "ZivletRuntimeTests",

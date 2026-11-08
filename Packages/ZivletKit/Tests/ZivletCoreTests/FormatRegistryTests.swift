@@ -6,18 +6,25 @@ import Testing
 struct FormatRegistryTests {
     let registry = FormatRegistry.standard
 
-    @Test func has46FormatsWith45InputsAnd39Outputs() {
-        #expect(FormatID.allCases.count == 46)
-        #expect(registry.formats.count == 46)
-        #expect(registry.formats.filter(\.isInput).count == 45)
+    @Test func has47FormatsWith46InputsAnd39Outputs() {
+        #expect(FormatID.allCases.count == 47)
+        #expect(registry.formats.count == 47)
+        #expect(registry.formats.filter(\.isInput).count == 46)
         #expect(registry.formats.filter(\.isOutput).count == 39)
     }
 
     @Test func inputOnlyAndOutputOnlySetsMatchSpec() {
         let inputOnly = Set(registry.formats.filter { $0.role == .inputOnly }.map(\.id))
         let outputOnly = Set(registry.formats.filter { $0.role == .outputOnly }.map(\.id))
-        #expect(inputOnly == [.rar, .ppt, .xls, .rtf, .rtfd, .textClipping, .svg])
+        #expect(inputOnly == [.rar, .ppt, .xls, .rtf, .rtfd, .textClipping, .svg, .dng])
         #expect(outputOnly == [.html])
+    }
+
+    @Test func dngIsAPhotoWhoseFilesAreFoundByName() {
+        let dng = registry.format(.dng)
+        #expect(dng.family == .image && dng.category == .raster)
+        #expect(dng.contentTypes == ["com.adobe.raw-image"])
+        #expect(registry.formatID(fileName: "IMG_0001.DNG") == .dng)
     }
 
     @Test(arguments: FormatID.allCases)

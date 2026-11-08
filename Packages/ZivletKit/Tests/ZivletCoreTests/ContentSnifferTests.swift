@@ -88,6 +88,24 @@ struct ContentAdmissionTests {
         #expect(verdict == ContentAdmission.Verdict(format: .png, isSniffed: true))
     }
 
+    /// A DNG is a TIFF file with raw tags, so its first bytes say TIFF.
+    @Test(arguments: [[0x49, 0x49, 0x2A, 0x00], [0x4D, 0x4D, 0x00, 0x2A]] as [[UInt8]])
+    func aDNGKeepsItsNameThoughItsBytesSayTIFF(magic: [UInt8]) throws {
+        let verdict = try ContentAdmission.resolve(named: .dng, header: ContentSnifferTests.padded(magic), target: .jpg)
+        #expect(verdict == ContentAdmission.Verdict(format: .dng, isSniffed: false))
+    }
+
+    @Test func aPNGNamedDNGIsConvertedAsPNG() throws {
+        let verdict = try ContentAdmission.resolve(named: .dng, header: Self.png, target: .jpg)
+        #expect(verdict == ContentAdmission.Verdict(format: .png, isSniffed: true))
+    }
+
+    @Test func aPlaylistNamedDNGIsAMismatch() {
+        #expect(throws: JobError.unsupportedInput(.contentMismatch)) {
+            try ContentAdmission.resolve(named: .dng, header: Data("#EXTM3U\n".utf8), target: .jpg)
+        }
+    }
+
     @Test func aSniffedPairOutsideTheCatalogIsAMismatch() {
         #expect(throws: JobError.unsupportedInput(.contentMismatch)) {
             try ContentAdmission.resolve(named: .jpg, header: Self.png, target: .png)

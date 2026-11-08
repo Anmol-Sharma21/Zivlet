@@ -7,13 +7,13 @@ struct ConversionCatalogTests {
     let catalog = ConversionCatalog.standard
     let registry = FormatRegistry.standard
 
-    @Test func has275Pairs() {
-        #expect(catalog.pairs.count == 275)
-        #expect(Set(catalog.pairs).count == 275)
+    @Test func has283Pairs() {
+        #expect(catalog.pairs.count == 283)
+        #expect(Set(catalog.pairs).count == 283)
     }
 
     @Test(arguments: [
-        (FormatCategory.raster, 49), (.svg, 8), (.audio, 56), (.video, 42), (.gif, 6), (.pdf, 9),
+        (FormatCategory.raster, 57), (.svg, 8), (.audio, 56), (.video, 42), (.gif, 6), (.pdf, 9),
         (.document, 65), (.slides, 6), (.spreadsheet, 21), (.subtitle, 4), (.archive, 9),
     ])
     func pairCountPerCategory(category: FormatCategory, expected: Int) {
@@ -22,7 +22,7 @@ struct ConversionCatalogTests {
 
     @Test func everyInputHasARowAndOutputOnlyHasNone() {
         let sources = Set(catalog.pairs.map(\.source))
-        #expect(sources.count == 45)
+        #expect(sources.count == 46)
         #expect(sources == Set(registry.formats.filter(\.isInput).map(\.id)))
         #expect(catalog.targets(for: .html).isEmpty)
     }
