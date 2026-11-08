@@ -1,6 +1,7 @@
 # 21 — M7 record: reliable tests, the tool window, passwords, qpdf and PDF lock
 
-Date: 2026-11-07. Branch `m7`, made from `m6` at `5107be7`; not pushed, `main` and `m6` untouched. Plan:
+Date: 2026-11-07, with the review follow-up of 2026-11-08 in §15. Branch `m7`, made from `m6` at `5107be7`; not
+pushed, `main` and `m6` untouched. Plan:
 [20](20-implementation-plan-m7.md) and its parts [20a](20a-m7-reliability.md)–[20g](20g-m7-qa-exit.md). Each part
 ends with its stream's execution notes; this record sums them up, adds stream F, and gives the exit run. Nothing here
 is claimed that was not run; what was not run, not measured or not seen says so.
@@ -23,6 +24,13 @@ judged at load 2.81: every budget met, NFR-9 again shown as a known issue (§5).
 launched was open (D-M7-59). Their last results, at `a7ad58c` in the same clone, are in §4. The exit run found one more
 defect: `make tool-states` left each state's app open, 49 per run. It is fixed (`ed6c756`) and V11 passed again.
 **Open for the owner:** §12.
+
+**Review follow-up (§15, 2026-11-08).** A review of M7 raised 20 findings and 10 LOW ones. 13 commits (`3c29e88`..
+`1bc0829`) fix 18 of the 20 and part of one (NFR-9: a hard ceiling now fails, the 1 s budget stays the owner's), and
+9 of the 10 LOW ones, the tenth in part (P2-107's conversions wait for P2-12). One more defect was found and fixed on
+the way: a Change written decrypted (F-21). The licence finding is fixed as far as an agent may go: qpdf's MD5 notice
+is declared and shipped, and a release refuses it until the owner decides (OS-M7-15). The one finding skipped is the
+rerun of the rows that quit every Zivlet: a Zivlet this session did not launch was open again.
 
 ---
 
@@ -278,7 +286,11 @@ both, and ran what was missing in the same clone (§3, §4).
 ## 10. Decisions
 
 D-M7-1 to D-M7-52 are in the index (§4), each with the part that explains it. Stream F adds D-M7-53 to D-M7-59 (index
-§4).
+§4). The review follow-up (§15) adds D-M7-60 to D-M7-70: each sheet's answer keeps its own job (60); the Open sheet
+for locked inputs (61); no accent in the sheet's choices (62); RSA-MD declared and pending the owner, refused by a
+release (63); a hard ceiling beside NFR-9 (64) and beside the cold first drop (65); a crash retry alone in the
+worker (66); Read QR results waiting for the open window (67); the tool window's editing keys and growth (68);
+reveal per field (69); the PDF engine's free-disk guard and a rewrite's cause (70).
 
 ---
 
@@ -290,14 +302,14 @@ Status at the end of M7; the full text of each is in the index (§10) or the par
 |---|---|
 | G-M7-1 | Closed: qpdf built in 30 s (load 3.3 → 8.8), the library API through the shim (20d) |
 | G-M7-2 | Closed by E11 (`abe050a`) |
-| G-M7-3 | **Open.** An ffmpeg cancel ends the process group 1066–1074 ms after the cancel, about 70 ms over NFR-9's 1 s; the budget is unchanged (OS-M7-7). §5 has this run's reading |
+| G-M7-3 | **Open.** An ffmpeg cancel ends the process group 1066–1074 ms after the cancel, about 70 ms over NFR-9's 1 s; the budget is unchanged (OS-M7-7). §5 has this run's reading. Since §15, P1-20's 1.5 s is a hard ceiling for it (D-M7-64) |
 | G-M7-4 | Open: focus, Secure Input with typing, VoiceOver and full-screen spaces are owner rows TW2–TW6 |
 | G-M7-5 | Recorded, best effort: the typed `String`, `WireSecret`'s `Data`, XPC's and qpdf's copies are freed, not zeroed (D-M7-14) |
 | G-M7-6 | Open: P2-12 and P2-57 (§13, OS-M7-8) |
 | G-M7-7 | Open: the S-PDF-LOCK matrix (QA PL1, OS-M7-5) |
 | G-M7-8 | Open: Suggest's system generator never called by automation (QA PW1, OS-M7-4) |
 | G-M7-9 | Open: unit tests outside stream R that still assert wall time (20a) |
-| G-M7-10 | Open: the cold first drop of a process, 23–94 ms in the test process (OS-M7-12) |
+| G-M7-10 | Open: the cold first drop of a process, 23–94 ms in the test process (OS-M7-12); since §15 it fails past 150 ms (D-M7-65) |
 | G-M7-11 | Closed (`6d73e67`) |
 | G-M7-12 | Open: READ QR accepts SVG, which ImageIO does not decode |
 | G-M7-13 | Partly closed: the disabled reason is on screen in `tool-states` (§8); the bipolar slider and the timecode field have no user yet |
@@ -319,6 +331,9 @@ Status at the end of M7; the full text of each is in the index (§10) or the par
 | G-M7-32 | **New.** V6's watch samples every 0.2 s (18 samples in a 4 s run): a password shown between two samples would not be seen |
 | G-M7-33 | **New.** The M6 `demo-text-states.sh` (Z9) captures inside `$(...)`, as `demo-tool-states.sh` did before `ed6c756`, so by reading it leaves each state's app open (six per run; not counted). It has no stand-ins for a test. Next: the same fix with a stand-in test, as `ed6c756` |
 | G-M7-34 | **New.** V11 waits a fixed 1.2 s after a window's line. In two of 49 captures that was not enough: one caught the window before it was drawn, one caught it while it was not key. Each was right when run again, so neither counts as a defect. What took key that moment was not found (QA TW5) |
+| G-M7-35 | **New (§15).** The licence gate trusts each component's declared SPDX; it does not read the headers of the sources that are linked. A one-time scan of CQPDF's 212 members found only MD5 undeclared |
+| G-M7-36 | **New (§15).** Paste, growth, reveal, the Open sheet and the owner password's VoiceOver value are checked by unit tests and captures, not by a person with a keyboard or VoiceOver (QA TW7, TW8, PW5–PW8, QR4, QR5) |
+| G-M7-37 | **New (§15).** `make tool-states` reads contrast over a text-free box only; the selected Printing segment's 21:1 is computed from its colours by a unit test and has not been read from a capture (the screen was locked, §15.3) |
 
 ---
 
@@ -339,7 +354,8 @@ Status at the end of M7; the full text of each is in the index (§10) or the par
 | OS-M7-11 | Merge and push `m7` | Open (owner only) |
 | OS-M7-12 | The cold first drop (G-M7-10) | Open |
 | OS-M7-13 | Window captures for the M5 and M6 demos, or run them with nothing private on screen (G-M7-29) | New, open |
-| OS-M7-14 | With no other Zivlet open, run `Scripts/m7-exit.sh --only V3` and `Scripts/m6-exit.sh --only Z3,Z5,Z6,Z7,Z8,Z9,Z10` (Z10 checks what Z5–Z9 asked for, so they run together). Or say that an exit run may quit the Zivlet you have open (D-M7-59) | New, open |
+| OS-M7-14 | With no other Zivlet open, run `Scripts/m7-exit.sh --only V3` and `Scripts/m6-exit.sh --only Z3,Z5,Z6,Z7,Z8,Z9,Z10` (Z10 checks what Z5–Z9 asked for, so they run together), and `Scripts/m5b-exit.sh --only Y8`. Or say that an exit run may quit the Zivlet you have open (D-M7-59). Still open after §15: the same Zivlet was open | New, open |
+| OS-M7-15 | Decide qpdf's RSA-MD MD5 notice (D-M7-63): accept it (move RSA-MD from `PENDING` to `ALLOWED` in `Scripts/licence-gate.sh`, with the reason, for example RSA's statement on code derived from RFC 1321, if you rely on it) or have `libqpdf/MD5_native.cc` replaced by a public-domain or Zivlet-written MD5 as a documented patch (one qpdf rebuild). Until then every release refuses the gate | New (§15), open |
 
 ---
 
@@ -366,3 +382,99 @@ was made. V13 (`5107be7..a7ad58c`) and Z11, X7 and Y9 (at `ed6c756`) check much 
 | Files at or over 800 lines | none of the 313 changed files; this record is under 400 |
 | Shipped sources | V13: no `print(`, no new `NSAlert`, Vision only in EngineVision, qpdf headers only in CZivletPDF, no Keychain item API, no `--password`, no worker entitlements |
 | Downloaded files | the two tarballs and their signatures stay in `Vendor/downloads`, which git ignores; none is tracked |
+
+---
+
+## 15. Review of M7 and what it changed (2026-11-08)
+
+A review of `m6..9c48ab0` raised 20 findings (5 HIGH, 15 MEDIUM, counting two pairs that name one defect twice) and
+10 LOW ones. Each was checked against the code first; the defects were reproduced by a failing test before the
+fix, run against the old code. Where the test needed an API that did not exist yet, the old code was driven through
+its own API in a temporary test (deleted after), or the red was a build failure; both are said below. One more
+defect of the same kind was found while fixing them (F-21). Commits `3c29e88`..`1bc0829` (13), on `m7` after
+`9c48ab0`; nothing was pushed.
+
+### 15.1 Findings
+
+| # | Finding (severity) | Result | Commit, test, decision |
+|---|---|---|---|
+| F-1 | The PDF watchdog kills the shared worker, so a file on its retry can be blamed for another file's stuck call (MEDIUM) | **Fixed**, as the review's second option: a retry holds the worker alone (D-M7-66). Reproduced first: `anotherFilesCrashBesideARetryDoesNotBlameTheRetriedFile` (a loopback worker; `slow.png` on its retry, `bad.png` crashing beside it) failed on the old code with `slow.png` blamed. The stuck job's id is still not reported: the worker dies at once | `4c8eb3f`; `WorkerIsolationTests` (4) |
+| F-2 | NFR-9 under `withKnownIssue` only, so no gate fails a slow ffmpeg teardown (MEDIUM) | **Partly.** A hard ceiling now fails `make timing`: P1-20's bound (1 s grace + 500 ms) for the group's end and the task's return (D-M7-64); seen to fail with the ceiling at 1 ms. NFR-9's 1 s is still missed (1074.3 ms, not judged, load ~6) and stays the owner's (OS-M7-7). The review's point that no gate fails a slow *child* teardown was not right: `SubprocessTiming` judges P1-20's bound strictly | `bcca4b4` |
+| F-3 | The cold first drop is judged only as a known issue (MEDIUM) | **Fixed** with a stated ceiling of 150 ms, not the suggested 100 ms: the cold drop has measured 23–94 ms, and 100 ms would leave 6 % over the slowest reading (D-M7-65). Seen to fail at 1 ms; the 50 ms line stays a known issue (OS-M7-12) | `bcca4b4` |
+| F-4 | Gates not green at `m7`: X6, Y8, Z3, Z9, Z10, V3 (MEDIUM) | **Skipped, with the reason unchanged.** X6 is G-M5a-1 (not worked on, by the task). Y8, Z3, Z9, V3 and Z10 (which needs Z9) run the M5 demos, which quit every Zivlet; a Debug Zivlet this session did not launch was open the whole time (pid 28412, started 20:32 on 2026-11-07), so D-M7-59 kept them out again. Every other row was run (§15.2). OS-M7-14 stays open | — |
+| F-5 | qpdf's MD5 code is under RSA-MD, undeclared (HIGH) | **Fixed, the decision left to the owner.** Declared `Apache-2.0 AND MIT AND RSA-MD`; RSA's notice reproduced in `qpdf.txt` from `MD5_native.cc`; the acknowledgements page names the MD5 code as derived from RSA's algorithm. RSA-MD is not on the allow-list: it is *pending*, named on every gate run and refused by the release path (D-M7-63, OS-M7-15). A one-time scan of CQPDF's 212 members found no other undeclared licence header (G-M7-35). qpdf was not rebuilt | `2a64ed4`; `test-licence-gate.sh`, `test-workflows.sh` (seen to fail first) |
+| F-6 | The IJG sentence a binary needs is missing (MEDIUM) | **Fixed**: on the acknowledgements page and in THIRD_PARTY_NOTICES; the test checks the exact sentence in `index.html` | `2a64ed4` |
+| F-7, F-18 | Per-file sheets lose their own mode and restrictions (HIGH, MEDIUM) | **Fixed**: each answer keeps its own job, submitted in groups of one spec (D-M7-60). Four combinations tested; all failed on the old code | `3c29e88`; `ProtectBatchAnswerTests` |
+| F-8, F-17 | A wrong current password in Change can never be corrected (HIGH, HIGH) | **Fixed**: the retry shows a Change sheet (D-M7-60); failed on the old code with modes `[.unlock, .unlock]` | `3c29e88` |
+| F-9 | ⌘V and the other editing keys do nothing in the tool window (HIGH) | **Fixed**: the window sends ⌘X, ⌘C, ⌘V, ⌘A, ⌘Z and ⇧⌘Z up the responder chain (D-M7-68). Tested with a responder stand-in; failed on the old code. Pasting into the real `SecureField` with a keyboard was not seen (QA TW7, G-M7-36) | `ddf7338` |
+| F-10, F-20 | `try?` in the locked-input attempts shows every error as a wrong password (MEDIUM, MEDIUM) | **Fixed**: only "still locked" asks again; other errors become the file's line; a cancel ends the job; a cancelled task asks nothing more (D-M7-61). Red through a temporary old-API test | `25074e4` |
+| F-11 | The batch checkbox of the retry and owner-needed sheets does nothing (MEDIUM) | **Fixed** (D-M7-60); failed on the old code | `3c29e88` |
+| F-12 | Reveal is one flag for every field; Suggest shows Change's current password (MEDIUM) | **Fixed**: per-field reveal; Suggest reveals the new pair only (D-M7-69); failed on the old code through the controls' labels | `cde08cf` |
+| F-13 | Growing content pushes the window below the screen (MEDIUM) | **Fixed**: the window stays inside the visible frame it was placed in (D-M7-68). The first test passed on the old code because its window was never shown; shown off-screen, it failed | `ddf7338` |
+| F-14 | The selected Printing segment is white on the accent at 3.89:1 (MEDIUM) | **Fixed**: Zivlet's own segmented choice, selected segment white with black text (21:1), and white checkboxes (D-M7-62). The red was a build failure (new tokens); the defect was the capture's reading. The script still reads only a text-free box, and no new capture was taken: the screen was locked (G-M7-37, §15.3) | `cde08cf` |
+| F-15 | Copy Text and Read QR offer "Change password…" for a locked input (MEDIUM) | **Fixed**: the Open sheet (D-M7-61); `demo-locked-input.sh` now expects `["open"]` and refuses `["unlock"]` (its test failed first) | `25074e4` |
+| F-16 | VoiceOver reads the owner password's caption twice and never the password (MEDIUM) | **Fixed**: caption as the label, the password as the value, the separate caption hidden. Checked through the view's own strings (red: a build failure); VoiceOver not run (QA PW7) | `cde08cf` |
+| F-19 | `.unavailable` is treated as Cancel (MEDIUM) | **Fixed**: the batch outcome says so and the HUD shows "Finish the open window first"; locked inputs stop asking. In today's app it cannot happen: one prompter serves every sheet and makes asks wait their turn, and Read QR's results give way to a sheet | `3c29e88`, `25074e4` |
+| F-21 | *Found while fixing F-7:* a Change on a restricted file opened by its user password went through the owner-needed sheet, whose job is Unlock, and was written **decrypted** | **Fixed**: only Unlock answers go to the owner-needed sheet; the Change keeps its failure line and its Retry asks for Change again. Failed on the old code | `1bc0829` |
+
+LOW findings:
+
+| # | Finding | Result |
+|---|---|---|
+| L-1 | 20f clause status: P2-107 conversions and owner rows | **Partly**: QA PL5 tracks a locked PDF on a conversion, blocked until P2-12; new owner rows TW7, TW8, PW5–PW8, QR4, QR5 (`1c35b83`). P2-12 itself is not built (§13) |
+| L-2 | The PDF engine ignores the free-disk limit | **Fixed** (D-M7-70, `6633fae`); failed on the old code. ENOSPC inside the shim still reads as a write failure |
+| L-3 | SOURCES.md does not name CQPDF | **Fixed** (`2a64ed4`); the test reads the guide out of the bundle |
+| L-4 | Read QR results are lost behind another tool window | **Fixed**: they open when it closes, as the HUD now says (D-M7-67, `25074e4`); failed on the old code |
+| L-5 | The window's VoiceOver title is not updated | **Fixed** (`ddf7338`); failed on the old code |
+| L-6 | The segmented control is centred, off the leading edge | **Fixed** with F-14: the segments span the row |
+| L-7 | "Locked with AES-256 2 of 3 files" | **Fixed**: "Locked 2 of 3 files", and per mode (`0659574`); failed on the old code |
+| L-8 | Copy Text matches locked files by name | **Fixed**: by position in the drop (`25074e4`); a two-files-of-one-name test failed on the old code. Read QR was already by position |
+| L-9 | `merge`'s doc comment took `body(of:)`'s line | **Fixed** (`25074e4`) |
+| L-10 | Every rewrite failure reads as a failed check | **Fixed**: the cause is kept, only damage and failed checks read so (D-M7-70, `6633fae`; red: a build failure, the mapping function being new) |
+
+### 15.2 Gates after the fixes
+
+A fresh clone of the local repository (`m7` at `1c35b83`, then fast-forwarded to `1bc0829`), with `Vendor/out`,
+`Vendor/src` and `Vendor/downloads` copied in; nothing was rebuilt (`ensure-native.sh`: CWebP, CZivletSVG and CQPDF
+"up to date"; media "up to date"). Everything ran under `nice -n 10`. The Mac was on battery, mostly asleep (its
+power log shows maintenance sleeps through the night), and very busy when awake: load 7 to 35. The Debug Zivlet of
+D-M7-59 (pid 28412) was open throughout and was not touched.
+
+| Step | Commit | Result | Time, load |
+|---|---|---|---|
+| V1: `make test lint coverage app release-check licence-gate` | `1c35b83` | **pass.** 2573 tests in 23 bundles, none failed; lint; coverage, all 21 modules ≥ 90 % (below); app; release-check 57.3 MB of 85 (`Contents/MacOS` 16.4, `libav*` 29.8, Sparkle 1.3, Helpers 0.6, the worker 8.5, Resources 0.7); licence gate 15 components, 58 crates, with the line `pending owner decision: qpdf (RSA-MD)` | 383 s, 7.1 → 17 |
+| V2: `make script-test` | `1c35b83` | **pass**: 42 script tests and the PDF-writes check | 322 s |
+| V4: `make timing` | `1c35b83` | **not judged.** Stopped by this session at 04:49 after 2 h 36 min in its first load wait: the load never fell to 3.0 while the Mac was awake, and the wait's timers stop while it sleeps. The two new ceilings were seen to fail at 1 ms in an unjudged run at load ~6 (cold drop 55.2 ms, cancel 1074.3 ms, both under the real ceilings) | — |
+| The bundles changed after `1c35b83`: `ZivletUITests`, `ZivletRuntimeTests` | `1bc0829` | **pass**: 487 and 252 tests (working repository) | 07:52 |
+| `make lint` | `1bc0829` | **pass** (working repository) | about 30 min at load 24–35 |
+| V1 again | `1bc0829` | **not finished**: stopped by this session after 90 min, still building, at load 27–32 on battery | — |
+| V3 | — | **not run** (D-M7-59; OS-M7-14) | — |
+| V5–V12 | `1bc0829` | started 07:37; V5's Release build had run 1 h 46 min by 09:23. Results in §15.5 | — |
+| V13 and the earlier runners' hygiene rows | the record's commit | §15.5 | — |
+
+Coverage at `1c35b83` (lines covered of lines, %): ZivletCore 889/900 98, ZivletTrigger 696/703 99, ZivletWheelCore
+379/380 99, ZivletEngineKit 938/947 99, EngineMedia 1186/1211 97, EngineImage 1240/1292 95, ZivletRuntime 2840/3027
+93, ZivletTriggerHost 405/434 93, ZivletWheel 956/986 96, ZivletActions 794/872 91, ZivletSettings 302/312 96,
+ZivletUI 6836/7408 92, ZivletNotchCore 503/510 98, ZivletNotch 1067/1113 95, ZivletShelfCore 971/988 98, ZivletBox
+3528/3785 93, ZivletIPC 266/266 100, ZivletWorkerCore 469/487 96, EngineVision 559/619 90, EnginePDF 871/885 98,
+CZivletPDF 471/512 91.
+
+Not run in the follow-up, beyond V3: the earlier runners' rows that quit every Zivlet (m5a X2–X4, X6; m5b Y3–Y5, Y8;
+m6 Z3, Z9, and Z10, which needs Z9), for the reason of D-M7-59, and Z5–Z8 for time. Their last results are in §4.
+
+### 15.3 Screenshots
+
+**None were taken.** The screen was awake when the run began (no lock key at 01:58 and 02:01) and locked by 02:59,
+before any capture row was reached; it stayed locked (checked at 04:49, 08:53). By the task's rule a locked screen
+means no captures, and nothing tried to wake it. So the changed states are **not seen**: every password sheet (13
+states in three finishes, among them the new `open` and `changeRetry`, the Printing choice and the white checkboxes),
+and the island's partial card ("Locked 2 of 3 files"), which `make tool-states` does not capture. `make tool-states`
+now lists 55 captures (its test passes); `m7-shots/after-review/` in the session's scratch folder was not made. The
+owner's look review (OS-M7-6, QA TW1–TW8) covers them.
+
+### 15.4 Merge and push (owner only)
+
+`m7` is at this record's commit, 98 commits ahead of `main` (`5107be7`, the owner's M6 sign-off): a fast-forward. It
+was not pushed; `main` and `m6` were not touched. `m8` (not touched here) branched from `m7` at `a7ad58c` and holds 4
+commits; `m7` has 15 since (`ed6c756`, `9c48ab0` and the 13 of §15), so `m8` needs them merged or rebased before it
+lands. Before a release, OS-M7-15 must be decided: the release path refuses the gate until then.
