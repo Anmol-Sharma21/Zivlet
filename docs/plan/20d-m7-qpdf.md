@@ -246,8 +246,8 @@ then refused the good archive because `nm | grep -q` under `pipefail` cut `nm` o
 reproduces it). The repository does not record who started those runs; this session ran none of them and did not
 rebuild anything. `test-build-qpdf.sh` passes on the archive: arm64 only, minos 26.0, `QPDFCrypto_native` defined, no
 OpenSSL or GnuTLS provider, libjpeg-turbo folded in, no build path, headers present. G-M7-1 and G-M7-18 are closed;
-OS-M7-1 stays open only for the owner to confirm the build was meant to run, because planning and the first session
-were refused it and no record says who allowed it.
+OS-M7-1 is done: the owner started that build in their own shell (`bash Vendor/tests/test-build-qpdf.sh`), as the
+plan asked, after planning and the first session were refused it.
 
 Commits of this session: C2's wiring `8dcfe1c`; C4 `fb79e0f`; C5 `d14151c`; C6's size row `239840f` and the notices
 `3559f48`.

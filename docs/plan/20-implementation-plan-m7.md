@@ -1,6 +1,6 @@
 # 20 — M7 implementation plan: reliable tests, the tool window, passwords and PDF lock (TDD)
 
-Date: 2026-10-27. Status: in execution (the qpdf build ran on 2026-10-29; OS-M7-1 asks the owner to confirm it). Branch: `m7`, made from `m6`
+Date: 2026-10-27. Status: in execution (the owner ran the qpdf build on 2026-10-29; OS-M7-1 is done). Branch: `m7`, made from `m6`
 at `5107be7` (`main` is at `9cc6c69`; the owner may fast-forward it to `m6` meanwhile, which changes nothing here).
 Order: [design/17-feature-roadmap](../design/17-feature-roadmap.md) §4.2, wave 2A steps 6–7, with a reliability stream
 first. Acceptance: the 05 rows P2-30, P2-51 (the Read QR tool left by D-M6-6), P2-101, P2-102, P2-13 (with its 05 §9.1
@@ -376,7 +376,7 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 
 | ID | Step | Why / blocks |
 |---|---|---|
-| OS-M7-1 | **Allow the qpdf and libjpeg-turbo build** from the verified tarballs (this session's permission check refused running their build), or run it once yourself: after C1, `nice -n 10 Vendor/build-native.sh qpdf` in a terminal. Then the prototype harness (§3.1) can be compiled and run, with `ps` watched. **Still open after stream C's execution** (refused again, G-M7-18): C1, the script (C2), C3 and the licences (C6) are committed; run the command above, then `bash Vendor/tests/test-build-qpdf.sh` | **Built; the owner's confirmation is still asked.** The build ran on 2026-10-29 and stream C finished (20d execution notes), so D and E can go on. No record says who started that build or that the owner allowed it (G-M7-18): please confirm it was meant to run. Nothing was rebuilt after it |
+| OS-M7-1 | **Allow the qpdf and libjpeg-turbo build** from the verified tarballs (this session's permission check refused running their build), or run it once yourself: after C1, `nice -n 10 Vendor/build-native.sh qpdf` in a terminal. Then the prototype harness (§3.1) can be compiled and run, with `ps` watched. **Still open after stream C's execution** (refused again, G-M7-18): C1, the script (C2), C3 and the licences (C6) are committed; run the command above, then `bash Vendor/tests/test-build-qpdf.sh` | **Done.** The owner ran `bash Vendor/tests/test-build-qpdf.sh` in their own shell, which built qpdf and libjpeg-turbo on 2026-10-29; stream C then finished (20d execution notes). Nothing was rebuilt after it |
 | OS-M7-2 | Confirm that the tool window does **not** activate Zivlet (D-M7-10), unlike PRD §5.7's "app activated" | The prototype shows key focus and Secure Input without activation |
 | OS-M7-3 | A mixed drop of locked and unlocked PDFs on LOCK · UNLOCK: lock the plain ones and list the locked ones (planned), or something else | D-M7-19 |
 | OS-M7-4 | Try **Suggest** once by hand (QA PW1) | Automation never calls it (hard limits keep it off anything Keychain-adjacent) |

@@ -316,7 +316,7 @@ Status at the end of M7; the full text of each is in the index (§10) or the par
 | G-M7-14 | Closed for this run: `aRealClickOnItsContentMakesItKey` ran and passed in the clone's `make test` (screen awake) |
 | G-M7-15 | Recorded: no process's environment is visible on this macOS; children are checked at their spawn request, and V6 samples command lines only |
 | G-M7-16 | Open: VoiceOver labels checked through the view's own strings (OS-M7-6, OS-M7-10) |
-| G-M7-17, -18, -19, -25 | Closed (20d, 20e, 20f); OS-M7-1 still asks the owner to confirm the qpdf build was meant |
+| G-M7-17, -18, -19, -25 | Closed (20d, 20e, 20f); the owner ran the qpdf build (OS-M7-1) |
 | G-M7-20 | Closed for this run: the three frame-driven tests passed in the clone with the screen awake |
 | G-M7-21 | Open: Y8 has no guard for a person using the Mac |
 | G-M7-22 | **Open:** the watchdog's stop has still not fired in the XPC worker; no Flate bomb was added (§9) |
@@ -341,7 +341,7 @@ Status at the end of M7; the full text of each is in the index (§10) or the par
 
 | ID | Step | Status |
 |---|---|---|
-| OS-M7-1 | Confirm the qpdf and libjpeg-turbo build of 2026-10-29 was meant to run | Open |
+| OS-M7-1 | Run the qpdf and libjpeg-turbo build | Done: the owner ran it on 2026-10-29 (`bash Vendor/tests/test-build-qpdf.sh`, in their own shell) |
 | OS-M7-2 | Confirm the tool window does not activate Zivlet (D-M7-10) | Open (QA TW5) |
 | OS-M7-3 | A mixed Lock drop: lock the plain files and list the locked ones (built so, D-M7-50) | Open for a yes or no |
 | OS-M7-4 | Try Suggest once by hand | Open (QA PW1) |
