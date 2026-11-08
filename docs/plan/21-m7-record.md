@@ -506,8 +506,8 @@ by its unit test and by V1's bundles at HEAD (§15.2).
 
 ## 16. Final verification (2026-11-08)
 
-A fresh clone of `m7` at `db4113f` (Vendor folders copied, nothing rebuilt), `nice -n 10`, screen awake, on mains
-power from about 12:10. The owner's own Debug Zivlet was quit at the owner's request before the rows that quit every
+A fresh clone of `m7` at `db4113f` (Vendor folders copied, nothing rebuilt), `nice -n 10`, screen awake, on battery at
+first and charging by 14:16. The owner's own Debug Zivlet was quit at the owner's request before the rows that quit every
 Zivlet ran, so none of them was skipped for it this time. The run was finished by two agents and then by hand (the
 first agent was stopped when the owner changed its model; the second ended early and said so), so the rows below come
 from the runners' own logs.
