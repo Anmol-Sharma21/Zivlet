@@ -503,3 +503,42 @@ lands. OS-M7-15 is decided (the owner accepted qpdf's MD5 notice on 2026-11-08),
 
 V6, V8, V9 and V10 used the Debug app built at 02:06 from `1c35b83`; the one later code change, `1bc0829`, is checked
 by its unit test and by V1's bundles at HEAD (§15.2).
+
+## 16. Final verification (2026-11-08)
+
+A fresh clone of `m7` at `db4113f` (Vendor folders copied, nothing rebuilt), `nice -n 10`, screen awake, on mains
+power from about 12:10. The owner's own Debug Zivlet was quit at the owner's request before the rows that quit every
+Zivlet ran, so none of them was skipped for it this time. The run was finished by two agents and then by hand (the
+first agent was stopped when the owner changed its model; the second ended early and said so), so the rows below come
+from the runners' own logs.
+
+| Row | Result | Notes |
+|---|---|---|
+| `make test` | pass, 154 s | 2574 tests in 23 bundles, 0 failed; 29 tests and 13 suites skipped (opt-in timing, OCR, recording); load 4.30 |
+| `make lint`, `make app` | pass | |
+| `make coverage` | pass | all 21 modules ≥ 90 % (lowest EngineVision 90 %; EnginePDF 98 %, CZivletPDF 91 %) |
+| `make release-check` | pass | 57.3 MB installed of 85 MB |
+| `make licence-gate` | pass | 15 components, 58 crates; named RSA-MD as pending, since accepted (OS-M7-15) |
+| m5a X1–X5, X7 | pass | X2 judged |
+| m5a X6 | **fail** | idle CPU, G-M5a-1 (known, excluded) |
+| m5b Y1–Y9 | pass | Y8 (idle CPU) passed with nobody using the Mac; Y5 lowest contrast 4.99:1 |
+| m6 Z1, Z2, Z4–Z11 | pass | Z6 OCR within 1 % CER on 12 fixtures |
+| m6 Z3 | not judged | its inner X2 waited out the load limit; its other inner rows passed, and V3 below reran them all |
+| V1, V2 | pass, 357 s and 315 s | |
+| V3 | pass, 598 s | m5a X2–X5 (X2 judged), m5b Y4, Y5, Y7, m6 Z4, Z5, Z7, Z8 |
+| V4 `make timing` | pass, 43 s | judged at load 2.84: every budget met |
+| V5 qpdf provenance | **not judged** | GitHub's release downloads answered 504 for qpdf's signature at 14:5x and 15:0x (checked by hand: the status page answered, the asset did not), and ffmpeg.org once reset the connection; the local tarballs and signatures are unchanged since V5 last passed |
+| V6–V13 | pass | V11 every new state on screen with its contrast; V12 no tccd request; V13 hygiene |
+
+**After the owner's decisions and the DNG merge** (`m7` at `fdbdeb0`: `59ce781` OS-M7-1, `eef47ba` OS-M7-15, then
+the `dng` branch merged): V1 pass (289 s; 2579 tests, 0 failed; 57.2 MB), V2 pass (314 s), V13 pass (65 s); V5 not
+judged again (network). `Fixtures/generate.sh --check --set small` into a fresh folder: 48 files, every hash
+matches, `bayer.dng` included. Through the Debug app, `make convert-demo` turned `bayer.dng` into JPG and HEIC, both
+320 × 240, red left and blue right as the fixture paints them.
+
+**Gap found (G-M7-38):** `Fixtures/generate.sh --check` compares only the files listed in the generated set's own
+manifest with the committed one, so a set made before a new fixture was added still says "OK" without it. A check
+into a fresh folder is correct. Next: also list committed entries the generated set lacks.
+
+**Not seen in this verification:** a person using the new UI with a keyboard or VoiceOver (QA rows), V5 with the
+network up, and a real camera DNG through the app (one went through the engine on 2026-11-01, outside the repo).
