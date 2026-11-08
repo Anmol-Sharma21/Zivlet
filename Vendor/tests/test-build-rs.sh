@@ -21,7 +21,13 @@ own=$(awk '$1 ~ /^zivlet_svg-/ { print $2 }' <<<"$minos" | sort -u | tr '\n' ' '
 assert_eq "$own" "26.0 " "minos of zivlet_svg's own object"
 newest=$(awk '{ print $2 }' <<<"$minos" | sort -V | tail -1)
 assert_eq "$newest" "26.0" "newest minos of any object"
-if strings -a "$lib" | grep -qE '/Users/|/private/tmp|/var/folders/|cargo-home|/opt/homebrew'; then fail "path leak"; fi
+# rustup's prebuilt compiler_builtins name their sources under the Rust project's own release builder
+# (/Users/runner/work/rust/rust/); that is upstream's path, not this build's, so it is counted and set aside.
+paths=$(strings -a "$lib" | grep -E '/Users/|/private/tmp|/var/folders/|cargo-home|/opt/homebrew' || true)
+upstream=$(grep -c '^/Users/runner/work/rust/rust/' <<<"$paths" || true)
+((upstream == 0)) || echo "note: $upstream source paths of Rust's own release build set aside"
+leaks=$(grep -v '^/Users/runner/work/rust/rust/' <<<"$paths" | grep -v '^$' | sort -u | head -5 || true)
+[[ -z "$leaks" ]] || fail "path leak: $leaks"
 grep -q 'module CZivletSVG' "$(find "$X" -name module.modulemap | head -1)" || fail "no module map"
 # A toolchain other than the pinned one is refused.
 T=$(tmpdir); trap 'rm -rf "$T"' EXIT
