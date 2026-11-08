@@ -12,10 +12,11 @@ SRC=$REPO_ROOT/Vendor/src; DOWNLOADS=$REPO_ROOT/Vendor/downloads
 FFMPEG=$REPO_ROOT/Vendor/out/media-stage/Helpers/ffmpeg
 CARGO_HOME=${ZIVLET_CARGO_HOME:-$REPO_ROOT/Vendor/downloads/cargo-home}
 ALLOWED=" GPL-2.0-or-later GPL-3.0-or-later LGPL-2.0-or-later LGPL-2.1-or-later BSD-2-Clause BSD-3-Clause
-BSD-3-Clause-Clear ISC MIT Apache-2.0 Zlib WTFPL MPL-2.0 LicenseRef-AOM-Patent-1.0 IJG "
+BSD-3-Clause-Clear ISC MIT Apache-2.0 Zlib WTFPL MPL-2.0 LicenseRef-AOM-Patent-1.0 IJG RSA-MD "
 ALLOWED=" ${ALLOWED//$'\n'/ } " # one line, so every id is surrounded by spaces
-# RSA-MD: qpdf's MD5 code (libqpdf/MD5_native.cc); whether it may ship with GPL-3.0-or-later is the owner's call.
-PENDING=" RSA-MD "
+# RSA-MD: qpdf's MD5 code (libqpdf/MD5_native.cc), accepted by the owner on 2026-11-08 with its notice and
+# acknowledgement shipped (D-M7-63, OS-M7-15). PENDING holds licences that still wait for the owner's decision.
+PENDING=" "
 # Licences that ask for words in the product's documentation: IJG (README.ijg clause 2), RSA-MD ("derived from ...").
 NEEDS_ACKNOWLEDGEMENT=" IJG RSA-MD "
 RELEASE=0

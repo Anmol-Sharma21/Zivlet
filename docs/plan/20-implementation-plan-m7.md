@@ -390,7 +390,7 @@ Owner rows (not automated) are in `docs/plan/qa/tool-window.md`, `password.md`, 
 | OS-M7-11 | Merge and push `m7` when satisfied | Owner only |
 | OS-M7-13 | Move the M5 and M6 demo captures (`demo-text-states`, `demo-box-states`, `demo-notch-states`, `demo-box`, `demo-box-busy`) to window captures, or keep them for a Mac with nothing private on screen | G-M7-29 |
 | OS-M7-14 | With no other Zivlet open, run `Scripts/m7-exit.sh --only V3` and `Scripts/m6-exit.sh --only Z3,Z5,Z6,Z7,Z8,Z9,Z10`; or allow an exit run to quit the Zivlet that is open | D-M7-59 |
-| OS-M7-15 | Decide qpdf's RSA-MD MD5 notice: accept it (move RSA-MD from `PENDING` to `ALLOWED` in `licence-gate.sh`, citing why), or have `MD5_native.cc` replaced by a public-domain or Zivlet-written MD5 as a documented patch (a one-time qpdf rebuild). Until then no release passes the gate | D-M7-63 |
+| OS-M7-15 | Decide qpdf's RSA-MD MD5 notice: accept it (move RSA-MD from `PENDING` to `ALLOWED` in `licence-gate.sh`, citing why), or have `MD5_native.cc` replaced by a public-domain or Zivlet-written MD5 as a documented patch (a one-time qpdf rebuild). Until then no release passes the gate. **Done 2026-11-08: accepted by the owner**; RSA-MD is allowed and the notice and acknowledgement ship | D-M7-63 |
 
 ---
 

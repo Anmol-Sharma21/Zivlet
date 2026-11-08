@@ -29,7 +29,7 @@ defect: `make tool-states` left each state's app open, 49 per run. It is fixed (
 `1bc0829`) fix 18 of the 20 and part of one (NFR-9: a hard ceiling now fails, the 1 s budget stays the owner's), and
 9 of the 10 LOW ones, the tenth in part (P2-107's conversions wait for P2-12). One more defect was found and fixed on
 the way: a Change written decrypted (F-21). The licence finding is fixed as far as an agent may go: qpdf's MD5 notice
-is declared and shipped, and a release refuses it until the owner decides (OS-M7-15). The one finding skipped is the
+is declared and shipped, and the owner accepted it on 2026-11-08 (OS-M7-15). The one finding skipped is the
 rerun of the rows that quit every Zivlet: a Zivlet this session did not launch was open again.
 
 ---
@@ -355,7 +355,7 @@ Status at the end of M7; the full text of each is in the index (§10) or the par
 | OS-M7-12 | The cold first drop (G-M7-10) | Open |
 | OS-M7-13 | Window captures for the M5 and M6 demos, or run them with nothing private on screen (G-M7-29) | New, open |
 | OS-M7-14 | With no other Zivlet open, run `Scripts/m7-exit.sh --only V3` and `Scripts/m6-exit.sh --only Z3,Z5,Z6,Z7,Z8,Z9,Z10` (Z10 checks what Z5–Z9 asked for, so they run together), and `Scripts/m5b-exit.sh --only Y8`. Or say that an exit run may quit the Zivlet you have open (D-M7-59). Still open after §15: the same Zivlet was open | New, open |
-| OS-M7-15 | Decide qpdf's RSA-MD MD5 notice (D-M7-63): accept it (move RSA-MD from `PENDING` to `ALLOWED` in `Scripts/licence-gate.sh`, with the reason, for example RSA's statement on code derived from RFC 1321, if you rely on it) or have `libqpdf/MD5_native.cc` replaced by a public-domain or Zivlet-written MD5 as a documented patch (one qpdf rebuild). Until then every release refuses the gate | New (§15), open |
+| OS-M7-15 | Decide qpdf's RSA-MD MD5 notice (D-M7-63): accept it (move RSA-MD from `PENDING` to `ALLOWED` in `Scripts/licence-gate.sh`, with the reason, for example RSA's statement on code derived from RFC 1321, if you rely on it) or have `libqpdf/MD5_native.cc` replaced by a public-domain or Zivlet-written MD5 as a documented patch (one qpdf rebuild). Until then every release refuses the gate | **Done 2026-11-08:** the owner accepted the notice; RSA-MD moved to `ALLOWED`, `PENDING` is empty, and `licence-gate.sh --release` passes |
 
 ---
 
@@ -484,7 +484,7 @@ the island's partial card ("Locked 2 of 3 files"), which `make tool-states` does
 `m7` is at this record's commit, 98 commits ahead of `main` (`5107be7`, the owner's M6 sign-off): a fast-forward. It
 was not pushed; `main` and `m6` were not touched. `m8` (not touched here) branched from `m7` at `a7ad58c` and holds 4
 commits; `m7` has 15 since (`ed6c756`, `9c48ab0` and the 13 of §15), so `m8` needs them merged or rebased before it
-lands. Before a release, OS-M7-15 must be decided: the release path refuses the gate until then.
+lands. OS-M7-15 is decided (the owner accepted qpdf's MD5 notice on 2026-11-08), so the release path's licence gate passes.
 
 ### 15.5 Rows run by name at `1bc0829` and on the record's commit
 

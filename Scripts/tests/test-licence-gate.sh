@@ -10,11 +10,10 @@ reset() { cp "$ROOT/Vendor/versions.lock" "$ROOT/Vendor/licenses.json" "$T/"; }
 reset
 out=$(gate) || fail "the real lock and manifest must pass: $out"
 assert_contains "$out" "Licences OK: 15 components"
-# qpdf's MD5 code is under RSA's MD5 notice, which waits for the owner (D-M7-63, OS-M7-15): said on every run, and
-# refused by a release.
-assert_contains "$out" "pending owner decision: qpdf (RSA-MD)"
-assert_contains "$(gate --release || true)" "pending owner decision: qpdf (RSA-MD)"
-assert_fails gate --release
+# qpdf's MD5 code is under RSA's MD5 notice, which the owner accepted on 2026-11-08 (D-M7-63, OS-M7-15): nothing
+# waits for a decision, and a release passes.
+[[ "$out" != *"pending owner decision"* ]] || fail "no licence should wait for the owner: $out"
+release=$(gate --release) || fail "a release must pass the gate: $release"
 grep -q 'licence-gate.sh" --release' "$ROOT/Scripts/release-local.sh" || fail "the release does not run the gate with --release"
 
 # A licence that asks for words in the product's documentation (IJG, RSA-MD) needs its acknowledgement.
