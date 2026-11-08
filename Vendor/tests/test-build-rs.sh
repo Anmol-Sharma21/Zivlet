@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# build-rs.sh runs the crate's tests, then packages zivlet-svg as CZivletSVG.xcframework: arm64, minos 26.0,
-# both C entry points exported, and no build path in the archive.
+# build-rs.sh runs the crate's tests, then packages zivlet-svg as CZivletSVG.xcframework: arm64, our object built for
+# macOS 26.0 and nothing needing a newer one, both C entry points exported, and no build path in the archive.
 source "$(dirname "$0")/lib.sh"
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 X=$ROOT/Vendor/out/CZivletSVG.xcframework
@@ -14,8 +14,13 @@ lib=$(find "$X" -name 'libCZivletSVG.a' | head -1); assert_file "$lib"
 syms=$(nm -gU "$lib" 2>/dev/null || true)
 for s in _zivlet_svg_render _zivlet_svg_size _zivlet_svg_free; do grep -q " T $s\$" <<<"$syms" || fail "$s not exported"; done
 lipo -archs "$lib" | grep -qx arm64 || fail "not arm64 only"
-minos=$(otool -l "$lib" | awk '/minos/ { print $2 }' | sort -u | tr '\n' ' ')
-assert_eq "$minos" "26.0 " "minos of every object"
+# zivlet_svg's own object is built for macOS 26.0. Rust's prebuilt compiler_builtins objects keep the toolchain's
+# minimum (26.0 from Homebrew's Rust, 11.0 from rustup's on GitHub's runner, OWN-CI-1); none may need a newer macOS.
+minos=$(otool -l "$lib" | awk '/\(.*\):$/ { m = $0; sub(/.*\(/, "", m); sub(/\):$/, "", m) } $1 == "minos" { print m, $2 }')
+own=$(awk '$1 ~ /^zivlet_svg-/ { print $2 }' <<<"$minos" | sort -u | tr '\n' ' ')
+assert_eq "$own" "26.0 " "minos of zivlet_svg's own object"
+newest=$(awk '{ print $2 }' <<<"$minos" | sort -V | tail -1)
+assert_eq "$newest" "26.0" "newest minos of any object"
 if strings -a "$lib" | grep -qE '/Users/|/private/tmp|/var/folders/|cargo-home|/opt/homebrew'; then fail "path leak"; fi
 grep -q 'module CZivletSVG' "$(find "$X" -name module.modulemap | head -1)" || fail "no module map"
 # A toolchain other than the pinned one is refused.
