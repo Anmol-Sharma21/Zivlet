@@ -26,7 +26,7 @@ struct BoxBusyTests {
         return (box, files)
     }
 
-    @Test func escapeStopsAMoveAndKeepsUndoForThePartThatMoved() async throws {
+    @Test(.holdsAPoolThread) func escapeStopsAMoveAndKeepsUndoForThePartThatMoved() async throws {
         let rig = try BoxRig()
         let gate = RenameGate(pauseAt: 4)
         let (box, files) = try await Self.pausedBox(rig, items: 12, gate: gate)
@@ -47,7 +47,7 @@ struct BoxBusyTests {
         box.hidePanel()
     }
 
-    @Test func theCancelButtonStopsACopyInItsOwnWords() async throws {
+    @Test(.holdsAPoolThread) func theCancelButtonStopsACopyInItsOwnWords() async throws {
         let rig = try BoxRig()
         let gate = RenameGate(pauseAt: 2)
         let (box, files) = try await Self.pausedBox(rig, items: 3, gate: gate)

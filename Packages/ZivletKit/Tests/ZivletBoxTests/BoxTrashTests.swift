@@ -29,7 +29,7 @@ struct BoxTrashTests {
         return result
     }
 
-    @Test func aCancelledTrashKeepsTheRestAndUndoBringsBackWhatWent() async throws {
+    @Test(.holdsAPoolThread) func aCancelledTrashKeepsTheRestAndUndoBringsBackWhatWent() async throws {
         let rig = try BoxRig()
         let (box, files) = try await Self.box(rig, items: 200)
         let order = box.library.current?.items.map(\.id)
@@ -98,7 +98,7 @@ struct BoxTrashTests {
         box.hidePanel()
     }
 
-    @Test func anItemRemovedWhileTrashingIsNotBroughtBack() async throws {
+    @Test(.holdsAPoolThread) func anItemRemovedWhileTrashingIsNotBroughtBack() async throws {
         let rig = try BoxRig()
         let (box, _) = try await Self.box(rig, items: 3)
         rig.trash.pauseAt = 2
@@ -116,7 +116,7 @@ struct BoxTrashTests {
         box.hidePanel()
     }
 
-    @Test func aStopAfterOnlyARefusalSaysNothingWent() async throws {
+    @Test(.holdsAPoolThread) func aStopAfterOnlyARefusalSaysNothingWent() async throws {
         let rig = try BoxRig()
         let (box, _) = try await Self.box(rig, items: 2)
         rig.trash.pauseAt = 1

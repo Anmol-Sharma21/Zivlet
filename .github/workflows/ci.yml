@@ -58,9 +58,12 @@ jobs:
           key: ${{ steps.vendor-key.outputs.key }}
       - name: Lint
         run: make lint
+      # A hung test fails its step within the hour instead of holding the job to its 240-minute limit.
       - name: Test
+        timeout-minutes: 60
         run: mkdir -p build/reports && make test 2>&1 | tee build/reports/test.log
       - name: Coverage
+        timeout-minutes: 60
         run: mkdir -p build/reports && make coverage 2>&1 | tee build/reports/coverage.txt
       - name: Debug app
         run: make app
