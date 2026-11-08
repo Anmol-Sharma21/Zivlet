@@ -333,7 +333,7 @@ Status at the end of M7; the full text of each is in the index (§10) or the par
 | G-M7-34 | **New.** V11 waits a fixed 1.2 s after a window's line. In two of 49 captures that was not enough: one caught the window before it was drawn, one caught it while it was not key. Each was right when run again, so neither counts as a defect. What took key that moment was not found (QA TW5) |
 | G-M7-35 | **New (§15).** The licence gate trusts each component's declared SPDX; it does not read the headers of the sources that are linked. A one-time scan of CQPDF's 212 members found only MD5 undeclared |
 | G-M7-36 | **New (§15).** Paste, growth, reveal, the Open sheet and the owner password's VoiceOver value are checked by unit tests and captures, not by a person with a keyboard or VoiceOver (QA TW7, TW8, PW5–PW8, QR4, QR5) |
-| G-M7-37 | **New (§15).** `make tool-states` reads contrast over a text-free box only; the selected Printing segment's 21:1 is computed from its colours by a unit test and has not been read from a capture (the screen was locked, §15.3) |
+| G-M7-37 | **New (§15).** `make tool-states` reads contrast over a text-free box only; the selected Printing segment's 21:1 is computed from its colours by a unit test and was read once by hand from the three captures (§15.3), not by the script |
 
 ---
 
@@ -401,7 +401,7 @@ defect of the same kind was found while fixing them (F-21). Commits `3c29e88`..`
 | F-1 | The PDF watchdog kills the shared worker, so a file on its retry can be blamed for another file's stuck call (MEDIUM) | **Fixed**, as the review's second option: a retry holds the worker alone (D-M7-66). Reproduced first: `anotherFilesCrashBesideARetryDoesNotBlameTheRetriedFile` (a loopback worker; `slow.png` on its retry, `bad.png` crashing beside it) failed on the old code with `slow.png` blamed. The stuck job's id is still not reported: the worker dies at once | `4c8eb3f`; `WorkerIsolationTests` (4) |
 | F-2 | NFR-9 under `withKnownIssue` only, so no gate fails a slow ffmpeg teardown (MEDIUM) | **Partly.** A hard ceiling now fails `make timing`: P1-20's bound (1 s grace + 500 ms) for the group's end and the task's return (D-M7-64); seen to fail with the ceiling at 1 ms. NFR-9's 1 s is still missed (1074.3 ms, not judged, load ~6) and stays the owner's (OS-M7-7). The review's point that no gate fails a slow *child* teardown was not right: `SubprocessTiming` judges P1-20's bound strictly | `bcca4b4` |
 | F-3 | The cold first drop is judged only as a known issue (MEDIUM) | **Fixed** with a stated ceiling of 150 ms, not the suggested 100 ms: the cold drop has measured 23–94 ms, and 100 ms would leave 6 % over the slowest reading (D-M7-65). Seen to fail at 1 ms; the 50 ms line stays a known issue (OS-M7-12) | `bcca4b4` |
-| F-4 | Gates not green at `m7`: X6, Y8, Z3, Z9, Z10, V3 (MEDIUM) | **Skipped, with the reason unchanged.** X6 is G-M5a-1 (not worked on, by the task). Y8, Z3, Z9, V3 and Z10 (which needs Z9) run the M5 demos, which quit every Zivlet; a Debug Zivlet this session did not launch was open the whole time (pid 28412, started 20:32 on 2026-11-07), so D-M7-59 kept them out again. Every other row was run (§15.2). OS-M7-14 stays open | — |
+| F-4 | Gates not green at `m7`: X6, Y8, Z3, Z9, Z10, V3 (MEDIUM) | **Skipped, with the reason unchanged.** X6 is G-M5a-1 (not worked on, by the task). Y8, Z3, Z9, V3 and Z10 (which needs Z9) run the M5 demos, which quit every Zivlet; a Debug Zivlet this session did not launch was open the whole time (pid 28412, started 20:32 on 2026-11-07), so D-M7-59 kept them out again. The other M7 rows were run, V4 not judged (§15.2, §15.5); of the earlier runners, only their hygiene rows. OS-M7-14 stays open | — |
 | F-5 | qpdf's MD5 code is under RSA-MD, undeclared (HIGH) | **Fixed, the decision left to the owner.** Declared `Apache-2.0 AND MIT AND RSA-MD`; RSA's notice reproduced in `qpdf.txt` from `MD5_native.cc`; the acknowledgements page names the MD5 code as derived from RSA's algorithm. RSA-MD is not on the allow-list: it is *pending*, named on every gate run and refused by the release path (D-M7-63, OS-M7-15). A one-time scan of CQPDF's 212 members found no other undeclared licence header (G-M7-35). qpdf was not rebuilt | `2a64ed4`; `test-licence-gate.sh`, `test-workflows.sh` (seen to fail first) |
 | F-6 | The IJG sentence a binary needs is missing (MEDIUM) | **Fixed**: on the acknowledgements page and in THIRD_PARTY_NOTICES; the test checks the exact sentence in `index.html` | `2a64ed4` |
 | F-7, F-18 | Per-file sheets lose their own mode and restrictions (HIGH, MEDIUM) | **Fixed**: each answer keeps its own job, submitted in groups of one spec (D-M7-60). Four combinations tested; all failed on the old code | `3c29e88`; `ProtectBatchAnswerTests` |
@@ -411,7 +411,7 @@ defect of the same kind was found while fixing them (F-21). Commits `3c29e88`..`
 | F-11 | The batch checkbox of the retry and owner-needed sheets does nothing (MEDIUM) | **Fixed** (D-M7-60); failed on the old code | `3c29e88` |
 | F-12 | Reveal is one flag for every field; Suggest shows Change's current password (MEDIUM) | **Fixed**: per-field reveal; Suggest reveals the new pair only (D-M7-69); failed on the old code through the controls' labels | `cde08cf` |
 | F-13 | Growing content pushes the window below the screen (MEDIUM) | **Fixed**: the window stays inside the visible frame it was placed in (D-M7-68). The first test passed on the old code because its window was never shown; shown off-screen, it failed | `ddf7338` |
-| F-14 | The selected Printing segment is white on the accent at 3.89:1 (MEDIUM) | **Fixed**: Zivlet's own segmented choice, selected segment white with black text (21:1), and white checkboxes (D-M7-62). The red was a build failure (new tokens); the defect was the capture's reading. The script still reads only a text-free box, and no new capture was taken: the screen was locked (G-M7-37, §15.3) | `cde08cf` |
+| F-14 | The selected Printing segment is white on the accent at 3.89:1 (MEDIUM) | **Fixed**: Zivlet's own segmented choice, selected segment white with black text (21:1), and white checkboxes (D-M7-62). The red was a build failure (new tokens); the defect was the capture's reading. The script still reads only a text-free box (G-M7-37); the new captures were read by hand: 21.00:1 in all three finishes (§15.3) | `cde08cf` |
 | F-15 | Copy Text and Read QR offer "Change password…" for a locked input (MEDIUM) | **Fixed**: the Open sheet (D-M7-61); `demo-locked-input.sh` now expects `["open"]` and refuses `["unlock"]` (its test failed first) | `25074e4` |
 | F-16 | VoiceOver reads the owner password's caption twice and never the password (MEDIUM) | **Fixed**: caption as the label, the password as the value, the separate caption hidden. Checked through the view's own strings (red: a build failure); VoiceOver not run (QA PW7) | `cde08cf` |
 | F-19 | `.unavailable` is treated as Cancel (MEDIUM) | **Fixed**: the batch outcome says so and the HUD shows "Finish the open window first"; locked inputs stop asking. In today's app it cannot happen: one prompter serves every sheet and makes asks wait their turn, and Read QR's results give way to a sheet | `3c29e88`, `25074e4` |
@@ -449,8 +449,8 @@ D-M7-59 (pid 28412) was open throughout and was not touched.
 | `make lint` | `1bc0829` | **pass** (working repository) | about 30 min at load 24–35 |
 | V1 again | `1bc0829` | **not finished**: stopped by this session after 90 min, still building, at load 27–32 on battery | — |
 | V3 | — | **not run** (D-M7-59; OS-M7-14) | — |
-| V5–V12 | `1bc0829` | started 07:37; V5's Release build had run 1 h 46 min by 09:23. Results in §15.5 | — |
-| V13 and the earlier runners' hygiene rows | the record's commit | §15.5 | — |
+| V5–V12 | `1bc0829` | **pass**, every row (§15.5) | 07:37 → 11:37, load 26 → 4 |
+| V13, m5a X7, m5b Y9, m6 Z11 (hygiene) | `c647119`, the record's commit | **pass** (§15.5) | — |
 
 Coverage at `1c35b83` (lines covered of lines, %): ZivletCore 889/900 98, ZivletTrigger 696/703 99, ZivletWheelCore
 379/380 99, ZivletEngineKit 938/947 99, EngineMedia 1186/1211 97, EngineImage 1240/1292 95, ZivletRuntime 2840/3027
@@ -464,13 +464,20 @@ m6 Z3, Z9, and Z10, which needs Z9), for the reason of D-M7-59, and Z5–Z8 for 
 
 ### 15.3 Screenshots
 
-**None were taken.** The screen was awake when the run began (no lock key at 01:58 and 02:01) and locked by 02:59,
-before any capture row was reached; it stayed locked (checked at 04:49, 08:53). By the task's rule a locked screen
-means no captures, and nothing tried to wake it. So the changed states are **not seen**: every password sheet (13
-states in three finishes, among them the new `open` and `changeRetry`, the Printing choice and the white checkboxes),
-and the island's partial card ("Locked 2 of 3 files"), which `make tool-states` does not capture. `make tool-states`
-now lists 55 captures (its test passes); `m7-shots/after-review/` in the session's scratch folder was not made. The
-owner's look review (OS-M7-6, QA TW1–TW8) covers them.
+The screen was awake at 01:58 and 02:01, locked by 02:59 and still at 04:49 and 08:53; nothing tried to wake it. It
+was awake again when V11 reached it, so V8–V11 ran, with the Debug app built at 02:06 from `1c35b83` (every fix
+but `1bc0829`, which no capture shows). `make tool-states` wrote **55 captures**, and all 51 contrast readings passed,
+the lowest 11.17:1 (the fallbacks' surface, 0.012); copies are in `m7-shots/after-review/` in the session's scratch
+folder.
+
+**Looked at** by this session, not by a person: Lock with restrictions in glass and Increase Contrast, the Open
+sheet after a wrong password, Change asked again, and the batch Unlock. The Printing choice spans the row from its
+leading edge, its selected segment black on white; the checkboxes are white; the Open sheet is titled and applied
+"Open", with no "Change password…"; the second Change sheet lists the file and asks for Current, New and Confirm,
+with "That password didn't work.". **Read from the captures** with a small pixel reader: the selected segment's
+text against its fill is **21.00:1** in glass, solid and Increase Contrast. The other 50 captures were not opened.
+**Not seen:** pasting, the window growing at the bottom of a screen, a per-field reveal while typing, VoiceOver, and
+the island's partial card ("Locked 2 of 3 files"), which `make tool-states` does not capture.
 
 ### 15.4 Merge and push (owner only)
 
@@ -478,3 +485,21 @@ owner's look review (OS-M7-6, QA TW1–TW8) covers them.
 was not pushed; `main` and `m6` were not touched. `m8` (not touched here) branched from `m7` at `a7ad58c` and holds 4
 commits; `m7` has 15 since (`ed6c756`, `9c48ab0` and the 13 of §15), so `m8` needs them merged or rebased before it
 lands. Before a release, OS-M7-15 must be decided: the release path refuses the gate until then.
+
+### 15.5 Rows run by name at `1bc0829` and on the record's commit
+
+| Row | Result | What it showed |
+|---|---|---|
+| V5 | pass, 9116 s | qpdf provenance, the Release worker's links, qpdf in the worker only, both licence texts, both tarballs at their pins, the size against 4.5 MB (the Release app rebuilt at `1bc0829`, under load 26–36) |
+| V6 | pass, 4955 s | 24 checks in the real worker: lock, lock with restrictions, unlock, unlock with the owner password, change, a wrong password, legacy RC4 and AES, a form's fields; each locked output opens with its password and refuses another; 18 samples of the app's and the worker's command lines, no password, no child process; every secret file deleted |
+| V7 | pass, 22 s | `make password-policy` and `check-secrets.sh` |
+| V8 | pass, 17 s | lock, unlock and change through the drop path |
+| V9 | pass, 16 s | Read QR through the drop path |
+| V10 | pass, 12 s | a locked PDF in Copy Text: one sheet, now `["open"]` |
+| V11 | pass, 292 s | 55 captures, 51 contrast readings, the lowest 11.17:1 (§15.3) |
+| V12 | pass, 2 s | no request with `preflight=no` from Zivlet or its worker while V6–V11 ran |
+| V13 | pass, 2178 s (it waited for V6's SwiftPM lock) | hygiene since `5107be7`, this record's commit included |
+| m5a X7, m5b Y9, m6 Z11 | pass, 14 s, 11 s, 17 s | each runner's hygiene since its own base |
+
+V6, V8, V9 and V10 used the Debug app built at 02:06 from `1c35b83`; the one later code change, `1bc0829`, is checked
+by its unit test and by V1's bundles at HEAD (§15.2).
