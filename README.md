@@ -15,6 +15,7 @@ Drag your files, tap a key, then drop them on a slice.
 ![Apple silicon](https://img.shields.io/badge/Apple%20silicon-native-111111)
 ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
 ![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange)
+[![GitHub watchers](https://img.shields.io/github/watchers/Anmol-Sharma21/Zivlet?style=flat&logo=github&label=watchers)](https://github.com/Anmol-Sharma21/Zivlet/watchers)
 
 </div>
 
