@@ -33,7 +33,7 @@ while read -r name url fingerprint extra; do
     [[ -f "$tarball" ]] || { echo "error: $tarball missing: run Vendor/fetch.sh first" >&2; exit 1; }
     signature=$DOWNLOADS/signatures/$(basename "${url%%\?*}")
     mkdir -p "$DOWNLOADS/signatures"
-    curl -fsSL --retry 3 --proto '=https,file' -o "$signature" "$url" ||
+    curl -fsSL --retry 4 --retry-all-errors --retry-delay 5 --proto '=https,file' -o "$signature" "$url" ||
         { echo "error: no signature for $name at $url" >&2; exit 1; }
     gpg --homedir "$RING" --batch --quiet --import "$KEYS/$name.asc" 2>/dev/null
     status=$(gpg --homedir "$RING" --batch --status-fd 1 --verify "$signature" "$tarball" 2>/dev/null || true)

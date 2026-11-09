@@ -31,14 +31,15 @@ validate_line() {
     [[ "$hash" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "error: $LOCK:$n: bad hash [$hash]" >&2; exit 2; }
 }
 
-# Downloads into a partial file and keeps it only when the hash matches.
+# Downloads into a partial file and keeps it only when the hash matches. Every failure is retried (a reset connection
+# from an upstream mirror stopped a CI run, OWN-CI-1); the hash still decides what is kept.
 download() {
     local name=$1 version=$2 url=$3 want=$4 dir file
     dir=$DOWNLOADS/$name-$version; file=$dir/$(basename "${url%%\?*}")
     mkdir -p "$dir"
     if [[ -f "$file" && "$(sha256_of "$file")" == "$want" ]]; then echo "$name $version cached"; return; fi
     rm -f "$file" "$file.part"
-    curl -fsSL --retry 3 --proto '=https,file' -o "$file.part" "$url" ||
+    curl -fsSL --retry 4 --retry-all-errors --retry-delay 5 --proto '=https,file' -o "$file.part" "$url" ||
         { rm -f "$file.part"; echo "error: download failed for $name $version" >&2; exit 1; }
     local got; got=$(sha256_of "$file.part")
     if [[ "$got" != "$want" ]]; then
