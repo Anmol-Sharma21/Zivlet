@@ -66,7 +66,7 @@ struct BoxResolveTests {
         return (box, files, holding)
     }
 
-    @Test func showDrawsBeforeResolvingAndAppliesTheResultAfter() async throws {
+    @Test(.holdsAPoolThread) func showDrawsBeforeResolvingAndAppliesTheResultAfter() async throws {
         let rig = try BoxRig()
         let (box, files, holding) = try await Self.box(rig, files: 3)
         rig.bookmarks.resolutions[files[1].standardizedFileURL.path] = .failed(
@@ -81,7 +81,7 @@ struct BoxResolveTests {
         box.hidePanel()
     }
 
-    @Test func anItemRemovedWhileResolvingIsNotBroughtBack() async throws {
+    @Test(.holdsAPoolThread) func anItemRemovedWhileResolvingIsNotBroughtBack() async throws {
         let rig = try BoxRig()
         let (box, files, holding) = try await Self.box(rig, files: 3)
         rig.bookmarks.resolutions[files[2].standardizedFileURL.path] = .failed(
@@ -98,7 +98,7 @@ struct BoxResolveTests {
         box.hidePanel()
     }
 
-    @Test func twentyPromisedFilesBecomeItemsWithoutHoldingTheMainActor() async throws {
+    @Test(.holdsAPoolThread) func twentyPromisedFilesBecomeItemsWithoutHoldingTheMainActor() async throws {
         let dir = try TempDir()
         let holding = HoldingBookmarks(FakeBoxBookmarks())
         let intake = BoxIntake(

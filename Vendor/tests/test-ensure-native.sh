@@ -17,7 +17,9 @@ out=$("$ROOT/Vendor/ensure-native.sh" 2>&1)
 assert_contains "$out" "CWebP up to date"
 assert_contains "$out" "CZivletSVG up to date"
 assert_contains "$out" "CQPDF up to date"
-(( $(date +%s) - t0 < 3 )) || fail "an up-to-date run took 3 s or more"
+# About 1 s on a developer Mac and a few on GitHub's 3-core runner (OWN-CI-1); a rebuild takes about a minute.
+took=$(( $(date +%s) - t0 ))
+(( took < 10 )) || fail "an up-to-date run took ${took} s (10 s or more)"
 
 rm "$T/repo/Vendor/out/CWebP.xcframework/Info.plist"
 out=$("$ROOT/Vendor/ensure-native.sh" 2>&1)

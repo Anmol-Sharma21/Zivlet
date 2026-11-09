@@ -1,9 +1,10 @@
-# Pull-request and main-branch checks (P0-07). GitHub's hosted macOS images lack Xcode 27, so every job runs on the
-# project's self-hosted runner (labels below; owner step O-4). `make ci-local` runs the same run steps in the same
-# order on a developer Mac, so keep every run step free of GitHub expressions. A pull request from a fork never runs
-# here: its code would run on a persistent runner that holds the shared vendor cache. A maintainer pushes such a
-# change to a branch of this repository after reading it. Pull requests read the vendor cache but never write it
-# (Scripts/ci-vendor.sh).
+# Pull-request and main-branch checks (P0-07) on GitHub's hosted `xcode-27` image (macOS 27 with Xcode 27, still a
+# preview image). The owner moved CI there on 2026-11-08 (OWN-CI-1) because the self-hosted runner (owner step O-4)
+# is not connected; the nightly, vendor and release workflows stay on that runner. Each run gets a fresh virtual
+# machine, read-only permissions and no secrets, so a pull request from a fork runs here too. `make ci-local` runs the
+# same run steps in the same order on a developer Mac, so keep every run step free of GitHub expressions. The vendor
+# outputs come from GitHub's cache under Vendor/cache-key.sh's key; only a push to main saves them, so a pull request
+# cannot put outputs under main's key, and every restore is re-verified by Vendor/unpack.sh (Scripts/ci-vendor.sh).
 name: CI
 
 on:
@@ -28,22 +29,41 @@ defaults:
 jobs:
   check:
     name: Lint, test, coverage, app, release check, matrix subset, licences
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, macOS, ARM64, zivlet]
-    timeout-minutes: 120
+    runs-on: xcode-27
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Build tools (installed on GitHub's runner only)
+        run: Scripts/ci-tools.sh
+      - name: Vendor cache key
+        id: vendor-key
+        run: echo "key=zivlet-vendor-$(Vendor/cache-key.sh)" >>"${GITHUB_OUTPUT:-/dev/null}"
+      - name: Restore vendor outputs
+        id: vendor-restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.tool_cache }}/zivlet-vendor
+          key: ${{ steps.vendor-key.outputs.key }}
       - name: Vendor script tests
         run: make vendor-test
-      - name: Vendor outputs (runner cache, else build)
+      - name: Vendor outputs (cache, else build)
         run: Scripts/ci-vendor.sh
+      - name: Save vendor outputs (pushes to main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.vendor-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.tool_cache }}/zivlet-vendor
+          key: ${{ steps.vendor-key.outputs.key }}
       - name: Lint
         run: make lint
+      # A hung test fails its step within the hour instead of holding the job to its 240-minute limit.
       - name: Test
+        timeout-minutes: 60
         run: mkdir -p build/reports && make test 2>&1 | tee build/reports/test.log
       - name: Coverage
+        timeout-minutes: 60
         run: mkdir -p build/reports && make coverage 2>&1 | tee build/reports/coverage.txt
       - name: Debug app
         run: make app

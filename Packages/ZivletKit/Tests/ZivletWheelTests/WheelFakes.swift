@@ -44,8 +44,9 @@ extension Fixtures {
     }
 }
 
-/// Polls a main-actor condition every 10 ms for up to `timeout`; parallel render tests can delay timers.
-func eventually(timeout: Duration = .seconds(2), _ condition: () -> Bool) async throws -> Bool {
+/// Polls a main-actor condition every 10 ms for up to `timeout`; parallel render tests can delay timers, and on a
+/// 3-core hosted CI machine they held the main actor past 2 s (OWN-CI-1). It returns as soon as the condition holds.
+func eventually(timeout: Duration = .seconds(10), _ condition: () -> Bool) async throws -> Bool {
     let deadline = ContinuousClock.now + timeout
     while ContinuousClock.now < deadline {
         if condition() { return true }

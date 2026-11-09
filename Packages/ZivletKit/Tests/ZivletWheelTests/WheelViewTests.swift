@@ -71,8 +71,9 @@ struct WheelViewTests {
         #expect(image.width == 372 && image.height == 372)
         let hot = try #require(pixel(image, at: point(100, Double.pi / 2)))
         let idle = try #require(pixel(image, at: point(100, -Double.pi / 2)))
-        #expect(hot.blue > hot.red + 0.2)
-        #expect(abs(idle.red - idle.blue) < 0.05 && idle.red < 0.35)
+        // The values go into the message: this failed once on GitHub's runner and never locally (OWN-CI-1).
+        #expect(hot.blue > hot.red + 0.2, "highlighted petal pixel \(hot)")
+        #expect(abs(idle.red - idle.blue) < 0.05 && idle.red < 0.35, "idle petal pixel \(idle)")
     }
 
     /// The hub is a disc, not a hole, so the label never sits on whatever is behind the panel.
