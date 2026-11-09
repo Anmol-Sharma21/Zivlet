@@ -70,7 +70,7 @@ struct SystemAdapterTests {
         let scheduler = SystemTriggerScheduler()
         scheduler.onSignal = { log.record($0) }
         scheduler.apply(SamplingPlan(events: [], sampling: true))
-        try await Task.sleep(for: .milliseconds(150))
+        try await Self.wait(for: 3, framesIn: log)
         scheduler.apply(.off)
         let frames = log.frames
         #expect(frames >= 3)
@@ -84,7 +84,7 @@ struct SystemAdapterTests {
         sampler.onFrame = { log.record(.event(.frame)) }
         sampler.start(on: nil)
         #expect(sampler.isRunning)
-        try await Task.sleep(for: .milliseconds(100))
+        try await Self.wait(for: 3, framesIn: log)
         sampler.stop()
         #expect(!sampler.isRunning && log.frames >= 3)
     }
@@ -94,9 +94,16 @@ struct SystemAdapterTests {
         let scheduler = SystemTriggerScheduler(watchdogInterval: .milliseconds(20))
         scheduler.onSignal = { log.record($0) }
         scheduler.apply(SamplingPlan(events: [], watchdog: true))
-        try await Task.sleep(for: .milliseconds(120))
+        try await Self.wait(for: 2, framesIn: log)
         scheduler.apply(.off)
         #expect(log.frames >= 2)
+    }
+
+    /// Waits until `log` holds `count` frames, for at most 5 s. A fixed sleep missed ticks on GitHub's busy 3-core
+    /// runner (OWN-CI-1), where a timer can fire late; a timer that never fires still fails the test.
+    private static func wait(for count: Int, framesIn log: SignalLog) async throws {
+        let deadline = ContinuousClock.now + .seconds(5)
+        while log.frames < count, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
     }
 
     @Test func spaceChangeNotificationBecomesASignal() {

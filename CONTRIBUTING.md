@@ -29,6 +29,8 @@ All four must exit 0. Fill in the pull request template, including the DCO check
 Xcode 27). The nightly, vendor and release workflows run on a self-hosted runner and don't run until it is
 registered. `make ci-local` runs the same steps as `ci.yml`, in the same order, on your Mac; it installs nothing.
 
+`main` is protected: changes reach it through a pull request, and the `ci.yml` job must pass before it merges.
+
 ## Third-party code
 
 If a change adds or updates a dependency, add it to `THIRD_PARTY_NOTICES.md` with its version and licence. The licence
